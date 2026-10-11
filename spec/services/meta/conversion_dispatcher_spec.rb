@@ -38,6 +38,19 @@ RSpec.describe Meta::ConversionDispatcher do
     expect(described_class.event_id(1, 2, "Purchase")).not_to eq(described_class.event_id(1, 2, "Schedule"))
   end
 
+  it "enfileira todos os eventos reconhecidos disponíveis nas etapas" do
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
+    create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
+
+    %w[Lead Contact Schedule SubmitApplication CompleteRegistration Purchase StartTrial Subscribe
+       ViewContent Search FindLocation CustomizeProduct AddToWishlist AddToCart InitiateCheckout
+       AddPaymentInfo Donate PageView QualifiedLead].each do |event_name|
+      expect do
+        described_class.call(lead: lead, event_name: event_name)
+      end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, event_name, kind_of(String), kind_of(String), nil)
+    end
+  end
+
   it "ignora lead de outra origem, config ausente/inativa e marco desconhecido" do
     MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }], enabled: false)
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")

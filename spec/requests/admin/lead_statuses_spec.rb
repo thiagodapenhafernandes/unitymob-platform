@@ -106,6 +106,7 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
            statuses: [
              { id: stage.id, name: stage.name, stage_type: "open", meta_conversion_event: "Schedule" },
              { name: "Fechamento", stage_type: "won", meta_conversion_event: "Purchase" },
+             { name: "Contato inicial", stage_type: "open", meta_conversion_event: "Contact" },
              { name: "Etapa inválida", stage_type: "open", meta_conversion_event: "EventoInventado" }
            ]
          },
@@ -114,6 +115,7 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     expect(response).to have_http_status(:ok)
     expect(stage.reload.meta_conversion_event).to eq("Schedule")
     expect(pipeline.stages.find_by!(name: "Fechamento").meta_conversion_event).to eq("Purchase")
+    expect(pipeline.stages.find_by!(name: "Contato inicial").meta_conversion_event).to eq("Contact")
     expect(pipeline.stages.find_by!(name: "Etapa inválida").meta_conversion_event).to be_nil
   end
 

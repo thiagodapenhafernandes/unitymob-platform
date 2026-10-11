@@ -1,0 +1,23 @@
+<%# Loader Stape extraído da imagem; parâmetros configurados por conta, sem scripts livres. %>
+(function() {
+  function cookie(name) {
+    var parts = document.cookie.split(";");
+    for (var i = 0; i < parts.length; i++) {
+      var pair = parts[i].split("=");
+      if (pair[0].trim() === name) return pair[1];
+    }
+  }
+  var identifier = <%= raw json_escape(tracking_setting.stape_identifier.to_json) %>;
+  var configuration = <%= raw json_escape(tracking_setting.stape_configuration.to_json) %>;
+  var domain = <%= raw json_escape(tracking_setting.stape_domain.to_json) %>;
+  var loaderDomain = <%= raw json_escape(tracking_setting.stape_loader_domain.to_json) %>;
+  var match = /Version\/([0-9._]+)(.*Mobile)?.*Safari.*/.exec(navigator.userAgent);
+  var safari = !!match && parseFloat(match[1]) >= 16.4;
+  var uid = "";
+  try { uid = safari ? cookie("si_uid") : ""; } catch (error) { console.warn("Stape: cookie indisponível"); }
+  safari = safari && !!uid;
+  w.dataLayer = w.dataLayer || [];
+  w.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+  var prefix = safari ? (identifier.length > 8 ? identifier.replace(/([a-z]{8}$)/, "kp$1") : "kp" + identifier) : identifier;
+  loadScript((safari ? domain : loaderDomain).replace(/\/$/, "") + "/" + prefix + ".js?" + configuration + (uid ? "&bi=" + encodeURIComponent(uid) : ""));
+})();

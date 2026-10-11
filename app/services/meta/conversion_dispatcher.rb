@@ -14,7 +14,7 @@ module Meta
     # milestone (marcos fixos) ou event_name direto (mapeamento por etapa).
     def self.call(lead:, milestone: nil, event_name: nil, value: nil, occurred_at: Time.current)
       event_name ||= EVENTS[milestone&.to_sym]
-      return unless event_name && EVENTS.value?(event_name) && lead&.tenant_id && lead.meta_ads_origin?
+      return unless LeadPipelineStage::META_CONVERSION_EVENTS.key?(event_name) && lead&.tenant_id && lead.meta_ads_origin?
 
       config = MetaConversionConfig.for_tenant(lead.tenant).first
       return unless config&.active?

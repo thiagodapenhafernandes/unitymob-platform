@@ -5,7 +5,7 @@
 <% google_ads_conversion_id = tracking_setting.normalized_google_ads_conversion_id %>
 <% google_site_verification_token = tracking_setting.normalized_google_site_verification_token %>
 <% rd_station_loader_url = tracking_setting.normalized_rd_station_loader_url %>
-<% has_gtm = tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
+<% has_gtm = tracking_setting.google_tag_manager_enabled? && (gtm_container_id.present? || tracking_setting.stape_enabled?) %>
 <% has_meta_pixel = tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
 <% has_google_ads = tracking_setting.google_ads_enabled? && google_ads_conversion_id.present? %>
 <% has_rd_station = tracking_setting.rd_station_enabled? && rd_station_loader_url.present? %>
@@ -46,7 +46,8 @@
           page_url: data.page_url || w.location.href,
           placement: data.placement || "",
           component: data.component || "",
-          habitation_id: data.habitation_id || ""
+          habitation_id: data.habitation_id || "",
+          negotiation_type: data.negotiation_type || "general"
         };
       }
 
@@ -92,6 +93,7 @@
           click_url: target.href || target.dataset.trackingUrl || "",
           placement: target.dataset.trackingPlacement || "",
           component: target.dataset.trackingComponent || "",
+          negotiation_type: target.dataset.negotiationType || "general",
           habitation_id: target.dataset.propertyId || target.dataset.habitationId || ""
         });
       }
@@ -102,8 +104,12 @@
 
         <% if has_gtm %>
           w.dataLayer = w.dataLayer || [];
-          w.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
-          loadScript("https://www.googletagmanager.com/gtm.js?id=<%= j gtm_container_id %>");
+          <% unless tracking_setting.stape_enabled? %>w.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });<% end %>
+          <% if tracking_setting.stape_enabled? %>
+            <%= render "layouts/stape_loader", tracking_setting: tracking_setting %>
+          <% else %>
+            loadScript("https://www.googletagmanager.com/gtm.js?id=<%= j gtm_container_id %>");
+          <% end %>
         <% end %>
 
         <% if has_google_ads %>

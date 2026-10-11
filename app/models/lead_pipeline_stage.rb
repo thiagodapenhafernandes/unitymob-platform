@@ -8,11 +8,28 @@ class LeadPipelineStage < ApplicationRecord
     "archived" => "Arquivada"
   }.freeze
   # Evento enviado à Meta (Conversions API) quando o lead ENTRA na etapa.
-  # Em branco = nenhum envio. Mesmos nomes do Meta::ConversionDispatcher.
+  # Eventos padrão: https://developers.facebook.com/docs/meta-pixel/reference/
+  # QualifiedLead preserva o evento CRM já usado pela integração.
   META_CONVERSION_EVENTS = {
     "QualifiedLead" => "Lead qualificado",
-    "Schedule" => "Visita realizada",
-    "Purchase" => "Venda"
+    "Lead" => "Lead",
+    "Contact" => "Contato",
+    "Schedule" => "Agendamento",
+    "SubmitApplication" => "Envio de inscrição ou solicitação",
+    "CompleteRegistration" => "Cadastro concluído",
+    "Purchase" => "Venda",
+    "StartTrial" => "Início de período de teste",
+    "Subscribe" => "Assinatura",
+    "ViewContent" => "Visualização de conteúdo",
+    "Search" => "Pesquisa",
+    "FindLocation" => "Busca de localização",
+    "CustomizeProduct" => "Personalização de produto",
+    "AddToWishlist" => "Adição à lista de desejos",
+    "AddToCart" => "Adição ao carrinho",
+    "InitiateCheckout" => "Início de checkout",
+    "AddPaymentInfo" => "Adição de informações de pagamento",
+    "Donate" => "Doação",
+    "PageView" => "Visualização de página"
   }.freeze
   HEX_COLOR = /\A#\h{6}\z/
   DEFAULT_COLORS = %w[#2f80a0 #365f8f #8a63d2 #d97706 #08875d #e0402f #667085].freeze

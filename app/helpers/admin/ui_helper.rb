@@ -185,10 +185,11 @@ module Admin::UiHelper
 
   # Cabeçalho operacional do ax-main: eyebrow + título com pills, subtítulo,
   # métricas (array de { value:, label: }) e ações à direita.
-  def ax_workspace_heading(title:, eyebrow: nil, icon: nil, subtitle: nil, pills: [], metrics: [], actions: nil, class_name: nil)
+  def ax_workspace_heading(title:, eyebrow: nil, icon: nil, subtitle: nil, pills: [], metrics: [], actions: nil, class_name: nil, plain: false)
     render(
       "admin/shared/ui/workspace_heading",
       title:,
+      plain:,
       eyebrow:,
       icon:,
       subtitle:,
@@ -197,6 +198,15 @@ module Admin::UiHelper
       actions:,
       class_name:
     )
+  end
+
+  def ax_editor_workspace(sidebar:, body: nil, class_name: nil, &block)
+    render "admin/shared/ui/editor_workspace", sidebar:, class_name:,
+           body: block_given? ? capture(&block) : body
+  end
+
+  def ax_studio_nav_item(label:, icon: nil, hint: nil, active: false, url: nil, data: {}, aria: {})
+    render "admin/shared/ui/studio_nav_item", label:, icon:, hint:, active:, url:, data:, aria:
   end
 
   # Composição de processos operacionais com etapas, conteúdo principal e
@@ -682,11 +692,13 @@ module Admin::UiHelper
     )
   end
 
-  def ax_quick_modal(id:, title:, size: :md, footer: nil, class_name: nil, data: {}, body: nil, &block)
+  def ax_quick_modal(id:, title:, size: :md, footer: nil, class_name: nil, data: {}, body: nil, mobile_detail: false, header_actions: nil, &block)
     render(
       "admin/shared/ui/quick_modal",
       id:,
       title:,
+      mobile_detail:,
+      header_actions:,
       size:,
       footer:,
       class_name:,

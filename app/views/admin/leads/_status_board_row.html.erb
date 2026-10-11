@@ -66,7 +66,8 @@
     "add_note" => "Registrar nota\n1. O gatilho precisa vencer.\n2. O sistema registra uma nota automática no histórico do lead.\n3. Usa o texto informado ou uma mensagem padrão."
   }
 
-  automation_row = lambda do |automation, new_record: false|
+  field_prefix = "lead-stage-#{stage_id || 'new'}"
+  automation_row = lambda do |automation|
     automation_id = automation.respond_to?(:id) ? automation.id : nil
     trigger = automation.respond_to?(:trigger) ? automation.trigger : "stage_duration"
     after_amount = automation.respond_to?(:after_amount) ? automation.after_amount : nil
@@ -74,441 +75,179 @@
     destination_id = automation.respond_to?(:auto_advance_to_stage_id) ? automation.auto_advance_to_stage_id : nil
     action_type = automation.respond_to?(:action_type) ? automation.action_type : "move_stage"
     action_config = automation.respond_to?(:action_config) ? automation.action_config.to_h : {}
-    unsuccessful_attempt_limit = action_config["unsuccessful_attempt_limit"].presence
-    active = automation.respond_to?(:active?) ? automation.active? : true
-    row_attrs = new_record ? "data-new-record=\"true\"" : "data-automation-id=\"#{automation_id}\""
+    automation_active = automation.respond_to?(:active?) ? automation.active? : true
+    automation_prefix = "#{field_prefix}-automation-#{automation_id || 'new'}"
 %>
-    <div class="lead-status-row__automation-rule" <%= row_attrs.html_safe %>>
-      <label class="lead-status-row__automation-toggle">
-        <input type="checkbox"
-               data-lead-status-automation-field="active"
-               <%= "checked" if active %>>
-        <span>Ativa</span>
-      </label>
-
-      <select class="ax-control ax-control--sm"
-              data-lead-status-automation-field="trigger"
-              data-controller="ax-tooltip"
-              data-ax-tooltip-text-value="Condição que inicia a contagem da automação."
-              data-ax-tooltip-option-texts-value="<%= json_escape(trigger_tooltips.to_json) %>"
-              aria-label="Condição da automação da etapa">
-        <% LeadPipelineStageAutomation::TRIGGERS.each do |value, label| %>
-          <option value="<%= value %>" <%= "selected" if trigger == value %>><%= label %></option>
-        <% end %>
-      </select>
-
-      <input type="number"
-             min="1"
-             step="1"
-             class="ax-control ax-control--sm"
-             data-lead-status-automation-field="after_amount"
-             data-controller="ax-tooltip"
-             data-ax-tooltip-text-value="Quantidade de tempo antes da ação final ser executada."
-             value="<%= after_amount %>"
-             placeholder="Tempo"
-             aria-label="Tempo da automação da etapa">
-
-      <select class="ax-control ax-control--sm"
-              data-lead-status-automation-field="after_unit"
-              data-controller="ax-tooltip"
-              data-ax-tooltip-text-value="Unidade usada para contar o tempo da automação."
-              data-ax-tooltip-option-texts-value="<%= json_escape(unit_tooltips.to_json) %>"
-              aria-label="Unidade do tempo da automação da etapa">
-        <% LeadPipelineStageAutomation::UNITS.each do |value, label| %>
-          <option value="<%= value %>" <%= "selected" if after_unit == value %>><%= label %></option>
-        <% end %>
-      </select>
-
-      <select class="ax-control ax-control--sm"
-              data-lead-status-automation-field="auto_advance_to_stage_id"
-              data-action-config-panel="move_stage"
-              data-controller="ax-tooltip"
-              data-ax-tooltip-text-value="Etapa de destino usada quando a ação final for mover o lead."
-              <%= "hidden" unless %w[move_stage redistribute_lead].include?(action_type) %>
-              aria-label="Etapa de destino da automação">
-        <option value="">Mover para...</option>
-        <% stage_options.each do |stage| %>
-          <% next if stage_id.present? && stage.id.to_s == stage_id.to_s %>
-          <option value="<%= stage.id %>" <%= "selected" if destination_id.to_s == stage.id.to_s %>>
-            <%= stage.lead_pipeline.name %> · <%= stage.name %>
-          </option>
-        <% end %>
-      </select>
-
-      <input type="number"
-             min="1"
-             step="1"
-             class="ax-control ax-control--sm"
-             data-lead-status-automation-config-field="unsuccessful_attempt_limit"
-             data-controller="ax-tooltip"
-             data-ax-tooltip-text-value="Executa a mesma ação quando o lead atingir esta quantidade de tentativas sem resposta na etapa atual. Em branco, usa só o tempo."
-             value="<%= unsuccessful_attempt_limit %>"
-             placeholder="Tentativas"
-             aria-label="Limite de tentativas sem sucesso">
-
-      <select class="ax-control ax-control--sm"
-              data-lead-status-automation-field="action_type"
-              data-action="lead-status-board#changeAutomationAction"
-              data-controller="ax-tooltip"
-              data-ax-tooltip-text-value="O que o sistema executa ao final da automação."
-              data-ax-tooltip-option-texts-value="<%= json_escape(action_tooltips.to_json) %>"
-              aria-label="Ação final da automação">
-        <% LeadPipelineStageAutomation::ACTION_TYPES.each do |value, label| %>
-          <option value="<%= value %>" <%= "selected" if action_type == value %>><%= label %></option>
-        <% end %>
-      </select>
-
-      <div class="lead-status-row__automation-config" data-action-config-panel="archive_lead" <%= "hidden" unless action_type == "archive_lead" %>>
-        <select class="ax-control ax-control--sm"
-                data-lead-status-automation-config-field="archive_reason_id"
-                data-controller="ax-tooltip"
-                data-ax-tooltip-text-value="Destino/motivo final registrado quando a automação arquivar o lead, sem etapa intermediária."
-                aria-label="Destino do arquivamento automático">
-          <option value="">Destino padrão</option>
-          <% archive_reason_options.each do |reason| %>
-            <option value="<%= reason.id %>" <%= "selected" if action_config["archive_reason_id"].to_s == reason.id.to_s %>><%= reason.name %></option>
-          <% end %>
-        </select>
+    <div class="lead-status-row__automation-rule" data-automation-id="<%= automation_id %>">
+      <div class="lead-status-row__automation-header">
+        <%= ax_switch_field(label: "Automação ativa", name: nil, id: "#{automation_prefix}-active", checked: automation_active,
+                            input_html: { data: { lead_status_automation_field: "active" } }) %>
+        <%= ax_button("Remover", variant: :ghost, size: :sm, icon: "trash", data: { action: "lead-status-board#removeAutomation" }) %>
       </div>
-
-      <div class="lead-status-row__automation-config" data-action-config-panel="redistribute_lead" <%= "hidden" unless action_type == "redistribute_lead" %>>
-        <select class="ax-control ax-control--sm"
-                data-lead-status-automation-config-field="distribution_rule_id"
-                data-controller="ax-tooltip"
-                data-ax-tooltip-text-value="Fila usada para redistribuir o lead. Em branco, mantém a fila atual do próprio lead."
-                aria-label="Fila de redistribuição">
-          <option value="">Manter fila atual do lead</option>
-          <% distribution_rule_options.each do |rule| %>
-            <option value="<%= rule.id %>" <%= "selected" if action_config["distribution_rule_id"].to_s == rule.id.to_s %>>
-              <%= distribution_rule_label.call(rule) %>
-            </option>
-          <% end %>
-          <% if distribution_rule_options.blank? %>
-            <option value="" disabled>Nenhuma fila ativa cadastrada</option>
-          <% end %>
-        </select>
-      </div>
-
-      <div class="lead-status-row__automation-config lead-status-row__automation-config--wide" data-action-config-panel="create_task" <%= "hidden" unless action_type == "create_task" %>>
-        <input type="text"
-               class="ax-control ax-control--sm"
-               data-lead-status-automation-config-field="task_title"
-               data-controller="ax-tooltip"
-               data-ax-tooltip-text-value="Título da tarefa que será criada dentro do lead quando o gatilho vencer. Se ficar vazio, o sistema usa Follow-up automático."
-               value="<%= action_config["task_title"] %>"
-               placeholder="Título da tarefa">
-        <input type="number"
-               min="1"
-               step="1"
-               class="ax-control ax-control--sm"
-               data-lead-status-automation-config-field="due_in_days"
-               data-controller="ax-tooltip"
-               data-ax-tooltip-text-value="Prazo da tarefa após a execução da automação. Exemplo: 2 cria a tarefa com vencimento para daqui a 2 dias. Se ficar vazio, usa 1 dia."
-               value="<%= action_config["due_in_days"] %>"
-               placeholder="Vence em dias">
-      </div>
-
-      <input type="text"
-             class="ax-control ax-control--sm"
-             data-lead-status-automation-config-field="note"
-             data-controller="ax-tooltip"
-             data-ax-tooltip-text-value="Observação registrada junto com a ação automática. Em Criar tarefa, também entra como descrição da tarefa vinculada ao lead."
-             value="<%= action_config["note"] %>"
-             placeholder="Nota opcional"
-             aria-label="Nota opcional da ação final">
-
-      <button type="button"
-              class="ax-icon-btn lead-status-row__automation-remove"
-              data-action="lead-status-board#removeAutomation"
-              aria-label="Remover automação"
-              title="Remover automação">
-        <i class="bi bi-trash"></i>
-      </button>
-    </div>
-<%
-  end
-%>
-
-<div class="lead-status-row" data-id="<%= local_assigns[:id] %>">
-  <button type="button" class="lead-status-row__handle" aria-label="Reordenar" title="Arraste para reordenar" tabindex="-1">
-    <i class="bi bi-grip-vertical"></i>
-  </button>
-  <div class="lead-status-row__content">
-  <button type="button"
-          class="lead-status-row__summary"
-          data-action="lead-status-board#toggleDetails"
-          aria-expanded="false">
-    <span>
-      <strong data-lead-status-summary-name>
-        <span class="lead-status-row__color-dot" style="--lead-stage-row-color: <%= stage_color %>"></span>
-        <%= local_assigns[:name].presence || "Nova etapa" %>
-      </strong>
-      <small data-lead-status-summary-details><%= summary_parts.presence&.join(" · ") || "Sem regras avançadas" %></small>
-    </span>
-    <span class="lead-status-row__summary-badges">
-      <%= ax_badge(LeadPipelineStage::STAGE_TYPES[local_assigns[:stage_type].presence || "open"], tone: :blue) %>
-      <%= ax_badge(active ? "Ativa" : "Inativa", tone: active ? :green : :gray) %>
-      <i class="bi bi-chevron-down"></i>
-    </span>
-  </button>
-
-  <div class="lead-status-row__details" hidden>
-    <div class="lead-status-row__section">
-      <div class="lead-status-row__section-title">
-        <%= ax_field_label(nil, nil, text: "Identificação", tooltip: "Dados básicos da etapa exibidos no funil e nos cards de lead.") %>
-      </div>
-      <div class="lead-status-row__fields">
-        <input type="text"
-               class="ax-control ax-control--sm"
-               data-lead-status-field="name"
-               data-controller="ax-tooltip"
-               data-ax-tooltip-text-value="Nome exibido no funil e nos cards de lead."
-               value="<%= local_assigns[:name] %>"
-               placeholder="Nome da etapa"
-               aria-label="Nome da etapa">
-        <input type="text"
-               class="ax-control ax-control--sm"
-               data-lead-status-field="description"
-               data-controller="ax-tooltip"
-               data-ax-tooltip-text-value="Texto curto opcional para orientar o uso da etapa."
-               value="<%= local_assigns[:description] %>"
-               placeholder="Subtítulo (opcional)"
-               aria-label="Subtítulo do status">
-        <select class="ax-control ax-control--sm"
-                data-lead-status-field="stage_type"
-                data-controller="ax-tooltip"
-                data-ax-tooltip-text-value="Define o comportamento operacional da etapa: aberta, ganha, perdida ou arquivada."
-                aria-label="Tipo da etapa">
-          <% LeadPipelineStage::STAGE_TYPES.each do |value, label| %>
-            <option value="<%= value %>" <%= "selected" if local_assigns[:stage_type].presence == value %>><%= label %></option>
-          <% end %>
-        </select>
-        <select class="ax-control ax-control--sm"
-                data-lead-status-field="meta_conversion_event"
-                data-controller="ax-tooltip"
-                data-ax-tooltip-text-value="Evento enviado à Meta quando o lead entra nesta etapa (só leads do Meta Ads, com conversões ativas). Em branco = não envia."
-                aria-label="Evento Meta da etapa">
-          <option value="">Evento Meta: nenhum</option>
-          <% LeadPipelineStage::META_CONVERSION_EVENTS.each do |value, label| %>
-            <option value="<%= value %>" <%= "selected" if local_assigns[:meta_conversion_event].presence == value %>><%= label %></option>
-          <% end %>
-        </select>
-        <div class="lead-status-row__color-field"
-             data-controller="ax-tooltip"
-             data-ax-tooltip-text-value="Cor usada para identificar visualmente esta etapa no funil.">
-          <input type="color"
-                 class="lead-status-row__color-swatch"
-                 data-lead-status-field="color"
-                 value="<%= stage_color %>"
-                 aria-label="Cor da etapa">
+      <div class="lead-status-row__automation-body">
+        <div class="lead-status-row__automation-condition">
+          <span class="lead-status-row__rule-word">Quando</span>
+          <%= ax_standalone_select_field(name: nil, id: "#{automation_prefix}-trigger", label: "Condição", selected: trigger,
+                choices: LeadPipelineStageAutomation::TRIGGERS.map { |value, label| [label, value] },
+                data: { lead_status_automation_field: "trigger", controller: "ax-tooltip", ax_tooltip_text_value: "Condição que inicia a contagem da automação.", ax_tooltip_option_texts_value: trigger_tooltips }) %>
+          <%= ax_standalone_field(name: nil, id: "#{automation_prefix}-amount", label: "Tempo", type: :number, value: after_amount, min: 1, step: 1,
+                data: { lead_status_automation_field: "after_amount", controller: "ax-tooltip", ax_tooltip_text_value: "Quantidade de tempo antes da ação final ser executada." }) %>
+          <%= ax_standalone_select_field(name: nil, id: "#{automation_prefix}-unit", label: "Unidade", selected: after_unit,
+                choices: LeadPipelineStageAutomation::UNITS.map { |value, label| [label, value] },
+                data: { lead_status_automation_field: "after_unit", controller: "ax-tooltip", ax_tooltip_text_value: "Unidade usada para contar o tempo da automação.", ax_tooltip_option_texts_value: unit_tooltips }) %>
+          <%= ax_standalone_field(name: nil, id: "#{automation_prefix}-attempts", label: "Tentativas", type: :number, value: action_config["unsuccessful_attempt_limit"], min: 1, step: 1, placeholder: "Opcional",
+                data: { lead_status_automation_config_field: "unsuccessful_attempt_limit", controller: "ax-tooltip", ax_tooltip_text_value: "Executa a mesma ação quando o lead atingir esta quantidade de tentativas sem resposta na etapa atual. Em branco, usa só o tempo." }) %>
         </div>
-        <label class="lead-status-row__automation-toggle"
-               data-controller="ax-tooltip"
-               data-ax-tooltip-text-value="Etapas inativas deixam de aparecer para uso operacional, sem apagar histórico.">
-          <input type="checkbox"
-                 data-lead-status-field="active"
-                 <%= "checked" if active %>>
-          <span>Ativa</span>
-        </label>
-      </div>
-    </div>
-
-    <% if stage_id.present? %>
-      <div class="lead-status-row__section lead-status-row__destroy-panel" data-lead-status-destroy-panel hidden>
-        <div class="lead-status-row__section-title">
-          <%= ax_field_label(nil, nil,
-                             text: "Remover etapa",
-                             tooltip: "Antes de remover, escolha para qual etapa os leads atuais serão enviados.") %>
-        </div>
-        <div class="lead-status-row__ops-grid">
-          <div>
-            <%= ax_field_label(nil, nil,
-                               text: "Enviar leads para",
-                               tooltip: "Todos os leads que estiverem nesta etapa serão movidos para a etapa escolhida.",
-                               class_name: "ax-label lead-status-row__field-label") %>
-            <select class="ax-control ax-control--sm"
-                    data-lead-status-destroy-field="replacement_stage_id"
-                    disabled
-                    aria-label="Etapa de destino dos leads">
-              <option value="">Escolha uma etapa</option>
-              <% replacement_stage_options.each do |stage| %>
-                <option value="<%= stage.id %>"><%= stage.name %></option>
-              <% end %>
-            </select>
+        <div class="lead-status-row__automation-action">
+          <span class="lead-status-row__rule-word">Então</span>
+          <%= ax_standalone_select_field(name: nil, id: "#{automation_prefix}-action", label: "Ação", selected: action_type,
+                choices: LeadPipelineStageAutomation::ACTION_TYPES.map { |value, label| [label, value] },
+                data: { lead_status_automation_field: "action_type", action: "lead-status-board#changeAutomationAction", controller: "ax-tooltip", ax_tooltip_text_value: "O que o sistema executa ao final da automação.", ax_tooltip_option_texts_value: action_tooltips }) %>
+          <div data-action-config-panel="move_stage" <%= "hidden" unless action_type == "move_stage" %>>
+            <%= ax_standalone_select_field(name: nil, id: "#{automation_prefix}-destination", label: "Etapa de destino", selected: destination_id,
+                  include_blank: "Mover para...", choices: stage_options.reject { |stage| stage.id.to_s == stage_id.to_s }.map { |stage| ["#{stage.lead_pipeline.name} · #{stage.name}", stage.id] },
+                  data: { lead_status_automation_field: "auto_advance_to_stage_id", lead_status_stage_options: "qualified", controller: "ax-tooltip", ax_tooltip_text_value: "Etapa de destino usada quando a ação final for mover o lead." }) %>
+          </div>
+          <div data-action-config-panel="archive_lead" <%= "hidden" unless action_type == "archive_lead" %>>
+            <%= ax_standalone_select_field(name: nil, id: "#{automation_prefix}-archive", label: "Destino do arquivamento", selected: action_config["archive_reason_id"],
+                  include_blank: "Destino padrão", choices: archive_reason_options.map { |reason| [reason.name, reason.id] },
+                  data: { lead_status_automation_config_field: "archive_reason_id", controller: "ax-tooltip", ax_tooltip_text_value: "Destino/motivo final registrado quando a automação arquivar o lead, sem etapa intermediária." }) %>
+          </div>
+          <div data-action-config-panel="redistribute_lead" <%= "hidden" unless action_type == "redistribute_lead" %>>
+            <%= ax_standalone_select_field(name: nil, id: "#{automation_prefix}-queue", label: "Fila de redistribuição", selected: action_config["distribution_rule_id"],
+                  include_blank: "Manter fila atual do lead", choices: distribution_rule_options.map { |rule| [distribution_rule_label.call(rule), rule.id] },
+                  hint: ("Nenhuma fila ativa cadastrada" if distribution_rule_options.empty?),
+                  data: { lead_status_automation_config_field: "distribution_rule_id", controller: "ax-tooltip", ax_tooltip_text_value: "Fila usada para redistribuir o lead. Em branco, mantém a fila atual do próprio lead." }) %>
+          </div>
+          <div class="lead-status-row__task-config" data-action-config-panel="create_task" <%= "hidden" unless action_type == "create_task" %>>
+            <%= ax_standalone_field(name: nil, id: "#{automation_prefix}-task", label: "Título da tarefa", value: action_config["task_title"], placeholder: "Follow-up automático",
+                  data: { lead_status_automation_config_field: "task_title", controller: "ax-tooltip", ax_tooltip_text_value: "Título da tarefa criada no lead. Em branco, usa Follow-up automático." }) %>
+            <%= ax_standalone_field(name: nil, id: "#{automation_prefix}-due", label: "Vence em dias", type: :number, value: action_config["due_in_days"], min: 1, step: 1,
+                  data: { lead_status_automation_config_field: "due_in_days", controller: "ax-tooltip", ax_tooltip_text_value: "Prazo da tarefa após a execução. Em branco, usa 1 dia." }) %>
           </div>
         </div>
+        <%= ax_standalone_field(name: nil, id: "#{automation_prefix}-note", label: "Nota (opcional)", value: action_config["note"], placeholder: "Observação registrada junto com a ação",
+              data: { lead_status_automation_config_field: "note", controller: "ax-tooltip", ax_tooltip_text_value: "Observação registrada junto com a ação automática. Em Criar tarefa, também entra como descrição da tarefa vinculada ao lead." }) %>
       </div>
+    </div>
+<% end %>
+
+<div class="lead-status-row" data-id="<%= stage_id %>" hidden
+     data-action="input->lead-status-board#updateStage change->lead-status-board#updateStage">
+  <div class="lead-status-row__editor-heading">
+    <%= ax_workspace_heading(plain: true, title: tag.span(local_assigns[:name].presence || "Nova etapa", data: { lead_status_summary_name: true }),
+          eyebrow: tag.span("Etapa", data: { lead_status_position: true }),
+          subtitle: tag.span(summary_parts.join(" · "), data: { lead_status_summary_details: true }),
+          actions: capture do %>
+      <span data-lead-status-type-badge><%= ax_badge(LeadPipelineStage::STAGE_TYPES[local_assigns[:stage_type].presence || "open"], tone: :blue) %></span>
+      <%= ax_switch_field(label: "Ativa", name: nil, id: "#{field_prefix}-active", checked: active,
+            input_html: { data: { lead_status_field: "active", controller: "ax-tooltip", ax_tooltip_text_value: "Etapas inativas deixam de aparecer para uso operacional, sem apagar histórico." } }) %>
+    <% end) %>
+  </div>
+  <div class="lead-status-row__details">
+    <%= ax_operational_panel(title: "Identificação") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-7">
+          <%= ax_standalone_field(name: nil, id: "#{field_prefix}-name", label: "Nome da etapa", value: local_assigns[:name], placeholder: "Nome da etapa",
+                data: { lead_status_field: "name", controller: "ax-tooltip", ax_tooltip_text_value: "Nome exibido no funil e nos cards de lead." }) %>
+        </div>
+        <div class="ax-span-4">
+          <%= ax_standalone_select_field(name: nil, id: "#{field_prefix}-type", label: "Tipo da etapa", selected: local_assigns[:stage_type].presence || "open",
+                choices: LeadPipelineStage::STAGE_TYPES.map { |value, label| [label, value] },
+                data: { lead_status_field: "stage_type", controller: "ax-tooltip", ax_tooltip_text_value: "Define o comportamento operacional da etapa: aberta, ganha, perdida ou arquivada." }) %>
+        </div>
+        <div class="ax-span-1">
+          <%= ax_standalone_field(name: nil, id: "#{field_prefix}-color", label: "Cor", type: :color, value: stage_color,
+                data: { lead_status_field: "color", controller: "ax-tooltip", ax_tooltip_text_value: "Cor usada para identificar visualmente esta etapa no funil." }) %>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_standalone_field(name: nil, id: "#{field_prefix}-description", label: "Subtítulo (opcional)", value: local_assigns[:description], placeholder: "Orientação curta sobre o uso desta etapa",
+                data: { lead_status_field: "description", controller: "ax-tooltip", ax_tooltip_text_value: "Texto curto opcional para orientar o uso da etapa." }) %>
+        </div>
+      <% end %>
     <% end %>
 
-    <div class="lead-status-row__section">
-      <div class="lead-status-row__section-title">
-        <%= ax_field_label(nil, nil, text: "Acesso", tooltip: "Define quem pode ver ou usar esta etapa antes de configurar o fluxo operacional.") %>
-      </div>
-      <div class="lead-status-row__visibility">
-        <% LeadPipelineStagePolicy::VISIBLE_ROLES.each do |value, label| %>
-          <label class="ax-toggle-chip"
-                 data-controller="ax-tooltip"
-                 data-ax-tooltip-text-value="Permite que este perfil visualize e use a etapa.">
-            <input type="checkbox"
-                   class="ax-toggle-chip__input"
-                   data-lead-status-policy-array-field="visible_to_roles"
-                   value="<%= value %>"
-                   <%= "checked" if visible_roles.include?(value) %>>
-            <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-eye"></i></span>
-            <span class="ax-toggle-chip__label"><%= label %></span>
-          </label>
-        <% end %>
-        <label class="lead-status-row__automation-toggle"
-               data-controller="ax-tooltip"
-               data-ax-tooltip-text-value="Permite sinalizar divergência entre a qualificação do gestor e do corretor nesta etapa.">
-          <input type="checkbox"
-                 data-lead-status-policy-field="divergence_queue_enabled"
-                 <%= "checked" if policy&.divergence_queue_enabled %>>
-          <span>Fila divergência</span>
-        </label>
-      </div>
-    </div>
-
-    <div class="lead-status-row__section">
-      <div class="lead-status-row__section-title">
-        <%= ax_field_label(nil, nil, text: "Fluxo", tooltip: "Define para onde o lead pode seguir e quais motivos podem encerrar ou desqualificar o atendimento nesta etapa.") %>
-      </div>
-      <div class="lead-status-row__ops-grid">
-        <div>
-          <%= ax_field_label(nil, nil,
-                             text: "Próximas etapas",
-                             tooltip: "Define para quais etapas o lead pode avançar a partir desta etapa. Se ficar vazio, não restringe o fluxo.",
-                             class_name: "ax-label lead-status-row__field-label") %>
-          <select class="ax-control ax-control--sm lead-status-row__multiselect"
-                  multiple
-                  data-controller="tom-select"
-                  data-placeholder="Selecione as próximas etapas..."
-                  data-tom-select-open-on-initialize-value="true"
-                  data-tom-select-tags-value="false"
-                  data-tom-select-options-value='{"wrapperClass":"ts-wrapper p-0 ax-autocomplete-select--multi lead-status-row__multiselect-wrapper","dropdownParent":null,"openOnFocus":false,"maxOptions":null,"hideSelected":false,"closeAfterSelect":false}'
-                  data-lead-status-transition-field="next_stage_id"
-                  aria-label="Próximas etapas permitidas">
-            <% stage_options.each do |stage| %>
-              <% next if stage_id.present? && stage.id.to_s == stage_id.to_s %>
-              <option value="<%= stage.id %>" <%= "selected" if selected_next_stage_ids.include?(stage.id.to_s) %>>
-                <%= stage.name %>
-              </option>
-            <% end %>
-          </select>
-        </div>
-
-        <div>
-          <%= ax_field_label(nil, nil,
-                             text: "Motivos permitidos",
-                             tooltip: "Limita os motivos aceitos para arquivamento ou desqualificação nesta etapa. Se ficar vazio, não restringe os motivos.",
-                             class_name: "ax-label lead-status-row__field-label") %>
-          <select class="ax-control ax-control--sm lead-status-row__multiselect"
-                  multiple
-                  data-controller="tom-select"
-                  data-placeholder="Selecione os motivos permitidos..."
-                  data-tom-select-open-on-initialize-value="true"
-                  data-tom-select-tags-value="false"
-                  data-tom-select-options-value='{"wrapperClass":"ts-wrapper p-0 ax-autocomplete-select--multi lead-status-row__multiselect-wrapper","dropdownParent":null,"openOnFocus":false,"maxOptions":null,"hideSelected":false,"closeAfterSelect":false}'
-                  data-lead-status-policy-array-field="allowed_archive_reason_ids"
-                  aria-label="Motivos permitidos para arquivamento ou desqualificação">
-            <% archive_reason_options.each do |reason| %>
-              <option value="<%= reason.id %>" <%= "selected" if allowed_archive_reason_ids.include?(reason.id.to_s) %>>
-                <%= reason.name %>
-              </option>
-            <% end %>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="lead-status-row__section">
-      <div class="lead-status-row__section-title">
-        <%= ax_field_label(nil, nil, text: "Atendimento", tooltip: "Configura o que o corretor pode registrar ou agendar enquanto o lead estiver nesta etapa.") %>
-      </div>
-      <div class="lead-status-row__ops-grid lead-status-row__ops-grid--attention">
-        <div>
-          <%= ax_field_label(nil, nil,
-                             text: "Agenda futura",
-                             tooltip: "Número máximo de dias no futuro para criar agenda nesta etapa. Em branco, não aplica limite.",
-                             class_name: "ax-label lead-status-row__field-label") %>
-          <input type="number"
-                 min="1"
-                 step="1"
-                 class="ax-control ax-control--sm"
-                 data-lead-status-policy-field="future_activity_limit_days"
-                 value="<%= policy&.future_activity_limit_days %>"
-                 placeholder="Limite em dias">
-        </div>
-
-        <div>
-          <div class="lead-status-row__inline-help-label">
-            <%= ax_field_label(nil, nil,
-                               text: "Qualificação no card",
-                               tooltip: "Quando ligado, o card do lead pode exibir controle de qualificação nesta etapa.") %>
-          </div>
-          <label class="lead-status-row__automation-toggle">
-            <input type="checkbox"
-                   data-lead-status-policy-field="qualification_enabled"
-                   <%= "checked" if policy&.qualification_enabled %>>
-            <span>Exibir no card</span>
-          </label>
-          <div class="lead-status-row__chip-list lead-status-row__chip-list--inline">
-            <% LeadPipelineStagePolicy::QUALIFICATION_OPTIONS.each do |value, label| %>
-              <label class="ax-toggle-chip"
-                     data-controller="ax-tooltip"
-                     data-ax-tooltip-text-value="Opção de qualificação disponível no card quando a qualificação estiver ligada.">
-                <input type="checkbox"
-                       class="ax-toggle-chip__input"
-                       data-lead-status-policy-array-field="qualification_options"
-                       value="<%= value %>"
-                       <%= "checked" if qualification_options.include?(value) %>>
-                <span class="ax-toggle-chip__label"><%= label %></span>
-              </label>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <details class="lead-status-row__automations">
-      <summary class="lead-status-row__automations-summary">
-        <span>
-          <%= ax_field_label(nil, nil,
-                             text: "Automações",
-                             tooltip: "Regras executadas automaticamente quando o lead atende uma condição pelo tempo configurado ou pela quantidade de tentativas sem resposta.",
-                             class_name: "lead-status-row__automation-title") %>
-          <small><%= automation_summary %></small>
-        </span>
-        <i class="bi bi-chevron-down"></i>
-      </summary>
-
-      <div class="lead-status-row__automations-body">
-        <div class="lead-status-row__automations-actions">
-          <button type="button"
-                  class="ax-btn ax-btn--sm"
-                  data-action="lead-status-board#addAutomation">
-            <i class="bi bi-plus-lg"></i> Adicionar automação
-          </button>
-        </div>
-
-        <div class="lead-status-row__automation-list">
-          <% automations.each do |automation| %>
-            <% automation_row.call(automation) %>
+    <div class="lead-status-row__access-attention">
+      <%= ax_operational_panel(title: "Acesso", eyebrow: "Quem pode visualizar e usar esta etapa") do %>
+        <div class="lead-status-row__visibility">
+          <% LeadPipelineStagePolicy::VISIBLE_ROLES.each do |value, label| %>
+            <%= ax_toggle_chip(label: label, name: nil, id: "#{field_prefix}-role-#{value}", checked_value: value, include_hidden: false, checked: visible_roles.include?(value),
+                  input_data: { lead_status_policy_array_field: "visible_to_roles", controller: "ax-tooltip", ax_tooltip_text_value: "Permite que este perfil visualize e use a etapa." }) %>
           <% end %>
         </div>
+        <%= ax_switch_field(label: "Fila divergência", name: nil, id: "#{field_prefix}-divergence", checked: policy&.divergence_queue_enabled,
+              description: "Sinaliza divergência entre gestor e corretor.",
+              input_html: { data: { lead_status_policy_field: "divergence_queue_enabled" } }) %>
+      <% end %>
+      <%= ax_operational_panel(title: "Atendimento", eyebrow: "Agenda e qualificação dos leads") do %>
+        <%= ax_standalone_field(name: nil, id: "#{field_prefix}-agenda", label: "Agenda futura", type: :number, value: policy&.future_activity_limit_days, min: 1, step: 1, placeholder: "Limite em dias", hint: "Em branco, sem limite para agendar.",
+              data: { lead_status_policy_field: "future_activity_limit_days" }) %>
+        <%= ax_switch_field(label: "Exibir qualificação no card", name: nil, id: "#{field_prefix}-qualification", checked: policy&.qualification_enabled,
+              input_html: { data: { lead_status_policy_field: "qualification_enabled" } }) %>
+        <div class="lead-status-row__chip-list" data-lead-status-qualification-options <%= "hidden" unless policy&.qualification_enabled %>>
+          <% LeadPipelineStagePolicy::QUALIFICATION_OPTIONS.each do |value, label| %>
+            <%= ax_toggle_chip(label: label, name: nil, id: "#{field_prefix}-qualification-#{value}", checked_value: value, include_hidden: false, checked: qualification_options.include?(value),
+                  input_data: { lead_status_policy_array_field: "qualification_options", controller: "ax-tooltip", ax_tooltip_text_value: "Opção de qualificação disponível no card quando a qualificação estiver ligada." }) %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
 
-        <template class="lead-status-row__automation-template">
-          <% automation_row.call(nil, new_record: true) %>
-        </template>
+    <%= ax_operational_panel(title: "Fluxo", eyebrow: "Destinos e motivos permitidos nesta etapa") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <%= ax_multiselect_field(name: "next_stage_ids[]", id: "#{field_prefix}-transitions", label: "Próximas etapas", selected: selected_next_stage_ids,
+                choices: stage_options.reject { |stage| stage.id.to_s == stage_id.to_s }.map { |stage| [stage.name, stage.id] },
+                placeholder: "Selecione as próximas etapas...", tooltip: "Define para quais etapas o lead pode avançar. Se ficar vazio, não restringe o fluxo.",
+                data: { lead_status_transition_field: "next_stage_id", lead_status_stage_options: "plain", tom_select_tags_value: false,
+                        tom_select_options_value: { dropdownParent: nil, openOnFocus: false, maxOptions: nil, hideSelected: false, closeAfterSelect: false } }) %>
+          <p class="ax-field__hint">Sem seleção, o fluxo não é restringido.</p>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_multiselect_field(name: "allowed_archive_reason_ids[]", id: "#{field_prefix}-reasons", label: "Motivos permitidos", selected: allowed_archive_reason_ids,
+                choices: archive_reason_options.map { |reason| [reason.name, reason.id] },
+                placeholder: "Selecione os motivos permitidos...", tooltip: "Limita os motivos aceitos para arquivamento ou desqualificação. Se ficar vazio, não restringe os motivos.",
+                data: { lead_status_policy_array_field: "allowed_archive_reason_ids", tom_select_tags_value: false,
+                        tom_select_options_value: { dropdownParent: nil, openOnFocus: false, maxOptions: nil, hideSelected: false, closeAfterSelect: false } }) %>
+          <p class="ax-field__hint">Sem seleção, os motivos não são restringidos.</p>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= ax_operational_panel(title: "Automações", eyebrow: tag.span(automation_summary, data: { lead_status_automation_summary: true }),
+          actions: ax_button("Adicionar automação", size: :sm, icon: "plus-lg", data: { action: "lead-status-board#addAutomation" })) do %>
+      <div class="lead-status-row__automation-list">
+        <% automations.each do |automation| %><% automation_row.call(automation) %><% end %>
       </div>
-    </details>
+      <p class="ax-field__hint" data-lead-status-automation-empty <%= "hidden" if automations.any? %>>Adicione uma regra para configurar quando e como agir nesta etapa.</p>
+      <template class="lead-status-row__automation-template"><% automation_row.call(nil) %></template>
+    <% end %>
+
+    <%= ax_operational_panel(title: "Integrações") do %>
+      <%= ax_standalone_select_field(name: nil, id: "#{field_prefix}-meta", label: "Evento Meta", selected: local_assigns[:meta_conversion_event],
+            include_blank: "Evento Meta: nenhum", choices: LeadPipelineStage::META_CONVERSION_EVENTS.map { |value, label| ["#{label} (#{value})", value] },
+            hint: "Enviado ao entrar nesta etapa, para leads do Meta Ads com conversões ativas.",
+            data: { lead_status_field: "meta_conversion_event", controller: "ax-tooltip", ax_tooltip_text_value: "Evento enviado à Meta quando o lead entra nesta etapa (só leads do Meta Ads, com conversões ativas). Em branco, não envia." }) %>
+      <p class="ax-field__hint">Os eventos informam à Meta o avanço do lead para medir conversões e apoiar a otimização dos anúncios. Eles não sincronizam as colunas da Central de Leads.</p>
+      <%= ax_button("Entenda os eventos da Meta", documentation_admin_lead_statuses_path(anchor: "evento-meta"), variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener noreferrer", aria: { label: "Entenda os eventos da Meta (abre em nova aba)" }) %>
+    <% end %>
+
+    <div class="lead-status-row__editor-actions">
+      <div class="tw-flex tw-gap-2">
+        <%= ax_button("Subir etapa", size: :sm, icon: "arrow-up", data: { action: "lead-status-board#moveStage", direction: "-1" }) %>
+        <%= ax_button("Descer etapa", size: :sm, icon: "arrow-down", data: { action: "lead-status-board#moveStage", direction: "1" }) %>
+      </div>
+      <%= ax_button(tag.span("Remover etapa", data: { lead_status_remove_label: true }), variant: :ghost, size: :sm, icon: "trash", class_name: "lead-status-row__remove", data: { action: "lead-status-board#removeRow" }) %>
+    </div>
+    <% if stage_id.present? %>
+      <div data-lead-status-destroy-panel hidden>
+        <%= ax_operational_panel(title: "Remover etapa") do %>
+          <%= ax_standalone_select_field(name: nil, id: "#{field_prefix}-replacement", label: "Enviar leads para", include_blank: "Escolha uma etapa", selected: nil, disabled: true,
+                choices: replacement_stage_options.map { |stage| [stage.name, stage.id] },
+                hint: "Os leads atuais serão movidos para a etapa escolhida ao salvar. O histórico será preservado.",
+                data: { lead_status_destroy_field: "replacement_stage_id", lead_status_stage_options: "plain" }) %>
+        <% end %>
+      </div>
+    <% end %>
   </div>
-  </div>
-  <button type="button"
-          class="ax-icon-btn lead-status-row__remove"
-          data-action="lead-status-board#removeRow"
-          aria-label="Remover etapa"
-          title="Remover etapa">
-    <i class="bi bi-trash"></i>
-  </button>
 </div>

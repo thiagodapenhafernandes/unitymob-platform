@@ -1,0 +1,13 @@
+<% item_body = capture do %>
+  <span class="ax-studio-nav__icon"><%= ax_brand_icon(icon) %></span>
+  <span class="ax-studio-nav__text">
+    <strong data-ax-studio-nav-label><%= label %></strong>
+    <% if hint.present? %><small data-ax-studio-nav-hint><%= hint %></small><% end %>
+  </span>
+<% end %>
+<% item_class = "ax-studio-nav__item#{' active' if active}" %>
+<% if url.present? %>
+  <%= link_to item_body, url, class: item_class, data:, aria: %>
+<% else %>
+  <%= button_tag item_body, type: "button", class: item_class, data:, aria: %>
+<% end %>

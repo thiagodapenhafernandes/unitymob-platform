@@ -238,3 +238,6 @@
   .ax-workspace-heading--plain .ax-workspace-heading__meta > span { align-items: flex-start; }
 }
 .ax-workspace-heading--plain p { max-width: none; }
+
+.ax-workspace-heading.ax-workspace-heading--plain { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ax-workspace-heading--plain .ax-workspace-heading__side { min-width: 0; }

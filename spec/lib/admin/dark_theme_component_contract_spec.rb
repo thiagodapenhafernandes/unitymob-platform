@@ -24,6 +24,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "documentation" => "ax-documentation",
     "drawer" => "ax-drawer-backdrop",
     "empty_state" => "ax-empty-state",
+    "editor_workspace" => "ax-editor-workspace",
     "event_race" => "ax-event-race",
     "field_feedback" => "ax-field",
     "field_grid" => "ax-field-grid",
@@ -1627,7 +1628,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(color_field_stylesheet).to include(".ax-color-control__swatch::-webkit-color-swatch {", ".ax-color-control__swatch::-moz-color-swatch {")
     expect(color_field_stylesheet).not_to include("::-webkit-color-swatch,")
     expect(color_field_view).not_to include("oninput", "html_safe")
-    expect(File.read(Rails.root.join("app/views/admin/shared/ui/_color_control.html.erb"))).to include('data-controller="ax-color-pair"')
+    expect(File.read(File.expand_path("../../../app/views/admin/shared/ui/_color_control.html.erb", __dir__))).to include('data-controller="ax-color-pair"')
     expect(color_field_view).to include('render "admin/shared/ui/color_control"', 'color_options[:id] ||= "#{form.field_id(method)}_picker"')
     expect(color_field_view).to include('color_data[:ax_color_pair_target] = "swatch"', 'text_data[:ax_color_pair_target] = "text"')
     expect(color_field_view).to include('input->ax-color-pair#sync', 'aria: { label: swatch_title.presence || "Escolha a cor de #{label}" }')
@@ -1743,7 +1744,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "mantem disclosure cards light e dark em um componente isolado" do
     expect(disclosure_card_stylesheet).to match(/(?:^|\n)\.ax-disclosure-card\s*\{/)
-    expect(disclosure_card_stylesheet).to match(/\.ax-disclosure-card\[open\] \.ax-disclosure-card__chevron/)
+    expect(disclosure_card_stylesheet).to match(/\.ax-disclosure-card\[open\] > \.ax-disclosure-card__summary \.ax-disclosure-card__chevron/)
     expect(disclosure_card_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-disclosure-card:hover/)
     expect(disclosure_card_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-disclosure-card__body/)
     expect(stylesheet).not_to match(/(?:^|\n)\.ax-disclosure-card(?:__|\[|:|\s*\{)/)
@@ -3941,9 +3942,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "compoe a integracao Meta com painel e estado vazio compartilhados" do
     expect(meta_integrations_index_view).not_to match(/\bstyle\s*=/i)
     expect(meta_integrations_index_view).to include("ax_workspace_heading(", "ax_form_section(", "integration_onboarding")
-    expect(meta_integrations_index_view).to include("ax_record_item(", "ax-integration-layout", "ax-integration-sections")
+    expect(meta_integrations_index_view).to include("ax_studio_nav(", "ax-integration-layout", "ax-integration-sections", 'render "admin/meta_integrations/permissions"')
+    permissions_view = File.read(File.expand_path("../../../app/views/admin/meta_integrations/_permissions.html.erb", __dir__))
+    expect(permissions_view).to include("ax_record_item(")
     expect(meta_integrations_index_view).not_to include('class="ax-card', 'class="ax-empty')
-    expect(meta_integrations_index_view).to include("meta-integration-account", "meta_ad_accounts", "Continuar com Facebook")
+    expect(meta_integrations_index_view).to include("meta-integration-panels", "meta_ad_accounts", "Continuar com o Facebook")
     meta_pages_view = File.read(File.expand_path("../../../app/views/admin/meta_integrations/_pages.html.erb", __dir__))
     expect(meta_integrations_index_view).to include("turbo_stream_from", "disconnect_admin_meta_integrations_path")
     expect(meta_pages_view).to include("sync_pages_admin_meta_integrations_path", "list_forms_admin_meta_integrations_path", "ax-disclosure-card", "ax-spinner", "ax_empty_state(")
@@ -4006,7 +4009,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     field_view = File.read(File.expand_path("../../../app/views/admin/landing_pages/_block_field.html.erb", __dir__))
     builder = File.read(File.expand_path("../../../app/javascript/controllers/landing_page_builder_controller.js", __dir__))
 
-    expect(File.read(File.expand_path("../../../app/views/admin/landing_pages/_form.html.erb", __dir__))).to be_present
+    expect(File.read(File.expand_path("../../../app/views/admin/landing_pages/_form.html.erb", __dir__))).not_to be_empty
     expect([block_view, filters_view, field_view].join("\n")).not_to match(/\bstyle\s*=/i)
     expect(form_view.scan(/ax_guided_step\(/).size).to eq(3)
     expect(form_view).to include("ax_guided_header(", "ax_error_summary(", "ax_input_group(", "ax_choice_group(", "ax_text_field(", 'controller: "landing-page-builder"', "render_preview_admin_landing_pages_path")

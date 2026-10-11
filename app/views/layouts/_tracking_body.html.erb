@@ -3,7 +3,7 @@
 <% gtm_container_id = tracking_setting.normalized_google_tag_manager_container_id %>
 <% meta_pixel_id = tracking_setting.normalized_meta_pixel_id %>
 
-<% if lgpd_consent_accepted? && tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
+<% if lgpd_consent_accepted? && tracking_setting.google_tag_manager_enabled? && !tracking_setting.stape_enabled? && gtm_container_id.present? %>
   <noscript>
     <iframe src="https://www.googletagmanager.com/ns.html?id=<%= gtm_container_id %>"
             height="0"

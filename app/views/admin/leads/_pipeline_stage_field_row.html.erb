@@ -40,7 +40,7 @@
             aria-label="Evento Meta da etapa">
       <option value="">Evento Meta: nenhum</option>
       <% LeadPipelineStage::META_CONVERSION_EVENTS.each do |value, label| %>
-        <option value="<%= value %>" <%= "selected" if meta_conversion_event == value %>><%= label %></option>
+        <option value="<%= value %>" <%= "selected" if meta_conversion_event == value %>><%= label %> (<%= value %>)</option>
       <% end %>
     </select>
   </div>

@@ -15,9 +15,14 @@ class TrackingIntegrationSetting
   GOOGLE_SITE_VERIFICATION_TOKEN_KEY = "#{PREFIX}.google_site_verification.token".freeze
   RD_STATION_ENABLED_KEY = "#{PREFIX}.rd_station.enabled".freeze
   RD_STATION_LOADER_URL_KEY = "#{PREFIX}.rd_station.loader_url".freeze
+  STAPE_FIELDS = %i[stape_enabled stape_domain stape_loader_domain stape_identifier stape_configuration].freeze
   CACHE_KEY = "public_site:tracking_integration_setting".freeze
 
   HUMAN_ATTRIBUTES = {
+    "stape_domain" => "Domínio Stape",
+    "stape_loader_domain" => "Domínio do loader",
+    "stape_identifier" => "Identificador do loader",
+    "stape_configuration" => "Configuração do loader",
     "google_tag_manager_enabled" => "Google Tag Manager ativo",
     "google_tag_manager_container_id" => "ID do container GTM",
     "meta_pixel_enabled" => "Pixel da Meta ativo",
@@ -39,6 +44,13 @@ class TrackingIntegrationSetting
   attribute :rd_station_enabled, :boolean, default: false
   attribute :rd_station_loader_url, :string
 
+  attribute :stape_enabled, :boolean, default: false
+  attribute :stape_domain, :string
+  attribute :stape_loader_domain, :string
+  attribute :stape_identifier, :string
+  attribute :stape_configuration, :string
+
+  validate :validate_stape
   validate :validate_google_tag_manager
   validate :validate_meta_pixel
   validate :validate_google_ads
@@ -71,7 +83,7 @@ class TrackingIntegrationSetting
       google_site_verification_token: Setting.tenant_get(GOOGLE_SITE_VERIFICATION_TOKEN_KEY, "", tenant: tenant),
       rd_station_enabled: Setting.tenant_get(RD_STATION_ENABLED_KEY, "false", tenant: tenant) == "true",
       rd_station_loader_url: Setting.tenant_get(RD_STATION_LOADER_URL_KEY, "", tenant: tenant)
-    }, tenant: tenant)
+    }.merge(STAPE_FIELDS.to_h { |field| [field, Setting.tenant_get("tracking.#{field}", "", tenant: tenant)] }), tenant: tenant)
   end
 
   def self.human_attribute_name(attribute, options = {})
@@ -79,7 +91,7 @@ class TrackingIntegrationSetting
   end
 
   def self.google_tag_manager_enabled?(tenant: Current.tenant)
-    Setting.tenant_get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true" && google_tag_manager_container_id(tenant: tenant).present?
+    Setting.tenant_get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true" && (google_tag_manager_container_id(tenant: tenant).present? || Setting.tenant_get("tracking.stape_enabled", "false", tenant: tenant) == "true")
   end
 
   def self.google_tag_manager_container_id(tenant: Current.tenant)
@@ -137,6 +149,9 @@ class TrackingIntegrationSetting
   def save
     return false unless valid?
 
+    STAPE_FIELDS.each do |field|
+      Setting.set("tracking.#{field}", public_send(field).to_s.strip, "Configuração Stape", tenant: tenant)
+    end
     Setting.set(GTM_ENABLED_KEY, google_tag_manager_enabled? ? "true" : "false", "Ativa Google Tag Manager no site público", tenant: tenant)
     Setting.set(GTM_CONTAINER_ID_KEY, normalized_google_tag_manager_container_id, "ID do container Google Tag Manager", tenant: tenant)
     Setting.set(META_PIXEL_ENABLED_KEY, meta_pixel_enabled? ? "true" : "false", "Ativa Pixel da Meta no site público", tenant: tenant)
@@ -195,9 +210,30 @@ class TrackingIntegrationSetting
     self.class.normalize_rd_station_loader_url(rd_station_loader_url)
   end
 
+  def stape_enabled?
+    !!ActiveModel::Type::Boolean.new.cast(stape_enabled)
+  end
+
   private
 
+  def validate_stape
+    return unless stape_enabled?
+
+    STAPE_FIELDS.reject { |field| field == :stape_enabled }.each { |field| public_send("#{field}=", public_send(field).to_s.strip) }
+    %i[stape_domain stape_loader_domain].each do |field|
+      uri = URI.parse(public_send(field).to_s)
+      unless uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil? && ["", "/"].include?(uri.path)
+        errors.add(field, "deve ser um domínio HTTPS sem caminho ou credenciais")
+      end
+    rescue URI::InvalidURIError
+      errors.add(field, "deve ser um domínio HTTPS válido")
+    end
+    errors.add(:stape_identifier, "deve conter letras minúsculas ou números") unless stape_identifier.to_s.match?(/\A[a-z0-9]{1,64}\z/)
+    errors.add(:stape_configuration, "deve conter a configuração do loader") unless stape_configuration.to_s.match?(/\A[a-z0-9]+=([A-Za-z0-9_-]+)\z/)
+  end
+
   def validate_google_tag_manager
+    return if stape_enabled?
     return if normalized_google_tag_manager_container_id.blank? && !google_tag_manager_enabled?
 
     if google_tag_manager_enabled? && normalized_google_tag_manager_container_id.blank?

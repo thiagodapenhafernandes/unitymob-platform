@@ -12,6 +12,40 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads" do
+    it "renderiza o editor de etapas com componentes ax e preserva destinos e regras do tenant" do
+      pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+      source = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Etapa editável")
+      destination = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Destino atual")
+      other_pipeline = create(:lead_pipeline, tenant: admin.tenant, name: "Pós-venda")
+      cross_destination = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: other_pipeline, name: "Reativação")
+      create(:lead_pipeline_stage_automation, tenant: admin.tenant, lead_pipeline_stage: source,
+             auto_advance_to_stage: cross_destination, action_type: "move_stage", after_amount: 2,
+             action_config: { "unsuccessful_attempt_limit" => 3, "note" => "Preservar nota" })
+      external_tenant = Tenant.create!(name: "Externo", slug: "editor-externo-#{SecureRandom.hex(4)}")
+      external_pipeline = create(:lead_pipeline, tenant: external_tenant)
+      external = create(:lead_pipeline_stage, tenant: external_tenant, lead_pipeline: external_pipeline, name: "Destino de outro tenant")
+
+      get admin_lead_pipeline_leads_path(pipeline, view: "kanban")
+
+      expect(response).to have_http_status(:ok)
+      modal = Nokogiri::HTML(response.body).at_css("#leadStatusBoardModal")
+      expect(modal.at_css(".ax-editor-workspace__sidebar input[data-lead-status-board-target='pipelineName']")["value"]).to eq(pipeline.name)
+      row = modal.at_css(".lead-status-row[data-id='#{source.id}']")
+      expect(row.css(".ax-operational-panel").map { |panel| panel["aria-label"] }).to include("Identificação", "Acesso", "Atendimento", "Fluxo", "Automações", "Integrações", "Remover etapa")
+      expect(row.at_css("input[data-lead-status-field='active'].ax-switch__input")).to be_present
+      expect(row.css("select[data-lead-status-field='meta_conversion_event'] option").map { |option| option["value"] }).to eq([""] + LeadPipelineStage::META_CONVERSION_EVENTS.keys)
+      expect(row.at_css("input[data-lead-status-policy-array-field='visible_to_roles'].ax-toggle-chip__input")).to be_present
+      expect(row.at_css("select[data-lead-status-transition-field='next_stage_id']")["multiple"]).to be_present
+      expect(row.at_css("select[data-lead-status-transition-field='next_stage_id'] option[value='#{destination.id}']")).to be_present
+      automation = row.at_css(".lead-status-row__automation-rule")
+      expect(automation.at_css("select[data-lead-status-automation-field='auto_advance_to_stage_id'] option[selected]")["value"]).to eq(cross_destination.id.to_s)
+      expect(automation.at_css("input[data-lead-status-automation-config-field='unsuccessful_attempt_limit']")["value"]).to eq("3")
+      expect(automation.at_css("input[data-lead-status-automation-config-field='note']")["value"]).to eq("Preservar nota")
+      expect(modal.css("option[value='#{external.id}']").select { |option| option.text.include?(external.name) }).to be_empty
+      expect(modal.at_css(".ax-quick-modal__footer [data-lead-status-board-target='submit']").text).to include("Salvar etapas")
+      expect(modal.at_css(".lead-preset-flow")).to be_present
+    end
+
     it "limita a nova identidade à coluna de origens e mantém detalhes fechados" do
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, origin: "C2S", attribution_source: "WhatsApp Orgânico",
         attribution_data: {"provider" => "external_lead_migration"}, other_information: {"campaign_name" => "Campanha C2S"})
@@ -305,7 +339,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("lead-desktop-header")
       expect(response.body).not_to include("Total filtrado")
       expect(document.at_css("#leadDesktopFilterModal")).to be_present
-      expect(document.at_css(".ax-workspace-heading")).to be_nil
+      expect(document.css(".ax-workspace-heading").reject { |heading| heading.ancestors.any? { |ancestor| ancestor["id"] == "leadStatusBoardModal" } }).to be_empty
       expect(response.body).to include("WhatsApp")
       expect(document.at_css("form[action='#{open_whatsapp_conversation_admin_lead_path(lead)}'][method='post']")).to be_nil
       expect(document.at_css("a[href='#{admin_lead_path(lead, return_to: "#{admin_leads_path(view: "list")}#lead_#{lead.id}", anchor: "whatsapp")}']")).to be_nil
