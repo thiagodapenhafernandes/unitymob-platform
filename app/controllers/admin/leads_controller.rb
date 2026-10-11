@@ -163,7 +163,7 @@ class Admin::LeadsController < Admin::BaseController
       )
       @kanban_leads = Lead.from(ranked, :leads)
                           .where("kanban_rank <= ?", KANBAN_COLUMN_PAGE_SIZE)
-                          .includes(:admin_user, lead_labelings: :lead_label)
+                          .includes(:admin_user, lead_labelings: :lead_label, lead_pipeline_stage: :policy)
                           .order(created_at: :desc)
                           .to_a
       @kanban_leads.each do |lead|
@@ -282,7 +282,7 @@ class Admin::LeadsController < Admin::BaseController
     lead_scope = lead_scope_for_tab(filtered_lead_scope_for_current_user, desktop_tab).where(leads: { status: status_filter_values_for(status) })
     total = lead_scope.reorder(nil).count
     leads = lead_scope
-            .includes(:admin_user, lead_labelings: :lead_label)
+            .includes(:admin_user, lead_labelings: :lead_label, lead_pipeline_stage: :policy)
             .order(created_at: :desc)
             .offset(offset)
             .limit(KANBAN_COLUMN_PAGE_SIZE)
