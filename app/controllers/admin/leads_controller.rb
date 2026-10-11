@@ -2634,8 +2634,8 @@ class Admin::LeadsController < Admin::BaseController
     base_scope = filtered_scope
     list_base_scope = hide_discarded_from_list_scope(base_scope)
     original_scope = unfiltered_scope || filtered_scope
-    @pwa_tab_counts = lead_tab_counts_for(list_base_scope)
-    @pwa_tab_original_counts = lead_tab_counts_for(hide_discarded_from_list_scope(original_scope))
+    @pwa_tab_counts = lead_tab_counts_for(list_base_scope, only: %w[todo visits future favorites all])
+    @pwa_tab_original_counts = lead_tab_counts_for(hide_discarded_from_list_scope(original_scope), only: %w[todo visits future favorites all])
 
     @pwa_leads = pwa_lead_scope_for_tab(list_base_scope, @pwa_lead_tab)
                  .includes(:admin_user, lead_labelings: :lead_label)
@@ -2692,15 +2692,8 @@ class Admin::LeadsController < Admin::BaseController
     lead_scope_for_tab(base_scope, tab)
   end
 
-  def lead_tab_counts_for(base_scope)
-    {
-      "todo" => lead_scope_for_tab(base_scope, "todo").reorder(nil).count,
-      "visits" => lead_scope_for_tab(base_scope, "visits").reorder(nil).count,
-      "future" => lead_scope_for_tab(base_scope, "future").reorder(nil).count,
-      "favorites" => lead_scope_for_tab(base_scope, "favorites").reorder(nil).count,
-      "verify" => lead_scope_for_tab(base_scope, "verify").reorder(nil).count,
-      "all" => lead_scope_for_tab(base_scope, "all").reorder(nil).count
-    }
+  def lead_tab_counts_for(base_scope, only: %w[todo visits future favorites verify all])
+    only.index_with { |tab| lead_scope_for_tab(base_scope, tab).reorder(nil).count }
   end
 
   def lead_scope_for_tab(base_scope, tab)
