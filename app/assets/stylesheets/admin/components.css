@@ -71,6 +71,7 @@
  *= require admin/components/whatsapp_template_list
  *= require admin/components/sidebar_nav
  *= require admin/components/in_app_notifications
+ *= require admin/components/editor_workspace
  *= require admin/components/settings_studio
  *= require admin/components/layout_studio
  *= require admin/components/home_studio

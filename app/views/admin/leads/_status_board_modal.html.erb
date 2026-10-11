@@ -4,125 +4,84 @@
   automation_stage_options = current_tenant.lead_pipeline_stages.includes(:lead_pipeline).ordered.to_a
   archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered.to_a
   distribution_rule_options = current_tenant.distribution_rules.active.includes(:distribution_rule_agents).order(:name).to_a
+  row_options = {
+    stage_options: automation_stage_options,
+    replacement_stage_options: selected_pipeline_stages,
+    archive_reason_options:,
+    distribution_rule_options:
+  }
+
+  sidebar = capture do %>
+    <%= form_with model: [:admin, selected_pipeline], url: admin_lead_pipeline_path(selected_pipeline), method: :patch, local: true, class: "lead-status-board__pipeline-form" do |f| %>
+      <%= hidden_field_tag :view, @view_mode %>
+      <%= ax_text_field(form: f, method: :name, label: "Nome do funil",
+            tooltip: "Nome usado para identificar este grupo de etapas na tela de Leads.",
+            data: { lead_status_board_target: "pipelineName", action: "input->lead-status-board#updatePipelineName" }) %>
+      <%= ax_select_field(form: f, method: :kind, label: "Tipo de negócio",
+            tooltip: "Opcional. Use Venda ou Locação quando este funil deve ser o padrão para esse tipo de lead. Use Sem tipo específico quando ele for um funil livre.",
+            choices: LeadPipeline::KINDS.map { |value, label| [label, value] }, select_options: { selected: selected_pipeline.kind }) %>
+      <%= f.submit "Atualizar funil", class: "ax-btn ax-btn--sm" %>
+    <% end %>
+    <div class="lead-status-board__nav-heading">
+      <strong>Etapas do funil <span data-lead-status-board-target="stageCount"><%= selected_pipeline_stages.size %></span></strong>
+      <small data-lead-status-board-target="pipelineTitle"><%= selected_pipeline.name %></small>
+    </div>
+    <nav class="ax-studio-nav ax-studio-nav--vertical lead-status-board__navigation"
+         aria-label="Etapas do funil" data-lead-status-board-target="navigation"></nav>
+    <%= ax_button("Adicionar etapa", size: :sm, icon: "plus-lg", class_name: "lead-status-board__add", data: { action: "lead-status-board#addRow" }) %>
+    <p class="ax-field__hint">Arraste as etapas ou use Subir / Descer para reordenar.</p>
+    <div class="lead-status-board__links">
+      <%= ax_button("Auditoria", automation_executions_admin_lead_statuses_path, variant: :ghost, size: :sm, icon: "clock-history") %>
+      <%= ax_button("Guia do funil e etapas", documentation_admin_lead_statuses_path, variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener") %>
+    </div>
+  <% end
 
   modal_body = capture do %>
-    <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
-      <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
-        <span>Cada funil tem suas próprias etapas. Renomear ou remover uma etapa ajusta automaticamente os leads deste funil.</span>
-        <span class="tw-flex tw-flex-wrap tw-gap-2">
-          <%= ax_button("Auditoria",
-                        automation_executions_admin_lead_statuses_path,
-                        variant: :ghost,
-                        size: :sm,
-                        icon: "clock-history") %>
-          <%= ax_button("Guia do funil e etapas",
-                        documentation_admin_lead_statuses_path,
-                        variant: :ghost,
-                        size: :sm,
-                        icon: "box-arrow-up-right",
-                        target: "_blank",
-                        rel: "noopener") %>
-        </span>
+    <%= ax_editor_workspace(sidebar:, class_name: "lead-status-board__workspace") do %>
+      <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
+        Cada funil tem suas próprias etapas. Renomear ou remover uma etapa ajusta automaticamente os leads deste funil.
+      <% end %>
+      <%= render "admin/leads/operational_pipeline_preset_diagram" %>
+      <div class="lead-status-board" data-lead-status-board-target="list">
+        <% selected_pipeline_stages.each do |stage| %>
+          <%= render "admin/leads/status_board_row", **row_options,
+                id: stage.id, name: stage.name, description: stage.description,
+                stage_type: stage.stage_type, meta_conversion_event: stage.meta_conversion_event,
+                color: stage.display_color, position: stage.position, active: stage.active?,
+                policy: stage.policy_or_default, transitions: stage.transitions.ordered, automations: stage.automations.ordered %>
+        <% end %>
       </div>
     <% end %>
-
-    <%= render "admin/leads/operational_pipeline_preset_diagram" %>
-
-    <div class="tw-grid tw-gap-3">
-      <%= form_with model: [:admin, selected_pipeline], url: admin_lead_pipeline_path(selected_pipeline), method: :patch, local: true, class: "tw-grid tw-gap-2" do |f| %>
-        <%= hidden_field_tag :view, @view_mode %>
-        <%= ax_field_grid do %>
-          <div class="ax-span-6">
-            <%= ax_text_field(form: f, method: :name, label: "Nome do funil",
-                              tooltip: "Nome usado para identificar este grupo de etapas na tela de Leads.",
-                              value: selected_pipeline.name) %>
-          </div>
-          <div class="ax-span-6">
-            <%= ax_select_field(form: f, method: :kind, label: "Tipo de negócio",
-                                tooltip: "Opcional. Use Venda ou Locação quando este funil deve ser o padrão para esse tipo de lead. Use Sem tipo específico quando ele for um funil livre.",
-                                choices: LeadPipeline::KINDS.map { |value, label| [label, value] },
-                                select_options: { selected: selected_pipeline.kind }) %>
-          </div>
-        <% end %>
-        <div class="tw-flex tw-justify-end">
-          <%= f.submit "Atualizar funil", class: "ax-btn ax-btn--sm" %>
-        </div>
-      <% end %>
-
-    </div>
-
-    <%= render "admin/leads/pipeline_stage_grid_header" %>
-
-    <div class="lead-status-board lead-stage-grid" data-lead-status-board-target="list">
-      <% selected_pipeline_stages.each do |stage| %>
-        <%= render "admin/leads/status_board_row",
-                   id: stage.id,
-                   name: stage.name,
-                   description: stage.description,
-                   stage_type: stage.stage_type,
-                   meta_conversion_event: stage.meta_conversion_event,
-                   color: stage.display_color,
-                   position: stage.position,
-                   active: stage.active?,
-                   policy: stage.policy_or_default,
-                   transitions: stage.transitions.ordered,
-                   automations: stage.automations.ordered,
-                   stage_options: automation_stage_options,
-                   replacement_stage_options: selected_pipeline_stages,
-                   archive_reason_options: archive_reason_options,
-                   distribution_rule_options: distribution_rule_options %>
-      <% end %>
-    </div>
-
-    <button type="button" class="ax-btn ax-btn--sm lead-status-board__add" data-action="lead-status-board#addRow">
-      <i class="bi bi-plus-lg"></i> Adicionar etapa
-    </button>
-
-    <div class="ax-quick-modal__error" data-lead-status-board-target="error" hidden></div>
-
+    <template data-lead-status-board-target="navigationTemplate">
+      <div class="lead-status-board__nav-row">
+        <button type="button" class="ax-icon-btn lead-status-row__handle" aria-label="Arraste para reordenar" tabindex="-1"><i class="bi bi-grip-vertical" aria-hidden="true"></i></button>
+        <%= ax_studio_nav_item(label: "Nova etapa", hint: "Aberta", icon: "circle-fill",
+              data: { action: "lead-status-board#selectStage" }, aria: { pressed: false }) %>
+      </div>
+    </template>
     <template data-lead-status-board-target="template">
-      <%= render "admin/leads/status_board_row",
-                 id: nil,
-                 name: "",
-                 description: "",
-                 stage_type: "open",
-                 meta_conversion_event: nil,
-                 color: LeadPipelineStage::DEFAULT_COLORS.first,
-                 position: selected_pipeline_stages.size,
-                 active: true,
-                 policy: nil,
-                 transitions: [],
-                 automations: [],
-                 stage_options: automation_stage_options,
-                 replacement_stage_options: selected_pipeline_stages,
-                 archive_reason_options: archive_reason_options,
-                 distribution_rule_options: distribution_rule_options %>
+      <%= render "admin/leads/status_board_row", **row_options,
+            id: nil, name: "", description: "", stage_type: "open", meta_conversion_event: nil,
+            color: LeadPipelineStage::DEFAULT_COLORS.first, position: selected_pipeline_stages.size,
+            active: true, policy: nil, transitions: [], automations: [] %>
     </template>
   <% end
 
   modal_footer = capture do %>
-    <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
-    <button type="button"
-            class="ax-btn ax-btn--primary"
-            data-action="lead-status-board#save"
-            data-lead-status-board-target="submit">
-      Salvar
-    </button>
+    <div class="lead-status-board__footer-context">
+      <span data-lead-status-board-target="pipelineTitle"><%= selected_pipeline.name %></span>
+      <div class="ax-quick-modal__error" role="alert" data-lead-status-board-target="error" hidden></div>
+    </div>
+    <%= ax_button("Cancelar", data: { action: "ax-modal#close" }) %>
+    <%= ax_button("Salvar etapas", variant: :primary, data: { action: "lead-status-board#save", lead_status_board_target: "submit" }) %>
+  <% end
+
+  header_actions = capture do %>
+    <span data-lead-status-board-target="headerCount"><%= ax_badge("#{selected_pipeline_stages.size} etapas", tone: :blue) %></span>
   <% end
 %>
-
-<%# O controller fica na raiz do modal (mesclado com ax-modal pelo helper), para
-    que o botão Salvar do footer também esteja no escopo do Stimulus. %>
-<%= ax_quick_modal(
-      id: "leadStatusBoardModal",
-      title: "Editar funil e etapas",
-      size: :xl,
-      class_name: "ax-quick-modal--fullscreen lead-status-board-modal",
-      body: modal_body,
-      footer: modal_footer,
-      data: {
-        controller: "lead-status-board",
-        lead_status_board_url_value: bulk_update_admin_lead_statuses_path,
-        lead_status_board_pipeline_id_value: selected_pipeline.id
-      }
-    ) %>
+<%= ax_quick_modal(id: "leadStatusBoardModal", title: "Editar funil e etapas", size: :xl,
+      class_name: "ax-quick-modal--fullscreen lead-status-board-modal", mobile_detail: true, header_actions:,
+      body: modal_body, footer: modal_footer,
+      data: { controller: "lead-status-board", lead_status_board_url_value: bulk_update_admin_lead_statuses_path,
+              lead_status_board_pipeline_id_value: selected_pipeline.id }) %>

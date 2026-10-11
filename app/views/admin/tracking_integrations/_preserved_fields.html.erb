@@ -11,7 +11,7 @@
     google_site_verification_token: setting.google_site_verification_token,
     rd_station_enabled: setting.rd_station_enabled? ? "true" : "false",
     rd_station_loader_url: setting.rd_station_loader_url
-  }
+  }.merge(TrackingIntegrationSetting::STAPE_FIELDS.to_h { |field| [field, setting.public_send(field)] })
 %>
 
 <% fields.except(*except).each do |field, value| %>
