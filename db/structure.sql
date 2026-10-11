@@ -1,4 +1,4 @@
-\restrict Ka4Xe9Z3WNGPde01s2RZ5IEdqxkKYHVJg4qWGyzmETN8hVTCa4LrLgY6wVAiMMw
+\restrict 6YUWWpV3JqI62jeNSzGXbnbi96llhutSN3dEXkf6OHxExnQta58iWoBaQ57gOZi
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -3715,8 +3715,8 @@ CREATE TABLE public.home_settings (
     hero_search_align character varying DEFAULT 'center'::character varying NOT NULL,
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
-    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
-    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
 );
 
 
@@ -11283,6 +11283,13 @@ CREATE INDEX idx_leads_tenant_status_admin_user ON public.leads USING btree (ten
 --
 
 CREATE INDEX idx_leads_tenant_status_updated_at ON public.leads USING btree (tenant_id, status, updated_at);
+
+
+--
+-- Name: idx_leads_unverified_inquiries; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_unverified_inquiries ON public.leads USING btree (tenant_id, lead_pipeline_id) WHERE ((other_information ->> 'unverified_inquiry'::text) = 'true'::text);
 
 
 --
@@ -20437,11 +20444,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Ka4Xe9Z3WNGPde01s2RZ5IEdqxkKYHVJg4qWGyzmETN8hVTCa4LrLgY6wVAiMMw
+\unrestrict 6YUWWpV3JqI62jeNSzGXbnbi96llhutSN3dEXkf6OHxExnQta58iWoBaQ57gOZi
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261011191320'),
 ('20261010010000'),
 ('20261009010000'),
 ('20261008160000'),

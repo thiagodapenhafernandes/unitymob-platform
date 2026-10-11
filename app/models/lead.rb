@@ -494,13 +494,30 @@ class Lead < ApplicationRecord
   end
 
   def self.default_status(tenant: Current.tenant, pipeline: nil)
-    target_pipeline = pipeline || (LeadPipeline.default_for(tenant:) if tenant&.respond_to?(:lead_pipelines))
+    cache = default_status_request_cache
+    key = [tenant&.id, pipeline&.id]
+    return cache[key] if cache.key?(key)
+
+    cache[key] = compute_default_status(tenant: tenant, pipeline: pipeline)
+  rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ArgumentError
+    DEFAULT_STATUS
+  end
+
+  def self.compute_default_status(tenant:, pipeline:)
+    target_pipeline = pipeline || (LeadPipeline.default_for(tenant: tenant) if tenant&.respond_to?(:lead_pipelines))
     stage_name = target_pipeline&.default_stage&.name
     return stage_name if stage_name.present?
 
     status_options_for_tenant(tenant).first || DEFAULT_STATUS
-  rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ArgumentError
-    DEFAULT_STATUS
+  end
+
+  def self.default_status_request_cache
+    begin
+      return Current.lead_default_status_cache ||= {}
+    rescue NoMethodError
+      # Development hot reload can keep an older Current instance without this attribute.
+    end
+    Thread.current[:lead_default_status_cache] ||= {}
   end
 
   def self.status_options_for_tenant(tenant, pipeline: nil)

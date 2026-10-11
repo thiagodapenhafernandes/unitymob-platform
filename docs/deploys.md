@@ -61,6 +61,11 @@ está atualizado. Não copiar bancos, sessões, anexos ou segredos locais.
 Configuração: `config/deploy.rb` e `config/deploy/*.rb`; branch `master`.
 Verificar `<diretório>/current/.mina_git_revision`, symlink `current`, serviços,
 `https://saluteimoveis.com.br/up` ou `https://app.conexaobc.com/up`, além do fluxo alterado.
+Quando o pacote tocar views mobile do admin ou o `/field`, incluir no smoke:
+abrir o app nativo (ou `/field` no celular) → "meus leads" → confirmar que os
+cards carregam (a home do `/field` faz deep-link para
+`/admin/leads?view=list&mobile_tab=...`, que renderiza `.ax-leads-mobile-shell`
+dentro do WebView do app).
 
 `config/database.yml` é compartilhado: alterações no arquivo do repositório não
 atualizam esse arquivo nos servidores. O pool compartilhado deve usar

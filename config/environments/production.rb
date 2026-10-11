@@ -102,10 +102,13 @@ Rails.application.configure do
   config.lograge.enabled = true
   config.lograge.formatter = Lograge::Formatters::Json.new
   config.lograge.custom_payload do |controller|
-    {
+    payload = {
       request_id: controller.request.request_id,
       host: controller.request.host
     }
+    queue_ms = System::RequestQueueTime.ms(controller.request)
+    payload[:queue_ms] = queue_ms if queue_ms
+    payload
   end
 
   if ENV["REDIS_URL"].present?

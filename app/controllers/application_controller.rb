@@ -79,6 +79,7 @@ class ApplicationController < ActionController::Base
 
   def set_current_request_context
     Thread.current[:setting_values_cache] = nil
+    Thread.current[:lead_default_status_cache] = nil
     Current.request_ip = request.remote_ip
     Current.request_user_agent = request.user_agent.to_s.first(255)
     Current.request_metadata = {

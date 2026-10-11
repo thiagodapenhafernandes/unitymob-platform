@@ -170,6 +170,16 @@ RSpec.describe Lead, type: :model do
     end
   end
 
+  describe ".default_status" do
+    it "memoizes the pipeline lookup within the request" do
+      tenant = Tenant.create!(name: "Tenant memo #{SecureRandom.hex(3)}", slug: "tenant-memo-#{SecureRandom.hex(3)}")
+      LeadPipeline.ensure_default!(tenant: tenant)
+
+      expect(LeadPipeline).to receive(:default_for).once.and_call_original
+      2.times { described_class.default_status(tenant: tenant) }
+    end
+  end
+
   describe "#status" do
     it "salva o status legado Novo na etapa inicial do funil" do
       tenant = Tenant.create!(name: "Tenant status #{SecureRandom.hex(3)}", slug: "tenant-status-#{SecureRandom.hex(3)}")
