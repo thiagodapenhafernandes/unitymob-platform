@@ -230,8 +230,9 @@
   }
 
   .lead-desktop-tabs {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(96px, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     border-top: 1px solid var(--ab-line-soft, #e7ebf2);
   }
 
@@ -240,7 +241,8 @@
     display: grid;
     justify-items: center;
     gap: 4px;
-    min-width: 0;
+    flex: 1 0 0;
+    min-width: 96px;
     padding: 13px 8px 11px;
     color: var(--ab-muted, #657386);
     font-size: 13px;
@@ -551,7 +553,10 @@
 
     .lead-desktop-tabs {
       overflow-x: auto;
-      grid-template-columns: repeat(5, minmax(132px, 1fr));
+    }
+
+    .lead-desktop-tab {
+      min-width: 132px;
     }
 
     .lead-desktop-filter-modal .ax-quick-modal__panel {
