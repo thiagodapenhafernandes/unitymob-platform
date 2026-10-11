@@ -199,16 +199,16 @@
           <%= ax_multiselect_field(name: "next_stage_ids[]", id: "#{field_prefix}-transitions", label: "Próximas etapas", selected: selected_next_stage_ids,
                 choices: stage_options.reject { |stage| stage.id.to_s == stage_id.to_s }.map { |stage| [stage.name, stage.id] },
                 placeholder: "Selecione as próximas etapas...", tooltip: "Define para quais etapas o lead pode avançar. Se ficar vazio, não restringe o fluxo.",
-                data: { lead_status_transition_field: "next_stage_id", lead_status_stage_options: "plain", tom_select_tags_value: false,
-                        tom_select_options_value: { dropdownParent: nil, openOnFocus: false, maxOptions: nil, hideSelected: false, closeAfterSelect: false } }) %>
+                data: { lead_status_transition_field: "next_stage_id", lead_status_stage_options: "plain", tom_select_tags_value: false, tom_select_open_on_initialize_value: true,
+                        tom_select_options_value: { dropdownParent: nil, openOnFocus: true, maxOptions: nil, hideSelected: false, closeAfterSelect: false } }) %>
           <p class="ax-field__hint">Sem seleção, o fluxo não é restringido.</p>
         </div>
         <div class="ax-span-6">
           <%= ax_multiselect_field(name: "allowed_archive_reason_ids[]", id: "#{field_prefix}-reasons", label: "Motivos permitidos", selected: allowed_archive_reason_ids,
                 choices: archive_reason_options.map { |reason| [reason.name, reason.id] },
                 placeholder: "Selecione os motivos permitidos...", tooltip: "Limita os motivos aceitos para arquivamento ou desqualificação. Se ficar vazio, não restringe os motivos.",
-                data: { lead_status_policy_array_field: "allowed_archive_reason_ids", tom_select_tags_value: false,
-                        tom_select_options_value: { dropdownParent: nil, openOnFocus: false, maxOptions: nil, hideSelected: false, closeAfterSelect: false } }) %>
+                data: { lead_status_policy_array_field: "allowed_archive_reason_ids", tom_select_tags_value: false, tom_select_open_on_initialize_value: true,
+                        tom_select_options_value: { dropdownParent: nil, openOnFocus: true, maxOptions: nil, hideSelected: false, closeAfterSelect: false } }) %>
           <p class="ax-field__hint">Sem seleção, os motivos não são restringidos.</p>
         </div>
       <% end %>
