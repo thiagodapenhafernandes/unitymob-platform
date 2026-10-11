@@ -280,13 +280,17 @@ class Admin::LeadsController < Admin::BaseController
     offset = [params[:offset].to_i, 0].max
     desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
     lead_scope = lead_scope_for_tab(filtered_lead_scope_for_current_user, desktop_tab).where(leads: { status: status_filter_values_for(status) })
-    total = lead_scope.reorder(nil).count
-    leads = lead_scope
-            .includes(:admin_user, lead_labelings: :lead_label, lead_pipeline_stage: :policy)
-            .order(created_at: :desc)
-            .offset(offset)
-            .limit(KANBAN_COLUMN_PAGE_SIZE)
-            .to_a
+    # Sem COUNT: busca uma linha extra e deriva has_more dela. Nenhum
+    # consumidor usa `total` (os dois controllers Stimulus usam
+    # next_offset/has_more/loaded_count).
+    fetched = lead_scope
+              .includes(:admin_user, lead_labelings: :lead_label, lead_pipeline_stage: :policy)
+              .order(created_at: :desc)
+              .offset(offset)
+              .limit(KANBAN_COLUMN_PAGE_SIZE + 1)
+              .to_a
+    has_more = fetched.size > KANBAN_COLUMN_PAGE_SIZE
+    leads = fetched.first(KANBAN_COLUMN_PAGE_SIZE)
     property_ids = leads.filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     return_to_path = safe_return_path(params[:return_to]) || admin_leads_path(request.query_parameters.except("offset", "return_to").merge(view: "kanban"))
@@ -308,9 +312,8 @@ class Admin::LeadsController < Admin::BaseController
     render json: {
       html: html,
       next_offset: next_offset,
-      has_more: next_offset < total,
-      loaded_count: leads.size,
-      total: total
+      has_more: has_more,
+      loaded_count: leads.size
     }
   end
 
