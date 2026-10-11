@@ -33,11 +33,42 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     expect(response.body).not_to include("Token do Feed", "Webhook Secret", "Testar feed completo", "Visualizar amostra")
     expect(document.at_css(".ax-form-actions--static")).to be_present
     expect(document.at_css("table.ax-table caption")).to be_nil
-    expect(document.css('table.ax-table th[scope="col"]').size).to eq(5)
+    expect(document.css('table.ax-table th[scope="col"]').size).to eq(11)
     expect(document.at_css(".portal-integrations-empty-cell .ax-empty-state--compact")).to be_present
     expect(response.body).not_to include("Como ativar este portal")
     expect(response.body).not_to include("Checklist de configuração")
     expect(response.body).not_to include("Resumo do Feed")
+  end
+
+  it "confirma leads apenas na conexão conjunta OLX e não no registro legado Imovelweb" do
+    allow(Portal::LeadGatewayClient).to receive(:configured?).and_return(true)
+    received_at = Time.zone.local(2026, 10, 11, 11, 22)
+    zap = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    zap.update!(enabled: true, leads_enabled: true, lead_gateway_synced_at: received_at, last_lead_at: received_at)
+    legacy = PortalIntegration.for_portal!("imovelweb", tenant: admin.tenant)
+    legacy.update!(enabled: true, leads_enabled: true, last_lead_at: received_at)
+    other = Tenant.create!(name: "Portal externo", slug: "portal-confirmacao-#{SecureRandom.hex(4)}")
+    PortalIntegration.for_portal!("zapimoveis", tenant: other).update!(last_lead_at: 1.year.from_now)
+
+    get admin_portal_integrations_path
+
+    rows = Nokogiri::HTML(response.body).css('table[aria-label="Confirmações por portal"] tbody tr')
+    expect(rows.size).to eq(PortalIntegration::PORTALS.size)
+    %w[ZapImóveis Viva\ Real].each do |title|
+      row = rows.find { |r| r.at_css("td").text == title }
+      expect(row.text).to include("Lead recebido", "confirmação conjunta", I18n.l(received_at, format: :short))
+    end
+    row = rows.find { |r| r.at_css("td").text == "Imovelweb" }
+    expect(row.text).to include("Sem integração de leads neste canal", "Não confirmado")
+    expect(row.text).not_to include("Lead recebido")
+  end
+
+  it "não apresenta conexão preparada como recebimento comprovado" do
+    allow(Portal::LeadGatewayClient).to receive(:configured?).and_return(true)
+    zap = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    zap.update!(enabled: true, leads_enabled: true, lead_gateway_synced_at: Time.current, last_lead_at: nil)
+    get admin_portal_integrations_path
+    expect(response.body).to include("Sem recebimento confirmado", "Nenhum confirmado")
   end
 
 

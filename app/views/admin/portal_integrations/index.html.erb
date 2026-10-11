@@ -10,6 +10,36 @@
 
 <%= ax_workspace_heading(eyebrow: "Integrações · Distribuição", icon: "building", title: "Portais", pills: [screen_title], subtitle: "Envie imóveis aos portais e receba leads na sua conta.", metrics: [{ value: current_preview[:eligible_count].to_i, label: "elegíveis" }]) %>
 
+<%= ax_operational_panel(title: "Confirmações por portal", class_name: "tw-mb-4") do %>
+  <div class="ax-table-wrap">
+    <table class="ax-table" aria-label="Confirmações por portal">
+      <thead><tr>
+        <% ["Portal", "Envio de imóveis", "Elegíveis", "Último acesso ao feed", "Recebimento de leads", "Último lead recebido"].each do |label| %>
+          <th scope="col"><%= label %></th>
+        <% end %>
+      </tr></thead>
+      <tbody>
+        <% @integrations.each do |portal, integration| %>
+          <tr>
+            <td><%= link_to integration.title, admin_portal_integrations_path(portal: portal), class: "ax-link" %></td>
+            <td><%= ax_badge(integration.enabled? ? "Ativo" : "Desativado", tone: integration.enabled? ? :green : :gray) %></td>
+            <td><%= @previews.dig(portal, :eligible_count).to_i %></td>
+            <td><%= integration.last_feed_at.present? ? l(integration.last_feed_at, format: :short) : "Sem acesso registrado" %></td>
+            <% if integration.grupozap_family? %>
+              <td><%= portal_lead_connection_badge(@lead_integration) %><small class="ax-field__hint tw-block">Grupo OLX · confirmação conjunta</small></td>
+              <td><%= @lead_integration.last_lead_at.present? ? l(@lead_integration.last_lead_at, format: :short) : "Nenhum confirmado" %></td>
+            <% else %>
+              <td>Sem integração de leads neste canal</td>
+              <td>Não confirmado</td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <p class="ax-field__hint tw-mt-3">Acesso ao feed não confirma publicação de anúncios. Leads do ZAP, Viva Real e OLX usam uma conexão compartilhada; o recebimento não identifica o portal individual. Envio ativo não confirma recebimento de leads.</p>
+<% end %>
+
 <%= ax_field_grid(columns: 12, gap: :compact) do %>
   <!-- Sidebar de portais com status visual -->
   <div class="ax-span-3">
