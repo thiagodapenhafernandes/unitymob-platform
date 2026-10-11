@@ -124,8 +124,8 @@ class Admin::LeadsController < Admin::BaseController
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
-  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report, :new, :create, :show, :update]
-  before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report]
+  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
+  before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
 
   def index
@@ -190,8 +190,8 @@ class Admin::LeadsController < Admin::BaseController
     end
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
     @leads = list_scope.paginate(page: params[:page], per_page: LEAD_LIST_PAGE_SIZE)
-    load_pwa_leads_context(common_scope.reorder(nil), unfiltered_scope: common_unfiltered_scope.reorder(nil))
-    property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a + @pwa_kanban_leads.to_a).filter_map(&:property_id).uniq
+    load_pwa_leads_light_context
+    property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @view_mode == "kanban" ? (@kanban_leads.first || @leads.first) : @leads.first
     @page_title = "Gerenciar Leads"
@@ -377,6 +377,25 @@ class Admin::LeadsController < Admin::BaseController
       loaded_count: leads.size,
       total: total
     }
+  end
+
+  # Seção PWA servida sob demanda para o Turbo Frame lazy do index: no
+  # desktop o frame nunca intersecta (seção com display:none) e este custo
+  # — contagens, listas e kanban PWA — nunca acontece.
+  def pwa_section
+    assign_lead_filter_state
+    @view_mode = resolve_view_mode
+
+    unfiltered_scope = lead_scope_for_current_user
+    filtered_scope = filtered_lead_scope_for_current_user
+    common_scope = hide_waiting_acceptance_from_common_scope(filtered_scope)
+    common_unfiltered_scope = hide_waiting_acceptance_from_common_scope(unfiltered_scope)
+    load_pwa_leads_context(common_scope.reorder(nil), unfiltered_scope: common_unfiltered_scope.reorder(nil))
+    @lead_stage_color_by_status = lead_stage_color_map
+    property_ids = (@pwa_leads + @pwa_kanban_leads).filter_map(&:property_id).uniq
+    @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
+
+    render partial: "admin/leads/pwa_section"
   end
 
   def show
@@ -2630,9 +2649,77 @@ class Admin::LeadsController < Admin::BaseController
     visible_stages_for(scope).index_by(&:name).transform_values(&:display_color)
   end
 
-  def load_pwa_leads_context(filtered_scope, unfiltered_scope: nil)
+  # Tab + posição na fila: baratos e usados fora da seção PWA (header desktop
+  # e form de filtros). Todo o resto do contexto PWA é pesado (contagens,
+  # listas, kanban) e carrega sob demanda em #pwa_section via Turbo Frame.
+  def load_pwa_leads_light_context
     @pwa_lead_tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
     @pwa_queue_position = current_user_distribution_queue_position
+  end
+
+  # Rótulos dos filtros ativos: compartilhado entre o index e a seção PWA
+  # (que roda em request separada via Turbo Frame).
+  # Query params correntes + escopo do funil: compartilhado entre o index e
+  # a seção PWA (que roda em request separada via Turbo Frame).
+  def lead_base_query_params
+    request.query_parameters.merge("lead_pipeline_id" => params[:lead_pipeline_id].presence).compact
+  end
+  helper_method :lead_base_query_params
+
+  def lead_filter_labels_list
+    @lead_filter_labels_list ||= begin
+      labels = []
+      labels << "Funil" if params[:lead_pipeline_id].present?
+      labels << "Busca" if @q.present?
+      labels << "Status" if @status_filters.present?
+      labels << "Etapa de funil" if @lead_pipeline_stage_id.present?
+      labels << "Origem" if @origin.present?
+      labels << "Canal" if @attribution_channel.present?
+      labels << "Tags" if @tags.present?
+      labels << (@only_mine ? "Meus leads" : "Corretor") if @broker_id.present?
+      labels << "Imóvel" if @property_filter.present? || @property_q.present?
+      labels << "Contato" if @contact_filter.present?
+      labels << "Atenção operacional" if @attention_filter.present?
+      labels << "Natureza" if @business_filters.present?
+      if @activity_filters.present?
+        labels << (@activity_filters.include?("qualification_divergence") ? "Divergência" : "Atividade")
+      end
+      labels << "Canal de origem" if @channel_filters.present?
+      labels << "Bot" if @bot_attended
+      labels << "Preço" if @price_min.present? || @price_max.present?
+      labels << "Motivo de arquivamento" if @archive_reason_id.present?
+      labels << "Captações no relatório" if defined?(can?) && can?(:view, :lead_reports) && @include_captacoes
+      labels << lead_filter_period_label("Entrada", @start_date, @end_date)
+      labels << lead_filter_period_label("Fechado", @closed_start_date, @closed_end_date)
+      labels.compact!
+      labels
+    end
+  end
+  helper_method :lead_filter_labels_list
+
+  def lead_filter_period_label(label, start_value, end_value)
+    formatted_start = format_lead_filter_date(start_value)
+    formatted_end = format_lead_filter_date(end_value)
+
+    if formatted_start.present? && formatted_end.present?
+      "#{label}: #{formatted_start} a #{formatted_end}"
+    elsif formatted_start.present?
+      "#{label}: desde #{formatted_start}"
+    elsif formatted_end.present?
+      "#{label}: até #{formatted_end}"
+    end
+  end
+
+  def format_lead_filter_date(value)
+    return if value.blank?
+
+    helpers.l(Date.iso8601(value.to_s))
+  rescue ArgumentError
+    value.to_s
+  end
+
+  def load_pwa_leads_context(filtered_scope, unfiltered_scope: nil)
+    load_pwa_leads_light_context
 
     base_scope = filtered_scope
     list_base_scope = hide_discarded_from_list_scope(base_scope)
