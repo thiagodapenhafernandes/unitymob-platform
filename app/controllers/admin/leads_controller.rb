@@ -2727,11 +2727,11 @@ class Admin::LeadsController < Admin::BaseController
       .select(:lead_id)
 
     untouched_scope = operational_scope
-      .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS - ["accepted"]).select(:lead_id))
+      .where.not(id: LeadActivity.where(tenant_id: current_tenant.id, kind: CONTACT_ACTIVITY_KINDS - ["accepted"]).select(:lead_id))
       .where.not(id: Task.where(tenant_id: current_tenant.id).select(:lead_id))
       .where.not(id: Appointment.where(tenant_id: current_tenant.id).select(:lead_id))
-      .where.not(id: Proposal.select(:lead_id))
-      .where(id: LeadActivity.where(kind: "accepted").select(:lead_id))
+      .where.not(id: Proposal.joins(:lead).where(leads: { tenant_id: current_tenant.id }).select(:lead_id))
+      .where(id: LeadActivity.where(tenant_id: current_tenant.id, kind: "accepted").select(:lead_id))
 
     base_scope.where("leads.id IN (:task_ids) OR leads.id IN (:untouched_ids)",
       task_ids: task_ids,
@@ -2815,7 +2815,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def pwa_external_schedule_scope(base_scope, visits:)
     scope = LeadActivity
-            .where(kind: EXTERNAL_SCHEDULE_KIND, lead_id: base_scope.select(:id))
+            .where(tenant_id: current_tenant.id, kind: EXTERNAL_SCHEDULE_KIND, lead_id: base_scope.select(:id))
             .where("NULLIF(COALESCE(lead_activities.metadata #>> '{raw,schedulated_action_date}', lead_activities.metadata #>> '{raw,due_at}', lead_activities.metadata #>> '{raw,scheduled_at}', lead_activities.metadata #>> '{raw,date}', lead_activities.metadata #>> '{raw,datetime}', lead_activities.metadata ->> 'due_at'), '') IS NOT NULL")
             .where("NOT #{EXTERNAL_CLOSED_SCHEDULE_SQL}")
     visits ? scope.where(EXTERNAL_VISIT_SCHEDULE_SQL) : scope.where("NOT #{EXTERNAL_VISIT_SCHEDULE_SQL}")

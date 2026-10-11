@@ -41,4 +41,50 @@ RSpec.describe "Admin leads tab counts", type: :request do
       expect(counts).to include("verify")
     end
   end
+
+  describe "tab scope tenant scoping" do
+    let(:controller) do
+      current_tenant = tenant
+      current_admin = admin
+      Admin::LeadsController.new.tap do |ctrl|
+        ctrl.define_singleton_method(:current_tenant) { current_tenant }
+        ctrl.define_singleton_method(:current_admin_user) { current_admin }
+      end
+    end
+    let(:other_tenant) { Tenant.create!(name: "Outra #{SecureRandom.hex(3)}", slug: "outra-#{SecureRandom.hex(3)}") }
+
+    it "ignores contact activities from other tenants in the todo scope" do
+      lead = create(:lead, tenant: tenant, admin_user: admin, status: "Novo")
+      LeadActivity.create!(tenant: tenant, lead: lead, kind: "accepted")
+      LeadActivity.create!(tenant: other_tenant, lead: lead, kind: "note")
+
+      ids = controller.send(:pwa_actionable_leads, tenant.leads).pluck(:id)
+
+      expect(ids).to include(lead.id)
+    end
+
+    it "ignores external schedules from other tenants in the visits scope" do
+      lead = create(:lead, tenant: tenant, admin_user: admin, status: "Novo")
+      LeadActivity.create!(
+        tenant: other_tenant, lead: lead, kind: "external_scheduled_action",
+        metadata: { "raw" => { "schedulated_action_date" => 2.days.from_now.iso8601, "schedulated_action_name" => "Visita ao imóvel" } }
+      )
+
+      ids = controller.send(:lead_scope_for_tab, tenant.leads, "visits").pluck(:id)
+
+      expect(ids).not_to include(lead.id)
+    end
+
+    it "still matches own-tenant external schedules in the visits scope" do
+      lead = create(:lead, tenant: tenant, admin_user: admin, status: "Novo")
+      LeadActivity.create!(
+        tenant: tenant, lead: lead, kind: "external_scheduled_action",
+        metadata: { "raw" => { "schedulated_action_date" => 2.days.from_now.iso8601, "schedulated_action_name" => "Visita ao imóvel" } }
+      )
+
+      ids = controller.send(:lead_scope_for_tab, tenant.leads, "visits").pluck(:id)
+
+      expect(ids).to include(lead.id)
+    end
+  end
 end
