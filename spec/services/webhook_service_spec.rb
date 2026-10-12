@@ -35,6 +35,7 @@ RSpec.describe WebhookService do
         payload = raw_payload.with_indifferent_access
 
         expect(payload[:origin_form]).to eq("whatsapp_lead")
+        expect(payload[:legal_bases].as_json).to eq([{ "category" => "data_processing", "type" => "legitimate_interest", "status" => "granted" }])
         expect(payload[:source].with_indifferent_access).to include(
           "page_url" => "https://dev.unitymob.com.br/imoveis/apartamento-123",
           "request_url" => "https://dev.unitymob.com.br/leads",
@@ -84,6 +85,7 @@ RSpec.describe WebhookService do
         url: "https://example.test/hook", request: request)
       expect(WebhookDeliveryJob).to have_received(:perform_later) do |_, payload|
         expect(payload[:event_name]).to eq("lead_inquiry")
+        expect(payload[:legal_bases].as_json).to eq([{ "category" => "data_processing", "type" => "legitimate_interest", "status" => "granted" }])
         expect(payload.keys.map(&:to_s)).not_to include("client_id", "fbc", "fbp", "gclid")
       end
     end

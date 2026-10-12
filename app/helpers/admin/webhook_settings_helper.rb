@@ -5,6 +5,7 @@ module Admin::WebhookSettingsHelper
       "phone" => "5547999999999", "tenant_id" => current_tenant.id,
       "property_id" => 9981, "property_code" => "AP1234", "business_type" => "sale",
       "lead_type" => "whatsapp_modal", "status" => "Novo",
+      "other_information" => { "unitymob_data_processing_policy" => Privacy::LegalBases.record },
       "source_url" => "#{request.base_url}/imoveis/exemplo", "placement" => "property_card",
       "attribution_data" => { "gclid" => "TEST_GCLID", "gbraid" => "TEST_GBRAID", "wbraid" => "TEST_WBRAID",
         "utm_source" => "google", "utm_medium" => "cpc", "utm_campaign" => "campanha_exemplo" }

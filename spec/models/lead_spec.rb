@@ -4,6 +4,20 @@ RSpec.describe Lead, type: :model do
   include ActiveJob::TestHelper
   include ActiveSupport::Testing::TimeHelpers
 
+  it "registra a política de processamento em novas entradas sem inventar consentimento externo" do
+    lead = create(:lead, other_information: {
+      "provider_consent" => { "status" => "declined" },
+      "unitymob_data_processing_policy" => { "source" => "forged", "type" => "consent" }
+    })
+    policy = lead.reload.other_information.fetch("unitymob_data_processing_policy")
+    expect(policy).to include("source" => "unitymob_policy_default", "policy_version" => Privacy::LegalBases::POLICY_VERSION)
+    expect(policy["legal_bases"]).to eq(Privacy::LegalBases.data_processing.as_json)
+    expect(Time.iso8601(policy.fetch("recorded_at"))).to be <= Time.current
+    expect(lead.other_information.dig("provider_consent", "status")).to eq("declined")
+    lead.update!(name: "Nome atualizado")
+    expect(lead.reload.other_information["unitymob_data_processing_policy"]).to eq(policy)
+  end
+
   around do |example|
     previous_tenant = Current.tenant
     Current.tenant = Tenant.default

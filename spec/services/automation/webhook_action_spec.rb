@@ -157,4 +157,9 @@ RSpec.describe "Automation webhook action" do
   def described_executor
     Automation::ActionExecutor.new(lead, automation_event: event)
   end
+
+  it "declara a política de processamento no payload padrão de automação" do
+    described_executor.execute({ "type" => "send_webhook", "url" => "https://example.test/hook" })
+    expect(AutomationWebhookDelivery.last.request_payload["legal_bases"]).to eq(Privacy::LegalBases.data_processing.as_json)
+  end
 end

@@ -27,6 +27,12 @@
       <div class="ax-span-3">
         <%= ax_text_field(form: f, method: :email, label: "E-mail", type: :email, autocomplete: "email") %>
       </div>
+      <div class="ax-span-6">
+        <%= ax_select_field(form: f, method: :data_processing_legal_basis, label: "Base legal para tratamento de dados",
+                            choices: Privacy::LegalBases::OPTIONS,
+                            select_options: { selected: lead.data_processing_legal_basis || "legitimate_interest" },
+                            tooltip: "Selecione a base aplicável. Consentimento exige autorização explícita e evidência registrada nas observações.") %>
+      </div>
     <% end %>
   <% end %>
 

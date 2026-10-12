@@ -2,6 +2,9 @@ class Lead < ApplicationRecord
   include TenantScoped
   include PhoneNormalizable
 
+  attr_accessor :data_processing_legal_basis
+  validates :data_processing_legal_basis, inclusion: { in: Privacy::LegalBases::OPTIONS.map(&:last) }, allow_nil: true, on: :create
+
   DEFAULT_STATUS = "Novo".freeze
   LEGACY_STATUSES = ["Novo", "Em Atendimento", "Aguardando Aceite", "Represado", "Descartado", "Concluido"].freeze
   NON_OPERATIONAL_STATUS_FALLBACKS = [
@@ -195,6 +198,7 @@ class Lead < ApplicationRecord
   before_validation :normalize_held_status_with_owner
   before_validation :sync_pipeline_stage
   before_validation :normalize_tags
+  before_validation :record_data_processing_policy, on: :create
   before_save :sync_closed_at
   normalize_phone_fields :phone, :client_phone, :agent_phone
 
@@ -553,6 +557,12 @@ class Lead < ApplicationRecord
   end
 
   private
+
+  def record_data_processing_policy
+    self.other_information = other_information.to_h.except("unitymob_data_processing_policy").merge(
+      "unitymob_data_processing_policy" => Privacy::LegalBases.record(data_processing_legal_basis || "legitimate_interest", manual: data_processing_legal_basis.present?)
+    )
+  end
 
   def property_share_event_status(event_type)
     case event_type.to_s

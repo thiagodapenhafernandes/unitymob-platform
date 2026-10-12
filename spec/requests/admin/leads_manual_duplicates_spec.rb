@@ -11,6 +11,28 @@ RSpec.describe "Cadastro manual de leads: telefone ou e-mail duplicado", type: :
     sign_in admin
   end
 
+  it "exibe as bases em português e preserva a seleção manual no payload" do
+    get new_admin_lead_path
+    expect(response).to have_http_status(:ok)
+    select = Nokogiri::HTML(response.body).at_css('select[name="lead[data_processing_legal_basis]"]')
+    expect(select.css("option").map(&:text)).to include("Legítimo interesse", "Consentimento", "Contrato preexistente")
+    expect(select.at_css("option[selected]")["value"]).to eq("legitimate_interest")
+    post admin_leads_path, params: { lead: { name: "Cadastro manual", phone: phone, data_processing_legal_basis: "pre_existent_contract" } }
+    expect(response).to have_http_status(:redirect)
+    lead = admin.tenant.leads.order(:id).last
+    expect(lead.other_information.dig("unitymob_data_processing_policy", "source")).to eq("manual_registration")
+    expect(Privacy::LegalBases.for_information(lead.other_information).first[:type]).to eq("pre_existent_contract")
+    payload = WebhookService.build_payload("lead_capture", lead.attributes)
+    expect(payload[:legal_bases].first[:type]).to eq("pre_existent_contract")
+  end
+
+  it "rejeita uma base legal não suportada sem salvar o lead" do
+    expect {
+      post admin_leads_path, params: { lead: { name: "Inválido", phone: phone, data_processing_legal_basis: "unknown" } }
+    }.not_to change(Lead, :count)
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
   def submit_lead
     post admin_leads_path, params: { lead: { name: "Novo cadastro", phone: phone, notes: "Preservar observação" } }
   end
