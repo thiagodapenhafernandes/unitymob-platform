@@ -1,11 +1,35 @@
 {
   "version": 1,
   "skills": {
+    "architectural-refactor": {
+      "source": "petekp/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/architectural-refactor/SKILL.md",
+      "computedHash": "239115d52da78b7585889022f39449f8c1ed70bb7ea5750c824d93bee262ae70"
+    },
+    "architecture": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "engineering/skills/architecture/SKILL.md",
+      "computedHash": "0220c55f7be41d5ac6e622510b3367e7ad023cbcd9b804a43ede7db82185eafb"
+    },
+    "architecture-audit": {
+      "source": "helderberto/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/architecture-audit/SKILL.md",
+      "computedHash": "105e7f349eb8ca1e0fdfbe5705c05a868a3760dcc18087e4be2ce828579781b6"
+    },
     "chrome-extensions": {
       "source": "GoogleChrome/modern-web-guidance",
       "sourceType": "github",
       "skillPath": "skills/chrome-extensions/SKILL.md",
       "computedHash": "1e8525bb49647008dcd3a6b7e5d3c3207345f086e7a64d7e6d5bcc67dbba7a71"
+    },
+    "doc-coauthoring": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/doc-coauthoring/SKILL.md",
+      "computedHash": "b964e4c3ffe13f66f76dd7919073e60c7aec622cd8a8363bb36323188100cf8e"
     },
     "frontend-design": {
       "source": "anthropics/skills",
@@ -36,6 +60,12 @@
       "sourceType": "github",
       "skillPath": "skills/security-audit/SKILL.md",
       "computedHash": "98b97aad2873b3b9a8e064007c25e7827b493ba27fda8bfbdb41dab586767973"
+    },
+    "sync-repository": {
+      "source": "tomzx/agents",
+      "sourceType": "github",
+      "skillPath": "skills/sync-repository/SKILL.md",
+      "computedHash": "260c64690239ec08c73fd8f1650c8c99424128eaa6724a44441e83caa74fba21"
     }
   }
 }
