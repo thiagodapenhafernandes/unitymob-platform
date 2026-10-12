@@ -42,8 +42,15 @@ module BrokerSitePage
   def assign_broker_page_seo
     site_name = @layout_setting&.site_name.presence || public_tenant.name
     @page_name = "corretor"
+    @page_title_priority = true
+    @page_description_priority = true
     @page_title = "Imóveis de #{@broker.name} | #{site_name}"
-    @page_description = @broker.biography.presence || "Imóveis à venda e para alugar com #{@broker.name} (#{@broker.creci}). Fale direto com o corretor."
+    @page_description = @broker.biography.presence || "Conheça os imóveis à venda e para alugar com #{@broker.name}, da #{site_name}. Entre em contato e encontre seu imóvel ideal."
+    if @broker.avatar.attached?
+      @page_image = public_tenant.public_base_url(fallback_base_url: request.base_url) + helpers.rails_storage_proxy_path(@broker.avatar, only_path: true)
+      @page_image_type = @broker.avatar.blob.content_type
+      @page_image_alt = "Foto de #{@broker.name}"
+    end
     @canonical_url = "#{public_tenant.public_base_url(fallback_base_url: request.base_url)}#{public_landing_page_path(@broker.site_slug)}"
     @listing_heading = "Imóveis de #{@broker.name.split.first}"
   end

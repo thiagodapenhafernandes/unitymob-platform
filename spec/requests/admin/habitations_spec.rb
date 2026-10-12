@@ -3528,12 +3528,15 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(submit["aria-label"]).to eq("Buscar imóveis")
   end
 
-  it "mantém a busca direta do catálogo fora dos filtros antigos do PWA" do
+  it "preserva os filtros aplicados ao pesquisar no catálogo PWA" do
     get admin_habitations_path(
       ownership: "mine",
       status: "Aluguel",
       empreendimento_codigo: ["name:Montreal"],
       min_price: "500000",
+      categoria: ["Apartamento"],
+      dorms_min: "1",
+      dorms_max: "1",
       visualizacao: "grade"
     )
 
@@ -3541,11 +3544,12 @@ RSpec.describe "Admin::Habitations", type: :request do
     form = Nokogiri::HTML(response.body).at_css("form.habitations-pwa-search")
     hidden_fields = form.css("input[type='hidden']").map { |input| [input["name"], input["value"]] }
 
-    expect(hidden_fields).to include(["ownership", "all"])
-    expect(hidden_fields).to include(["status", ""])
+    expect(hidden_fields).to include(["ownership", "mine"])
+    expect(hidden_fields).to include(["status", "Aluguel"])
     expect(hidden_fields).to include(["visualizacao", "grade"])
-    expect(hidden_fields.map(&:first)).not_to include("empreendimento_codigo[]")
-    expect(hidden_fields.map(&:first)).not_to include("min_price")
+    expect(hidden_fields).to include(["empreendimento_codigo[]", "name:Montreal"])
+    expect(hidden_fields).to include(["min_price", "500000"])
+    expect(hidden_fields).to include(["categoria[]", "Apartamento"], ["dorms_min", "1"], ["dorms_max", "1"])
   end
 
   it "não carrega Venda da sessão quando a navegação PWA pede status limpo" do

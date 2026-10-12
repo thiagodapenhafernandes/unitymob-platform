@@ -163,19 +163,20 @@
           %>
           <%# Limites pelo estoque da conta (PublicSite::PriceRanges); o controller troca venda/aluguel. %>
           <div class="public-theme-filter-drawer__range-track" data-range="valor"
+               data-action="pointerdown->filter-drawer#selectRangeValue"
                data-min="<%= price_bounds[:min] %>" data-max="<%= price_bounds[:max] %>" data-step="<%= price_bounds[:step] %>"
                data-sale-min="<%= sale_bounds[:min] %>" data-sale-max="<%= sale_bounds[:max] %>" data-sale-step="<%= sale_bounds[:step] %>"
                data-rental-min="<%= rental_bounds[:min] %>" data-rental-max="<%= rental_bounds[:max] %>" data-rental-step="<%= rental_bounds[:step] %>" data-money="1">
             <div class="public-theme-filter-drawer__range-fill" data-range-fill></div>
-            <input type="range" class="public-theme-filter-drawer__range-lo" min="<%= price_bounds[:min] %>" max="<%= price_bounds[:max] %>" step="<%= price_bounds[:step] %>" value="<%= price_bounds[:min] %>" aria-label="Valor mínimo" data-range-lo data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
-            <input type="range" class="public-theme-filter-drawer__range-hi" min="<%= price_bounds[:min] %>" max="<%= price_bounds[:max] %>" step="<%= price_bounds[:step] %>" value="<%= price_bounds[:max] %>" aria-label="Valor máximo" data-range-hi data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
+            <input type="range" class="public-theme-filter-drawer__range-lo" min="<%= price_bounds[:min] %>" max="<%= price_bounds[:max] %>" step="<%= price_bounds[:step] %>" value="<%= params[:min_price].presence || price_bounds[:min] %>" aria-label="Valor mínimo" data-range-lo data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
+            <input type="range" class="public-theme-filter-drawer__range-hi" min="<%= price_bounds[:min] %>" max="<%= price_bounds[:max] %>" step="<%= price_bounds[:step] %>" value="<%= params[:max_price].presence || price_bounds[:max] %>" aria-label="Valor máximo" data-range-hi data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
           </div>
           <div class="public-theme-filter-drawer__range-values"><span class="public-theme-filter-drawer__range-value" data-range-out-lo><%= number_to_currency(price_bounds[:min], unit: "R$", precision: 0) %></span><span class="public-theme-filter-drawer__range-value" data-range-out-hi><%= number_to_currency(price_bounds[:max], unit: "R$", precision: 0) %> +</span></div>
         </div>
 
         <div class="public-theme-filter-drawer__field public-theme-filter-drawer__range">
           <label class="public-theme-filter-drawer__label">Metragem privativa</label>
-          <div class="public-theme-filter-drawer__range-track" data-range="area" data-min="0" data-max="700" data-step="10" data-suffix="m² +">
+          <div class="public-theme-filter-drawer__range-track" data-range="area" data-min="0" data-max="700" data-step="10" data-suffix="m² +" data-action="pointerdown->filter-drawer#selectRangeValue">
             <div class="public-theme-filter-drawer__range-fill" data-range-fill></div>
             <input type="range" class="public-theme-filter-drawer__range-lo" min="0" max="700" step="10" value="0" aria-label="Área mínima" data-range-lo data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
             <input type="range" class="public-theme-filter-drawer__range-hi" min="0" max="700" step="10" value="700" aria-label="Área máxima" data-range-hi data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
