@@ -103,6 +103,7 @@ RSpec.describe "Leads", type: :request do
       expect(lead.origin).to eq("Site")
       expect(lead.attribution_data.dig("first_touch", "channel")).to eq("google_ads")
       expect(lead.attribution_data.dig("conversion_touch", "ttclid")).to eq("TikTokLast")
+      expect(lead.attribution_data).to include("placement" => "property_card", "business_type" => "sale")
       expect(WebhookService).to have_received(:send_form_data).with(
         "whatsapp_lead", hash_including(ttclid: "TikTokLast", placement: "property_card"), anything
       )
