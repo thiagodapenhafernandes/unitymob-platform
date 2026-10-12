@@ -46,3 +46,58 @@ A edição e a criação mostram o payload completo por evento, com dados fictí
 gerado pelo mesmo montador usado no envio. Valores opcionais reais podem estar ausentes.
 O receptor (por exemplo, GTM server-side) precisa mapear os campos JSON recebidos;
 a interface de preview do GTM não é o payload bruto enviado pelo Rails.
+
+## Base legal declarada no webhook
+
+Os novos payloads declaram a política padrão solicitada para processamento operacional:
+
+```json
+{
+  "legal_bases": [
+    { "category": "data_processing", "type": "legitimate_interest", "status": "granted" }
+  ]
+}
+```
+
+`granted` é o status do contrato de intercâmbio, qualificado pelo `type`;
+não representa checkbox marcado ou prova de consentimento do titular.
+O backend declara essa política em cada payload e não aceita sobrescrita
+por parâmetros públicos do formulário. O mesmo campo aparece nos exemplos
+e no teste sintético. O job conserva a declaração durante retries.
+
+Escopo de envio deste campo: `WebhookService` e payload padrão de automação, inclusive destinos explícitos de
+formulários que usam esse serviço. O registro compartilhado de novas entradas está
+detalhado em `docs/integrations-legal-bases.md`. Não altera APIs de outros fornecedores,
+não cria registros retroativos e não cadastra bases legais no RD Station CRM.
+A integração RD atual recebe leads; encaminhar esse JSON a um intermediário
+não significa que ele foi registrado no contato do RD.
+
+A finalidade pretendida é atender e acompanhar uma solicitação comercial.
+O controlador da conta deve verificar a adequação da política a cada destino,
+tipo de formulário e finalidade, inclusive formulários de carreira ou parceria.
+Declarar o padrão não executa teste de balanceamento nem comprova conformidade.
+A avaliação deve documentar finalidade, necessidade, expectativas do titular,
+balanceamento e salvaguardas. Legítimo interesse não é base para dados sensíveis.
+
+Não declaramos `communications`: esse campo não autoriza campanhas indiscriminadas.
+Também não convertemos aceite de cookies em consentimento para comunicação ou
+compartilhamento. Os cookies analíticos seguem exigindo o aceite já implementado;
+recusá-los não gera `consent: granted` nem libera a leitura desses identificadores.
+
+Para adotar `consent` em outra finalidade, antes será necessário registrar a
+manifestação específica: finalidade, texto/versão apresentado, origem, momento
+do aceite e mecanismo de retirada. Na ausência dessa evidência, não inventar
+consentimento. Esta entrega não implementa esse registro nem gestão de oposição.
+Uma oposição ao tratamento precisa ser atendida antes de novos compartilhamentos;
+a declaração padrão não substitui esse procedimento.
+
+Referências:
+- ANPD: https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-lanca-guia-orientativo-sobre-legitimo-interesse
+
+As opções e identificadores deste payload pertencem ao contrato da Unitymob Platform, definido em `Privacy::LegalBases::OPTIONS`; não dependem de uma integração com o RD.
+
+### Cadastro manual
+
+O cadastro manual oferece o select **Base legal para tratamento de dados**, com labels em português e padrão **Legítimo interesse**. A escolha é validada no servidor e persistida em `other_information.unitymob_data_processing_policy`, com origem `manual_registration`, versão e horário. Os webhooks padrão usam essa base registrada; cadastros sem declaração continuam com o padrão. Não há migration nem alteração retroativa.
+
+Opções: Legítimo interesse (`legitimate_interest`), Consentimento (`consent`), Contrato preexistente (`pre_existent_contract`), Processo judicial (`judicial_process`), Interesse público (`public_interest`) e Proteção da vida (`vital_interest`). A seleção de consentimento é declaração do operador, não coleta ou comprovação da autorização; registre a evidência nas observações. O select se aplica ao cadastro, não altera a base de leads existentes.

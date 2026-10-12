@@ -504,6 +504,7 @@ module Automation
         event: @automation_event&.name,
         source: @automation_event&.source,
         occurred_at: @automation_event&.occurred_at&.iso8601,
+        legal_bases: Privacy::LegalBases.for_information(@lead&.other_information),
         lead: webhook_lead_payload,
         recipient: webhook_recipient_payload,
         campaign: webhook_campaign_payload,

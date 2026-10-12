@@ -2398,7 +2398,7 @@ class Admin::LeadsController < Admin::BaseController
   # resolved_owner_id_for_new_lead, nunca pelo que veio no request.
   def new_lead_params
     attributes = params.require(:lead).permit(
-      :name, :email, :phone,
+      :name, :email, :phone, :data_processing_legal_basis,
       :status, :origin, :product, :lead_type, :lead_pipeline_id, :lead_pipeline_stage_id,
       :notes, :tags
     )

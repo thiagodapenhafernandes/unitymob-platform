@@ -93,6 +93,7 @@ class WebhookService
         event_id: SecureRandom.uuid,
         event_timestamp: now.to_i,
         action_source: request ? "website" : "system_generated",
+        legal_bases: Privacy::LegalBases.for_information(values[:other_information]),
         lead_id: event_name != "form_submitted" && event_name != "test_webhook" ? values[:id]&.to_s : nil,
         business_type: values[:business_type],
         property_id: values[:property_id],
