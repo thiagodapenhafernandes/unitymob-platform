@@ -51,8 +51,7 @@ module Leads
     end
 
     def cleanup_tenant(tenant)
-      phones = internal_phones_for(tenant)
-      leads = phones.empty? ? [] : matching_leads(tenant, phones).to_a
+      leads = InternalContactScope.new(tenant: tenant).matching.order(:id).to_a
       removed = 0
 
       if execute && leads.any?
@@ -73,22 +72,6 @@ module Leads
         removed_count: removed,
         leads: leads.map { |lead| lead_snapshot(lead) }
       )
-    end
-
-    def internal_phones_for(tenant)
-      tenant.admin_users
-        .account_members
-        .pluck(:phone, :secondary_phone)
-        .flatten
-        .filter_map { |phone| Phones::Normalizer.call(phone).to_s.presence }
-        .uniq
-    end
-
-    def matching_leads(tenant, phones)
-      tenant.leads.where(
-        "regexp_replace(coalesce(leads.phone, ''), '\\D', '', 'g') IN (:phones) OR regexp_replace(coalesce(leads.client_phone, ''), '\\D', '', 'g') IN (:phones)",
-        phones: phones
-      ).order(:id)
     end
 
     def lead_snapshot(lead)

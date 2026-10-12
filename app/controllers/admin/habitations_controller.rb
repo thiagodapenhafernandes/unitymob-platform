@@ -395,92 +395,14 @@ class Admin::HabitationsController < Admin::BaseController
     end
   end
 
-  BULK_PUBLISH_CHANNELS = {
-    "site"             => { flag: :exibir_no_site_flag, options: [] },
-    "lais_ai"          => { flag: :publicar_lais_ai, options: [] },
-    "chaves_na_mao"    => { flag: :publicar_chaves_na_mao, options: [:destaque_chaves_na_mao, :periodo_locacao_chaves_na_mao] },
-    "casa_mineira"     => { flag: :publicar_casa_mineira, options: [:modelo_casa_mineira] },
-    "imovelweb"        => { flag: :publicar_imovelweb, options: [:tipo_publicacao_imovelweb, :mostrar_mapa_imovelweb] },
-    "imovelweb_2"      => { flag: :publicar_imovelweb_2, options: [:tipo_publicacao_imovelweb_2, :mostrar_mapa_imovelweb_2] },
-    "viva_real_vrsync" => { flag: :publicar_viva_real_vrsync, options: [:tipo_publicacao_viva_real, :divulgar_endereco_viva_real] }
-  }.freeze
+  BULK_PUBLISH_CHANNELS = Habitations::BulkPublication::CHANNELS
 
   def bulk_publish
-    ids = resolve_bulk_ids
-    action_type = params[:action_type].to_s
-    channels = Array(params[:channels]).map(&:to_s) & BULK_PUBLISH_CHANNELS.keys
-
-    if ids.empty?
-      return render json: { error: "Nenhum imóvel selecionado." }, status: :unprocessable_entity
-    end
-    unless %w[publicar despublicar].include?(action_type)
-      return render json: { error: "Ação inválida." }, status: :unprocessable_entity
-    end
-    if channels.empty?
-      return render json: { error: "Selecione ao menos um canal." }, status: :unprocessable_entity
-    end
-
-    updates = {}
-    flag_value = (action_type == "publicar")
-    site_flag_touched = false
-    portals_touched = []
-
-    channels.each do |channel_key|
-      config = BULK_PUBLISH_CHANNELS[channel_key]
-      updates[config[:flag]] = flag_value
-      site_flag_touched = true if config[:flag] == :exibir_no_site_flag
-      portals_touched << channel_key unless channel_key == "site"
-
-      if flag_value
-        config[:options].each do |option_key|
-          value = params.dig(:channel_options, channel_key, option_key).presence
-          updates[option_key] = value if value
-        end
-      end
-    end
-
-    target_ids = ids
-    if flag_value
-      target_ids = current_tenant.habitations.where(id: ids).commercially_publishable.reorder(nil).pluck(:id)
-      if target_ids.empty?
-        return render json: { error: "Nenhum imóvel selecionado pode ser publicado com o status comercial atual." }, status: :unprocessable_entity
-      end
-    end
-
-    # Bump updated_at so feed ETags e cache_keys das habitations invalidem automaticamente
-    updates[:updated_at] = Time.current
-    bulk_audit_changesets = bulk_habitation_audit_changesets(target_ids, updates)
-
-    updated_count = 0
-    Habitation.transaction do
-      updated_count = current_tenant.habitations.where(id: target_ids).update_all(updates)
-      record_bulk_habitation_updates(bulk_audit_changesets, action_type: action_type, channels: channels)
-    end
-
-    # Invalida caches individuais (replica o after_save :clear_cache manualmente, pois update_all pula callbacks)
-    target_ids.each do |habitation_id|
-      Rails.cache.delete("habitation_#{habitation_id}")
-      Rails.cache.delete([Habitation.name, habitation_id])
-    end
-
-    # Materialized view de destaques depende de exibir_no_site_flag
-    if site_flag_touched
-      PublicSite::PageVersion.bump(current_tenant.id)
-      RefreshFeaturedPropertiesJob.perform_later if defined?(RefreshFeaturedPropertiesJob)
-    end
-
-    # Bump last_feed_at nas integrations afetadas pra sinalizar no admin que houve mudança
-    if portals_touched.any?
-      portal_keys = Habitation::PORTAL_PUBLICATION_FIELDS.select { |_, col| updates.key?(col) }.keys
-      current_tenant.portal_integrations.where(portal: portal_keys).update_all(updated_at: Time.current) if portal_keys.any?
-    end
-
-    render json: {
-      updated: updated_count,
-      skipped_inactive_status: ids.size - target_ids.size,
-      action_type: action_type,
-      channels: channels
-    }
+    result = Habitations::BulkPublication.new(tenant: current_tenant, actor: current_admin_user, request: request).call(
+      ids: resolve_bulk_ids, action_type: params[:action_type], channels: params[:channels],
+      channel_options: params[:channel_options] || {}
+    )
+    render json: result, status: result[:error] ? :unprocessable_entity : :ok
   end
 
   def bulk_publish_eligibility
@@ -3157,44 +3079,6 @@ class Admin::HabitationsController < Admin::BaseController
     raw_value.is_a?(String) ? Time.zone.parse(raw_value) : raw_value
   rescue ArgumentError, TypeError
     habitation.created_at
-  end
-
-  def bulk_habitation_audit_changesets(ids, updates)
-    audit_fields = updates.keys.map(&:to_s) & Habitations::AuditChangeRecorder.audited_habitation_fields
-    audit_fields -= %w[updated_at]
-    return {} if audit_fields.blank?
-
-    current_tenant.habitations.where(id: ids).pluck(:id, *audit_fields).each_with_object({}) do |row, result|
-      habitation_id = row.first
-      changeset = {}
-
-      audit_fields.each_with_index do |field, index|
-        before_value = row[index + 1]
-        after_value = updates.key?(field.to_sym) ? updates[field.to_sym] : updates[field]
-        changeset[field] = { before: before_value, after: after_value }
-      end
-
-      result[habitation_id] = changeset
-    end
-  end
-
-  def record_bulk_habitation_updates(changesets_by_id, action_type:, channels:)
-    return if changesets_by_id.blank?
-
-    current_tenant.habitations.where(id: changesets_by_id.keys).find_each do |habitation|
-      Habitations::AuditChangeRecorder.new(
-        habitation,
-        actor: current_admin_user,
-        request: request,
-        source: habitation_audit_source(habitation)
-      ).record_bulk_update!(
-        changesets_by_id[habitation.id],
-        metadata: {
-          action_type: action_type,
-          channels: channels
-        }
-      )
-    end
   end
 
   def habitation_audit_source(habitation)

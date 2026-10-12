@@ -73,37 +73,17 @@ module Leads
     # Espelha o link seguro: sem dono reivindica (leva quem tocou primeiro),
     # com outro dono avisa, aguardando aceite vira atendimento.
     def ensure_attendance!(lead, broker)
-      if lead.admin_user_id.nil?
-        return claim_for!(lead, broker)
-      elsif lead.admin_user_id != broker.id
-        send_taken_notice!(lead, broker)
-        return false
-      elsif Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
-        accepted = false
-        lead.with_lock do
-          accepted = lead.admin_user_id == broker.id &&
-            Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance) &&
-            lead.update(status: Lead.status_value(:em_atendimento))
-        end
-        lead.activities.create(kind: "accepted", metadata: { by: broker.name, via: "whatsapp" }.compact) if accepted
-      end
-      true
-    end
+      unassigned = lead.admin_user_id.nil?
+      metadata = { by: broker.name, via: "whatsapp" }
+      metadata.merge!(admin_user_id: broker.id, shark_tank: (true if lead.distribution_rule&.pool_mode?)) if unassigned
+      result = Acceptance.call(
+        tenant: @tenant, lead: lead, actor: broker, metadata: metadata,
+        claim_statuses: [Lead.status_value(:novo), Lead.status_value(:em_atendimento), Lead.status_value(:waiting_acceptance)].compact
+      )
+      return true if %i[accepted already_accepted].include?(result)
 
-    def claim_for!(lead, broker)
-      claimable = [Lead.status_value(:novo), Lead.status_value(:em_atendimento), Lead.status_value(:waiting_acceptance)].compact
-      if Lead.claim_unassigned!(lead.id, broker.id, statuses: claimable)
-        lead.reload
-        lead.distribution_rule&.mark_agent_served!(broker.id)
-        lead.activities.create(kind: "accepted", metadata: {
-          by: broker.name, admin_user_id: broker.id, via: "whatsapp",
-          shark_tank: (true if lead.distribution_rule&.pool_mode?)
-        }.compact)
-        true
-      else
-        send_taken_notice!(lead, broker)
-        false
-      end
+      send_taken_notice!(lead, broker)
+      false
     end
 
     def send_taken_notice!(lead, broker)

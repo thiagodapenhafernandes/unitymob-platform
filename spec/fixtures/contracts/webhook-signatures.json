@@ -1,0 +1,5 @@
+{
+  "body": "{ \"event\": \"ação\", \"value\": 1 }\n",
+  "secret": "synthetic-contract-secret",
+  "signature": "sha256=28ca12f383acb23294b4257b50a192c9ef8372efd3eec40b394e46505047278f"
+}

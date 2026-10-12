@@ -485,12 +485,12 @@ class Admin::LeadsController < Admin::BaseController
         return render :attend_expired, status: :ok
       end
 
-      claimed = Lead.claim_for_rules!(@lead.id, current_admin_user&.id, claimable_rule_ids)
+      Leads::Acceptance.call(
+        tenant: current_tenant, lead: @lead, actor: current_admin_user,
+        claim_statuses: [Lead.status_value(:waiting_acceptance)], rule_ids: claimable_rule_ids,
+        metadata: { by: current_admin_user&.name, admin_user_id: current_admin_user&.id, shark_tank: true }
+      )
       @lead.reload
-      if claimed
-        @lead.distribution_rule&.mark_agent_served!(current_admin_user.id)
-        @lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name, admin_user_id: current_admin_user&.id, shark_tank: true }.compact)
-      end
 
       unless @lead.admin_user_id == current_admin_user&.id
         @attend_reason = :taken
@@ -2352,23 +2352,11 @@ class Admin::LeadsController < Admin::BaseController
   # PocketExpirationService trava), sem sobrescrever um lead já redistribuído.
   # Retorna false apenas quando o corretor perdeu a corrida.
   def accept_lead!(lead)
-    return true unless Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
-
-    accepted = false
-    lead.with_lock do
-      still_mine = lead.admin_user_id.present? && lead.admin_user_id == current_admin_user&.id
-      still_waiting = Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
-      accepted = still_mine && still_waiting && lead.update(status: Lead.status_value(:em_atendimento))
-    end
-
-    if accepted
-      lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name }.compact)
-      return true
-    end
-
-    # Sem transição, mas o lead continua deste corretor (ex.: clique repetido
-    # já em atendimento) — segue o fluxo normal de abertura.
-    lead.admin_user_id.present? && lead.admin_user_id == current_admin_user&.id
+    result = Leads::Acceptance.call(
+      tenant: current_tenant, lead: lead, actor: current_admin_user,
+      metadata: { by: current_admin_user&.name }
+    )
+    %i[accepted already_accepted].include?(result)
   end
 
   def can_destroy_lead?

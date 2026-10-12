@@ -53,7 +53,7 @@ RSpec.describe WebhookService do
       end
     end
 
-    it "adds tracking without changing legacy data or copying personal data to the event" do
+    it "adds tracking and contact data while preserving legacy data" do
       request = instance_double(ActionDispatch::Request,
         original_url: "https://example.test/leads", referer: nil, user_agent: "Browser",
         remote_ip: "203.0.113.10", query_parameters: {},
@@ -66,14 +66,36 @@ RSpec.describe WebhookService do
       described_class.send_form_data("whatsapp_lead", data, url: "https://example.test/hook", request: request)
       expect(WebhookDeliveryJob).to have_received(:perform_later) do |_, payload|
         expect(payload).to include(event_name: "lead_created", action_source: "website", lead_id: "48213",
-          property_id: 9981, property_code: "AP1234", placement: "property_card",
+          property_id: "AP1234", property_code: "AP1234", placement: "property_card",
           "gclid" => "click", "gbraid" => "braid", "utm_source" => "google",
           fbc: "fb.1.123.click", fbp: "fb.1.123.browser", client_id: "123456.1760100000",
           client_ip_address: "203.0.113.10", client_user_agent: "Browser", data: data)
         expect(payload[:event_id]).to match(/\A[0-9a-f-]{36}\z/)
         expect(payload[:event_timestamp]).to eq(Time.iso8601(payload[:timestamp]).to_i)
-        expect(payload.keys).not_to include(:name, :email, :phone, :user_data, :value, :currency)
+        expect(payload[:user_data]).to include(email_address: "maria@example.test", external_id: "48213", address: { first_name: "Maria" })
+        expect(payload.keys).not_to include(:name, :email, :phone, :value, :currency)
       end
+    end
+
+    it "exports the requested lead contract with saved tracking, contact and monetary value" do
+      payload = described_class.build_payload("qualified_lead", {
+        id: 48213, name: "Maria Souza", email: "teste@example.test", phone: "(47) 99999-9999",
+        property_id: 9981, property_code: "AP1234", business_type: "sale", value: 150.0,
+        attribution_data: { "gclid" => "click", "gbraid" => "braid", "wbraid" => "wbraid", "utm_source" => "google" },
+        gclid: ""
+      })
+      expect(payload).to include(event_name: "qualified_lead", lead_id: "48213", business_type: "venda",
+        property_id: "AP1234", value: 150.0, currency: "BRL", "gclid" => "click", "gbraid" => "braid", "wbraid" => "wbraid")
+      expect(payload[:user_data]).to eq(email_address: "teste@example.test", phone_number: "+5547999999999",
+        external_id: "48213", address: { first_name: "Maria", last_name: "Souza" })
+    end
+
+    it "resolves property code only inside the supplied lead tenant" do
+      property = create(:habitation, tenant: Current.tenant)
+      data = { id: 1, tenant_id: property.tenant_id, property_id: property.id }
+      expect(described_class.build_payload("qualified_lead", data)[:property_id]).to eq(property.codigo.to_s)
+      other = Tenant.create!(name: "Outra", slug: "webhook-property-#{SecureRandom.hex(4)}")
+      expect(described_class.build_payload("qualified_lead", data, tenant: other)).not_to have_key(:property_id)
     end
 
     it "does not read analytics cookies without consent or fabricate missing tracking" do

@@ -4,6 +4,7 @@ module Admin::WebhookSettingsHelper
       "id" => 48213, "name" => "Cliente Exemplo", "email" => "cliente@example.com",
       "phone" => "5547999999999", "tenant_id" => current_tenant.id,
       "property_id" => 9981, "property_code" => "AP1234", "business_type" => "sale",
+      "value" => 150.0, "currency" => "BRL",
       "lead_type" => "whatsapp_modal", "status" => "Novo",
       "other_information" => { "unitymob_data_processing_policy" => Privacy::LegalBases.record },
       "source_url" => "#{request.base_url}/imoveis/exemplo", "placement" => "property_card",
