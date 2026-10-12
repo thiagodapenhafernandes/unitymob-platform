@@ -96,8 +96,16 @@ class WebhookSetting < ApplicationRecord
       utm_source: "unitymob_test",
       utm_medium: "webhook_test",
       utm_campaign: "teste_integracao",
-      gclid: "TEST_GCLID"
-    }, url: target_url)
+      diagnostic: true,
+      id: "unitymob-test-#{SecureRandom.uuid}", name: "Teste Unitymob",
+      email: "diagnostic@example.test", phone: "+5547999999999",
+      business_type: "sale", value: 150, currency: "BRL",
+      property_code: "TESTE-SEM-IMOVEL", placement: "diagnostic",
+      client_ip_address: "192.0.2.1", client_user_agent: "Unitymob diagnostic (synthetic)",
+      gclid: "TEST_GCLID", gbraid: "TEST_GBRAID", wbraid: "TEST_WBRAID",
+      fbc: "fb.1.1760100000000.TEST", fbp: "fb.1.1760100000000.1234567890",
+      client_id: "1234567890.1760100000"
+    }, url: target_url, tenant: tenant)
   end
 
   private

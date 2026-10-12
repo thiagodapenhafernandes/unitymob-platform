@@ -133,7 +133,7 @@ RSpec.describe WebhookService do
       expect(described_class).to have_received(:deliver) do |_, payload|
         expect(payload).to include(event_name: "test_webhook", action_source: "system_generated",
           "utm_source" => "unitymob_test", "gclid" => "TEST_GCLID")
-        expect(payload).not_to have_key(:lead_id)
+        expect(payload[:lead_id]).to start_with("unitymob-test-")
       end
     end
   end

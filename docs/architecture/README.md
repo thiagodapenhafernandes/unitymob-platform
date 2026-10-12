@@ -27,6 +27,8 @@ Contratos operacionais:
 | `Leads::Acceptance` | Transição atômica, reivindicação, avanço do rodízio e atividade accepted | Admin, links seguros e botão WhatsApp | Specs do serviço, canais e concorrência |
 | `Leads::Intake` | Matching, deduplicação e complementação | Receptores externos | Specs de intake e receptores |
 | `Habitations::BulkPublication` | Publicação em lote, auditoria e invalidação | Admin de imóveis | Requests de imóveis |
+| `Leads::Attribution` | Classificação e contexto de aquisição; cookies apenas com aceite | Captura pública e envelope de saída | Specs de attribution e webhook |
+| `WebhookService` / `WebhookDeliveryJob` | Envelope único, IDs preservados, entrega com retries e correlação segura | Formulários públicos e eventos CRM | Specs do serviço e job |
 | `Privacy::LegalBases` | Declaração padrão e seleção manual | Lead, webhook e automação | Specs de lead/cadastro e webhook |
 
 Autenticação, permissões de endpoint e seleção de recursos permanecem nos adaptadores. Não compartilhar o XLSX do relatório comercial com o do dashboard sem comparar os contratos de estilos e tipos de célula. Não ampliar matching nem executar cleanup como consequência desta refatoração.
@@ -40,3 +42,5 @@ Esta entrega extrai consultas, serialização e operações específicas. Não m
 Próximos recortes exigem paridade própria: uma família de métricas do dashboard; depois uma operação de imóveis (exportação, anexos ou compartilhamento), incluindo importadores e cache. Evitar concerns destinados apenas a esconder tamanho. A skill de auditoria continua como proposta, sem instalação automática.
 
 Os testes locais registrados na entrega não comprovam produção, performance ou equivalência de todas as integrações. Responsável pela aprovação de regras e finalidade: operação/controlador da conta; contratos técnicos são mantidos junto aos consumidores neste repositório.
+
+Auditoria de rastreamento: [evidências e recorte implementado](tracking-audit.md).

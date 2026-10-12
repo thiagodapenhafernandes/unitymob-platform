@@ -87,11 +87,12 @@ class WebhookService
       event_name = WebhookSetting.event_name_for(origin_form, values)
       event_id = SecureRandom.uuid
       tracking = tracking_params(request, values)
-      lead_event = !%w[form_submitted test_webhook].include?(event_name)
+      lead_event = !%w[form_submitted test_webhook].include?(event_name) || (event_name == "test_webhook" && values[:diagnostic] == true)
       tenant = options[:tenant] || Current.tenant
       property = tenant.habitations.find_by(id: values[:property_id]) if lead_event && tenant && values[:property_code].blank? && values[:property_id].present? && values[:tenant_id].to_s == tenant.id.to_s
       property_code = values[:property_code].presence || property&.codigo
       {
+        diagnostic: values[:diagnostic] == true ? true : nil,
         origin_form: origin_form,
         timestamp: now.iso8601,
         event_name: event_name,
@@ -100,7 +101,7 @@ class WebhookService
         event_timestamp: now.to_i,
         action_source: request ? "website" : "system_generated",
         legal_bases: Privacy::LegalBases.for_information(values[:other_information]),
-        lead_id: event_name != "form_submitted" && event_name != "test_webhook" ? values[:id]&.to_s : nil,
+        lead_id: lead_event ? values[:id]&.to_s : nil,
         business_type: { "sale" => "venda", "rent" => "locacao" }.fetch(values[:business_type].to_s, values[:business_type]),
         value: values[:value],
         currency: values[:value].present? ? (values[:currency].presence || "BRL") : nil,
