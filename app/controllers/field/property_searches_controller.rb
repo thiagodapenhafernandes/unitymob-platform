@@ -96,6 +96,7 @@ module Field
         status: "completed",
         transcription:,
         filters: query_result.applied_filters,
+        filter_summary: Ai::PropertySearch::PublicParams.summary(query_result.applied_filters),
         search_mode: search_mode(contextual, specific_request),
         flexible: query_result.flexible,
         match_quality: results.any? ? "exact" : (suggestions.any? ? "approximate" : "none"),

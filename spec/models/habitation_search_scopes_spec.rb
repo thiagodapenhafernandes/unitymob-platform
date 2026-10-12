@@ -500,6 +500,19 @@ RSpec.describe Habitation::SearchScopes, type: :model do
   end
 
   describe ".public_property_search" do
+    it "combina apartamento, aluguel, um dormitório e mobiliado" do
+      matching = create(:habitation, categoria: "Apartamento", status: "Aluguel", dormitorios_qtd: 1,
+        valor_venda_cents: 0, valor_locacao_cents: 350_000, mobiliado_flag: true)
+      two_bedrooms = create(:habitation, categoria: "Apartamento", status: "Aluguel", dormitorios_qtd: 2,
+        valor_venda_cents: 0, valor_locacao_cents: 350_000, mobiliado_flag: true)
+      sale = create(:habitation, categoria: "Apartamento", status: "Venda", dormitorios_qtd: 1,
+        valor_venda_cents: 350_000_000, valor_locacao_cents: 0, mobiliado_flag: true)
+      result = Habitation.public_property_search(transaction_type: "aluguel", category: ["Apartamento"],
+        bedrooms: ["1"], characteristics: ["mobiliado"])
+      expect(result).to include(matching)
+      expect(result).not_to include(two_bedrooms, sale)
+    end
+
     it "uses the public property base without development availability predicates" do
       relation = Habitation.public_property_search(transaction_type: "venda", category: ["Apartamento"])
 

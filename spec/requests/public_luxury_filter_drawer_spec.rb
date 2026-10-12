@@ -48,6 +48,19 @@ RSpec.describe "Filtro global no tema luxury", type: :request do
     expect(form.at_css(".public-theme-filter-drawer__actions .public-theme-filter-drawer__submit[type=submit]")).to be_present
   end
 
+  Tenant::PUBLIC_SITE_THEME_METADATA.each_key do |theme|
+    it "preserva a faixa escolhida no drawer do tema #{theme}" do
+      Tenant.default.update_columns(public_site_theme: theme)
+      get root_path, params: { min_price: "1000000", max_price: "3500000" }
+
+      html = Nokogiri::HTML(response.body)
+      track = html.at_css('[data-range="valor"]')
+      expect(track["data-action"]).to include("pointerdown->filter-drawer#selectRangeValue")
+      expect(track.at_css('[data-range-lo]')["value"]).to eq("1000000")
+      expect(track.at_css('[data-range-hi]')["value"]).to eq("3500000")
+    end
+  end
+
   it "deixa o header sólido fora da home e esconde os filtros próprios da listagem" do
     get habitations_path(transaction_type: "venda")
 

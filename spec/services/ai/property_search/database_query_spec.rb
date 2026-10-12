@@ -121,4 +121,21 @@ RSpec.describe Ai::PropertySearch::DatabaseQuery do
     expect(result.records.map(&:id)).to include(matching.id)
     expect(result.records.map(&:codigo)).not_to include("AI-VISTA-MAR")
   end
+  it "respeita o teto de 3,5 milhões sem excluir imóveis mais baratos" do
+    tenant = Tenant.default
+    broker = create(:admin_user, tenant:)
+    setting = PropertySetting.instance(tenant:)
+    setting.update!(ai_property_search_allowed_fields: %w[transaction_type property_type price])
+    cheaper = create(:habitation, tenant:, categoria: "Apartamento", valor_venda_cents: 175_000_000)
+    ceiling = create(:habitation, tenant:, categoria: "Apartamento", valor_venda_cents: 350_000_000)
+    expensive = create(:habitation, tenant:, categoria: "Apartamento", valor_venda_cents: 350_000_100)
+
+    result = described_class.new(tenant:, admin_user: broker, setting:,
+      filters: { transaction_type: "sale", property_type: "Apartamento", price_max: 3_500_000 }, allow_flexible: false).call
+
+    expect(result.records.map(&:id)).to include(cheaper.id, ceiling.id)
+    expect(result.records.map(&:id)).not_to include(expensive.id)
+    expect(result.applied_filters["price_max"]).to eq(3_500_000)
+  end
+
 end

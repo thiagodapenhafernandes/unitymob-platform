@@ -55,6 +55,7 @@ RSpec.describe "Field::PropertySearches", type: :request do
     expect(response).to have_http_status(:ok)
     payload = response.parsed_body
     expect(payload.fetch("results").map { |item| item["id"] }).to include(property.id)
+    expect(payload.fetch("filter_summary")).to include("Tipo: Apartamento", "Quartos: 3+")
     item = payload.fetch("results").find { |result| result["id"] == property.id }
     expect(item.fetch("card_title")).to eq("VOICE-SEARCH - Granada")
     history = AiPropertySearchHistory.last

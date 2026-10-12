@@ -138,6 +138,26 @@ export default class extends Controller {
     event.currentTarget.style.zIndex = 6
   }
 
+  selectRangeValue(event) {
+    if (event.button !== 0 || event.target.matches("input[type='range']")) return
+
+    const track = event.currentTarget
+    const lo = track.querySelector("[data-range-lo]")
+    const hi = track.querySelector("[data-range-hi]")
+    const rect = track.getBoundingClientRect()
+    const min = Number(track.dataset.min)
+    const max = Number(track.dataset.max)
+    const step = Number(track.dataset.step)
+    if (!lo || !hi || rect.width <= 0 || max <= min || step <= 0) return
+
+    const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+    const value = Math.min(max, min + Math.round(fraction * (max - min) / step) * step)
+    const input = Math.abs(value - Number(lo.value)) < Math.abs(value - Number(hi.value)) ? lo : hi
+    input.value = value
+    input.focus({ preventScroll: true })
+    this.drawRangeTrack(track)
+  }
+
   drawAllRanges() {
     this.element.querySelectorAll(".public-theme-filter-drawer__range-track").forEach((track) => this.drawRangeTrack(track))
   }

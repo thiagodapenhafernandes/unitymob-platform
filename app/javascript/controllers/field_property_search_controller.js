@@ -289,7 +289,8 @@ export default class extends Controller {
     } else {
       status = payload.suggestion_message || "Não houve correspondência exata. Encontramos estas opções próximas ao que você pediu."
     }
-    this.showStatus(corrections ? `${corrections} ${status}` : status)
+    const summary = (payload.filter_summary || []).join(" · ")
+    this.showStatus([corrections, summary, status].filter(Boolean).join(" "))
 
     if (hasExact) {
       if (hasApproximate) this.resultsTarget.append(this.resultsHeading("Resultados exatos"))

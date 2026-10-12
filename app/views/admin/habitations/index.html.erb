@@ -79,7 +79,7 @@
   # Abas trocam só o recorte próprio (ownership/status/scope): preservam cidade,
   # categoria, dorms, vagas etc. para não apagar a busca ao alternar Meus/Todos.
   pwa_habitation_tab_params = request.query_parameters.except("page", "status", "scope", "ownership", "intake_review", "clear_filters")
-  pwa_habitation_search_params = request.query_parameters.slice("visualizacao")
+  pwa_habitation_search_params = request.query_parameters.except("q", "page", "clear_filters")
   pwa_habitation_status_values = selected_status_filter_values.map { |status| Habitation.normalize_status(status) }
   pwa_habitation_active_tab =
     if @scope == "oportunidade"
@@ -116,8 +116,8 @@
                   method: :get,
                   local: true,
                   class: "habitations-pwa-search" do %>
-      <%= hidden_field_tag :ownership, "all" %>
-      <%= hidden_field_tag :status, "" %>
+      <%= hidden_field_tag :ownership, "all" unless pwa_habitation_search_params.key?("ownership") %>
+      <%= hidden_field_tag :status, "" unless pwa_habitation_search_params.key?("status") %>
       <% pwa_habitation_search_params.each do |param_key, param_value| %>
         <% Array(param_value).reject(&:blank?).each do |hidden_value| %>
           <%= hidden_field_tag(param_value.is_a?(Array) ? "#{param_key}[]" : param_key, hidden_value) %>

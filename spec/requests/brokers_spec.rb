@@ -112,6 +112,25 @@ RSpec.describe "Brokers", type: :request do
       expect(response.body).not_to include("ZE-1")
     end
 
+    Tenant::PUBLIC_SITE_THEMES.each_key do |theme|
+      it "usa título, descrição e foto do corretor no compartilhamento do tema #{theme}" do
+        broker = create_broker("Daniele Bresolin", biography: "Atendimento personalizado para encontrar seu imóvel.")
+        tenant.update_columns(public_site_theme: theme)
+        get "/daniele-bresolin"
+        expect(response).to have_http_status(:ok)
+        html = Nokogiri::HTML(response.body)
+        expect(html.at_css("title").text).to include("Daniele Bresolin")
+        expect(html.at_css('meta[property="og:title"]')["content"]).to include("Daniele Bresolin")
+        expect(html.at_css('meta[property="og:description"]')["content"]).to eq(broker.biography)
+        expect(html.at_css('meta[name="description"]')["content"]).to eq(broker.biography)
+        image = html.at_css('meta[property="og:image"]')["content"]
+        expect(image).to include("/rails/active_storage/blobs/proxy/")
+        expect(image).to start_with("http")
+        expect(html.at_css('meta[property="og:image:alt"]')["content"]).to eq("Foto de Daniele Bresolin")
+        expect(html.at_css('meta[property="og:url"]')["content"]).to end_with("/daniele-bresolin")
+      end
+    end
+
     it "renderiza unidade ligada a empreendimento (regressão do preload aninhado)" do
       broker = create_broker("Abner Marcelo")
       create(:habitation, tenant: tenant, codigo: "DEV-ABNER", tipo: "Empreendimento", status: "Venda")
