@@ -5,6 +5,7 @@ A ampliação adiciona no nível principal:
 
 - `event_name`: `lead_created` para nova captura WhatsApp; `lead_inquiry` para consulta complementar; `form_submitted` para os demais formulários (o nome original continua em `origin_form`). O teste administrativo envia `test_webhook`.
 - `event_id`: UUID por envio, compartilhado pelos destinos e preservado no payload durante retries. Não é um identificador de qualificação nem deduplica duas consultas diferentes.
+- `transaction_id`: mesmo UUID de `event_id`, compartilhado pelos destinos e preservado nos retries. No GTM, mapear para o ID da transação da tag Google Ads (ou `order_id` ao usar a API). Não deduplica eventos gerados separadamente.
 - `event_timestamp`: Unix em segundos; `timestamp` continua ISO 8601.
 - `action_source`: `website` com request de navegador; `system_generated` sem request.
 - `lead_id`, `business_type`, `property_id`, `property_code`: quando disponíveis. No envelope, `sale`/`rent` são traduzidos para `venda`/`locacao`; o valor original permanece em `data`. `property_id` agora contém o código público do imóvel (também em `property_code`), não o ID do banco. Consumidores que usavam o ID interno devem ler `data.property_id`.

@@ -71,6 +71,7 @@ RSpec.describe WebhookService do
           fbc: "fb.1.123.click", fbp: "fb.1.123.browser", client_id: "123456.1760100000",
           client_ip_address: "203.0.113.10", client_user_agent: "Browser", data: data)
         expect(payload[:event_id]).to match(/\A[0-9a-f-]{36}\z/)
+        expect(payload[:transaction_id]).to eq(payload[:event_id])
         expect(payload[:event_timestamp]).to eq(Time.iso8601(payload[:timestamp]).to_i)
         expect(payload[:user_data]).to include(email_address: "maria@example.test", external_id: "48213", address: { first_name: "Maria" })
         expect(payload.keys).not_to include(:name, :email, :phone, :value, :currency)
