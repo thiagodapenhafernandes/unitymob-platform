@@ -85,6 +85,7 @@ class WebhookService
       request = options[:request]
       now = Time.current
       event_name = WebhookSetting.event_name_for(origin_form, values)
+      event_id = SecureRandom.uuid
       tracking = tracking_params(request, values)
       lead_event = !%w[form_submitted test_webhook].include?(event_name)
       tenant = options[:tenant] || Current.tenant
@@ -94,7 +95,8 @@ class WebhookService
         origin_form: origin_form,
         timestamp: now.iso8601,
         event_name: event_name,
-        event_id: SecureRandom.uuid,
+        event_id: event_id,
+        transaction_id: event_id,
         event_timestamp: now.to_i,
         action_source: request ? "website" : "system_generated",
         legal_bases: Privacy::LegalBases.for_information(values[:other_information]),
