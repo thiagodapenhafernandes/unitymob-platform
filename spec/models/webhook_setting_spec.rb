@@ -10,7 +10,7 @@ RSpec.describe WebhookSetting do
     end
     2.times { expect(setting.test_webhook).to be(true) }
     payloads.each do |payload|
-      expect(payload).to include(event_name: "test_webhook", diagnostic: true, property_id: "TESTE-SEM-IMOVEL", business_type: "venda", value: 150, currency: "BRL")
+      expect(payload).to include(event_name: "test_webhook", diagnostic: true, property_id: "TESTE-SEM-IMOVEL", business_type: "venda", value: 150, currency: "BRL", pais: "Brasil", pais_iso: "BR")
       %w[gclid gbraid wbraid fbc fbp client_id client_ip_address client_user_agent utm_source utm_medium utm_campaign placement lead_id].each { |key| expect(payload[key]).to be_present }
       expect(payload[:user_data]).to include("email_address" => "diagnostic@example.test", "phone_number" => "+5547999999999")
       expect(payload[:transaction_id]).to eq(payload[:event_id])

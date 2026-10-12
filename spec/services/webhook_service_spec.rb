@@ -35,6 +35,7 @@ RSpec.describe WebhookService do
         payload = raw_payload.with_indifferent_access
 
         expect(payload[:origin_form]).to eq("whatsapp_lead")
+        expect(payload).to include("pais" => "Brasil", "pais_iso" => "BR")
         expect(payload[:legal_bases].as_json).to eq([{ "category" => "data_processing", "type" => "legitimate_interest", "status" => "granted" }])
         expect(payload[:source].with_indifferent_access).to include(
           "page_url" => "https://dev.unitymob.com.br/imoveis/apartamento-123",

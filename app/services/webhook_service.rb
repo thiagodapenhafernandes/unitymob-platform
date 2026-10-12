@@ -100,6 +100,8 @@ class WebhookService
         transaction_id: event_id,
         event_timestamp: now.to_i,
         action_source: request ? "website" : "system_generated",
+        pais: "Brasil",
+        pais_iso: "BR",
         legal_bases: Privacy::LegalBases.for_information(values[:other_information]),
         lead_id: lead_event ? values[:id]&.to_s : nil,
         business_type: { "sale" => "venda", "rent" => "locacao" }.fetch(values[:business_type].to_s, values[:business_type]),

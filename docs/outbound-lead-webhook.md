@@ -129,3 +129,5 @@ Eventos antigos sem IDs continuam entregáveis e aparecem com IDs nulos.
 Não há backfill de logs nem armazenamento adicional de payloads pessoais.
 
 O botão de teste do admin envia sempre dados fictícios completos (contato, imóvel, valor, IDs de anúncios, cookies e contexto HTTP), com `event_name: test_webhook` e `diagnostic: true`. Cada clique recebe IDs novos, sem criar lead ou alterar uma etapa. O receptor deve excluir eventos de diagnóstico das conversões reais. Os identificadores de anúncio de teste não correspondem a cliques válidos.
+
+`pais: "Brasil"` e `pais_iso: "BR"` são enviados na raiz em todos os eventos, inclusive no teste do admin. Representam o contexto brasileiro padrão da integração, não geolocalização ou residência verificada do lead.
