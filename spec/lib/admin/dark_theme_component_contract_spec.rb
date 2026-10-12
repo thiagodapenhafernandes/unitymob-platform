@@ -1924,7 +1924,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     code_snippet_view = File.read(File.expand_path("../../../app/views/admin/shared/ui/_code_snippet.html.erb", __dir__))
     code_snippet_consumers = %w[
       distribution_rules/_form.html.erb
-      webhook_settings/_form.html.erb
+      webhook_settings/_payload_reference.html.erb
       system/error_events/show.html.erb
       field/audit_logs/show.html.erb
     ].map { |path| File.read(File.expand_path("../../../app/views/admin/#{path}", __dir__)) }
@@ -3692,8 +3692,8 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(webhook_settings_form_view).not_to match(/\bstyle\s*=/i)
     expect(webhook_settings_form_view.scan(/ax_input_group\(/).size).to eq(2)
     expect(webhook_settings_form_view).to include("ax_operational_panel(", "ax_field_grid do", "ax_switch_field(")
-    expect(webhook_settings_form_view).to include("tw-text-green-600", "ax-field__hint--steps")
-    expect(webhook_settings_form_view).to include("local_assigns[:main_only]", "webhook-editor-actions", "ax_code_snippet(")
+    expect(webhook_settings_form_view).to include("ax_check_group(", "conditional-reveal")
+    expect(webhook_settings_form_view).to include("webhook-editor-actions", "payload_reference")
     expect(webhook_settings_form_view).not_to include("webhook-editor-payload")
     expect(webhook_settings_form_view).not_to include("rgba(22,163,74,.1)", 'class="fab fa-whatsapp"')
   end
@@ -3701,11 +3701,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "compoe os webhooks de saida com controle e tabela compartilhados" do
     expect(webhook_outbound_settings_view).not_to match(/\bstyle\s*=/i)
     expect(webhook_outbound_settings_view).not_to include('class: "ax-input"')
-    expect(webhook_outbound_settings_view).to include('class: "ax-control"')
+    expect(webhook_outbound_settings_view).not_to include('lead_share_tracking_days')
     expect(webhook_outbound_settings_view).to include("ax_operational_panel(", 'class="ax-table-wrap"')
     expect(webhook_outbound_settings_view).to include("ax-table__col--w-120", "ax-table__col--sm", "ax-table__col--md")
     expect(webhook_outbound_settings_view).to include("test_admin_webhook_setting_path", "edit_admin_webhook_setting_path", "admin_webhook_setting_path")
-    expect(webhook_outbound_settings_view).to include("share_tracking_admin_webhook_settings_path", "HabitationShareLink::MIN_EXPIRATION_DAYS", "HabitationShareLink::MAX_EXPIRATION_DAYS")
+    expect(webhook_outbound_settings_view).not_to include("share_tracking_admin_webhook_settings_path")
   end
 
   it "compoe alertas de marketing com registros, paineis e tabela compartilhados" do

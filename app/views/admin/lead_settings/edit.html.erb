@@ -4,6 +4,7 @@
 <%
   studio_items = [
     { id: "lead-tab-stickiness", icon: "person-check", label: "Fidelização", hint: "Lead volta ao mesmo corretor" },
+    { id: "lead-tab-sharing", icon: "share", label: "Compartilhamento", hint: "Validade dos links de corretores" },
     { id: "lead-tab-notify", icon: "bell", label: "Avisos ao corretor", hint: "Eventos, toque no push e conversa" },
     { id: "lead-tab-reminders", icon: "alarm", label: "Lembretes", hint: "Tarefas, agenda e visitas" },
     { id: "lead-tab-sla", icon: "stopwatch", label: "Prazos e automação", hint: "SLA de 1º contato e varredura" },
@@ -106,6 +107,17 @@
         <% end %>
 
         <%# ===== Avisos ao corretor ===== %>
+        <%= ax_studio_section(id: "lead-tab-sharing", icon: "share", title: "Compartilhamento de corretores",
+                              subtitle: "Mantenha a atribuição do corretor quando o visitante retorna pelo link compartilhado.") do %>
+          <%= ax_studio_group(title: "Validade do cookie e do link", subtitle: "O prazo vale para novos links e cookies; links já emitidos mantêm sua data de expiração.") do %>
+            <%= ax_field_grid do %>
+              <%= ax_number_field(form: f, method: :lead_share_tracking_days, label: "Validade do cookie/link (dias)",
+                    min: HabitationShareLink::MIN_EXPIRATION_DAYS, max: HabitationShareLink::MAX_EXPIRATION_DAYS,
+                    hint: "De 1 a 365 dias. Ao expirar, a atribuição do corretor deixa de valer.", class_name: "ax-span-6") %>
+            <% end %>
+          <% end %>
+        <% end %>
+
         <%= ax_studio_section(id: "lead-tab-notify", icon: "bell",
                               title: "Avisos ao corretor",
                               subtitle: "Os eventos de distribuição usam os canais ligados na regra (push, WhatsApp, e-mail e webhook); os outros eventos enviam apenas push.") do %>

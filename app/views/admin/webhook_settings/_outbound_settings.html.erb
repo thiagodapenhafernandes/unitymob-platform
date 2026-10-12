@@ -1,19 +1,4 @@
 <div class="webhook-settings-stack">
-  <%= ax_operational_panel(eyebrow: "Atribuição", title: "Compartilhamento de corretores") do %>
-    <div class="webhook-settings-panel-body">
-    <%= form_with url: share_tracking_admin_webhook_settings_path, method: :patch, local: true do %>
-      <div class="webhook-share-form">
-        <div class="tw-w-56">
-          <%= label_tag :lead_share_tracking_days, "Validade do cookie/link (dias)", class: "ax-label" %>
-          <%= number_field_tag :lead_share_tracking_days, lead_share_tracking_days, min: HabitationShareLink::MIN_EXPIRATION_DAYS, max: HabitationShareLink::MAX_EXPIRATION_DAYS, class: "ax-control" %>
-        </div>
-        <p class="ax-page-subtitle tw-flex-1 tw-min-w-[220px]">Quando um visitante abre um link compartilhado por corretor, o site mantém a atribuição por este período.</p>
-        <%= submit_tag "Salvar validade", class: "ax-btn ax-btn--primary" %>
-      </div>
-    <% end %>
-    </div>
-  <% end %>
-
   <%= ax_operational_panel(eyebrow: "Saída", title: "Webhooks configurados") do %>
     <div class="webhook-settings-panel-body">
     <div class="ax-table-wrap">

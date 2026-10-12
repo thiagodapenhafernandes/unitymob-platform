@@ -15,10 +15,8 @@ class Admin::WebhookSettingsController < Admin::BaseController
 
     if @can_manage_outbound_webhooks
       @webhook_settings = current_tenant.webhook_settings.order(created_at: :desc)
-      @lead_share_tracking_days = HabitationShareLink.expiration_days(tenant: current_tenant)
     else
       @webhook_settings = WebhookSetting.none
-      @lead_share_tracking_days = HabitationShareLink.expiration_days(tenant: current_tenant)
     end
   end
 
@@ -32,7 +30,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
     if @webhook_setting.save
       redirect_to admin_webhook_settings_path, notice: 'Webhook criado com sucesso!'
     else
-      render :new
+      render :new, status: :unprocessable_entity
     end
   end
 
@@ -43,7 +41,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
     if @webhook_setting.update(webhook_params)
       redirect_to admin_webhook_settings_path, notice: 'Configurações de webhook atualizadas com sucesso!'
     else
-      render :edit
+      render :edit, status: :unprocessable_entity
     end
   end
   
@@ -74,7 +72,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
       tenant: current_tenant
     )
 
-    redirect_to admin_webhook_settings_path, notice: "Validade do compartilhamento atualizada para #{days} dias."
+    redirect_to edit_admin_lead_setting_path, notice: "Validade do compartilhamento atualizada para #{days} dias."
   end
 
   def update_inbound_token
@@ -126,6 +124,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
     params.require(:webhook_setting).permit(
       :webhook_url, :whatsapp_webhook_url, :enabled, :lead_capture_enabled,
       :description, :form_delivery_scope,
+      subscribed_events: [],
       form_categories: [],
       public_form_ids: []
     )

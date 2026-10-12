@@ -1,0 +1,23 @@
+<%= ax_operational_panel(eyebrow: "03 · Contrato", title: "Payload completo enviado") do %>
+  <%= ax_studio_group(title: "Referência por evento", subtitle: "Exemplos fictícios gerados pelo mesmo montador usado nos envios. Expanda um evento para ver o JSON completo, inclusive os campos de data.") do %>
+    <%= ax_inline_notice(tone: :info, icon: "braces") do %>
+      O payload mantém <code>origin_form</code>, <code>timestamp</code>, <code>source</code> e <code>data</code>. Campos opcionais variam conforme a captura; valores nulos em <code>data</code> estão representados nos exemplos.
+    <% end %>
+    <% WebhookSetting::EVENTS.each do |event, label| %>
+      <%= ax_collapsible_card(title: label, collapse_id: "webhook-payload-#{event}", badge: event, collapsed: true, variant: :section) do %>
+        <%= ax_code_snippet(code: JSON.pretty_generate(webhook_payload_example(event)), label: "Payload completo: #{label}") %>
+      <% end %>
+    <% end %>
+  <% end %>
+  <%= ax_studio_group(title: "Entrega e rastreamento", subtitle: "POST · Content-Type: application/json · timeout de 5 segundos · até 5 tentativas com espera progressiva.") do %>
+    <ul class="ax-field__hint ax-field__hint--steps">
+      <li><code>event_id</code> identifica o envio e permanece igual nas tentativas. O receptor deve usá-lo para evitar processamento duplicado.</li>
+      <li><code>event_timestamp</code> representa a geração do payload, em segundos Unix. Eventos do CRM usam <code>system_generated</code> e não inventam IP ou navegador.</li>
+      <li>UTMs e IDs de clique são enviados quando disponíveis. <code>fbc</code>, <code>fbp</code> e <code>client_id</code> dependem dos cookies e do consentimento aceito na captura.</li>
+      <li>O contrato legado inclui contatos do lead em <code>data</code>. Os exemplos não usam dados reais da conta.</li>
+      <li>Com segredo de assinatura configurado, os headers <code>X-Unitymob-Timestamp</code> e <code>X-Unitymob-Signature</code> acompanham o envio.</li>
+      <li>Desativar o webhook impede novos envios. As entregas já enfileiradas mantêm o destino e o payload.</li>
+      <li>O botão de teste envia <code>test_webhook</code>, independentemente dos eventos selecionados. Use um endpoint de teste antes de ativar o destino final.</li>
+    </ul>
+  <% end %>
+<% end %>

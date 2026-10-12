@@ -280,6 +280,7 @@ Rails.application.routes.draw do
       get :report, on: :collection
       get :attend, on: :member
       get :vcard, on: :member
+      get :preview, on: :member
       patch :toggle_favorite, on: :member
       post :log_contact, on: :member
       get :interest_intelligence, on: :member

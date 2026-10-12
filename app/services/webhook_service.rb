@@ -29,10 +29,13 @@ class WebhookService
       return false unless tenant
 
       active_settings = tenant.webhook_settings.active.select do |setting|
-        setting.delivers_form?(origin_form, public_form: options[:public_form])
+        event = WebhookSetting.event_name_for(origin_form, data)
+        setting.delivers_event?(event) &&
+          (%w[lead_stage_changed lead_qualification_changed qualified_lead].include?(event) || setting.delivers_form?(origin_form, public_form: options[:public_form]))
       end
       return false if active_settings.empty?
 
+      payload = build_payload(origin_form, data, options)
       results = active_settings.map do |setting|
         # Prioritize WhatsApp URL if present (legacy behavior preservation)
         # or maybe we should send to both if both exist?
@@ -42,7 +45,6 @@ class WebhookService
         target_url = setting.whatsapp_webhook_url.presence || setting.webhook_url
         next false if target_url.blank?
 
-        payload = build_payload(origin_form, data, options)
         WebhookDeliveryJob.perform_later(target_url, payload)
         true
       end
@@ -77,17 +79,49 @@ class WebhookService
     private
     
     def build_payload(origin_form, data, options = {})
+      values = data.to_h.with_indifferent_access
+      attribution = values[:attribution_data].is_a?(Hash) ? values[:attribution_data].with_indifferent_access : {}.with_indifferent_access
+      values = attribution.merge(values)
+      request = options[:request]
+      now = Time.current
+      event_name = WebhookSetting.event_name_for(origin_form, values)
+      tracking = tracking_params(request, values)
       {
         origin_form: origin_form,
-        timestamp: Time.current.iso8601,
-        source: source_metadata(options[:request], data),
+        timestamp: now.iso8601,
+        event_name: event_name,
+        event_id: SecureRandom.uuid,
+        event_timestamp: now.to_i,
+        action_source: request ? "website" : "system_generated",
+        lead_id: event_name != "form_submitted" && event_name != "test_webhook" ? values[:id]&.to_s : nil,
+        business_type: values[:business_type],
+        property_id: values[:property_id],
+        property_code: values[:property_code],
+        placement: values[:placement],
+        client_ip_address: request&.remote_ip,
+        client_user_agent: request&.user_agent,
+        source: source_metadata(request, values),
         data: sanitize_data(data)
+      }.merge(tracking).merge(browser_identifiers(request)).compact
+    end
+
+    public :build_payload
+
+    def browser_identifiers(request)
+      return {} unless request && request.cookies["unitymob_lgpd_consent"] == "accepted"
+
+      ga = request.cookies["_ga"].to_s.match(/\AGA\d+\.\d+\.(\d+\.\d+)\z/)
+      {
+        fbc: request.cookies["_fbc"].presence,
+        fbp: request.cookies["_fbp"].presence,
+        client_id: ga && ga[1]
       }.compact
     end
     
     def sanitize_data(data)
       # Remove dados sensíveis do Rails
-      data.except('authenticity_token', 'commit', 'controller', 'action', 'utf8')
+      data.except('authenticity_token', 'commit', 'controller', 'action', 'utf8',
+        'c2s_export_external_id', 'c2s_exported_at', :c2s_export_external_id, :c2s_exported_at)
     end
 
     def source_metadata(request, data)

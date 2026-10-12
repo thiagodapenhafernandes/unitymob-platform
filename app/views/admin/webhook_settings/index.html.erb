@@ -78,7 +78,7 @@
     <% if active_tab == "inbound" %>
       <%= render "admin/webhook_settings/inbound_tokens", inbound_webhook_tokens: [@inbound_webhook_token] %>
     <% else %>
-      <%= render "admin/webhook_settings/outbound_settings", webhook_settings: @webhook_settings, lead_share_tracking_days: @lead_share_tracking_days %>
+      <%= render "admin/webhook_settings/outbound_settings", webhook_settings: @webhook_settings %>
     <% end %>
   </div>
 <% end %>
@@ -88,7 +88,7 @@
     if active_tab == "inbound"
       render("admin/webhook_settings/inbound_examples", inbound_webhook_tokens: [@inbound_webhook_token])
     else
-      render("admin/webhook_settings/outbound_aside", webhook_settings: @webhook_settings, lead_share_tracking_days: @lead_share_tracking_days)
+      render("admin/webhook_settings/outbound_aside", webhook_settings: @webhook_settings)
     end
 %>
 

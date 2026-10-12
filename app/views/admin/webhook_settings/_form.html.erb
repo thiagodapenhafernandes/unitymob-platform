@@ -1,150 +1,58 @@
-<%
-  sample_base_url = request.base_url
-  sample_webhook_payload = {
-    origin_form: "whatsapp_lead",
-    timestamp: "2026-05-26T14:30:00-03:00",
-    source: {
-      page_url: "#{sample_base_url}/imoveis/apartamento-frente-mar-123",
-      request_url: "#{sample_base_url}/leads",
-      referrer_url: "https://google.com/search?q=apartamento+balneario+camboriu",
-      user_agent: "Mozilla/5.0",
-      utm: {
-        utm_source: "google",
-        utm_medium: "cpc",
-        utm_campaign: "frente-mar-maio",
-        utm_term: "apartamento frente mar",
-        utm_content: "botao-whatsapp",
-        gclid: "EAIaIQobChMI..."
-      }
-    },
-    data: {
-      name: "Cliente Exemplo",
-      email: "cliente@example.com",
-      phone: "(47) 99999-9999",
-      lead_type: "whatsapp_modal",
-      origin: "Site",
-      property_id: 123,
-      property_code: "8001",
-      property_title: "Apartamento frente mar",
-      property_url: "#{sample_base_url}/imoveis/apartamento-frente-mar-123",
-      business_type: "sale",
-      business_type_label: "Venda",
-      source_url: "#{sample_base_url}/imoveis/apartamento-frente-mar-123",
-      share_token: "abc123"
-    }
-  }
-%>
-
-<%= form_with(model: [:admin, webhook_setting]) do |f| %>
+<%= form_with(model: [:admin, webhook_setting], data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" }) do |f| %>
   <%= ax_error_summary(webhook_setting) %>
-
-  <%= ax_field_grid do %>
-    <!-- Configuration -->
-    <div class="<%= local_assigns[:main_only] ? 'ax-span-12' : 'ax-span-8' %>">
-      <%= ax_operational_panel(eyebrow: "Configuração", title: "Detalhes da integração", actions: ax_badge(webhook_setting.enabled? ? "ativo" : "inativo", tone: webhook_setting.enabled? ? :green : :gray)) do %>
-          <!-- Webhook URL -->
-          <div class="tw-mb-4">
-            <%= f.label :webhook_url, class: "ax-label tw-inline-flex tw-items-center tw-gap-2" do %>
-              <i class="bi bi-link-45deg tw-text-primary"></i>URL do Webhook (Padrão)
+  <div class="webhook-settings-main-stack">
+    <%= ax_operational_panel(eyebrow: "01 · Destino", title: "Identificação e envio", actions: ax_badge(webhook_setting.enabled? ? "ativo" : "inativo", tone: webhook_setting.enabled? ? :green : :gray)) do %>
+      <%= ax_studio_group(title: "Para onde enviar", subtitle: "Uma configuração por integração. Os eventos selecionados são enviados por POST em JSON.") do %>
+        <%= ax_text_field(form: f, method: :description, label: "Descrição / Identificação", placeholder: "Ex.: Conversões · GTM Server") %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= f.label :webhook_url, "URL do Webhook (Padrão)", class: "ax-label" %>
+            <%= ax_input_group(prefix: tag.i(class: "bi bi-globe")) do %>
+              <%= f.url_field :webhook_url, class: "ax-control", placeholder: "https://seu-servidor.com/webhook" %>
             <% end %>
-            <%= ax_input_group(prefix: tag.i(class: "bi bi-globe tw-text-primary")) do %>
-              <%= f.text_field :webhook_url, class: "ax-control", placeholder: "https://seu-servidor.com/webhook" %>
+          </div>
+          <div class="ax-span-6">
+            <%= f.label :whatsapp_webhook_url, "URL alternativa (WhatsApp/Leads)", class: "ax-label" %>
+            <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp")) do %>
+              <%= f.url_field :whatsapp_webhook_url, class: "ax-control", placeholder: "https://seu-servidor.com/webhook/leads" %>
             <% end %>
-            <small class="tw-text-ink-muted">URL principal para envio de dados (POST).</small>
           </div>
-
-          <!-- WhatsApp Webhook URL -->
-          <div class="tw-mb-4">
-            <%= f.label :whatsapp_webhook_url, class: "ax-label tw-inline-flex tw-items-center tw-gap-2" do %>
-              <i class="bi bi-whatsapp tw-text-green-600"></i>URL do Webhook (Específico WhatsApp/Leads)
-            <% end %>
-            <%= ax_input_group(prefix: tag.i(class: "bi bi-link-45deg tw-text-green-600")) do %>
-              <%= f.text_field :whatsapp_webhook_url, class: "ax-control", placeholder: "https://n8n.seu-servidor.com/webhook/leads" %>
-            <% end %>
-            <small class="tw-text-ink-muted">Opcional. Se preenchido, leads de WhatsApp serão enviados para esta URL prioritariamente.</small>
-          </div>
-
-          <!-- Enabled Toggles -->
-          <%= ax_field_grid(class_name: "tw-mb-4") do %>
-            <div class="ax-span-6">
-              <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-power tw-text-green-600"), "Habilitar Webhook"]), class: "tw-inline-flex tw-items-center tw-gap-2"), form: f, method: :enabled, id: "webhook_enabled", input_html: { role: "switch" }) %>
-            </div>
-            <div class="ax-span-6">
-              <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-person-badge tw-text-primary"), "Captura de Leads (Modal)"]), class: "tw-inline-flex tw-items-center tw-gap-2"), form: f, method: :lead_capture_enabled, id: "lead_capture_enabled", input_html: { role: "switch" }) %>
-            </div>
-          <% end %>
-
-          <div class="tw-mb-4">
-            <%= f.label :form_delivery_scope, "Escopo dos formulários do site", class: "ax-label" %>
-            <%= f.select :form_delivery_scope,
-                         WebhookSetting::FORM_DELIVERY_SCOPES.map { |value, label| [label, value] },
-                         {},
-                         class: "ax-control" %>
-            <small class="tw-text-ink-muted">Use este filtro para ter uma saída por tipo de formulário sem misturar captação, parceria e carreira.</small>
-          </div>
-
-          <%= ax_field_grid(class_name: "tw-mb-4") do %>
-            <div class="ax-span-6">
-              <%= f.label :form_categories, "Categorias atendidas", class: "ax-label" %>
-              <%= hidden_field_tag "webhook_setting[form_categories][]", "" %>
-              <%= select_tag "webhook_setting[form_categories][]",
-                             options_for_select(PublicForm::CATEGORIES.map { |value, label| [label, value] }, webhook_setting.form_category_list),
-                             multiple: true,
-                             class: "ax-control",
-                             size: 5 %>
-            </div>
-            <div class="ax-span-6">
-              <%= f.label :public_form_ids, "Formulários específicos", class: "ax-label" %>
-              <%= hidden_field_tag "webhook_setting[public_form_ids][]", "" %>
-              <%= select_tag "webhook_setting[public_form_ids][]",
-                             options_from_collection_for_select(@public_forms || [], :id, :name, webhook_setting.public_form_id_list),
-                             multiple: true,
-                             class: "ax-control",
-                             size: 5 %>
-            </div>
-          <% end %>
-
-          <!-- Description -->
-          <div>
-            <%= f.label :description, "Descrição / Identificação", class: "ax-label" %>
-            <%= f.text_field :description, class: "ax-control", placeholder: "Ex: Integração CRM PipeDrive" %>
-          </div>
-
-          <% if local_assigns[:main_only] %>
-            <div class="webhook-editor-actions">
-              <%= link_to "Cancelar", admin_webhook_settings_path, class: "ax-btn ax-btn--ghost" %>
-              <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary" %>
-            </div>
-          <% end %>
+        <% end %>
+        <p class="ax-field__hint">Se a URL alternativa estiver preenchida, ela recebe os envios desta configuração no lugar da URL padrão.</p>
       <% end %>
-    </div>
-
-    <!-- Payload Info (Simplified) -->
-    <% unless local_assigns[:main_only] %>
-    <div class="ax-span-4">
-      <%= ax_operational_panel(eyebrow: "Escopo", title: "Eventos monitorados", class_name: "tw-mb-4") do %>
-          <p class="tw-text-ink-muted tw-text-sm">Este webhook pode receber todos os formulários ou apenas categorias/formulários específicos.</p>
-          <hr>
-          <h6>Formulários Monitorados:</h6>
-          <ul class="ax-field__hint ax-field__hint--steps">
-            <li>Anuncie seu imóvel</li>
-            <li>Parcerias</li>
-            <li>Trabalhe Conosco</li>
-            <li>Landing pages</li>
-            <li>Personalizados</li>
-          </ul>
+      <%= ax_studio_group(title: "Ativação e captura", subtitle: "A captura abre o modal no site. A seleção de eventos abaixo controla o envio externo.") do %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6"><%= ax_switch_field(form: f, method: :enabled, label: "Habilitar webhook", id: "webhook_enabled", class_name: "ax-switch--card", description: "Desativado, nenhum evento novo é enviado por esta configuração.") %></div>
+          <div class="ax-span-6"><%= ax_switch_field(form: f, method: :lead_capture_enabled, label: "Captura de Leads (Modal)", id: "lead_capture_enabled", class_name: "ax-switch--card", description: "Participa da ativação do formulário de contato antes de abrir o WhatsApp.") %></div>
+        <% end %>
       <% end %>
-
-      <%= ax_operational_panel(eyebrow: "Contrato", title: "Exemplo de payload", class_name: "tw-mb-4") do %>
-          <p class="tw-text-ink-muted tw-text-sm tw-mb-3">Envio via <strong>POST</strong> com <code>Content-Type: application/json</code>.</p>
-          <%= ax_code_snippet(code: JSON.pretty_generate(sample_webhook_payload), label: "Exemplo de payload JSON") %>
-      <% end %>
-
-      <div class="tw-grid tw-gap-2">
-         <%= f.submit "Salvar Webhook", class: "ax-btn ax-btn--primary" %>
-         <%= link_to "Cancelar", admin_webhook_settings_path, class: "ax-btn ax-btn--ghost" %>
-      </div>
-    </div>
     <% end %>
-  <% end %>
+
+    <%= ax_operational_panel(eyebrow: "02 · Gatilhos", title: "Eventos e filtros") do %>
+      <%= ax_studio_group(title: "Quando enviar", subtitle: "Selecione os acontecimentos que esta integração deve receber. Alterações no CRM são opcionais e não dependem do modal do site.") do %>
+        <%= ax_check_group(form: f, method: :subscribed_events, legend: "Eventos enviados", choices: WebhookSetting::EVENTS.to_a) %>
+        <p class="ax-field__hint">“Lead capturado” é a criação pelo site. “Qualificado” ocorre quando corretor ou gestor muda sua avaliação para Qualificado; não é inferido pelo nome da etapa.</p>
+        <p class="ax-field__hint">Se marcar “Qualificação alterada” e “Lead marcado como qualificado”, a mesma mudança pode gerar dois eventos distintos.</p>
+      <% end %>
+      <%= ax_studio_group(title: "Quais formulários", subtitle: "Este filtro vale para capturas e formulários do site. Eventos de etapa e qualificação seguem a conta inteira.") do %>
+        <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+          <%= ax_select_field(form: f, method: :form_delivery_scope, label: "Escopo dos formulários do site",
+                choices: WebhookSetting::FORM_DELIVERY_SCOPES.map { |value, label| [label, value] },
+                html_options: { data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } }) %>
+          <div data-conditional-reveal-target="panel" data-conditional-reveal-values="categories" <%= "hidden" unless webhook_setting.form_delivery_scope == "categories" %>>
+            <%= ax_check_group(form: f, method: :form_categories, legend: "Categorias atendidas", choices: PublicForm::CATEGORIES.to_a) %>
+          </div>
+          <div data-conditional-reveal-target="panel" data-conditional-reveal-values="forms" <%= "hidden" unless webhook_setting.form_delivery_scope == "forms" %>>
+            <%= ax_check_group(form: f, method: :public_form_ids, legend: "Formulários específicos", choices: Array(@public_forms).map { |form| [form.id, form.name] }) %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= render "admin/webhook_settings/payload_reference" %>
+    <div class="webhook-editor-actions">
+      <%= link_to "Cancelar", admin_webhook_settings_path, class: "ax-btn ax-btn--ghost" %>
+      <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary" %>
+    </div>
+  </div>
 <% end %>

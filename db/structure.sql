@@ -7626,7 +7626,8 @@ CREATE TABLE public.webhook_settings (
     tenant_id bigint NOT NULL,
     form_delivery_scope character varying DEFAULT 'all'::character varying NOT NULL,
     form_categories jsonb DEFAULT '[]'::jsonb NOT NULL,
-    public_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL
+    public_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    subscribed_events jsonb DEFAULT '["lead_created", "lead_inquiry", "form_submitted"]'::jsonb NOT NULL
 );
 
 
@@ -20449,6 +20450,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261012180000'),
 ('20261011191320'),
 ('20261010010000'),
 ('20261009010000'),

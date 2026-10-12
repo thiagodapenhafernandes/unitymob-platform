@@ -36,19 +36,19 @@
       <div class="ax-board__card-line"><i class="bi bi-envelope"></i><span><%= lead.email %></span></div>
     <% end %>
     <% conversion = lead_conversion_summary(lead) %>
-    <div class="ax-board__card-line"><i class="bi <%= conversion[:icon] %>"></i><span><%= lead_conversion_summary_label(conversion) %></span></div>
-    <div class="ax-board__card-line"><i class="bi bi-person-badge"></i><span><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span></div>
+    <div class="ax-board__card-line ax-board__card-line--origin"><i class="bi <%= conversion[:icon] %>"></i><span><%= lead_tracking_origin_text(conversion) %></span></div>
+    <div class="ax-board__card-line"><i class="bi bi-person-badge"></i><span><%= lead.admin_user&.name.present? ? "Corretor: #{lead.admin_user.name}" : "Sem corretor atribuído" %></span></div>
   </div>
 
   <% if property.present? %>
-    <div class="ax-board__card-section">
+    <div class="ax-board__card-section ax-board__card-section--property">
       <%= link_to property.display_title, admin_habitation_path_with_query(admin_habitation_path(property.id), admin_habitation_flat_return_params(lead_return_to_path)), class: "ax-board__card-link" %>
       <div class="ax-board__card-subtle"><%= property.codigo %></div>
     </div>
   <% elsif lead.property_id.present? %>
-    <div class="ax-board__card-section ax-board__card-section--muted">Imóvel indisponível</div>
+    <div class="ax-board__card-section ax-board__card-section--property ax-board__card-section--muted">Imóvel indisponível</div>
   <% else %>
-    <div class="ax-board__card-section ax-board__card-section--muted">Contato geral</div>
+    <div class="ax-board__card-section ax-board__card-section--property ax-board__card-section--muted">Contato geral</div>
   <% end %>
 
   <% card_labels = lead.preloaded_labels_for(current_admin_user) %>
@@ -94,7 +94,8 @@
     <small class="ax-board__card-date"><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></small>
     <div class="tw-flex tw-items-center tw-gap-1">
       <%= render "admin/lead_labels/button", lead: lead, trigger_class: "ax-ico-btn", icon_only: true %>
-      <%= ax_icon_button label: "Ver detalhes", icon: "eye", url: lead_details_path %>
+      <%= ax_icon_button label: "Ver detalhes", icon: "eye",
+            data: { action: "lead-kanban#openPreview", lead_preview_url: preview_admin_lead_path(lead) } %>
     </div>
   </div>
 

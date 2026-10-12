@@ -295,6 +295,48 @@
     background: var(--admin-primary, #365f8f);
   }
 
+  .lead-preview {
+    display: grid;
+    gap: 14px;
+  }
+
+  .lead-preview__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .lead-preview__subtitle {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--admin-muted, #64748b);
+  }
+
+  .lead-preview__activity-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .lead-preview__activity-list small {
+    display: block;
+    color: var(--admin-muted, #64748b);
+  }
+
+  .lead-preview__activity-body {
+    color: var(--admin-muted, #64748b);
+  }
+
+  .lead-preview__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
   .lead-desktop-filter-modal .ax-quick-modal__panel {
     max-width: min(1040px, calc(100vw - 44px));
     max-height: min(86vh, 820px);
@@ -515,6 +557,7 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     scroll-padding-bottom: 88px;
+    background: var(--admin-bg);
   }
 
   .lead-kanban-loader {
@@ -2423,6 +2466,15 @@
     </div>
   <% end %>
 
+  <%= ax_quick_modal(id: "leadPreviewModal",
+                     title: "Prévia do lead",
+                     size: :md,
+                     class_name: "lead-preview-modal") do %>
+    <%= turbo_frame_tag "lead_preview_frame" do %>
+      <p class="ax-empty-state ax-empty-state--compact">Carregando prévia…</p>
+    <% end %>
+  <% end %>
+
   <div class="ax-leads-filter-overlay lead-pwa-filter-overlay"
        aria-label="Minha visualização dos leads"
        data-lead-pwa-filter-target="panel"
@@ -2450,7 +2502,6 @@
         <% stage_color = @lead_stage_color_by_status&.[](status) %>
         <%= ax_board_column(
               title: status,
-              eyebrow: "Status do lead",
               count: @lead_counts_by_status[status].to_i,
               count_data: { lead_kanban_count: status },
               body_data: { lead_kanban_target: "column", lead_kanban_status: status },

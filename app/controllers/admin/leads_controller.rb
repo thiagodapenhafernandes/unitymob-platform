@@ -122,8 +122,8 @@ class Admin::LeadsController < Admin::BaseController
   requires_permission :edit, :leads, only: [:update, :reply_instagram, :share_properties, :suggest_properties, :reconcile_inquiry]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -456,6 +456,17 @@ class Admin::LeadsController < Admin::BaseController
               type: "text/vcard; charset=utf-8",
               disposition: "attachment",
               filename: Leads::Vcard.filename(@lead)
+  end
+
+  # Prévia somente-leitura do lead dentro do modal do kanban (Turbo Frame).
+  # Reaproveita set_lead + authorize_lead_access!; escopo restrito ao tenant.
+  def preview
+    @preview_property = current_tenant.habitations.find_by(id: @lead.property_id) if @lead.property_id.present?
+    @preview_activities = @lead.activities.human_operational.recent.limit(5)
+    back_to = request.referer.presence || admin_leads_path(view: "kanban")
+    @preview_open_path = admin_lead_path(@lead, return_to: "#{back_to}#lead_#{@lead.id}")
+    render partial: "admin/leads/preview",
+           locals: { lead: @lead, status_tone: kanban_status_tone }
   end
 
   # Destino do clique na notificação push de novo lead. Decide no momento do
