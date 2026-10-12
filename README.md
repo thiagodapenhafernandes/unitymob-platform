@@ -1,4 +1,7 @@
-# README
+# Unitymob Platform
+
+Arquitetura, responsabilidades e contratos operacionais: [índice canônico](docs/architecture/README.md).
+Deploy por aplicação: [docs/deploys.md](docs/deploys.md).
 
 This README would normally document whatever steps are necessary to get the
 application up and running.
