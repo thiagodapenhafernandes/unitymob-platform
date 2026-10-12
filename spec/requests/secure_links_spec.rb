@@ -174,9 +174,9 @@ RSpec.describe "SecureLinks", type: :request do
   it "recusa ack quando perde a corrida do Shark Tank durante o claim" do
     lead = create(:lead, name: "Cliente Corrida", phone: "11999999999", status: :waiting_acceptance, admin_user: nil)
     link = SecureLink.link_for(lead, :attend, expiry_days: 7, issued_to: corretor)
-    allow_any_instance_of(SecureLinksController).to receive(:claim_unassigned_lead!).and_wrap_original do |_method, _claimer|
+    allow(Leads::Acceptance).to receive(:call) do |**_arguments|
       lead.update!(admin_user: outro_corretor, status: Lead.status_value(:em_atendimento))
-      false
+      :taken
     end
 
     get secure_link_path(link.token), params: { ack: "1" }

@@ -170,52 +170,16 @@ class SecureLinksController < ApplicationController
   # aguardando aceite (dentro do prazo do pocket), travando a redistribuição.
   # No lead sem dono, reivindica para o corretor do link — 1º ganha.
   def mark_attended!(via:)
-    if @lead.admin_user_id.nil?
-      claimer = @link.issued_to_admin_user
-      if claimer && claim_unassigned_lead!(claimer)
-        @lead.reload
-        @lead.distribution_rule&.mark_agent_served!(claimer.id)
-        @lead.activities.create(
-          kind: "accepted",
-          metadata: { by: claimer.name, admin_user_id: claimer.id, via: via, secure_link: true, shark_tank: true }.compact
-        )
-      else
-        @lead.reload
-        @secure_link_claim_failed = claimer.present? && @lead.admin_user_id.blank?
-      end
-    else
-      return unless Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance)
-
-      owner_id = @lead.admin_user_id
-      accepted = false
-      # Transição atômica: revalida dono+status sob with_lock (mesma linha que
-      # o PocketExpirationService trava) pra não sobrescrever um lead que
-      # acabou de ser redistribuído a outro corretor.
-      @lead.with_lock do
-        accepted = @lead.admin_user_id == owner_id &&
-          Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance) &&
-          @lead.update(status: Lead.status_value(:em_atendimento))
-      end
-
-      if accepted
-        @lead.activities.create(
-          kind: "accepted",
-          metadata: { by: @lead.admin_user&.name, via: via, secure_link: true }.compact
-        )
-      end
-      # Corrida perdida: @lead já foi recarregado pelo with_lock, então o
-      # recheck link_no_longer_available? do caller renderiza lost_turn.
-    end
-  end
-
-  def claim_unassigned_lead!(claimer)
-    claimable_statuses = [
-      Lead.status_value(:novo),
-      Lead.status_value(:em_atendimento),
-      Lead.status_value(:waiting_acceptance)
-    ].compact
-
-    Lead.claim_unassigned!(@lead.id, claimer.id, statuses: claimable_statuses)
+    unassigned = @lead.admin_user_id.nil?
+    actor = unassigned ? @link.issued_to_admin_user : @lead.admin_user
+    metadata = { by: actor&.name, via: via, secure_link: true }
+    metadata.merge!(admin_user_id: actor&.id, shark_tank: true) if unassigned
+    result = Leads::Acceptance.call(
+      tenant: @lead.tenant, lead: @lead, actor: actor, metadata: metadata,
+      claim_statuses: [Lead.status_value(:novo), Lead.status_value(:em_atendimento), Lead.status_value(:waiting_acceptance)].compact
+    )
+    @lead.reload
+    @secure_link_claim_failed = unassigned && actor.present? && !%i[accepted already_accepted].include?(result) && @lead.admin_user_id.blank?
   end
 
   def lost_turn_reason
