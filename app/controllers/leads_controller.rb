@@ -20,6 +20,9 @@ class LeadsController < ApplicationController
     @lead.source_url = source_page_url
     apply_share_attribution(@lead)
     Leads::Attribution.apply!(@lead, raw: attribution_params, request: request)
+    @lead.attribution_data = @lead.attribution_data.to_h.merge(
+      "business_type" => lead_business_type(habitation), "placement" => webhook_placement
+    ).compact
     normalize_site_origin(@lead)
 
     if internal_contact = internal_contact_for(@lead.phone)

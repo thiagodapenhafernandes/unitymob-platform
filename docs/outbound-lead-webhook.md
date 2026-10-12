@@ -9,8 +9,9 @@ A ampliação adiciona no nível principal:
 - `action_source`: `website` com request de navegador; `system_generated` sem request.
 - `lead_id`, `business_type`, `property_id`, `property_code`: quando disponíveis. No envelope, `sale`/`rent` são traduzidos para `venda`/`locacao`; o valor original permanece em `data`. `property_id` agora contém o código público do imóvel (também em `property_code`), não o ID do banco. Consumidores que usavam o ID interno devem ler `data.property_id`.
 - UTMs e IDs de clique suportados por `Leads::Attribution::TRACKING_KEYS`, incluindo `gclid`, `gbraid`, `wbraid`, `fbclid`, `msclkid` e `ttclid`, provenientes do payload/atribuição salva ou query do request.
-- `client_ip_address` e `client_user_agent`: do request original, nunca do servidor de entrega do webhook.
+- `client_ip_address` e `client_user_agent`: do request original, persistidos na atribuição do lead para eventos posteriores; nunca do servidor de entrega do webhook.
 - `fbc`, `fbp`: cookies `_fbc` e `_fbp` existentes, somente com `unitymob_lgpd_consent=accepted`.
+- Os identificadores de navegador autorizados são persistidos na atribuição do lead para eventos posteriores sem request. A finalidade e o placement da captura também são preservados. Não há backfill de dados que não foram coletados.
 - `client_id`: extraído de `_ga` no formato `GA<versão>.<domínio>.<id>.<timestamp>`, sob o mesmo consentimento.
 - `placement`: quando o chamador envia esse contexto. `/leads` aceita `lead.placement` textual, limitado a 128 caracteres; os botões atuais não passam esse campo automaticamente.
 
@@ -100,3 +101,15 @@ As opções e identificadores deste payload pertencem ao contrato da Unitymob Pl
 O cadastro manual oferece o select **Base legal para tratamento de dados**, com labels em português e padrão **Legítimo interesse**. A escolha é validada no servidor e persistida em `other_information.unitymob_data_processing_policy`, com origem `manual_registration`, versão e horário. Os webhooks padrão usam essa base registrada; cadastros sem declaração continuam com o padrão. Não há migration nem alteração retroativa.
 
 Opções: Legítimo interesse (`legitimate_interest`), Consentimento (`consent`), Contrato preexistente (`pre_existent_contract`), Processo judicial (`judicial_process`), Interesse público (`public_interest`) e Proteção da vida (`vital_interest`). A seleção de consentimento é declaração do operador, não coleta ou comprovação da autorização; registre a evidência nas observações. O select se aplica ao cadastro, não altera a base de leads existentes.
+
+## Diagnóstico no GTM server-side
+
+HTTP 2xx confirma a aceitação pelo endpoint, não que o cliente do container tenha
+interpretado o JSON ou que uma tag tenha disparado. Correlacione `event_id` nos
+logs do destino e na prévia do container, verificando cliente, dados do evento,
+gatilhos e resultado das tags. Uma requisição normal de produção não é garantia
+de aparecer na sessão de prévia; siga o procedimento do container para debug.
+
+A captura usa `lead_created` ou `lead_inquiry`. `qualified_lead` corresponde à
+qualificação no CRM e exige seleção desse evento na configuração do webhook.
+`test_webhook` é diagnóstico e não deve ser configurado como conversão real.

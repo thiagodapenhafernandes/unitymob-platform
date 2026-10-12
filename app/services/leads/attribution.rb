@@ -5,6 +5,15 @@ module Leads
       utm_content utm_id campaign_id campaign_name ad_id adset_id form_id
       gad_campaignid gclid fbclid msclkid gbraid wbraid ttclid
     ].freeze
+    BROWSER_KEYS = %w[fbc fbp client_id].freeze
+
+    def self.browser_identifiers(request)
+      return {} unless request&.respond_to?(:cookies) && request.cookies["unitymob_lgpd_consent"] == "accepted"
+
+      ga = request.cookies["_ga"].to_s.match(/\AGA\d+\.\d+\.(\d+\.\d+)\z/)
+      { fbc: request.cookies["_fbc"].presence, fbp: request.cookies["_fbp"].presence,
+        client_id: ga && ga[1] }.compact
+    end
     PAID_MEDIA = %w[cpc ppc paid paid_social paid-social paidsearch paid_search paid-social-media display retargeting cpm cpv].freeze
     SOURCE_ALIASES = {
       "google" => "google", "googleads" => "google", "google_ads" => "google",
@@ -49,12 +58,16 @@ module Leads
       raw = raw.respond_to?(:to_h) ? raw.to_h.with_indifferent_access : {}
       current = raw[:conversion_touch].is_a?(Hash) ? raw[:conversion_touch] : raw
       result = new(raw: current, request: request).result
-      return lead if result.data.empty?
+      context = browser_identifiers(request).stringify_keys
+      if request
+        context.merge!("client_ip_address" => request.remote_ip, "client_user_agent" => request.user_agent.to_s.first(1024))
+      end
+      return lead if result.data.empty? && context.empty?
 
       first = new(raw: raw[:first_touch], request: request).result if raw[:first_touch].is_a?(Hash)
       lead.attribution_channel = result.channel
       lead.attribution_source = result.source
-      lead.attribution_data = lead.attribution_data.to_h.merge(result.data).merge(
+      lead.attribution_data = lead.attribution_data.to_h.merge(result.data).merge(context).merge(
         "version" => 2, "model" => "conversion_session", "conversion_touch" => result.data
       )
       lead.attribution_data["first_touch"] = first.data if first && first.data.present?

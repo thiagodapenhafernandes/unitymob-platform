@@ -155,4 +155,24 @@ RSpec.describe Leads::Attribution, "attribution v2" do
     result = classify(gclid: { value: "fake" }, evidence: "verified", landing_url: "https://user:password@example.com")
     expect(result.data).to eq({})
   end
+  it "preserva cookies autorizados e contexto HTTP para eventos posteriores" do
+    lead = build(:lead)
+    request = instance_double(ActionDispatch::Request, remote_ip: "192.0.2.1", user_agent: "Browser",
+      host: "example.test", cookies: { "unitymob_lgpd_consent" => "accepted", "_fbp" => "fb.1.browser", "_fbc" => "fb.1.click", "_ga" => "GA1.1.123.456" })
+    described_class.apply!(lead, raw: { gclid: "click" }, request:)
+    expect(lead.attribution_data).to include("fbc" => "fb.1.click", "fbp" => "fb.1.browser", "client_id" => "123.456",
+      "client_ip_address" => "192.0.2.1", "client_user_agent" => "Browser")
+    payload = WebhookService.build_payload("qualified_lead", lead.attributes)
+    expect(payload).to include(fbc: "fb.1.click", fbp: "fb.1.browser", client_id: "123.456",
+      client_ip_address: "192.0.2.1", client_user_agent: "Browser")
+  end
+
+  it "não persiste cookies de analytics sem aceite" do
+    lead = build(:lead)
+    request = instance_double(ActionDispatch::Request, remote_ip: "192.0.2.1", user_agent: "Browser",
+      host: "example.test", cookies: { "unitymob_lgpd_consent" => "rejected", "_fbp" => "private" })
+    described_class.apply!(lead, raw: { gclid: "click" }, request:)
+    expect(lead.attribution_data.keys).not_to include("fbc", "fbp", "client_id")
+  end
+
 end

@@ -106,11 +106,11 @@ class WebhookService
         property_id: property_code&.to_s,
         property_code: property_code,
         placement: values[:placement],
-        client_ip_address: request&.remote_ip,
-        client_user_agent: request&.user_agent,
+        client_ip_address: request ? request.remote_ip : values[:client_ip_address],
+        client_user_agent: request ? request.user_agent : values[:client_user_agent],
         source: source_metadata(request, values),
         data: sanitize_data(data)
-      }.merge(tracking).merge(browser_identifiers(request)).compact
+      }.merge(tracking).merge(Leads::Attribution.browser_identifiers(request)).compact
     end
 
     public :build_payload
@@ -126,17 +126,6 @@ class WebhookService
       }.compact
     end
 
-    def browser_identifiers(request)
-      return {} unless request && request.cookies["unitymob_lgpd_consent"] == "accepted"
-
-      ga = request.cookies["_ga"].to_s.match(/\AGA\d+\.\d+\.(\d+\.\d+)\z/)
-      {
-        fbc: request.cookies["_fbc"].presence,
-        fbp: request.cookies["_fbp"].presence,
-        client_id: ga && ga[1]
-      }.compact
-    end
-    
     def sanitize_data(data)
       # Remove dados sensíveis do Rails
       data.except('authenticity_token', 'commit', 'controller', 'action', 'utf8',
@@ -164,6 +153,12 @@ class WebhookService
       (Leads::Attribution::TRACKING_KEYS - %w[landing_url referrer_url]).each do |key|
         value = source_data[key] || source_data[key.to_sym] || request_query[key] || request_query[key.to_sym]
         params[key] = value if value.present?
+      end
+
+      if !request || request.cookies["unitymob_lgpd_consent"] == "accepted"
+        Leads::Attribution::BROWSER_KEYS.each do |key|
+          params[key.to_sym] = source_data[key] if source_data[key].present?
+        end
       end
 
       params
