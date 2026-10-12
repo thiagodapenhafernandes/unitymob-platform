@@ -11,7 +11,7 @@
 
 <% main_content = capture do %>
   <div class="webhook-settings-main-stack webhook-editor-main-stack">
-    <%= ax_workspace_heading(eyebrow: "Integrações", icon: "pencil-square", title: "Editar webhook", pills: ["##{@webhook_setting.id}", @webhook_setting.enabled? ? "Ativo" : "Inativo"], subtitle: "Ajuste destino, captura e identificação da integração.") %>
+    <%= ax_workspace_heading(eyebrow: "Integrações", icon: "pencil-square", title: "Editar webhook", pills: ["##{@webhook_setting.id}", @webhook_setting.enabled? ? "Ativo" : "Inativo"], subtitle: "Defina destino, gatilhos e confira o payload enviado.") %>
     <%= render "form", webhook_setting: @webhook_setting, main_only: true %>
   </div>
 <% end %>
@@ -24,6 +24,8 @@
           <%= @webhook_setting.enabled? ? "Este webhook está habilitado e pode enviar eventos." : "Este webhook está inativo e não envia eventos." %>
         <% end %>
         <p class="webhook-settings-help-text">Alterar URLs afeta os próximos envios. Valide o endpoint antes de salvar.</p>
+        <p class="webhook-settings-help-text">O teste usa a configuração salva, não as alterações pendentes no formulário.</p>
+        <%= button_to "Testar configuração salva", test_admin_webhook_setting_path(@webhook_setting), method: :post, class: "ax-btn ax-btn--secondary tw-w-full" %>
       <% end %>
 
       <%= ax_operational_panel(eyebrow: "Ação irreversível", title: "Excluir webhook") do %>

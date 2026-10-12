@@ -19,7 +19,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     sections = html.css(".ax-studio__stage > .ax-studio-section")
 
     expect(tabs.map { |tab| tab["data-ax-tabs-target-param"] }).to eq(
-      %w[#lead-tab-stickiness #lead-tab-notify #lead-tab-reminders #lead-tab-sla #lead-tab-privacy #lead-tab-vcard #lead-tab-how]
+      %w[#lead-tab-stickiness #lead-tab-sharing #lead-tab-notify #lead-tab-reminders #lead-tab-sla #lead-tab-privacy #lead-tab-vcard #lead-tab-how]
     )
     expect(sections.map { |section| section["id"] }).to eq(tabs.map { |tab| tab["data-ax-tabs-target-param"].delete_prefix("#") })
     expect(sections.reject { |section| section.key?("hidden") }.map { |section| section["id"] }).to eq(["lead-tab-stickiness"])
@@ -57,5 +57,17 @@ RSpec.describe "Admin::LeadSettings", type: :request do
 
     expect(response).to redirect_to(edit_admin_lead_setting_path)
     expect(LeadSetting.instance(tenant: admin.tenant)).to have_attributes(stickiness_enabled: true, stickiness_window_days: 45, vcard_enabled: true)
+  end
+
+  it "salva o prazo de compartilhamento no mesmo setting da conta, sem afetar outra conta" do
+    other = Tenant.create!(name: "Conta #{SecureRandom.hex(3)}", slug: "conta-#{SecureRandom.hex(3)}")
+    original = HabitationShareLink.expiration_days(tenant: other)
+    patch admin_lead_setting_path, params: { lead_setting: { lead_share_tracking_days: "45" } }
+    expect(response).to redirect_to(edit_admin_lead_setting_path)
+    expect(HabitationShareLink.expiration_days(tenant: admin.tenant)).to eq(45)
+    expect(HabitationShareLink.expiration_days(tenant: other)).to eq(original)
+    patch admin_lead_setting_path, params: { lead_setting: { lead_share_tracking_days: "0" } }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(HabitationShareLink.expiration_days(tenant: admin.tenant)).to eq(45)
   end
 end

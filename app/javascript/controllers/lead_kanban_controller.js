@@ -260,6 +260,17 @@ export default class extends Controller {
     Turbo.visit(url)
   }
 
+  openPreview(event) {
+    event.preventDefault()
+    const url = event.currentTarget?.dataset.leadPreviewUrl
+    const frame = document.getElementById("lead_preview_frame")
+    const modal = document.getElementById("leadPreviewModal")
+    if (!url || !frame || !modal) return
+
+    frame.src = url
+    modal.dispatchEvent(new CustomEvent("ax-modal:open", { bubbles: true }))
+  }
+
   storeReturnCard(card) {
     if (!card.dataset.leadId) return
 

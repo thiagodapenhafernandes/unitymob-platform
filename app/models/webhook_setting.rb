@@ -7,16 +7,38 @@ class WebhookSetting < ApplicationRecord
     "categories" => "Categorias selecionadas",
     "forms" => "Formulários selecionados"
   }.freeze
+  EVENTS = {
+    "lead_created" => "Lead capturado no site",
+    "lead_inquiry" => "Nova consulta de lead existente",
+    "form_submitted" => "Formulário enviado",
+    "lead_stage_changed" => "Etapa do lead alterada",
+    "lead_qualification_changed" => "Qualificação alterada",
+    "qualified_lead" => "Lead marcado como qualificado"
+  }.freeze
+  DEFAULT_EVENTS = %w[lead_created lead_inquiry form_submitted].freeze
 
   # Singleton pattern - apenas um registro de configuração
   validates :webhook_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), allow_blank: true }
   validates :whatsapp_webhook_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), allow_blank: true }
   validates :form_delivery_scope, inclusion: { in: FORM_DELIVERY_SCOPES.keys }
+  validate :valid_subscribed_events
+  validate :public_forms_belong_to_tenant
   
   scope :active, -> { where(enabled: true) }
 
   after_commit :clear_public_site_cache
   before_validation :normalize_form_filters
+
+  def delivers_event?(event_name)
+    Array(subscribed_events).include?(event_name.to_s)
+  end
+
+  def self.event_name_for(origin_form, data = {})
+    return origin_form.to_s if EVENTS.key?(origin_form.to_s) || origin_form.to_s == "test_webhook"
+    return "form_submitted" unless origin_form.to_s == "whatsapp_lead"
+
+    data.to_h.with_indifferent_access[:complemented_inquiry] ? "lead_inquiry" : "lead_created"
+  end
 
   def self.lead_capture_enabled?(tenant: Current.tenant)
     return false unless tenant
@@ -70,7 +92,11 @@ class WebhookSetting < ApplicationRecord
     
     WebhookService.send_form_data('test_webhook', {
       message: "Test webhook from #{tenant&.name.presence || 'Unitymob'}",
-      timestamp: Time.current.iso8601
+      timestamp: Time.current.iso8601,
+      utm_source: "unitymob_test",
+      utm_medium: "webhook_test",
+      utm_campaign: "teste_integracao",
+      gclid: "TEST_GCLID"
     }, url: target_url)
   end
 
@@ -80,6 +106,18 @@ class WebhookSetting < ApplicationRecord
     self.form_delivery_scope = form_delivery_scope.presence_in(FORM_DELIVERY_SCOPES.keys) || "all"
     self.form_categories = form_category_list
     self.public_form_ids = public_form_id_list
+    self.subscribed_events = Array(subscribed_events).map(&:to_s).reject(&:blank?).uniq
+  end
+
+  def valid_subscribed_events
+    errors.add(:subscribed_events, "selecione pelo menos um evento válido") if
+      Array(subscribed_events).empty? || (Array(subscribed_events) - EVENTS.keys).any?
+  end
+
+  def public_forms_belong_to_tenant
+    ids = public_form_id_list
+    return if ids.empty?
+    errors.add(:public_form_ids, "devem pertencer à conta") unless tenant&.public_forms&.where(id: ids)&.count == ids.size
   end
 
   def clear_public_site_cache

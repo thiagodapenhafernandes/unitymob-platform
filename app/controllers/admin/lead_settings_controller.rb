@@ -46,6 +46,7 @@ module Admin
         :reminder_start_time,
         :reminder_end_time,
         :stickiness_enabled,
+        :lead_share_tracking_days,
         :stickiness_match,
         :stickiness_owner,
         :stickiness_fallback,

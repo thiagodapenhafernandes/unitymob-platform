@@ -26,6 +26,23 @@ class LeadSetting < ApplicationRecord
   MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 1440
 
   attr_accessor :first_contact_sla_duration_value, :first_contact_sla_duration_unit
+  attr_writer :lead_share_tracking_days
+  validates :lead_share_tracking_days, numericality: {
+    only_integer: true, greater_than_or_equal_to: HabitationShareLink::MIN_EXPIRATION_DAYS,
+    less_than_or_equal_to: HabitationShareLink::MAX_EXPIRATION_DAYS
+  }
+  after_save :persist_lead_share_tracking_days
+
+  def lead_share_tracking_days
+    @lead_share_tracking_days || HabitationShareLink.expiration_days(tenant: tenant || Current.tenant)
+  end
+
+  def persist_lead_share_tracking_days
+    return unless instance_variable_defined?(:@lead_share_tracking_days)
+
+    Setting.set(HabitationShareLink::EXPIRATION_SETTING_KEY, lead_share_tracking_days.to_i.to_s,
+      "Dias de validade do cookie/link de compartilhamento de corretor", tenant: tenant)
+  end
 
   before_validation :assign_first_contact_sla_minutes_from_duration
 

@@ -189,6 +189,7 @@ class Lead < ApplicationRecord
   after_create_commit :route_lead, unless: :skip_automatic_routing?
   after_create_commit :dispatch_automation_created, unless: :skip_automatic_routing?
   after_update_commit :dispatch_automation_stage_changed, unless: :skip_automatic_routing?
+  after_update_commit :dispatch_outbound_webhook_changes, unless: :skip_automatic_routing?
 
   before_validation :normalize_status
   before_validation :normalize_held_status_with_owner
@@ -741,5 +742,9 @@ class Lead < ApplicationRecord
         to: saved_change_to_status.last
       }
     )
+  end
+
+  def dispatch_outbound_webhook_changes
+    Leads::OutboundWebhook.dispatch_changes(self)
   end
 end

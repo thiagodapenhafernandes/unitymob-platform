@@ -22843,6 +22843,16 @@ body.ax-webhook-settings-workspace .ax-sidebar {
   top: calc(var(--ax-navbar-h, 48px) + var(--ax-contextbar-h, 48px));
 }
 
+body.ax-webhook-settings-workspace .ax-main > .ax-integration-layout {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+body.ax-webhook-settings-workspace .webhook-settings-main-body {
+  overflow-y: auto;
+}
+
 body.ax-webhook-settings-workspace .ax-sidebar-contextbar {
   position: fixed;
   top: var(--ax-navbar-h, 48px);

@@ -106,6 +106,7 @@ class LeadsController < ApplicationController
 
     WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
       complemented_inquiry: true,
+      placement: webhook_placement,
       property_code: habitation&.codigo,
       property_title: habitation&.display_title,
       property_url: habitation ? habitation_url(habitation) : nil,
@@ -131,6 +132,7 @@ class LeadsController < ApplicationController
 
     attribution = @lead.attribution_data.to_h
     WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
+      placement: webhook_placement,
       property_code: habitation&.codigo,
       property_title: habitation&.display_title,
       property_url: habitation ? habitation_url(habitation) : nil,
@@ -166,6 +168,11 @@ class LeadsController < ApplicationController
     lead.admin_user_id = share_link.admin_user_id
     lead.shared_by_admin_user_id = share_link.admin_user_id
     lead.origin = "Compartilhamento Corretor" if lead.origin.blank?
+  end
+
+  def webhook_placement
+    value = params.dig(:lead, :placement)
+    value.first(128).presence if value.is_a?(String)
   end
 
   def normalize_site_origin(lead)

@@ -27,6 +27,8 @@ RSpec.describe "Admin leads kanban column", type: :request do
     expect(second["loaded_count"]).to eq(2)
     expect(second["has_more"]).to eq(false)
     expect(second["next_offset"]).to eq(7)
-    expect(second["html"]).to include("Col Lead")
+    expect(second["html"]).to include("Col Lead", "Origem:", "Sem corretor atribuído", "Contato geral")
+    expect(second["html"]).not_to include("Conversão:")
+    expect(second["html"]).to include("ax-board__card-section--property", "data-lead-kanban-status-badge", "Ver detalhes")
   end
 end
