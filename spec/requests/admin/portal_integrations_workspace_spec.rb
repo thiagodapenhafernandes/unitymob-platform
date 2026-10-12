@@ -32,6 +32,8 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     expect(document.at_css(".ax-collapse-card #webhookSection[hidden]")).to be_nil
     expect(response.body).not_to include("Token do Feed", "Webhook Secret", "Testar feed completo", "Visualizar amostra")
     expect(document.at_css(".ax-form-actions--static")).to be_present
+    expect(document.at_css('#portal-confirmations[hidden]')).to be_present
+    expect(document.at_css('#portal-confirmations_trigger')["aria-expanded"]).to eq("false")
     expect(document.at_css("table.ax-table caption")).to be_nil
     expect(document.css('table.ax-table th[scope="col"]').size).to eq(11)
     expect(document.at_css(".portal-integrations-empty-cell .ax-empty-state--compact")).to be_present
@@ -69,6 +71,27 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     zap.update!(enabled: true, leads_enabled: true, lead_gateway_synced_at: Time.current, last_lead_at: nil)
     get admin_portal_integrations_path
     expect(response.body).to include("Sem recebimento confirmado", "Nenhum confirmado")
+  end
+
+  it "prepara solicitações diretas por portal sem ativar recebimento ou expor credenciais" do
+    %w[imovelweb imovelweb_2 casamineira chavesnamao].each do |portal|
+      integration = PortalIntegration.for_portal!(portal, tenant: admin.tenant)
+      integration.update!(enabled: true, leads_enabled: false, account_id: "123456", webhook_secret: "segredo-do-portal")
+      original_token = integration.feed_token
+      get admin_portal_integrations_path(portal: portal)
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      setup = document.at_css("#portal-direct-leads")
+      expect(setup.text).to include("Aguardando habilitação do portal", "Copiar solicitação")
+      request = setup.at_css("textarea").text
+      expect(request).to include(admin.tenant.name, integration.title, "123456", "sem passar pelo Gestor de Leads da OLX")
+      expect(setup.text).to include(portal == "chavesnamao" ? "atendimento@chavesnamao.com.br" : "atendimento@imovelweb.com.br")
+      expect(request).not_to include("segredo-do-portal", original_token)
+      expect(integration.reload.feed_token).to eq(original_token)
+      expect(integration.leads_enabled).to be(false)
+    end
+    get admin_portal_integrations_path(portal: "zapimoveis")
+    expect(Nokogiri::HTML(response.body).at_css("#portal-direct-leads")).to be_nil
   end
 
 
