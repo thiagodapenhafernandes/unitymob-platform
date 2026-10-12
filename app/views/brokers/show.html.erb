@@ -26,15 +26,14 @@
           </select>
         </div>
       </div>
-      <p class="text-sm text-gray-500 mt-1">
-        <%= pluralize(@habitations.total_entries, "imóvel encontrado", "imóveis encontrados") %> com <%= @broker.name.split.first %>
-        <% if params.except(:controller, :action, :page, :slug).present? %>
+      <% if params.except(:controller, :action, :page, :slug).present? %>
+        <p class="text-sm text-gray-500 mt-1">
           <%= link_to broker_path, class: "ml-2 inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors" do %>
             <i class="bi bi-x-circle"></i>
             Limpar filtros
           <% end %>
-        <% end %>
-      </p>
+        </p>
+      <% end %>
     </div>
   </div>
 
