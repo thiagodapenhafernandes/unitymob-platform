@@ -7,7 +7,7 @@ A ampliação adiciona no nível principal:
 - `event_id`: UUID por envio, compartilhado pelos destinos e preservado no payload durante retries. Não é um identificador de qualificação nem deduplica duas consultas diferentes.
 - `event_timestamp`: Unix em segundos; `timestamp` continua ISO 8601.
 - `action_source`: `website` com request de navegador; `system_generated` sem request.
-- `lead_id`, `business_type`, `property_id`, `property_code`: quando disponíveis. Tipos de negócio existentes (`sale`/`rent`) são preservados.
+- `lead_id`, `business_type`, `property_id`, `property_code`: quando disponíveis. No envelope, `sale`/`rent` são traduzidos para `venda`/`locacao`; o valor original permanece em `data`. `property_id` agora contém o código público do imóvel (também em `property_code`), não o ID do banco. Consumidores que usavam o ID interno devem ler `data.property_id`.
 - UTMs e IDs de clique suportados por `Leads::Attribution::TRACKING_KEYS`, incluindo `gclid`, `gbraid`, `wbraid`, `fbclid`, `msclkid` e `ttclid`, provenientes do payload/atribuição salva ou query do request.
 - `client_ip_address` e `client_user_agent`: do request original, nunca do servidor de entrega do webhook.
 - `fbc`, `fbp`: cookies `_fbc` e `_fbp` existentes, somente com `unitymob_lgpd_consent=accepted`.
@@ -15,10 +15,9 @@ A ampliação adiciona no nível principal:
 - `placement`: quando o chamador envia esse contexto. `/leads` aceita `lead.placement` textual, limitado a 128 caracteres; os botões atuais não passam esse campo automaticamente.
 
 Campos indisponíveis são omitidos. Não são criados cookies nem inventados IDs.
-A expansão não adiciona `user_data`, nome, telefone ou e-mail ao nível principal;
-os dados pessoais que já existiam em `data` permanecem no contrato legado.
+`user_data` nos eventos de lead inclui email_address, phone_number normalizado com +, external_id e address.first_name/last_name. O sobrenome é o restante do nome informado. Campos ausentes são omitidos; formulários genéricos e testes administrativos não são apresentados como leads. Os dados originais permanecem em `data`.
 IP e identificadores de navegador também são dados de rastreamento vinculáveis a pessoas.
-Não há atribuição automática de valor monetário ou moeda.
+`value` é enviado somente quando fornecido pelo chamador; nesse caso `currency` usa a moeda informada ou BRL. Não usamos o preço do imóvel como valor de conversão. O teste sintético continua identificado como test_webhook; o exemplo completo de lead fica no preview da configuração.
 
 ## Eventos selecionáveis por configuração
 

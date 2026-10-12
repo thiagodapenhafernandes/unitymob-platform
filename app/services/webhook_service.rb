@@ -81,11 +81,15 @@ class WebhookService
     def build_payload(origin_form, data, options = {})
       values = data.to_h.with_indifferent_access
       attribution = values[:attribution_data].is_a?(Hash) ? values[:attribution_data].with_indifferent_access : {}.with_indifferent_access
-      values = attribution.merge(values)
+      values = attribution.merge(values.reject { |key, value| value.nil? || (Leads::Attribution::TRACKING_KEYS.include?(key.to_s) && value.blank?) })
       request = options[:request]
       now = Time.current
       event_name = WebhookSetting.event_name_for(origin_form, values)
       tracking = tracking_params(request, values)
+      lead_event = !%w[form_submitted test_webhook].include?(event_name)
+      tenant = options[:tenant] || Current.tenant
+      property = tenant.habitations.find_by(id: values[:property_id]) if lead_event && tenant && values[:property_code].blank? && values[:property_id].present? && values[:tenant_id].to_s == tenant.id.to_s
+      property_code = values[:property_code].presence || property&.codigo
       {
         origin_form: origin_form,
         timestamp: now.iso8601,
@@ -95,9 +99,12 @@ class WebhookService
         action_source: request ? "website" : "system_generated",
         legal_bases: Privacy::LegalBases.for_information(values[:other_information]),
         lead_id: event_name != "form_submitted" && event_name != "test_webhook" ? values[:id]&.to_s : nil,
-        business_type: values[:business_type],
-        property_id: values[:property_id],
-        property_code: values[:property_code],
+        business_type: { "sale" => "venda", "rent" => "locacao" }.fetch(values[:business_type].to_s, values[:business_type]),
+        value: values[:value],
+        currency: values[:value].present? ? (values[:currency].presence || "BRL") : nil,
+        user_data: lead_event ? lead_user_data(values) : nil,
+        property_id: property_code&.to_s,
+        property_code: property_code,
         placement: values[:placement],
         client_ip_address: request&.remote_ip,
         client_user_agent: request&.user_agent,
@@ -107,6 +114,17 @@ class WebhookService
     end
 
     public :build_payload
+
+    def lead_user_data(values)
+      first_name, last_name = (values[:name].presence || values[:client_name]).to_s.strip.split(/\s+/, 2)
+      phone = Phones::Normalizer.call(values[:phone].presence || values[:client_phone]).presence
+      {
+        email_address: values[:email].presence || values[:client_email].presence,
+        phone_number: phone ? "+#{phone}" : nil,
+        external_id: values[:id]&.to_s,
+        address: { first_name: first_name.presence, last_name: last_name.presence }.compact.presence
+      }.compact
+    end
 
     def browser_identifiers(request)
       return {} unless request && request.cookies["unitymob_lgpd_consent"] == "accepted"
