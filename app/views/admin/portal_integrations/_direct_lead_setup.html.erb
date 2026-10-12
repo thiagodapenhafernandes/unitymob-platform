@@ -1,0 +1,16 @@
+<section id="portal-direct-leads" aria-label="Preparação do recebimento direto de leads">
+<%= ax_operational_panel(eyebrow: "Leads", title: "Recebimento direto", class_name: "tw-mt-4") do %>
+  <%= ax_badge("Aguardando habilitação do portal", tone: :amber) %>
+  <p class="ax-field__hint tw-mt-3">A publicação de imóveis continua independente. Este canal ainda não tem recebimento direto confirmado. O suporte precisa fornecer o contrato técnico antes da ativação.</p>
+  <%= ax_field_group(title: "Solicitação ao suporte", class_name: "tw-mt-4") do %>
+    <p class="tw-mb-3">Envie de um e-mail cadastrado na conta para <strong><%= setup[:contact] %></strong>.</p>
+    <div data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
+      <%= text_area_tag "portal_support_request", setup[:request], readonly: true, rows: 12, class: "ax-control", aria: { label: "Solicitação de recebimento direto de leads" }, data: { clipboard_target: "source" } %>
+      <button type="button" class="ax-btn ax-btn--secondary ax-btn--sm tw-mt-3" data-action="clipboard#copy">
+        <span data-clipboard-target="content">Copiar solicitação</span>
+      </button>
+    </div>
+  <% end %>
+  <p class="ax-field__hint tw-mt-4">Depois da resposta: validar autenticação e payload, configurar o conector por conta, testar um lead e seu reenvio, conferir o imóvel e a distribuição. Só então marcar o recebimento como confirmado.</p>
+<% end %>
+</section>

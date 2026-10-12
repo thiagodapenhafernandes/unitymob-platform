@@ -10,7 +10,7 @@
 
 <%= ax_workspace_heading(eyebrow: "Integrações · Distribuição", icon: "building", title: "Portais", pills: [screen_title], subtitle: "Envie imóveis aos portais e receba leads na sua conta.", metrics: [{ value: current_preview[:eligible_count].to_i, label: "elegíveis" }]) %>
 
-<%= ax_operational_panel(title: "Confirmações por portal", class_name: "tw-mb-4") do %>
+<%= ax_collapsible_card(title: "Confirmações por portal", collapse_id: "portal-confirmations", collapsed: true, class_name: "tw-mb-4") do %>
   <div class="ax-table-wrap">
     <table class="ax-table" aria-label="Confirmações por portal">
       <thead><tr>
@@ -29,7 +29,7 @@
               <td><%= portal_lead_connection_badge(@lead_integration) %><small class="ax-field__hint tw-block">Grupo OLX · confirmação conjunta</small></td>
               <td><%= @lead_integration.last_lead_at.present? ? l(@lead_integration.last_lead_at, format: :short) : "Nenhum confirmado" %></td>
             <% else %>
-              <td>Sem integração de leads neste canal</td>
+              <td>Sem integração de leads neste canal<% if portal_direct_lead_setup(integration) %><small class="tw-block"><%= link_to "Preparar recebimento direto", admin_portal_integrations_path(portal: portal, anchor: "portal-direct-leads"), class: "ax-link" %></small><% end %></td>
               <td>Não confirmado</td>
             <% end %>
           </tr>
@@ -270,6 +270,10 @@
       </div>
     <% end %>
     </section>
+
+    <% if (direct_setup = portal_direct_lead_setup(current_integration)) %>
+      <%= render "admin/portal_integrations/direct_lead_setup", integration: current_integration, setup: direct_setup %>
+    <% end %>
 
     <% if current_integration.grupozap_family? %>
       <section id="portal-leads" aria-label="Recebimento de leads do portal" hidden>
