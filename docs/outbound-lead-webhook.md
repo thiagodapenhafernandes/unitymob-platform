@@ -114,3 +114,18 @@ de aparecer na sessão de prévia; siga o procedimento do container para debug.
 A captura usa `lead_created` ou `lead_inquiry`. `qualified_lead` corresponde à
 qualificação no CRM e exige seleção desse evento na configuração do webhook.
 `test_webhook` é diagnóstico e não deve ser configurado como conversão real.
+
+## Correlação de entrega
+
+`WebhookDeliveryJob` emite `[WEBHOOK_DELIVERY]` seguido de JSON com `event_name`,
+`event_id`, `transaction_id`, `origin_form`, `destination_host`, `http_status`,
+`status` e `attempt`. Aceita payload com chaves string ou symbol. O destino é
+somente o host: caminho, query, contatos e mensagem bruta do transporte não são
+registrados. `failed` mantém DeliveryError e o retry existente de cinco tentativas.
+
+`delivered` significa resposta HTTP de sucesso; não comprova que o consumidor
+interpretou o evento ou disparou tags. Correlacionar o mesmo event_id no destino.
+Eventos antigos sem IDs continuam entregáveis e aparecem com IDs nulos.
+Não há backfill de logs nem armazenamento adicional de payloads pessoais.
+
+O botão de teste do admin envia sempre dados fictícios completos (contato, imóvel, valor, IDs de anúncios, cookies e contexto HTTP), com `event_name: test_webhook` e `diagnostic: true`. Cada clique recebe IDs novos, sem criar lead ou alterar uma etapa. O receptor deve excluir eventos de diagnóstico das conversões reais. Os identificadores de anúncio de teste não correspondem a cliques válidos.

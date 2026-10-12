@@ -9,3 +9,7 @@ A persistência de Lead mantém callbacks de auditoria, roteamento, exportação
 A validação de novos leads registra a política Unitymob em `other_information.unitymob_data_processing_policy`; o cadastro manual pode escolher a base. Ver [política](../../integrations-legal-bases.md). O registro não comprova consentimento do titular nem substitui oposição/retirada.
 
 `Leads::OutboundWebhook` seleciona eventos/destinos; `WebhookService` prepara o payload antes de enfileirar; o job entrega o mesmo payload durante retries, mantendo event_id. Templates personalizados de automação conservam contrato próprio. Ver [envelope e eventos](../../outbound-lead-webhook.md).
+
+A correlação das tentativas de saída pertence ao `WebhookDeliveryJob`, não aos
+controllers/receptores. IDs do envelope são preservados no retry; logs seguros
+registram host e status HTTP, sem contato, caminho ou query do destino.
