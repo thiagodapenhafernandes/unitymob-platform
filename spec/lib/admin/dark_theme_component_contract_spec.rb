@@ -709,6 +709,18 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     File.read(File.expand_path("../../../app/views/admin/property_settings/edit.html.erb", __dir__))
   end
 
+  let(:ai_property_search_settings_view) do
+    File.read(File.expand_path("../../../app/views/admin/shared/ai/_property_search_settings.html.erb", __dir__))
+  end
+
+  let(:ai_property_search_sharing_view) do
+    File.read(File.expand_path("../../../app/views/admin/shared/ai/_property_search_sharing.html.erb", __dir__))
+  end
+
+  let(:ai_interest_intelligence_settings_view) do
+    File.read(File.expand_path("../../../app/views/admin/shared/ai/_interest_intelligence_settings.html.erb", __dir__))
+  end
+
   let(:property_settings_review_workflow_view) do
     File.read(File.expand_path("../../../app/views/admin/property_settings/review_workflow.html.erb", __dir__))
   end
@@ -723,6 +735,10 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   let(:webhook_settings_form_view) do
     File.read(File.expand_path("../../../app/views/admin/webhook_settings/_form.html.erb", __dir__))
+  end
+
+  let(:webhook_test_modal_view) do
+    File.read(File.expand_path("../../../app/views/admin/webhook_settings/_test_modal.html.erb", __dir__))
   end
 
   let(:webhook_outbound_settings_view) do
@@ -2108,28 +2124,31 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   end
 
   it "organiza a busca inteligente em areas equilibradas e controles dark" do
+    ai_search_view = ai_property_search_settings_view + ai_property_search_sharing_view
+    expect(ai_property_search_settings_view).to include(
+      'title: "Disponibilidade e acesso"',
+      'title: "Como a busca interpreta"',
+      'Avançado: contexto do catálogo',
+      'title: "Resultados e mensagens"'
+    )
     expect(property_settings_edit_view).to include(
-      'property-settings-ai-panel--activation',
-      'property-settings-ai-panel--scope',
-      'property-settings-ai-panel--context',
-      'property-settings-ai-panel--access',
       'property-settings-ai-panel--aliases',
-      'property-settings-ai-panel--sharing',
       'property-settings-ai-panel--learning'
     )
-    expect(property_settings_edit_view.scan(/property-settings-sharing-group"/).size).to eq(4)
-    expect(property_settings_edit_view.scan(/ax_text_field\(/).size).to be >= 25
-    expect(property_settings_edit_view.scan(/ax_number_field\(/).size).to be >= 15
-    expect(property_settings_edit_view).to include("ax_autocomplete_select_field(", "type: :textarea")
-    expect(property_settings_edit_view).not_to match(/<label class="ax-field[^>]*>[\s\S]*?<%=\s*f\.(?:text_field|text_area|number_field|select)/)
-    expect(property_settings_edit_view).to include(
+    expect(ai_property_search_sharing_view).to include('title: "Compartilhamento e captação"')
+    expect(ai_property_search_sharing_view.scan(/property-settings-sharing-group"/).size).to eq(4)
+    expect(ai_search_view.scan(/ax_text_field\(/).size).to be >= 25
+    expect(ai_search_view.scan(/ax_number_field\(/).size).to be >= 15
+    expect(ai_property_search_settings_view).to include("ax_autocomplete_select_field(", "admin/shared/ui/expandable_textarea")
+    expect(ai_search_view).not_to match(/<label class="ax-field[^>]*>[\s\S]*?<%=\s*f\.(?:text_field|text_area|number_field|select)/)
+    expect(ai_property_search_sharing_view).to include(
       'title: "Seleção e validade"',
       'title: "Página pública"',
       'title: "Identificação e lead"',
-      'title: "Mensagens operacionais"',
-      'ax_inline_notice(tone: :info',
-      'render "admin/development_aliases/list"'
+      'title: "Mensagens operacionais"'
     )
+    expect(ai_property_search_settings_view).to include('ax_inline_notice(tone: :info')
+    expect(property_settings_edit_view).to include('render "admin/development_aliases/list"')
     expect(File.read(File.expand_path("../../../app/views/admin/development_aliases/_list.html.erb", __dir__))).to include('label: "Remover nome alternativo #{alias_record.name}"')
     expect(stylesheet).to include(
       "property-settings-ai-fields",
@@ -3704,7 +3723,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(webhook_outbound_settings_view).not_to include('lead_share_tracking_days')
     expect(webhook_outbound_settings_view).to include("ax_operational_panel(", 'class="ax-table-wrap"')
     expect(webhook_outbound_settings_view).to include("ax-table__col--w-120", "ax-table__col--sm", "ax-table__col--md")
-    expect(webhook_outbound_settings_view).to include("test_admin_webhook_setting_path", "edit_admin_webhook_setting_path", "admin_webhook_setting_path")
+    expect(webhook_outbound_settings_view).to include("edit_admin_webhook_setting_path", "admin_webhook_setting_path")
+    expect(webhook_outbound_settings_view).to include('data-ax-modal-open="webhookTest', 'render "test_modal"')
+    expect(webhook_test_modal_view).to include("ax_quick_modal(", "test_admin_webhook_setting_path", 'scope: :webhook_test')
     expect(webhook_outbound_settings_view).not_to include("share_tracking_admin_webhook_settings_path")
   end
 
@@ -4406,16 +4427,16 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   end
 
   it "organiza a busca inteligente por grupos funcionais responsivos" do
-    view = File.read(File.expand_path("../../../app/views/admin/property_settings/edit.html.erb", __dir__))
+    view = File.read(File.expand_path("../../../app/views/admin/shared/ai/_property_search_settings.html.erb", __dir__))
 
     expect(view).to include(
       'class_name: "property-settings-ai-search-group"',
       'title: "Recursos da busca"',
-      'title: "Interpretação e mensagens"',
-      'title: "Consulta e mensagens"',
-      'class="property-settings-ai-metrics"',
-      'title: "Buscas recentes"'
+      'title: "Como a busca interpreta"',
+      'title: "Apresentação dos resultados"',
+      'class="property-settings-ai-metrics"'
     )
+    expect(property_settings_edit_view).to include('title: "Buscas recentes"')
     expect(stylesheet).to include(
       ".property-settings-ai-search-groups { display: grid; gap: 12px; }",
       ".property-settings-ai-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));"
@@ -4430,7 +4451,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       '"Tema pessoal:',
       "Cada usuário continua escolhendo individualmente"
     )
-    expect(layout_settings_edit_view).to include('type: :textarea', 'class: "layout-settings-interest__textarea"')
+    expect(ai_interest_intelligence_settings_view).to include('admin/shared/ui/expandable_textarea', 'ax-panel--settings', 'layout_setting[interest_intelligence_instructions]')
     expect(stylesheet).to include(
       'html[data-admin-theme="dark"] .layout-settings-interest__toggle',
       'html[data-admin-theme="dark"] .layout-settings-interest__weights',

@@ -76,6 +76,10 @@ class WebhookService
       { success: false, status: nil, error: "#{e.class}: #{e.message}" }
     end
 
+    def test_payload(data, tenant:)
+      build_payload("test_webhook", data.merge(diagnostic: true), tenant: tenant)
+    end
+
     private
     
     def build_payload(origin_form, data, options = {})
@@ -95,7 +99,7 @@ class WebhookService
         diagnostic: values[:diagnostic] == true ? true : nil,
         origin_form: origin_form,
         timestamp: now.iso8601,
-        event_name: event_name,
+        event_name: origin_form.to_s == "test_webhook" ? "lead_crm" : event_name,
         event_id: event_id,
         transaction_id: event_id,
         event_timestamp: now.to_i,

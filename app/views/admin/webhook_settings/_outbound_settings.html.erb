@@ -42,7 +42,7 @@
               </td>
               <td class="ax-num">
                 <span class="tw-inline-flex tw-gap-0.5">
-                  <%= button_to test_admin_webhook_setting_path(webhook), method: :post, form_class: "tw-inline", class: "ax-ico-btn", title: "Testar envio", data: { turbo_confirm: "Enviar payload de teste?" } do %><i class="bi bi-send"></i><% end %>
+                  <button type="button" class="ax-ico-btn" title="Testar envio" data-ax-modal-open="webhookTest<%= webhook.id %>"><i class="bi bi-send"></i></button>
                   <%= link_to edit_admin_webhook_setting_path(webhook), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
                   <%= button_to admin_webhook_setting_path(webhook), method: :delete, form_class: "tw-inline", class: "ax-ico-btn", title: "Excluir", data: { turbo_confirm: "Tem certeza que deseja excluir este webhook?" } do %><i class="bi bi-trash"></i><% end %>
                 </span>
@@ -61,3 +61,7 @@
     </div>
   <% end %>
 </div>
+
+<% webhook_settings.each do |webhook| %>
+  <%= render "test_modal", webhook: webhook %>
+<% end %>

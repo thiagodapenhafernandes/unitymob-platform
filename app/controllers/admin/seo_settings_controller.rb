@@ -8,7 +8,6 @@ class Admin::SeoSettingsController < Admin::BaseController
     @seo_settings = seo_inventory
                     .order(last_accessed_at: :desc, access_count: :desc, page_name: :asc)
                     .paginate(page: params[:page], per_page: 10)
-    @seo_strategy_prompt = Ai::SeoContentService.instructions(tenant: current_tenant)
     @auto_inventory_enabled = Seo::PageTracker.enabled?(tenant: current_tenant)
     @auto_apply_enabled = Seo::PageTracker.auto_apply?(tenant: current_tenant)
     @auto_ai_enabled = Seo::PageTracker.auto_ai?(tenant: current_tenant)
@@ -55,16 +54,6 @@ class Admin::SeoSettingsController < Admin::BaseController
     redirect_to admin_seo_settings_path, notice: 'SEO removido!'
   end
 
-  def update_strategy
-    Setting.set(Seo::PageTracker::AUTO_INVENTORY_SETTING, params[:seo_auto_inventory_enabled] == "1" ? "1" : "0", "Criar SEO automaticamente por acesso", tenant: current_tenant)
-    Setting.set(Seo::PageTracker::AUTO_APPLY_SETTING, params[:seo_auto_apply_enabled] == "1" ? "1" : "0", "Aplicar SEO técnico automaticamente no público", tenant: current_tenant)
-    Setting.set(Seo::PageTracker::AUTO_AI_SETTING, params[:seo_ai_auto_generate_enabled] == "1" ? "1" : "0", "Gerar SEO com IA automaticamente", tenant: current_tenant)
-    Seo::DiscoveryService.save_enabled!(params[:seo_discovery_enabled] == "1", tenant: current_tenant)
-    Ai::SeoContentService.save_instructions!(params[:seo_ai_strategy_prompt], tenant: current_tenant)
-
-    redirect_to admin_seo_settings_path, notice: "Estratégia de SEO atualizada."
-  end
-
   def discover
     SeoDiscoveryJob.perform_later(generate_ai: params[:generate_ai] != "0")
     redirect_to admin_seo_settings_path, notice: "Descoberta SEO iniciada em segundo plano."
@@ -73,7 +62,7 @@ class Admin::SeoSettingsController < Admin::BaseController
   def generate_ai
     unless Ai::SeoContentService.connected?(tenant: current_tenant)
       return render_generate_ai_response(
-        alert: "Configure o token da OpenAI em Integrações > IA antes de gerar SEO.",
+        alert: "Configure o token da #{Ai::ModuleConfiguration.new(:seo, tenant: current_tenant).provider.label} em Integrações > IA antes de gerar SEO.",
         status: :unprocessable_entity
       )
     end

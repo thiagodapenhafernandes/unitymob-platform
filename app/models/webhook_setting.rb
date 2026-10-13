@@ -90,7 +90,15 @@ class WebhookSetting < ApplicationRecord
     
     target_url = whatsapp_webhook_url.presence || webhook_url
     
-    WebhookService.send_form_data('test_webhook', {
+    WebhookService.send_form_data('test_webhook', test_data, url: target_url, tenant: tenant)
+  end
+
+  def test_payload
+    WebhookService.test_payload(test_data, tenant: tenant)
+  end
+
+  def test_data
+    {
       message: "Test webhook from #{tenant&.name.presence || 'Unitymob'}",
       timestamp: Time.current.iso8601,
       utm_source: "unitymob_test",
@@ -105,7 +113,7 @@ class WebhookSetting < ApplicationRecord
       gclid: "TEST_GCLID", gbraid: "TEST_GBRAID", wbraid: "TEST_WBRAID",
       fbc: "fb.1.1760100000000.TEST", fbp: "fb.1.1760100000000.1234567890",
       client_id: "1234567890.1760100000"
-    }, url: target_url, tenant: tenant)
+    }
   end
 
   private

@@ -8,7 +8,7 @@
   <%= button_to discover_admin_seo_settings_path, method: :post, class: "ax-contextbar__button", data: { turbo_submits_with: "Descobrindo..." } do %>
     <i class="bi bi-compass"></i><span>Descobrir SEO</span>
   <% end %>
-  <%= admin_contextbar_button("Estratégia IA", icon: "stars", data: { ax_modal_open: "#seoStrategyModal" }) %>
+  <%= admin_contextbar_link("Estratégia IA", admin_ai_integration_path(anchor: "ai-integration-content"), icon: "stars") %>
   <%= admin_contextbar_link("Redirects", admin_seo_redirects_path, icon: "signpost-split") %>
   <%= admin_contextbar_link("Novo SEO", new_admin_seo_setting_path, icon: "plus-circle", primary: true) %>
 <% end %>
@@ -221,35 +221,4 @@
 
     <%= ax_pagination(@seo_settings, params: request.query_parameters, class_name: "ax-pagination--embedded", show_summary: false) %>
   <% end %>
-</div>
-
-<div class="ax-quick-modal ax-quick-modal--lg seo-strategy-modal" id="seoStrategyModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
-  <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
-    <header class="ax-quick-modal__header">
-      <h5 class="ax-quick-modal__title"><i class="bi bi-stars ax-quick-modal__title-icon"></i> Estratégia da IA para SEO</h5>
-      <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
-    </header>
-    <%= form_with url: update_strategy_admin_seo_settings_path, method: :patch, local: true do %>
-      <div class="ax-quick-modal__body">
-        <div class="seo-strategy-toggle-grid">
-          <%= ax_switch_field(name: "seo_auto_inventory_enabled", checked: @auto_inventory_enabled, class_name: "ax-switch--card",
-                              label: "Criar SEO ao acessar", description: "Cada página pública visitada entra no inventário.") %>
-          <%= ax_switch_field(name: "seo_auto_apply_enabled", checked: @auto_apply_enabled, class_name: "ax-switch--card",
-                              label: "Aplicar por padrão", description: "Registros novos já valem no site público.") %>
-          <%= ax_switch_field(name: "seo_ai_auto_generate_enabled", checked: @auto_ai_enabled, class_name: "ax-switch--card",
-                              label: "Gerar IA automaticamente", description: "Título, descrição e insights por página, sem clique.") %>
-          <%= ax_switch_field(name: "seo_discovery_enabled", checked: @seo_discovery_enabled, class_name: "ax-switch--card",
-                              label: "Descobrir oportunidades todo dia", description: "Rotina diária que avalia e cria páginas indexáveis.") %>
-        </div>
-
-        <label class="ax-label tw-font-bold" for="seo_ai_strategy_prompt">Instruções para IA</label>
-        <%= text_area_tag :seo_ai_strategy_prompt, @seo_strategy_prompt, rows: 18, class: "ax-control seo-strategy-prompt" %>
-        <p class="seo-strategy-help">Essas instruções guiam a IA em todas as páginas, especialmente listagens por filtros.</p>
-      </div>
-      <footer class="ax-quick-modal__footer">
-        <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
-        <%= submit_tag "Salvar estratégia", class: "ax-btn ax-btn--primary" %>
-      </footer>
-    <% end %>
-  </div>
 </div>

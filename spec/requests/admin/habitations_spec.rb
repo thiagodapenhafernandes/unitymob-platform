@@ -796,6 +796,16 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include('habitations-view-toggle__item is-active')
   end
 
+  it "respeita a aba pendente ao buscar o código de um imóvel publicado" do
+    published = create(:habitation, :broker_intake, admin_user: admin, intake_status: "published", codigo: "PUB-TAB-#{SecureRandom.hex(6)}", titulo_anuncio: "Publicado fora da revisão")
+    get admin_habitations_path(intake_review: "pending", ownership: "all", codigo: published.codigo)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include(published.titulo_anuncio)
+
+    get admin_habitations_path(intake_review: "all", ownership: "all", codigo: published.codigo)
+    expect(response.body).to include(published.titulo_anuncio)
+  end
+
   it "encontra por código captação aguardando publicação no site" do
     approved = create(
       :habitation,

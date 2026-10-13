@@ -1,0 +1,68 @@
+<%# locals: module_key, metadata %>
+<%
+  configuration = Ai::ModuleConfiguration.new(module_key, tenant: current_tenant)
+  binding = configuration.binding
+  namespace = "ai[modules][#{module_key}]"
+  exception = binding["provider"].present? || binding["model"].present?
+  presets = Ai::Provider.all.transform_values do |provider|
+    { label: provider.label,
+      modelId: "ai_#{provider.key}_#{configuration.kind == :content ? 'model' : configuration.kind == :interpretation ? 'voice_model' : 'voice_transcription_model'}_choice",
+      customId: "ai_#{provider.key}_#{configuration.kind == :content ? 'model' : configuration.kind == :interpretation ? 'voice_model' : 'voice_transcription_model'}_custom",
+      fallback: configuration.kind == :transcription ? provider.catalog_class.resolve_transcription_model(Ai::Provider::AUTOMATIC_VALUE) : provider.catalog_class.resolve_response_model(Ai::Provider::AUTOMATIC_VALUE) }
+  end
+%>
+<tr role="row">
+  <th scope="row" role="rowheader">
+    <strong><%= metadata.fetch(:label) %></strong>
+    <div class="tw-text-xs tw-text-ink-muted"><%= metadata.fetch(:tab) %></div>
+  </th>
+  <td colspan="2" role="cell">
+    <div data-controller="ax-ai-module-binding conditional-reveal" data-ax-ai-module-binding-presets-value="<%= presets.to_json %>">
+      <strong data-ax-ai-module-binding-target="summary"><%= configuration.provider.label %> · <%= configuration.resolved_model %></strong>
+      <div class="tw-text-xs tw-text-ink-muted tw-mb-3" data-ax-ai-module-binding-target="status"><%= exception ? "Exceção configurada" : "Herdando o preset da conta" %></div>
+      <%= hidden_field_tag "#{namespace}[exception_enabled]", "0", id: nil %>
+      <%= ax_switch_field(name: "#{namespace}[exception_enabled]", id: "ai_module_#{module_key}_exception", checked: exception,
+            label: "Configurar exceção", input_html: { aria: { label: "Configurar exceção · #{metadata.fetch(:label)}" },
+            data: { conditional_reveal_target: "trigger", ax_ai_module_binding_target: "exception", action: "change->conditional-reveal#sync" } }) %>
+      <div class="tw-mt-3" data-conditional-reveal-target="panel" <%= "hidden" unless exception %>>
+    <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="select" data-conditional-reveal-fallback-selector-value="#ai_provider">
+      <%= ax_field_grid do %>
+        <div class="ax-span-5">
+          <%= ax_standalone_select_field(name: "#{namespace}[provider]", id: "ai_module_#{module_key}_provider",
+                label: "Provedor", class_name: "ax-field--stacked", aria: { label: "Provedor · #{metadata.fetch(:label)}" },
+                choices: [["Padrão da conta", ""]] + Ai::Provider.all.map { |key, provider| [provider.label, key] },
+                selected: binding["provider"], disabled: !exception,
+                data: { conditional_reveal_target: "trigger", ax_ai_module_binding_target: "provider", action: "change->conditional-reveal#sync" }) %>
+        </div>
+        <div class="ax-span-7">
+          <% Ai::Provider.all.each_value do |provider| %>
+            <%
+              selected = configuration.provider.key == provider.key ? binding["model"].to_s : ""
+              custom = selected.present? && !Ai::Provider.automatic?(selected) && !(configuration.kind == :transcription ? provider.known_transcription_model?(selected) : provider.known_response_model?(selected))
+              choices = configuration.kind == :transcription ? provider.transcription_model_options(selected: selected) : provider.response_model_options(selected: selected)
+              model_namespace = "#{namespace}[models][#{provider.key}]"
+              visible = configuration.provider.key == provider.key
+            %>
+            <div data-conditional-reveal-target="panel" data-conditional-reveal-values="<%= provider.key %>" <%= "hidden" unless visible %>>
+              <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+                <%= ax_standalone_select_field(name: "#{model_namespace}[choice]", id: "ai_module_#{module_key}_#{provider.key}_model",
+                      label: "Modelo", class_name: "ax-field--stacked", aria: { label: "Modelo · #{metadata.fetch(:label)} · #{provider.label}" },
+                      choices: [["Herdar modelo do provedor", ""]] + choices,
+                      selected: custom ? Ai::Provider::CUSTOM_VALUE : selected,
+                      disabled: !exception || !visible,
+                      data: { conditional_reveal_target: "trigger", ax_ai_module_binding_target: "model", provider: provider.key, action: "change->conditional-reveal#sync" }) %>
+                <div data-conditional-reveal-target="panel" data-conditional-reveal-values="<%= Ai::Provider::CUSTOM_VALUE %>" <%= "hidden" unless custom %>>
+                  <%= ax_standalone_field(name: "#{model_namespace}[custom]", id: "ai_module_#{module_key}_#{provider.key}_custom",
+                        label: "Modelo personalizado", class_name: "ax-field--stacked", aria: { label: "Modelo personalizado · #{metadata.fetch(:label)} · #{provider.label}" }, value: custom ? selected : "",
+                        disabled: !exception || !visible || !custom, maxlength: 200, data: { conditional_required: true, ax_ai_module_binding_target: "custom", provider: provider.key }) %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+      </div>
+    </div>
+  </td>
+</tr>

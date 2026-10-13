@@ -1,0 +1,40 @@
+<div class="ax-integration-sections">
+  <%= form_with url: admin_ai_integration_path(anchor: "ai-integration-content"), method: :patch, scope: :ai, local: true do |f| %>
+    <%= f.hidden_field :section, value: "content", id: nil %>
+    <%= ax_operational_panel(eyebrow: "Imóveis", title: "Conteúdo dos imóveis", class_name: "ax-panel--settings", actions: render("admin/shared/ai/module_binding_badge", module_key: "property_content")) do %>
+      <div class="ax-integration-sections">
+        <%= render "admin/shared/ui/expandable_textarea", name: "ai[property_enrichment_prompt]", id: "ai_property_enrichment_prompt",
+              label: "Instruções para autopreenchimento e enriquecimento", value: @property_enrichment_prompt, rows: 8,
+              hint: "Oriente títulos, descrições e SEO dos imóveis. Estas instruções valem para as próximas sugestões; o conteúdo existente não é alterado ao salvar." %>
+        <details class="ax-studio-advanced">
+          <summary><i class="bi bi-sliders" aria-hidden="true"></i><span>Ajustes avançados da resposta</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+          <%= ax_field_group(title: "Parâmetros da resposta", token: "IA") do %>
+            <%= ax_field_grid do %>
+              <%= ax_number_field(form: f, method: :temperature, label: "Criatividade (Temperature)", class_name: "ax-span-3", min: 0, max: 2, step: 0.01, value: @response_parameters.fetch(:temperature), hint: "Padrão conservador: 0,20.") %>
+              <%= ax_number_field(form: f, method: :top_p, label: "Diversidade (Top P)", class_name: "ax-span-3", min: 0, max: 1, step: 0.01, value: @response_parameters.fetch(:top_p), hint: "Padrão: 0,80.") %>
+              <%= ax_number_field(form: f, method: :frequency_penalty, label: "Repetições (Frequency penalty)", class_name: "ax-span-3", min: -2, max: 2, step: 0.01, value: @response_parameters.fetch(:frequency_penalty), hint: "Padrão: 0,50.") %>
+              <%= ax_number_field(form: f, method: :presence_penalty, label: "Novos termos (Presence penalty)", class_name: "ax-span-3", min: 0, max: 2, step: 0.01, value: @response_parameters.fetch(:presence_penalty), hint: "Padrão: 0,20.") %>
+            <% end %>
+          <% end %>
+        </details>
+        <div class="ax-integration-actions"><%= f.submit "Salvar conteúdo dos imóveis", class: "ax-btn ax-btn--primary" %></div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= form_with url: admin_ai_integration_path(anchor: "ai-integration-content"), method: :patch, local: true do %>
+    <%= hidden_field_tag "ai[section]", "seo", id: nil %>
+    <%= ax_operational_panel(eyebrow: "Site público", title: "SEO do site", class_name: "ax-panel--settings", actions: safe_join([
+          render("admin/shared/ai/module_binding_badge", module_key: "seo"),
+          link_to("Abrir inventário", admin_seo_settings_path, class: "ax-btn ax-btn--ghost ax-btn--sm")
+        ])) do %>
+      <div class="ax-integration-sections">
+        <%= render "admin/shared/ai/seo_strategy_fields", auto_inventory_enabled: @seo_auto_inventory_enabled, auto_apply_enabled: @seo_auto_apply_enabled,
+              auto_ai_enabled: @seo_auto_ai_enabled, discovery_enabled: @seo_discovery_enabled, strategy_prompt: @seo_strategy_prompt %>
+        <div class="ax-integration-actions"><%= submit_tag "Salvar SEO", class: "ax-btn ax-btn--primary" %></div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= render "content_batch" %>
+</div>

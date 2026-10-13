@@ -3,7 +3,7 @@
 O contrato legado `origin_form`, `timestamp`, `source` e `data` permanece.
 A ampliação adiciona no nível principal:
 
-- `event_name`: `lead_created` para nova captura WhatsApp; `lead_inquiry` para consulta complementar; `form_submitted` para os demais formulários (o nome original continua em `origin_form`). O teste administrativo envia `test_webhook`.
+- `event_name`: `lead_created` para nova captura WhatsApp; `lead_inquiry` para consulta complementar; `form_submitted` para os demais formulários (o nome original continua em `origin_form`). O teste administrativo envia `event_name: lead_crm`, mantendo `origin_form: test_webhook` e `diagnostic: true`.
 - `event_id`: UUID por envio, compartilhado pelos destinos e preservado no payload durante retries. Não é um identificador de qualificação nem deduplica duas consultas diferentes.
 - `transaction_id`: mesmo UUID de `event_id`, compartilhado pelos destinos e preservado nos retries. No GTM, mapear para o ID da transação da tag Google Ads (ou `order_id` ao usar a API). Não deduplica eventos gerados separadamente.
 - `event_timestamp`: Unix em segundos; `timestamp` continua ISO 8601.
@@ -19,7 +19,7 @@ A ampliação adiciona no nível principal:
 Campos indisponíveis são omitidos. Não são criados cookies nem inventados IDs.
 `user_data` nos eventos de lead inclui email_address, phone_number normalizado com +, external_id e address.first_name/last_name. O sobrenome é o restante do nome informado. Campos ausentes são omitidos; formulários genéricos e testes administrativos não são apresentados como leads. Os dados originais permanecem em `data`.
 IP e identificadores de navegador também são dados de rastreamento vinculáveis a pessoas.
-`value` é enviado somente quando fornecido pelo chamador; nesse caso `currency` usa a moeda informada ou BRL. Não usamos o preço do imóvel como valor de conversão. O teste sintético continua identificado como test_webhook; o exemplo completo de lead fica no preview da configuração.
+`value` é enviado somente quando fornecido pelo chamador; nesse caso `currency` usa a moeda informada ou BRL. Não usamos o preço do imóvel como valor de conversão. O teste sintético usa event_name lead_crm e continua identificado por origin_form test_webhook e diagnostic true; o exemplo completo de lead fica no preview da configuração.
 
 ## Eventos selecionáveis por configuração
 
@@ -113,7 +113,7 @@ de aparecer na sessão de prévia; siga o procedimento do container para debug.
 
 A captura usa `lead_created` ou `lead_inquiry`. `qualified_lead` corresponde à
 qualificação no CRM e exige seleção desse evento na configuração do webhook.
-`test_webhook` é diagnóstico e não deve ser configurado como conversão real.
+Eventos com `diagnostic: true` são diagnósticos e devem ser excluídos das conversões reais, mesmo com `event_name: lead_crm`.
 
 ## Correlação de entrega
 
@@ -128,6 +128,12 @@ interpretou o evento ou disparou tags. Correlacionar o mesmo event_id no destino
 Eventos antigos sem IDs continuam entregáveis e aparecem com IDs nulos.
 Não há backfill de logs nem armazenamento adicional de payloads pessoais.
 
-O botão de teste do admin envia sempre dados fictícios completos (contato, imóvel, valor, IDs de anúncios, cookies e contexto HTTP), com `event_name: test_webhook` e `diagnostic: true`. Cada clique recebe IDs novos, sem criar lead ou alterar uma etapa. O receptor deve excluir eventos de diagnóstico das conversões reais. Os identificadores de anúncio de teste não correspondem a cliques válidos.
+O botão de teste do admin envia sempre dados fictícios completos (contato, imóvel, valor, IDs de anúncios, cookies e contexto HTTP), com `event_name: lead_crm`, `origin_form: test_webhook` e `diagnostic: true`. Cada clique recebe IDs novos, sem criar lead ou alterar uma etapa. O receptor deve excluir eventos de diagnóstico das conversões reais. Os identificadores de anúncio de teste não correspondem a cliques válidos.
 
 `pais: "Brasil"` e `pais_iso: "BR"` são enviados na raiz em todos os eventos, inclusive no teste do admin. Representam o contexto brasileiro padrão da integração, não geolocalização ou residência verificada do lead.
+
+### Formulário de teste
+
+Na listagem e na edição, o botão abre o mesmo modal HTML com dados fictícios editáveis. Cada abertura renova `event_id`, `transaction_id` e o timestamp; o nome padrão é `lead_crm`. O usuário pode alterar evento, contato, conversão, imóvel, rastreamento e contexto. O servidor valida os campos, fixa `diagnostic: true` e `origin_form: test_webhook`, e usa somente a URL salva no webhook autorizado da conta. Não cria lead nem altera a configuração.
+
+O modal mostra o status HTTP e o payload efetivamente enviado, com opção de copiar. HTTP 2xx confirma a resposta do destino, não o processamento das tags. Os campos legados `data` e `source.utm` refletem as alterações do formulário. `WebhookTestForm` concentra a montagem e validação do teste; o envio utiliza `WebhookService.deliver`.

@@ -85,7 +85,7 @@
     { id: "layout-tab-brand", icon: "type", label: "Nome da plataforma", hint: "Como o topo interno se chama" },
     { id: "layout-tab-colors", icon: "palette2", label: "Cores da plataforma", hint: "Superfícies, destaque e texto" },
     { id: "layout-tab-menu", icon: "layout-sidebar-inset", label: "Menu lateral", hint: "Cor de cada divisão" },
-    { id: "interest-intelligence-settings", icon: "bullseye", label: "Inteligência de interesse", hint: "Leitura lead e imóvel" },
+    { id: "layout-tab-ai-interest", icon: "bullseye", label: "Inteligência de interesse", hint: "Ajustes na tela de IA" },
     { id: "layout-tab-impact", icon: "diagram-3", label: "Onde cada ajuste aparece", hint: "Mapa de impacto e tokens" }
   ]
   preview_nav_items = {
@@ -104,23 +104,6 @@
     ["text_color", "Texto", "text"],
     ["border_color", "Borda", "border"]
   ]
-  interest_number_fields = [
-    ["minimum_match_score", "Score mínimo", "Compatibilidade mínima para sugerir um imóvel ao lead.", 0, 100, "pts"],
-    ["max_suggestions", "Máximo de sugestões", "Limite exibido na ficha do lead e usado nas ações.", 1, 20, nil],
-    ["strong_interest_views", "Visualizações fortes", "Visitas ao mesmo tipo de imóvel para reforçar o sinal.", 1, 20, nil],
-    ["price_tolerance_percent", "Tolerância de preço", "Margem aceita acima ou abaixo da faixa inferida.", 0, 100, "%"],
-    ["idle_without_match_hours", "Lead parado sem match", "Janela usada em jornadas de recuperação quando não há imóvel aderente.", 1, 720, "horas"]
-  ]
-  interest_weight_fields = {
-    city_weight: "Cidade", neighborhood_weight: "Bairro", category_weight: "Tipo",
-    bedrooms_weight: "Dormitórios", parking_weight: "Vagas", price_weight: "Preço"
-  }
-  interest_safeguards = [
-    ["broker_review_required", "Exigir revisão humana antes de comunicação ativa", "Mantém a inteligência como apoio de curadoria; mensagens para o lead devem passar pelo corretor ou gestor."],
-    ["requires_public_tracking_consent", "Exigir consentimento no site público", "Mostra um aviso discreto antes de rastrear navegação anônima para personalização de atendimento."],
-    ["allow_direct_lead_message", "Permitir envio direto ao lead quando não exigir revisão", "Use com cuidado. Com revisão humana ativa, a plataforma sempre cria rascunho/nota para o corretor."]
-  ]
-  interest_settings = InterestIntelligence::Settings::DEFAULTS.merge(@layout_setting.interest_intelligence_settings.to_h)
   token_hex = admin_theme_tokens.to_h { |item| [item[:token], item[:value].upcase] }
 %>
 
@@ -331,76 +314,19 @@
           </div>
         <% end %>
 
-        <%# ===== Inteligência de interesse ===== %>
-        <%= ax_studio_section(id: "interest-intelligence-settings", icon: "bullseye",
-                              class_name: "layout-settings-panel--interest-intelligence",
+        <%= ax_studio_section(id: "layout-tab-ai-interest", icon: "bullseye",
                               title: "Inteligência de interesse",
-                              subtitle: "Diretrizes para interpretar navegação, sinais do lead e compatibilidade com imóveis sem criar atrito na operação.",
-                              actions: tag.span("automação", class: "ax-badge ax-badge--blue")) do %>
-          <div class="ax-studio-group">
-            <%= ax_switch_field(form: f, method: :interest_intelligence_enabled,
-                                label: "Ativar leitura de interesse lead-imóvel",
-                                description: "Usa navegação pública, imóveis vistos, filtros e dados reais do lead para gerar eventos no builder de automação.",
-                                class_name: "ax-switch--card") %>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Instruções para a plataforma/AI</h3><p>Se o campo ficar vazio, a plataforma usa a diretriz padrão do sistema. Personalize apenas quando a conta tiver uma estratégia própria de recomendação e curadoria.</p></div>
-            <%= ax_text_field(form: f, method: :interest_intelligence_instructions, label: "Diretriz",
-                              type: :textarea, rows: 7, class: "layout-settings-interest__textarea",
-                              value: @layout_setting.interest_intelligence_instructions.presence || InterestIntelligence::SystemInstructions::DEFAULT_TEXT) %>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Sinais e limites</h3><p>Quanto o sistema exige para sugerir um imóvel e por quanto tempo espera.</p></div>
-            <%= ax_field_grid do %>
-              <% interest_number_fields.each do |key, label, hint, min, max, unit| %>
-                <div class="ax-span-4">
-                  <%= ax_standalone_field(
-                        name: "layout_setting[interest_intelligence_settings][#{key}]",
-                        id: "layout_setting_interest_intelligence_settings_#{key}",
-                        label: label,
-                        value: interest_settings[key],
-                        type: :number,
-                        suffix: unit,
-                        min: min, max: max, step: 1,
-                        hint: hint
-                      ) %>
-                </div>
-              <% end %>
+                              subtitle: "Os ajustes mudaram para a tela de IA. O conteúdo já configurado foi preservado.") do %>
+          <%= ax_inline_notice(tone: :info, icon: "stars", compact: true) do %>
+            Diretrizes, sinais, pesos e salvaguardas agora ficam em <strong>Integrações · IA</strong>, aba <strong>Leads</strong>.
+          <% end %>
+          <% if can?(:manage, :integracoes) %>
+            <%= link_to admin_ai_integration_path(anchor: "ai-integration-leads"), class: "ax-btn ax-btn--primary tw-mt-3" do %>
+              <i class="bi bi-stars ax-ico"></i><span>Abrir inteligência de interesse na tela de IA</span>
             <% end %>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Pesos da compatibilidade</h3><p>Quanto cada critério pesa no score entre o lead e o imóvel (0 a 100).</p></div>
-            <%= ax_field_grid do %>
-              <% interest_weight_fields.each do |key, label| %>
-                <div class="ax-span-2">
-                  <%= ax_standalone_field(
-                        name: "layout_setting[interest_intelligence_settings][#{key}]",
-                        id: "layout_setting_interest_intelligence_settings_#{key}",
-                        label: label,
-                        value: interest_settings[key.to_s],
-                        type: :number,
-                        min: 0, max: 100, step: 1
-                      ) %>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Salvaguardas</h3><p>Limites de comunicação e de privacidade para o uso dessa inteligência.</p></div>
-            <div class="lss-switches">
-              <% interest_safeguards.each do |key, label, description| %>
-                <%= hidden_field_tag "layout_setting[interest_intelligence_settings][#{key}]", "0", id: nil %>
-                <%= ax_switch_field(name: "layout_setting[interest_intelligence_settings][#{key}]",
-                                    id: "layout_setting_interest_intelligence_settings_#{key}",
-                                    checked: ActiveModel::Type::Boolean.new.cast(interest_settings[key]),
-                                    label: label, description: description, class_name: "ax-switch--card") %>
-              <% end %>
-            </div>
-          </div>
+          <% else %>
+            <p class="tw-text-sm tw-text-ink-muted tw-mt-3">Seu perfil não tem acesso à tela de IA. Fale com o responsável pela conta para ajustar a inteligência.</p>
+          <% end %>
         <% end %>
 
         <%# ===== Onde cada ajuste aparece ===== %>

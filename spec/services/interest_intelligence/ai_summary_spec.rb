@@ -2,8 +2,6 @@ require "rails_helper"
 
 RSpec.describe InterestIntelligence::AiSummary do
   it "returns an explainable deterministic summary when OpenAI is not configured" do
-    allow(Ai::PropertyContentService).to receive(:connected?).and_return(false)
-
     lead = create(:lead, name: "Maria")
     habitation = create(
       :habitation,

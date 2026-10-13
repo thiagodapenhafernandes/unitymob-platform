@@ -1,0 +1,156 @@
+<%# locals: f, provider, active %>
+<%
+  tenant = current_tenant
+  connected = provider.connected?(tenant: tenant)
+  dedicated = provider.dedicated_voice_api_key_configured?(tenant: tenant)
+  voice_connected = provider.voice_connected?(tenant: tenant)
+  model = provider.model(tenant: tenant)
+  model_custom = (Ai::Provider.automatic?(model) || provider.known_response_model?(model)) ? "" : model.to_s.strip
+  voice_model = provider.voice_model(tenant: tenant)
+  voice_model_custom = (Ai::Provider.automatic?(voice_model) || provider.known_response_model?(voice_model)) ? "" : voice_model.to_s.strip
+  transcription_model = provider.voice_transcription_model(tenant: tenant)
+  transcription_custom = (Ai::Provider.automatic?(transcription_model) || provider.known_transcription_model?(transcription_model)) ? "" : transcription_model.to_s.strip
+  ns = "ai[providers][#{provider.key}]"
+  custom_value = Ai::Provider::CUSTOM_VALUE
+  status_tone = connected ? :green : :amber
+%>
+<div class="ax-integration-sections tw-mt-4">
+  <div><%= ax_badge(connected ? "Token configurado" : "Informe o token para conectar", tone: status_tone) %></div>
+  <%= ax_field_group(title: "Modelos padrão") do %>
+
+    <%= ax_field_grid do %>
+    <div class="ax-span-4" data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+      <%= ax_standalone_select_field(
+            name: "#{ns}[model_choice]",
+            id: "ai_#{provider.key}_model_choice",
+            label: "Modelo de conteúdo", class_name: "ax-field--stacked",
+            choices: provider.response_model_options(api_key: provider.api_key(tenant: tenant), selected: model),
+            selected: model_custom.present? ? Ai::Provider::CUSTOM_VALUE : model,
+            hint: "Automático mantém o padrão operacional. Se ficar indisponível, o sistema tenta #{provider.fallback_response_model}.",
+            disabled: !active,
+            data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" }
+          ) %>
+      <div data-conditional-reveal-target="panel" data-conditional-reveal-values="<%= custom_value %>" <%= "hidden" unless Ai::Provider.custom?(model) %>>
+        <%= ax_standalone_field(
+              name: "#{ns}[model_custom]",
+              id: "ai_#{provider.key}_model_custom",
+              label: "Modelo de conteúdo personalizado",
+              value: model_custom, disabled: !active || model_custom.blank?,
+              placeholder: "Ex.: #{provider.default_model}",
+              hint: "Use apenas quando o modelo desejado não aparecer no select."
+            ) %>
+      </div>
+    </div>
+
+    <div class="ax-span-4" data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+      <%= ax_standalone_select_field(
+            name: "#{ns}[voice_model_choice]",
+            id: "ai_#{provider.key}_voice_model_choice",
+            label: "Modelo de interpretação", class_name: "ax-field--stacked",
+            choices: provider.response_model_options(api_key: provider.voice_api_key(tenant: tenant), selected: voice_model),
+            selected: voice_model_custom.present? ? Ai::Provider::CUSTOM_VALUE : voice_model,
+            hint: "Interpreta a busca por texto e voz no PWA.",
+            disabled: !active,
+            data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" }
+          ) %>
+      <div data-conditional-reveal-target="panel" data-conditional-reveal-values="<%= custom_value %>" <%= "hidden" unless Ai::Provider.custom?(voice_model) %>>
+        <%= ax_standalone_field(
+              name: "#{ns}[voice_model_custom]",
+              id: "ai_#{provider.key}_voice_model_custom",
+              label: "Modelo de interpretação personalizado",
+              value: voice_model_custom, disabled: !active || voice_model_custom.blank?,
+              placeholder: "Ex.: #{provider.default_model}",
+              hint: "Use apenas quando o modelo desejado não aparecer no select."
+            ) %>
+      </div>
+    </div>
+
+    <div class="ax-span-4" data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+      <%= ax_standalone_select_field(
+            name: "#{ns}[voice_transcription_model_choice]",
+            id: "ai_#{provider.key}_voice_transcription_model_choice",
+            label: "Modelo de transcrição", class_name: "ax-field--stacked",
+            choices: provider.transcription_model_options(api_key: provider.voice_api_key(tenant: tenant), selected: transcription_model),
+            selected: transcription_custom.present? ? Ai::Provider::CUSTOM_VALUE : transcription_model,
+            hint: "Se ficar indisponível, o sistema tenta #{provider.fallback_transcription_model}.",
+            disabled: !active,
+            data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" }
+          ) %>
+      <div data-conditional-reveal-target="panel" data-conditional-reveal-values="<%= custom_value %>" <%= "hidden" unless Ai::Provider.custom?(transcription_model) %>>
+        <%= ax_standalone_field(
+              name: "#{ns}[voice_transcription_model_custom]",
+              id: "ai_#{provider.key}_voice_transcription_model_custom",
+              label: "Modelo de transcrição personalizado",
+              value: transcription_custom, disabled: !active || transcription_custom.blank?,
+              placeholder: "Ex.: #{provider.default_transcription_model}",
+              hint: "Use apenas quando o modelo desejado não aparecer no select."
+            ) %>
+      </div>
+    </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_field_group(title: "Autenticação", token: "API") do %>
+  <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="radio">
+    <div class="ax-radio-group__options tw-mb-3">
+      <label class="ax-radio-group__item">
+        <%= radio_button_tag "#{ns}[auth_method]", "token", true,
+              id: "ai_#{provider.key}_auth_token",
+              class: "ax-radio-group__input",
+              disabled: !active,
+            data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } %>
+        <span class="ax-radio-group__mark" aria-hidden="true"></span>
+        <span class="ax-radio-group__text">Token da API <small class="tw-text-ink-muted">colar uma chave</small></span>
+      </label>
+      <label class="ax-radio-group__item">
+        <%= radio_button_tag "#{ns}[auth_method]", "account", false,
+              id: "ai_#{provider.key}_auth_account",
+              class: "ax-radio-group__input",
+              disabled: !active,
+            data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } %>
+        <span class="ax-radio-group__mark" aria-hidden="true"></span>
+        <span class="ax-radio-group__text">Conta <%= provider.label %> <small class="tw-text-ink-muted">navegador, sem colar token</small></span>
+      </label>
+    </div>
+
+    <div data-conditional-reveal-target="panel" data-conditional-reveal-values="token">
+      <div class="tw-mb-3">
+        <%= ax_standalone_field(name: "#{ns}[api_key]", id: "ai_#{provider.key}_api_key",
+              label: "Token #{provider.label}", type: :password, value: "", class_name: "ax-field--stacked",
+              autocomplete: "off", disabled: !active,
+              placeholder: (connected ? "Token já configurado. Preencha apenas para substituir." : provider.token_placeholder),
+              hint: "Vale para conteúdo, SEO, resumos e diagnóstico. Preencha somente para configurar ou substituir.") %>
+      </div>
+      <div class="tw-mb-3">
+        <%= ax_standalone_field(name: "#{ns}[voice_api_key]", id: "ai_#{provider.key}_voice_api_key",
+              label: "Token dedicado de voz #{provider.label}", type: :password, value: "", class_name: "ax-field--stacked",
+              autocomplete: "off", disabled: !active,
+              placeholder: (dedicated ? "Token dedicado configurado. Preencha apenas para substituir." : "Opcional: usa o token geral se ficar vazio"),
+              hint: (voice_connected ? (dedicated ? "Voz usando o token dedicado." : "Voz usando o token geral.") : "A voz aguarda token (geral ou dedicado).")) %>
+      </div>
+      <% if dedicated %>
+        <div class="tw-mb-3">
+          <%= ax_check_field(
+                name: "#{ns}[voice_clear]",
+                value: "1",
+                id: "ai_#{provider.key}_clear_voice_api_key",
+                disabled: !active,
+                label: "Remover token dedicado e voltar ao fallback geral"
+              ) %>
+        </div>
+      <% end %>
+    </div>
+
+    <div data-conditional-reveal-target="panel" data-conditional-reveal-values="account" hidden>
+      <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+        <strong>Em breve:</strong> conectar a conta <%= provider.label %> no navegador e usar os créditos da conta, sem colar token.
+        Por enquanto, use o token da API ou gere uma chave no painel do provedor.
+      <% end %>
+      <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-3">
+        <button type="button" class="ax-btn ax-btn--primary" disabled aria-disabled="true">Conectar no navegador</button>
+        <%= link_to "Abrir painel da #{provider.label}", provider.dashboard_url, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--ghost" %>
+      </div>
+    </div>
+  </div>
+  <% end %>
+</div>

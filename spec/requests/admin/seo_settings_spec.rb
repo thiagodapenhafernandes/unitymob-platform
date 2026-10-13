@@ -63,9 +63,11 @@ RSpec.describe "Admin::SeoSettings", type: :request do
     expect(response.body).not_to include("/selecoes/token-seo-settings-hidden")
     expect(response.body).to include("Estratégia IA")
     expect(response.body).not_to include("Seo settings")
-    strategy_modal = Nokogiri::HTML(response.body).at_css("#seoStrategyModal")
-    expect(strategy_modal.at_css(".ax-quick-modal__title-icon")).to be_present
-    expect(strategy_modal.css("[style]")).to be_empty
+    expect(response.body).not_to include("seoStrategyModal")
+    strategy_link = Nokogiri::HTML(response.body).at_css('a.ax-contextbar__button[href*="ai_integration"]')
+    expect(strategy_link).to be_present
+    expect(strategy_link["href"]).to include("#ai-integration-content")
+    expect(strategy_link.text).to include("Estratégia IA")
     progress_bars = Nokogiri::HTML(response.body).css(".ax-metric-card progress.ax-progress__bar")
     expect(progress_bars).not_to be_empty
     expect(progress_bars).to all(satisfy { |bar| bar["max"] == "100" && bar["style"].nil? })

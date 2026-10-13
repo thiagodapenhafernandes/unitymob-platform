@@ -10,37 +10,45 @@ module Ai
 
       module_function
 
+      def configuration(tenant: Current.tenant, voice: false)
+        Ai::ModuleConfiguration.new(voice ? :property_search_voice : :property_search_text, tenant: tenant)
+      end
+
       def api_key(tenant: Current.tenant)
-        dedicated_api_key(tenant:).presence ||
-          Setting.tenant_get(Ai::PropertyContentService::API_KEY_SETTING, nil, tenant:).to_s.strip
+        configuration(tenant: tenant).api_key
       end
 
       def dedicated_api_key(tenant: Current.tenant)
-        Setting.tenant_get(API_KEY_SETTING, nil, tenant:).to_s.strip
+        configuration(tenant: tenant).provider.dedicated_voice_api_key(tenant: tenant)
       end
 
       def dedicated_api_key_configured?(tenant: Current.tenant)
-        dedicated_api_key(tenant:).present?
+        dedicated_api_key(tenant: tenant).present?
       end
 
       def connected?(tenant: Current.tenant)
-        api_key(tenant:).present?
+        configuration(tenant: tenant).connected?
+      end
+
+      def voice_connected?(tenant: Current.tenant)
+        configuration(tenant: tenant, voice: true).connected? &&
+          Ai::ModuleConfiguration.new(:property_search_transcription, tenant: tenant).connected?
       end
 
       def model(tenant: Current.tenant)
-        Setting.tenant_get(MODEL_SETTING, DEFAULT_MODEL, tenant:).to_s.strip.presence || DEFAULT_MODEL
+        configuration(tenant: tenant).model
       end
 
       def resolved_model(tenant: Current.tenant)
-        OpenAi::ModelCatalog.resolve_response_model(model(tenant:))
+        configuration(tenant: tenant).resolved_model
       end
 
       def transcription_model(tenant: Current.tenant)
-        Setting.tenant_get(TRANSCRIPTION_MODEL_SETTING, DEFAULT_TRANSCRIPTION_MODEL, tenant:).to_s.strip.presence || DEFAULT_TRANSCRIPTION_MODEL
+        Ai::ModuleConfiguration.new(:property_search_transcription, tenant: tenant).model
       end
 
       def resolved_transcription_model(tenant: Current.tenant)
-        OpenAi::ModelCatalog.resolve_transcription_model(transcription_model(tenant:))
+        Ai::ModuleConfiguration.new(:property_search_transcription, tenant: tenant).resolved_model
       end
     end
   end

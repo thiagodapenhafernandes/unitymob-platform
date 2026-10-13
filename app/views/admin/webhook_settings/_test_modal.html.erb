@@ -1,0 +1,39 @@
+<% test_form = WebhookTestForm.new(webhook) %>
+<%= ax_quick_modal(id: "webhookTest#{webhook.id}", title: "Enviar teste · #{webhook.description.presence || "Webhook ##{webhook.id}"}", size: :xl, data: { controller: "webhook-test", action: "ax-modal:opened->webhook-test#refresh" }) do %>
+  <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
+    Dados fictícios editáveis. O envio permanece marcado como diagnóstico e não cria lead. Destino: <%= webhook.whatsapp_webhook_url.presence || webhook.webhook_url %>
+  <% end %>
+  <%= form_with model: test_form, scope: :webhook_test, namespace: "webhookTest#{webhook.id}", url: test_admin_webhook_setting_path(webhook), id: "webhookTestForm#{webhook.id}", data: { action: "submit->webhook-test#send", webhook_test_target: "form", turbo: false } do |f| %>
+    <% groups = {
+      "Evento" => { event_name: "Nome do evento", event_id: "ID do evento", transaction_id: "ID da transação", event_timestamp: "Data/hora (Unix)", lead_id: "ID do lead" },
+      "Contato" => { first_name: "Nome", last_name: "Sobrenome", email_address: "E-mail", phone_number: "Telefone" },
+      "Conversão e imóvel" => { business_type: "Tipo de negócio", value: "Valor", currency: "Moeda", property_code: "Código do imóvel", placement: "Posicionamento" },
+      "Rastreamento" => { gclid: "GCLID", gbraid: "GBRAID", wbraid: "WBRAID", fbc: "FBC", fbp: "FBP", client_id: "Client ID", utm_source: "Origem (UTM)", utm_medium: "Mídia (UTM)", utm_campaign: "Campanha (UTM)" },
+      "Contexto" => { pais: "País", pais_iso: "Código ISO do país", client_ip_address: "IP", client_user_agent: "Navegador (User Agent)" }
+    } %>
+    <% groups.each do |title, fields| %>
+      <%= ax_studio_group(title: title) do %>
+        <%= ax_field_grid(columns: 12, gap: :compact) do %>
+          <% fields.each do |field, label| %>
+            <% if field == :business_type %>
+              <%= ax_select_field(form: f, method: field, label: label, class_name: "ax-span-6", choices: [["Venda", "venda"], ["Locação", "locacao"]]) %>
+            <% else %>
+              <% type = field == :email_address ? :email : field == :phone_number ? :tel : [:value, :event_timestamp].include?(field) ? :number : :text %>
+              <%= ax_text_field(form: f, method: field, label: label, class_name: "ax-span-6", type: type, maxlength: 2000, required: %i[event_name event_id transaction_id event_timestamp lead_id value currency pais_iso].include?(field), step: field == :value ? "0.01" : nil, min: type == :number ? 0 : nil) %>
+            <% end %>
+          <% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+    <div role="status" aria-live="polite" data-webhook-test-target="result"></div>
+    <details data-webhook-test-target="details" hidden>
+      <summary>Ver payload enviado</summary>
+      <pre class="tw-whitespace-pre-wrap tw-break-all" data-webhook-test-target="payload"></pre>
+      <button type="button" class="ax-btn ax-btn--secondary" data-action="webhook-test#copy">Copiar payload</button>
+    </details>
+    <div class="ax-form-actions">
+      <button type="button" class="ax-btn ax-btn--secondary" data-action="ax-modal#close">Cancelar</button>
+      <%= f.submit "Enviar teste", class: "ax-btn ax-btn--primary", data: { webhook_test_target: "submit" }, disabled: !webhook.active? %>
+    </div>
+  <% end %>
+<% end %>
