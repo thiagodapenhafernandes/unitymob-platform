@@ -2,13 +2,25 @@ class Admin::AiIntegrationsController < Admin::BaseController
   requires_permission :manage, :integracoes
   before_action :load_state
 
+  PROVIDER_FORM_FIELDS = %i[
+    api_key model_choice model_custom model
+    voice_api_key voice_clear
+    voice_model_choice voice_model_custom voice_model
+    voice_transcription_model_choice voice_transcription_model_custom voice_transcription_model
+  ].freeze
+
   def show
   end
 
   def update
-    if ai_params[:section].to_s == "voice_pwa"
+    save_provider_selection
+
+    case ai_params[:section].to_s
+    when "voice_pwa"
       update_voice_pwa_settings
       return redirect_to admin_ai_integration_path(anchor: "ai-integration-voice"), notice: "Configurações do Voice PWA salvas com sucesso."
+    when "provider"
+      return redirect_to admin_ai_integration_path, notice: "Provedor de IA atualizado com sucesso."
     end
 
     update_content_settings
@@ -18,8 +30,9 @@ class Admin::AiIntegrationsController < Admin::BaseController
   end
 
   def generate_batch
+    provider = Ai::Provider.active(tenant: current_tenant)
     unless Ai::PropertyContentService.connected?(tenant: current_tenant)
-      return redirect_to admin_ai_integration_path, alert: "Configure o token da OpenAI antes de iniciar o lote."
+      return redirect_to admin_ai_integration_path, alert: "Configure o token da #{provider.label} antes de iniciar o lote."
     end
 
     AiPropertyBatchSuggestionJob.perform_later(triggered_by_id: current_admin_user.id, tenant_id: current_tenant.id)
@@ -31,22 +44,12 @@ class Admin::AiIntegrationsController < Admin::BaseController
   private
 
   def load_state
-    @openai_connected = Ai::PropertyContentService.connected?(tenant: current_tenant)
-    @openai_api_key = Ai::PropertyContentService.api_key(tenant: current_tenant)
-    @openai_model = Ai::PropertyContentService.model(tenant: current_tenant)
-    @openai_model_options = OpenAi::ModelCatalog.response_model_options(api_key: @openai_api_key, selected: @openai_model)
-    @openai_model_custom = model_custom_value(@openai_model, response: true)
-    @openai_prompt = Ai::PropertyContentService.instructions(tenant: current_tenant)
-    @openai_response_parameters = Ai::PropertyContentService.response_parameters(tenant: current_tenant)
-    @property_search_connected = Ai::PropertySearch::Configuration.connected?(tenant: current_tenant)
-    @property_search_dedicated_token = Ai::PropertySearch::Configuration.dedicated_api_key_configured?(tenant: current_tenant)
-    @property_search_api_key = Ai::PropertySearch::Configuration.api_key(tenant: current_tenant)
-    @property_search_model = Ai::PropertySearch::Configuration.model(tenant: current_tenant)
-    @property_search_model_options = OpenAi::ModelCatalog.response_model_options(api_key: @property_search_api_key, selected: @property_search_model)
-    @property_search_model_custom = model_custom_value(@property_search_model, response: true)
-    @property_search_transcription_model = Ai::PropertySearch::Configuration.transcription_model(tenant: current_tenant)
-    @property_search_transcription_model_options = OpenAi::ModelCatalog.transcription_model_options(api_key: @property_search_api_key, selected: @property_search_transcription_model)
-    @property_search_transcription_model_custom = model_custom_value(@property_search_transcription_model, response: false)
+    @ai_provider = Ai::Provider.active_key(tenant: current_tenant)
+    @active_provider = Ai::Provider.active(tenant: current_tenant)
+    @content_connected = Ai::PropertyContentService.connected?(tenant: current_tenant)
+    @voice_connected = Ai::PropertySearch::Configuration.connected?(tenant: current_tenant)
+    @property_enrichment_prompt = Ai::PropertyContentService.instructions(tenant: current_tenant)
+    @response_parameters = Ai::PropertyContentService.response_parameters(tenant: current_tenant)
     @batch_status = tenant_setting_get("openai_batch_status", "idle")
     @batch_progress = tenant_setting_get("openai_batch_progress", "0").to_i.clamp(0, 100)
     @batch_message = tenant_setting_get("openai_batch_message", "Nenhum lote executado ainda.")
@@ -64,61 +67,78 @@ class Admin::AiIntegrationsController < Admin::BaseController
     @failed_suggestions_count = tenant_suggestions.where(status: "failed").count
   end
 
-  def update_content_settings
-    permitted = ai_params.to_h.with_indifferent_access
-    token = permitted[:api_key].to_s.strip
-    model = selected_model_value(
-      choice: permitted[:model_choice],
-      custom: permitted[:model_custom],
-      legacy: permitted[:model],
-      default: Ai::PropertyContentService::DEFAULT_MODEL
-    )
-    prompt = permitted[:property_enrichment_prompt].to_s
+  def save_provider_selection
+    key = ai_params[:provider].to_s.strip
+    return if key.blank?
 
-    tenant_setting_set(Ai::PropertyContentService::API_KEY_SETTING, token, "Token da OpenAI") if token.present?
-    tenant_setting_set(Ai::PropertyContentService::MODEL_SETTING, model, "Modelo OpenAI para enriquecimento de imóveis")
+    tenant_setting_set(Ai::Provider::SETTING, Ai::Provider.find(key).key, "Provedor de IA ativo da conta")
+  end
+
+  def update_content_settings
+    provider_forms_params.each do |provider_key, fields|
+      provider = Ai::Provider.find(provider_key)
+      token = fields[:api_key].to_s.strip
+      model = selected_model_value(
+        choice: fields[:model_choice],
+        custom: fields[:model_custom],
+        legacy: fields[:model],
+        default: provider.default_model
+      )
+
+      tenant_setting_set(provider.api_key_setting, token, "Token #{provider.label} para conteúdo") if token.present?
+      tenant_setting_set(provider.model_setting, model, "Modelo #{provider.label} para enriquecimento de imóveis")
+    end
+
+    prompt = ai_params[:property_enrichment_prompt].to_s
     tenant_setting_set(Ai::PropertyContentService::PROMPT_SETTING, prompt, "Instruções de IA para título e descrição dos imóveis")
     Ai::PropertyContentService::RESPONSE_PARAMETER_SETTINGS.each do |key, setting_key|
       tenant_setting_set(
         setting_key,
-        Ai::PropertyContentService.normalize_response_parameter(key, permitted[key]).to_s,
-        "Parâmetro #{key} da OpenAI para título e descrição dos imóveis"
+        Ai::PropertyContentService.normalize_response_parameter(key, ai_params[key]).to_s,
+        "Parâmetro #{key} da IA para título e descrição dos imóveis"
       )
     end
-    if permitted.key?(:dashboard_diagnosis_enabled)
-      tenant_setting_set(Dashboard::AiDiagnosis::ENABLED_SETTING, ActiveModel::Type::Boolean.new.cast(permitted[:dashboard_diagnosis_enabled]).to_s, "Habilita diagnóstico textual do BI com OpenAI")
+    if ai_params.key?(:dashboard_diagnosis_enabled)
+      tenant_setting_set(Dashboard::AiDiagnosis::ENABLED_SETTING, ActiveModel::Type::Boolean.new.cast(ai_params[:dashboard_diagnosis_enabled]).to_s, "Habilita diagnóstico textual do BI com IA")
     end
-    if permitted.key?(:dashboard_diagnosis_weekly_limit)
-      tenant_setting_set(Dashboard::AiDiagnosis::WEEKLY_REQUEST_LIMIT_SETTING, permitted[:dashboard_diagnosis_weekly_limit].to_i.clamp(0, 10).to_s, "Limite semanal de diagnósticos do BI com OpenAI")
+    if ai_params.key?(:dashboard_diagnosis_weekly_limit)
+      tenant_setting_set(Dashboard::AiDiagnosis::WEEKLY_REQUEST_LIMIT_SETTING, ai_params[:dashboard_diagnosis_weekly_limit].to_i.clamp(0, 10).to_s, "Limite semanal de diagnósticos do BI com IA")
     end
-    if permitted.key?(:dashboard_diagnosis_monthly_budget_cents)
-      tenant_setting_set(Dashboard::AiDiagnosis::MONTHLY_BUDGET_CENTS_SETTING, permitted[:dashboard_diagnosis_monthly_budget_cents].to_i.clamp(0, 100_000).to_s, "Teto mensal estimado do diagnóstico do BI com OpenAI")
+    if ai_params.key?(:dashboard_diagnosis_monthly_budget_cents)
+      tenant_setting_set(Dashboard::AiDiagnosis::MONTHLY_BUDGET_CENTS_SETTING, ai_params[:dashboard_diagnosis_monthly_budget_cents].to_i.clamp(0, 100_000).to_s, "Teto mensal estimado do diagnóstico do BI com IA")
     end
   end
 
   def update_voice_pwa_settings
-    token = ai_params[:property_search_api_key].to_s.strip
-    model = selected_model_value(
-      choice: ai_params[:property_search_model_choice],
-      custom: ai_params[:property_search_model_custom],
-      legacy: ai_params[:property_search_model],
-      default: Ai::PropertySearch::Configuration::DEFAULT_MODEL
-    )
-    transcription_model = selected_model_value(
-      choice: ai_params[:property_search_transcription_model_choice],
-      custom: ai_params[:property_search_transcription_model_custom],
-      legacy: ai_params[:property_search_transcription_model],
-      default: Ai::PropertySearch::Configuration::DEFAULT_TRANSCRIPTION_MODEL
-    )
+    provider_forms_params.each do |provider_key, fields|
+      provider = Ai::Provider.find(provider_key)
+      token = fields[:voice_api_key].to_s.strip
+      model = selected_model_value(
+        choice: fields[:voice_model_choice],
+        custom: fields[:voice_model_custom],
+        legacy: fields[:voice_model],
+        default: provider.default_model
+      )
+      transcription_model = selected_model_value(
+        choice: fields[:voice_transcription_model_choice],
+        custom: fields[:voice_transcription_model_custom],
+        legacy: fields[:voice_transcription_model],
+        default: provider.default_transcription_model
+      )
 
-    if ActiveModel::Type::Boolean.new.cast(ai_params[:clear_property_search_api_key])
-      tenant_setting_set(Ai::PropertySearch::Configuration::API_KEY_SETTING, "", "Token dedicado da OpenAI para Voice PWA")
-    elsif token.present?
-      tenant_setting_set(Ai::PropertySearch::Configuration::API_KEY_SETTING, token, "Token dedicado da OpenAI para Voice PWA")
+      if ActiveModel::Type::Boolean.new.cast(fields[:voice_clear])
+        tenant_setting_set(provider.voice_api_key_setting, "", "Token dedicado #{provider.label} para Voice PWA")
+      elsif token.present?
+        tenant_setting_set(provider.voice_api_key_setting, token, "Token dedicado #{provider.label} para Voice PWA")
+      end
+
+      tenant_setting_set(provider.voice_model_setting, model, "Modelo #{provider.label} para interpretação da busca do Voice PWA")
+      tenant_setting_set(provider.voice_transcription_model_setting, transcription_model, "Modelo #{provider.label} para transcrição do Voice PWA")
     end
+  end
 
-    tenant_setting_set(Ai::PropertySearch::Configuration::MODEL_SETTING, model, "Modelo OpenAI para interpretação da busca do Voice PWA")
-    tenant_setting_set(Ai::PropertySearch::Configuration::TRANSCRIPTION_MODEL_SETTING, transcription_model, "Modelo OpenAI para transcrição do Voice PWA")
+  def provider_forms_params
+    ai_params[:providers] || {}
   end
 
   def tenant_setting_get(key, default = nil)
@@ -132,10 +152,7 @@ class Admin::AiIntegrationsController < Admin::BaseController
   def ai_params
     params.require(:ai).permit(
       :section,
-      :api_key,
-      :model_choice,
-      :model_custom,
-      :model,
+      :provider,
       :property_enrichment_prompt,
       :temperature,
       :top_p,
@@ -144,33 +161,19 @@ class Admin::AiIntegrationsController < Admin::BaseController
       :dashboard_diagnosis_enabled,
       :dashboard_diagnosis_weekly_limit,
       :dashboard_diagnosis_monthly_budget_cents,
-      :property_search_api_key,
-      :clear_property_search_api_key,
-      :property_search_model_choice,
-      :property_search_model_custom,
-      :property_search_model,
-      :property_search_transcription_model_choice,
-      :property_search_transcription_model_custom,
-      :property_search_transcription_model
+      providers: Ai::Provider.all.keys.index_with { PROVIDER_FORM_FIELDS }
     )
   end
 
   def selected_model_value(choice:, custom:, legacy:, default:)
     selected = choice.to_s.strip
 
-    if OpenAi::ModelCatalog.custom?(selected)
+    if Ai::Provider.custom?(selected)
       custom.to_s.strip.presence || legacy.to_s.strip.presence || default
     elsif selected.present?
       selected
     else
       legacy.to_s.strip.presence || default
     end
-  end
-
-  def model_custom_value(model, response:)
-    return "" if OpenAi::ModelCatalog.automatic?(model)
-
-    known = response ? OpenAi::ModelCatalog.known_response_model?(model) : OpenAi::ModelCatalog.known_transcription_model?(model)
-    known ? "" : model.to_s.strip
   end
 end

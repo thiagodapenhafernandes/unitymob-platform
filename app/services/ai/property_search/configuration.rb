@@ -11,36 +11,35 @@ module Ai
       module_function
 
       def api_key(tenant: Current.tenant)
-        dedicated_api_key(tenant:).presence ||
-          Setting.tenant_get(Ai::PropertyContentService::API_KEY_SETTING, nil, tenant:).to_s.strip
+        Ai::Provider.active(tenant: tenant).voice_api_key(tenant: tenant)
       end
 
       def dedicated_api_key(tenant: Current.tenant)
-        Setting.tenant_get(API_KEY_SETTING, nil, tenant:).to_s.strip
+        Ai::Provider.active(tenant: tenant).dedicated_voice_api_key(tenant: tenant)
       end
 
       def dedicated_api_key_configured?(tenant: Current.tenant)
-        dedicated_api_key(tenant:).present?
+        Ai::Provider.active(tenant: tenant).dedicated_voice_api_key_configured?(tenant: tenant)
       end
 
       def connected?(tenant: Current.tenant)
-        api_key(tenant:).present?
+        Ai::Provider.active(tenant: tenant).voice_connected?(tenant: tenant)
       end
 
       def model(tenant: Current.tenant)
-        Setting.tenant_get(MODEL_SETTING, DEFAULT_MODEL, tenant:).to_s.strip.presence || DEFAULT_MODEL
+        Ai::Provider.active(tenant: tenant).voice_model(tenant: tenant)
       end
 
       def resolved_model(tenant: Current.tenant)
-        OpenAi::ModelCatalog.resolve_response_model(model(tenant:))
+        Ai::Provider.active(tenant: tenant).resolved_voice_model(tenant: tenant)
       end
 
       def transcription_model(tenant: Current.tenant)
-        Setting.tenant_get(TRANSCRIPTION_MODEL_SETTING, DEFAULT_TRANSCRIPTION_MODEL, tenant:).to_s.strip.presence || DEFAULT_TRANSCRIPTION_MODEL
+        Ai::Provider.active(tenant: tenant).voice_transcription_model(tenant: tenant)
       end
 
       def resolved_transcription_model(tenant: Current.tenant)
-        OpenAi::ModelCatalog.resolve_transcription_model(transcription_model(tenant:))
+        Ai::Provider.active(tenant: tenant).resolved_voice_transcription_model(tenant: tenant)
       end
     end
   end

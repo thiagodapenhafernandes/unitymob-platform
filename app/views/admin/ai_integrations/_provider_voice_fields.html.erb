@@ -1,0 +1,78 @@
+<%# locals: f, provider %>
+<%
+  tenant = current_tenant
+  dedicated = provider.dedicated_voice_api_key_configured?(tenant: tenant)
+  connected = provider.voice_connected?(tenant: tenant)
+  model = provider.voice_model(tenant: tenant)
+  model_custom = (Ai::Provider.automatic?(model) || provider.known_response_model?(model)) ? "" : model.to_s.strip
+  transcription_model = provider.voice_transcription_model(tenant: tenant)
+  transcription_custom = (Ai::Provider.automatic?(transcription_model) || provider.known_transcription_model?(transcription_model)) ? "" : transcription_model.to_s.strip
+  ns = "ai[providers][#{provider.key}]"
+%>
+<%= ax_panel(title: "Voice PWA · #{provider.label}", subtitle: "Credencial e modelos usados pela busca inteligente do PWA.", actions: ax_badge(dedicated ? "token dedicado" : "fallback geral", tone: dedicated ? :green : :blue)) do %>
+  <%= ax_inline_notice(tone: connected ? :success : :warning, icon: connected ? "check-circle" : "exclamation-triangle") do %>
+    <span>
+      Status:
+      <strong><%= connected ? (dedicated ? "Usando token dedicado" : "Usando token geral") : "Aguardando token" %></strong>
+    </span>
+  <% end %>
+
+  <div class="tw-mb-3">
+    <%= f.label "providers[#{provider.key}][voice_api_key]", "Token dedicado #{provider.label}", class: "ax-label tw-font-semibold" %>
+    <%= f.password_field "providers[#{provider.key}][voice_api_key]",
+        class: "ax-control",
+        autocomplete: "off",
+        placeholder: (dedicated ? "Token dedicado configurado. Preencha apenas para substituir." : "Opcional: usa o token geral se ficar vazio") %>
+    <div class="ax-field-hint">Quando vazio, o Voice PWA usa o token geral da aba Conteúdo.</div>
+  </div>
+
+  <% if dedicated %>
+    <div class="tw-mb-3">
+      <%= ax_check_field(
+            name: "#{ns}[voice_clear]",
+            value: "1",
+            id: "ai_#{provider.key}_clear_voice_api_key",
+            label: "Remover token dedicado e voltar ao fallback geral"
+          ) %>
+    </div>
+  <% end %>
+
+  <div class="property-settings-ai-fields">
+    <%= ax_standalone_select_field(
+          name: "#{ns}[voice_model_choice]",
+          id: "ai_#{provider.key}_voice_model_choice",
+          label: "Modelo de interpretação",
+          choices: provider.response_model_options(api_key: provider.voice_api_key(tenant: tenant), selected: model),
+          selected: model,
+          class_name: "ax-span-6",
+          hint: "Use automático para manter o padrão operacional."
+        ) %>
+    <%= ax_standalone_field(
+          name: "#{ns}[voice_model_custom]",
+          id: "ai_#{provider.key}_voice_model_custom",
+          label: "Modelo de interpretação personalizado",
+          value: model_custom,
+          class_name: "ax-span-6",
+          placeholder: "Ex.: #{provider.default_model}",
+          hint: "Use apenas quando o modelo desejado não aparecer no select."
+        ) %>
+    <%= ax_standalone_select_field(
+          name: "#{ns}[voice_transcription_model_choice]",
+          id: "ai_#{provider.key}_voice_transcription_model_choice",
+          label: "Modelo de transcrição",
+          choices: provider.transcription_model_options(api_key: provider.voice_api_key(tenant: tenant), selected: transcription_model),
+          selected: transcription_model,
+          class_name: "ax-span-6",
+          hint: "Se ficar indisponível, o sistema tenta o fallback #{provider.fallback_transcription_model}."
+        ) %>
+    <%= ax_standalone_field(
+          name: "#{ns}[voice_transcription_model_custom]",
+          id: "ai_#{provider.key}_voice_transcription_model_custom",
+          label: "Modelo de transcrição personalizado",
+          value: transcription_custom,
+          class_name: "ax-span-6",
+          placeholder: "Ex.: #{provider.default_transcription_model}",
+          hint: "Use apenas quando o modelo desejado não aparecer no select."
+        ) %>
+  </div>
+<% end %>

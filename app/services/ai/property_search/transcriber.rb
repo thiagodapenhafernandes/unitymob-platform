@@ -16,12 +16,15 @@ module Ai
         raise ArgumentError, "Busca por voz desativada para esta conta." unless @setting.voice_property_search_enabled?
 
         prompt = vocabulary_prompt
-        transcription = OpenAi::Client.new(api_key: Configuration.api_key(tenant: @setting.tenant)).transcribe(
+        tenant = @setting.tenant
+        provider = Ai::Provider.active(tenant: tenant)
+        transcription = provider.build_client(api_key: Configuration.api_key(tenant: tenant)).transcribe(
           file: @audio,
           language: @setting.ai_property_search_language,
-          model: Configuration.resolved_transcription_model(tenant: @setting.tenant),
-          fallback_model: OpenAi::ModelCatalog.fallback_transcription_model(Configuration.resolved_transcription_model(tenant: @setting.tenant)),
-          prompt:
+          model: Configuration.resolved_transcription_model(tenant: tenant),
+          fallback_model: provider.fallback_transcription_model(Configuration.resolved_transcription_model(tenant: tenant)),
+          prompt:,
+          keywords: vocabulary_terms
         )
         sanitize_transcription(transcription, prompt:)
       end
@@ -41,13 +44,26 @@ module Ai
       end
 
       def vocabulary_prompt
-        return nil unless @setting.respond_to?(:ai_property_search_transcription_vocabulary_enabled?)
-        return nil unless @setting.ai_property_search_transcription_vocabulary_enabled?
+        return nil unless vocabulary_enabled?
 
         TranscriptionVocabulary.new(tenant: @setting.tenant, setting: @setting).call
       rescue StandardError => e
         Rails.logger.warn("[ai property search vocabulary] #{e.class}: #{e.message}")
         nil
+      end
+
+      def vocabulary_terms
+        return nil unless vocabulary_enabled?
+
+        TranscriptionVocabulary.new(tenant: @setting.tenant, setting: @setting).terms.presence
+      rescue StandardError => e
+        Rails.logger.warn("[ai property search vocabulary] #{e.class}: #{e.message}")
+        nil
+      end
+
+      def vocabulary_enabled?
+        @setting.respond_to?(:ai_property_search_transcription_vocabulary_enabled?) &&
+          @setting.ai_property_search_transcription_vocabulary_enabled?
       end
     end
   end

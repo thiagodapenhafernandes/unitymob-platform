@@ -18,8 +18,10 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(response.body).to include("Conteúdo")
     expect(response.body).to include("Voice PWA")
     expect(response.body).to include("Configuração do provedor")
+    expect(response.body).to include("Provedor de IA ativo")
+    expect(response.body).to include("Token OpenAI")
+    expect(response.body).to include("Token Meta Muse")
     expect(response.body).to include("Geração em lote")
-    expect(response.body).to include("Token dedicado da OpenAI")
     expect(response.body).to include("Modelo de interpretação")
     expect(response.body).to include("Modelo de transcrição")
     expect(response.body).to include("Diagnóstico textual do dashboard")
@@ -44,10 +46,14 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
       patch admin_ai_integration_path, params: {
         ai: {
           section: "voice_pwa",
-          property_search_api_key: "voice-token",
-          property_search_model_choice: OpenAi::ModelCatalog::CUSTOM_VALUE,
-          property_search_model_custom: "gpt-4.1-mini",
-          property_search_transcription_model_choice: "gpt-4o-mini-transcribe"
+          providers: {
+            openai: {
+              voice_api_key: "voice-token",
+              voice_model_choice: Ai::Provider::CUSTOM_VALUE,
+              voice_model_custom: "gpt-4.1-mini",
+              voice_transcription_model_choice: "gpt-4o-mini-transcribe"
+            }
+          }
         }
       }
     end
@@ -64,9 +70,13 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
       patch admin_ai_integration_path, params: {
         ai: {
           section: "content",
-          api_key: "general-token",
-          model_choice: OpenAi::ModelCatalog::CUSTOM_VALUE,
-          model_custom: "gpt-custom-test",
+          providers: {
+            openai: {
+              api_key: "general-token",
+              model_choice: Ai::Provider::CUSTOM_VALUE,
+              model_custom: "gpt-custom-test"
+            }
+          },
           property_enrichment_prompt: "Prompt customizado",
           temperature: "0.2",
           top_p: "0.8",
@@ -97,14 +107,49 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
       patch admin_ai_integration_path, params: {
         ai: {
           section: "content",
-          model_choice: OpenAi::ModelCatalog::AUTOMATIC_VALUE,
+          providers: {
+            openai: {
+              model_choice: Ai::Provider::AUTOMATIC_VALUE
+            }
+          },
           property_enrichment_prompt: "Prompt automático"
         }
       }
     end
 
-    expect(Setting.get(Ai::PropertyContentService::MODEL_SETTING, nil, tenant: admin.tenant)).to eq(OpenAi::ModelCatalog::AUTOMATIC_VALUE)
+    expect(Setting.get(Ai::PropertyContentService::MODEL_SETTING, nil, tenant: admin.tenant)).to eq(Ai::Provider::AUTOMATIC_VALUE)
     expect(Ai::PropertyContentService.resolved_model(tenant: admin.tenant)).to eq(OpenAi::ModelCatalog::RESPONSE_FALLBACK_MODEL)
+  end
+
+  it "ativa Meta Muse e salva credenciais do provedor" do
+    with_forgery_protection_disabled do
+      patch admin_ai_integration_path, params: {
+        ai: { section: "provider", provider: "muse" }
+      }
+    end
+
+    expect(response).to redirect_to(admin_ai_integration_path)
+    expect(Ai::Provider.active_key(tenant: admin.tenant)).to eq("muse")
+
+    with_forgery_protection_disabled do
+      patch admin_ai_integration_path, params: {
+        ai: {
+          section: "content",
+          providers: {
+            muse: {
+              api_key: "meta-token",
+              model_choice: "muse-spark-1.2"
+            }
+          },
+          property_enrichment_prompt: "Prompt"
+        }
+      }
+    end
+
+    expect(Setting.get(Ai::Provider::MUSE_API_KEY_SETTING, nil, tenant: admin.tenant)).to eq("meta-token")
+    expect(Setting.get(Ai::Provider::MUSE_MODEL_SETTING, nil, tenant: admin.tenant)).to eq("muse-spark-1.2")
+    expect(Ai::PropertyContentService.api_key(tenant: admin.tenant)).to eq("meta-token")
+    expect(Ai::PropertyContentService.resolved_model(tenant: admin.tenant)).to eq("muse-spark-1.2")
   end
 
   def with_forgery_protection_disabled

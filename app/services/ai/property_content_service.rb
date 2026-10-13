@@ -68,15 +68,15 @@ module Ai
     PROMPT
 
     def self.api_key(tenant: Current.tenant)
-      Setting.tenant_get(API_KEY_SETTING, nil, tenant: tenant).to_s
+      Provider.active(tenant: tenant).api_key(tenant: tenant)
     end
 
     def self.model(tenant: Current.tenant)
-      Setting.tenant_get(MODEL_SETTING, DEFAULT_MODEL, tenant: tenant).to_s.presence || DEFAULT_MODEL
+      Provider.active(tenant: tenant).model(tenant: tenant)
     end
 
     def self.resolved_model(tenant: Current.tenant)
-      OpenAi::ModelCatalog.resolve_response_model(model(tenant: tenant))
+      Provider.active(tenant: tenant).resolved_model(tenant: tenant)
     end
 
     def self.instructions(tenant: Current.tenant)
@@ -175,9 +175,10 @@ module Ai
     private
 
     def request_generation
-      response = OpenAi::Client.new(api_key: self.class.api_key(tenant: @habitation.tenant)).create_response(
+      tenant = @habitation.tenant
+      response = Provider.build_client(tenant: tenant, api_key: self.class.api_key(tenant: tenant)).create_response(
         openai_payload,
-        fallback_model: OpenAi::ModelCatalog.fallback_response_model(self.class.resolved_model(tenant: @habitation.tenant))
+        fallback_model: Provider.active(tenant: tenant).fallback_response_model(self.class.resolved_model(tenant: tenant))
       )
       text = extract_text(response)
       parsed = JSON.parse(text)

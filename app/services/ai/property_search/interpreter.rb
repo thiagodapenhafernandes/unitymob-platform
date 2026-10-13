@@ -15,9 +15,9 @@ module Ai
       def call
         raise ArgumentError, "Descreva o imóvel que você procura." if @text.blank?
 
-        response = OpenAi::Client.new(api_key: Configuration.api_key(tenant: @setting.tenant)).create_response(
+        response = Ai::Provider.build_client(tenant: @setting.tenant, api_key: Configuration.api_key(tenant: @setting.tenant)).create_response(
           payload,
-          fallback_model: OpenAi::ModelCatalog.fallback_response_model(Configuration.resolved_model(tenant: @setting.tenant))
+          fallback_model: Ai::Provider.active(tenant: @setting.tenant).fallback_response_model(Configuration.resolved_model(tenant: @setting.tenant))
         )
         parsed = JSON.parse(extract_text(response))
         Result.new(

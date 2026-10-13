@@ -707,7 +707,7 @@ module Admin::UiHelper
     )
   end
 
-  def ax_radio_group(form:, method:, label:, choices:, class_name: nil, item_class: nil, disabled: false, input_data: {})
+  def ax_radio_group(form:, method:, label:, choices:, class_name: nil, item_class: nil, disabled: false, input_data: {}, selected: nil)
     render(
       "admin/shared/ui/radio_group",
       form:,
@@ -717,7 +717,8 @@ module Admin::UiHelper
       class_name:,
       item_class:,
       disabled:,
-      input_data:
+      input_data:,
+      selected:
     )
   end
 

@@ -123,9 +123,9 @@ module Dashboard
     end
 
     def request_diagnosis
-      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(
+      response = Ai::Provider.build_client(tenant: tenant, api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(
         openai_payload,
-        fallback_model: OpenAi::ModelCatalog.fallback_response_model(Ai::PropertyContentService.resolved_model(tenant: tenant))
+        fallback_model: Ai::Provider.active(tenant: tenant).fallback_response_model(Ai::PropertyContentService.resolved_model(tenant: tenant))
       )
       parsed = JSON.parse(extract_text(response))
         .with_indifferent_access
@@ -208,6 +208,7 @@ module Dashboard
       usage = response.to_h["usage"].to_h
       input_tokens = usage["input_tokens"].to_i
       output_tokens = usage["output_tokens"].to_i
+      provider_key = Ai::Provider.active_key(tenant: tenant)
       OpenAiUsageEvent.create!(
         tenant: tenant,
         admin_user: admin_user,
@@ -216,12 +217,14 @@ module Dashboard
         status: status,
         input_tokens: input_tokens,
         output_tokens: output_tokens,
-        estimated_cost_cents: estimated_cost_cents(input_tokens, output_tokens),
-        metadata: { period: period, error: error }.compact
+        estimated_cost_cents: estimated_cost_cents(input_tokens, output_tokens, provider_key: provider_key),
+        metadata: { period: period, error: error, provider: provider_key }.compact
       )
     end
 
-    def estimated_cost_cents(input_tokens, output_tokens)
+    def estimated_cost_cents(input_tokens, output_tokens, provider_key:)
+      return 0 unless provider_key == "openai"
+
       microcents = (input_tokens.to_i * INPUT_TOKEN_PRICE_MICROCENTS) + (output_tokens.to_i * OUTPUT_TOKEN_PRICE_MICROCENTS)
       (microcents / 1_000_000.0).ceil
     end
