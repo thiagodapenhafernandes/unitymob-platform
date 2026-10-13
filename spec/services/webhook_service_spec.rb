@@ -132,7 +132,7 @@ RSpec.describe WebhookService do
       allow(described_class).to receive(:deliver).and_return(success: true)
       expect(setting.test_webhook).to eq(true)
       expect(described_class).to have_received(:deliver) do |_, payload|
-        expect(payload).to include(event_name: "test_webhook", action_source: "system_generated",
+        expect(payload).to include(event_name: "lead_crm", origin_form: "test_webhook", action_source: "system_generated",
           "utm_source" => "unitymob_test", "gclid" => "TEST_GCLID")
         expect(payload[:lead_id]).to start_with("unitymob-test-")
       end

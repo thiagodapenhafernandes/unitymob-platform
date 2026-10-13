@@ -19,7 +19,7 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     sections = html.css(".ax-studio__stage > .ax-studio-section")
 
     expect(tabs.map { |tab| tab["data-ax-tabs-target-param"] }).to eq(
-      %w[#layout-tab-brand #layout-tab-colors #layout-tab-menu #interest-intelligence-settings #layout-tab-impact]
+      %w[#layout-tab-brand #layout-tab-colors #layout-tab-menu #layout-tab-ai-interest #layout-tab-impact]
     )
     expect(sections.map { |section| section["id"] }).to eq(tabs.map { |tab| tab["data-ax-tabs-target-param"].delete_prefix("#") })
     expect(sections.reject { |section| section.key?("hidden") }.map { |section| section["id"] }).to eq(["layout-tab-brand"])
@@ -145,69 +145,38 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
       )
     end
 
-    it "permite configurar parâmetros objetivos da inteligência de interesse" do
+    it "ignora parâmetros de interesse na tela legada e preserva o conteúdo configurado" do
+      setting = LayoutSetting.instance
+      setting.update!(
+        interest_intelligence_enabled: true,
+        interest_intelligence_instructions: "Diretriz da conta",
+        interest_intelligence_settings: { "max_suggestions" => 6, "broker_review_required" => true }
+      )
+
       patch admin_layout_setting_path, params: {
         layout_setting: {
-          site_name: "Salute Imóveis",
           admin_area_name: "Plataforma",
-          interest_intelligence_enabled: "1",
-          interest_intelligence_instructions: InterestIntelligence::SystemInstructions::DEFAULT_TEXT,
-          interest_intelligence_settings: {
-            minimum_match_score: "72",
-            price_tolerance_percent: "18",
-            strong_interest_views: "3",
-            max_suggestions: "6",
-            idle_without_match_hours: "36",
-            city_weight: "22",
-            neighborhood_weight: "19",
-            category_weight: "17",
-            bedrooms_weight: "13",
-            parking_weight: "7",
-            price_weight: "21",
-            broker_review_required: "1",
-            requires_public_tracking_consent: "1",
-            allow_direct_lead_message: "0"
-          }
+          interest_intelligence_enabled: "0",
+          interest_intelligence_instructions: "Troca indevida",
+          interest_intelligence_settings: { "max_suggestions" => "99" }
         }
       }
 
       setting = LayoutSetting.instance.reload
       expect(response).to redirect_to(edit_admin_layout_setting_path)
-      expect(setting.interest_intelligence_instructions).to be_blank
-      expect(setting.interest_intelligence_settings).to include(
-        "minimum_match_score" => 72,
-        "price_tolerance_percent" => 18,
-        "strong_interest_views" => 3,
-        "max_suggestions" => 6,
-        "idle_without_match_hours" => 36,
-        "city_weight" => 22,
-        "neighborhood_weight" => 19,
-        "category_weight" => 17,
-        "bedrooms_weight" => 13,
-        "parking_weight" => 7,
-        "price_weight" => 21,
-        "broker_review_required" => true,
-        "requires_public_tracking_consent" => true,
-        "allow_direct_lead_message" => false
-      )
+      expect(setting.admin_area_name).to eq("Plataforma")
+      expect(setting.interest_intelligence_enabled).to be(true)
+      expect(setting.interest_intelligence_instructions).to eq("Diretriz da conta")
+      expect(setting.interest_intelligence_settings).to include("max_suggestions" => 6, "broker_review_required" => true)
     end
-  end
 
+    it "aponta para a tela de IA em vez de renderizar os ajustes de interesse" do
+      get edit_admin_layout_setting_path
 
-  it "usa controles compartilhados e breakpoints na inteligencia de interesse" do
-    get edit_admin_layout_setting_path
-
-    html = Nokogiri::HTML(response.body)
-    intelligence = html.at_css(".layout-settings-panel--interest-intelligence")
-    expect(intelligence).to be_present
-    expect(intelligence.css(".ax-control").size).to be >= 12
-    expect(intelligence.to_html).not_to match(/class="ax-input(?![-\w])/)
-
-    css = Rails.root.join("app/assets/stylesheets/admin_tailwind.css").read
-    expect(css).to include(
-      'html[data-admin-theme="dark"] .layout-settings-interest__toggle',
-      ".layout-settings-interest__toggle:focus-within",
-      ".layout-settings-interest__controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }"
-    )
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("layout-tab-ai-interest")
+      expect(response.body).to include("ai-integration-leads")
+      expect(response.body).not_to include("layout_setting[interest_intelligence_settings]")
+    end
   end
 end

@@ -1,0 +1,19 @@
+<%# Fonte única dos campos da estratégia de SEO. Locais: auto_inventory_enabled, auto_apply_enabled, auto_ai_enabled, discovery_enabled, strategy_prompt. %>
+<%= ax_field_group(title: "Inventário e descoberta") do %>
+  <div class="seo-strategy-toggle-grid">
+    <%= ax_switch_field(name: "seo_auto_inventory_enabled", checked: auto_inventory_enabled, class_name: "ax-switch--card",
+          label: "Criar SEO ao acessar", description: "Cada página pública visitada entra no inventário.") %>
+    <%= ax_switch_field(name: "seo_discovery_enabled", checked: discovery_enabled, class_name: "ax-switch--card",
+          label: "Descobrir oportunidades todo dia", description: "Rotina diária que avalia e cria páginas indexáveis.") %>
+  </div>
+<% end %>
+<%= ax_field_group(title: "Geração por IA") do %>
+  <%= ax_switch_field(name: "seo_ai_auto_generate_enabled", checked: auto_ai_enabled, class_name: "ax-switch--card",
+        label: "Gerar IA automaticamente", description: "Gera título, descrição e insights dos novos registros criados por acesso, quando o provedor de SEO tem token configurado.") %>
+<% end %>
+<%= ax_field_group(title: "Aplicação no site") do %>
+  <%= ax_switch_field(name: "seo_auto_apply_enabled", checked: auto_apply_enabled, class_name: "ax-switch--card",
+        label: "Aplicar por padrão", description: "Novos registros criados por acesso já ficam ativos no site público. Os conteúdos gerados para registros ativos podem aparecer no site sem revisão manual.") %>
+<% end %>
+<%= render "admin/shared/ui/expandable_textarea", name: "seo_ai_strategy_prompt", id: "seo_ai_strategy_prompt", label: "Instruções para IA de SEO",
+      value: strategy_prompt, rows: 6, hint: "Estas instruções orientam o SEO das páginas do site, especialmente as listagens por filtros. São independentes das instruções dos imóveis." %>

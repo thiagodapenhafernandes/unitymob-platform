@@ -1,0 +1,64 @@
+<%= ax_operational_panel(title: "Compartilhamento e captação", class_name: "ax-panel--settings tw-mb-4") do %>
+<p class="ax-field__hint">Configure a seleção enviada ao cliente e a identificação dos interessados.</p>
+<%= ax_studio_group(title: "Compartilhamento de seleções", subtitle: "O corretor envia ao cliente uma página com os imóveis escolhidos na busca.") do %>
+              <%= ax_switch_field(form: f, method: :ai_property_search_sharing_enabled, label: "Permitir compartilhar seleções", class_name: "ax-switch--card") %>
+            <% end %>
+<%= ax_studio_group(title: "Seleção e validade", actions: tag.span("Compartilhamento", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_number_field(form: f, method: :ai_property_search_share_max_properties, label: "Máximo de imóveis por seleção", class_name: "ax-span-4", min: 1, max: 100) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_share_expiration_days, label: "Validade do link (dias)", class_name: "ax-span-4", min: 1, max: 365) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_visitor_recognition_days, label: "Reconhecer visitante por (dias)", class_name: "ax-span-4", min: 1, max: 730) %>
+                </div>
+              <% end %>
+<div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_lead_origin, label: "Origem do lead", class_name: "ax-span-6") %></div>
+<details class="ax-studio-advanced" <%= "open" if property_setting.errors.any? %>>
+<summary><i class="bi bi-sliders"></i><span>Textos ao compartilhar</span><i class="bi bi-chevron-down"></i></summary>
+<div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_title, label: "Título ao compartilhar", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_message, label: "Mensagem ao compartilhar", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %></div>
+</details>
+<details class="ax-studio-advanced" <%= "open" if property_setting.errors.any? %>>
+<summary><i class="bi bi-sliders"></i><span>Página pública</span><i class="bi bi-chevron-down"></i></summary>
+<%= ax_studio_group(title: "Página pública", actions: tag.span("Conteúdo", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_eyebrow, label: "Chamada da página pública", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_title, label: "Título da página pública", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_description, label: "Descrição da página pública", class_name: "ax-span-12") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_view_property_label, label: "Botão para visualizar", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_button_label, label: "Botão de interesse", class_name: "ax-span-6") %>
+                </div>
+              <% end %>
+</details>
+<details class="ax-studio-advanced" <%= "open" if property_setting.errors.any? %>>
+<summary><i class="bi bi-sliders"></i><span>Identificação do visitante</span><i class="bi bi-chevron-down"></i></summary>
+<%= ax_studio_group(title: "Identificação e lead", actions: tag.span("Conversão", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_title, label: "Título da identificação", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_description, label: "Texto da identificação", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_name_label, label: "Campo nome", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_phone_label, label: "Campo telefone", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_submit_label, label: "Confirmar identificação", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_cancel_label, label: "Cancelar identificação", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_success_message, label: "Mensagem de interesse registrado", class_name: "ax-span-6") %>
+                </div>
+              <% end %>
+</details>
+<details class="ax-studio-advanced" <%= "open" if property_setting.errors.any? %>>
+<summary><i class="bi bi-sliders"></i><span>Mensagens e avisos do corretor</span><i class="bi bi-chevron-down"></i></summary>
+<%= ax_studio_group(title: "Mensagens operacionais", actions: tag.span("Corretor", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_panel_title, label: "Título do bloco do corretor", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_event_message, label: "Mensagem do interesse", hint: "Use %{name} para o nome do lead.", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_selection_count_message, label: "Contador da seleção", hint: "Use %{count}.", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_button_label, label: "Botão compartilhar", class_name: "ax-span-4") %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_broker_events_limit, label: "Máximo de avisos ao corretor", class_name: "ax-span-4", min: 1, max: 20) %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_link_copied_message, label: "Link copiado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_sharing_disabled_message, label: "Compartilhamento desativado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_error_message, label: "Erro ao compartilhar", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_error_message, label: "Erro ao registrar interesse", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_event_meta, label: "Resumo agrupado ao corretor", hint: "Use %{count}.", class_name: "ax-span-12") %>
+                </div>
+              <% end %>
+</details>
+<% end %>

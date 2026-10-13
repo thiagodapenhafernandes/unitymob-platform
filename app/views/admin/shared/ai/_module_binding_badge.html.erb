@@ -1,0 +1,5 @@
+<%# locals: module_key %>
+<% configuration = Ai::ModuleConfiguration.new(module_key, tenant: current_tenant) %>
+<%= link_to admin_ai_integration_path(anchor: "ai-integration-connections"), aria: { label: "Configurar provedor de #{Ai::ModuleConfiguration::MODULES.fetch(module_key).fetch(:label)}" } do %>
+  <%= ax_badge("#{configuration.provider.label} · #{configuration.resolved_model}", tone: :gray) %>
+<% end %>

@@ -30,7 +30,9 @@ module OpenAi
       raise_response_error!(response, parsed)
     end
 
-    def transcribe(file:, language:, model: "gpt-4o-mini-transcribe", prompt: nil, fallback_model: nil)
+    # keywords: ignorado aqui; existe por paridade de interface com MetaAi::Client
+    # (chamadores multi-provedor passam keywords para ambos).
+    def transcribe(file:, language:, model: "gpt-4o-mini-transcribe", prompt: nil, keywords: nil, fallback_model: nil)
       raise "Token da OpenAI não configurado." if @api_key.blank?
 
       response, parsed = perform_transcription_request(file:, language:, model:, prompt:)

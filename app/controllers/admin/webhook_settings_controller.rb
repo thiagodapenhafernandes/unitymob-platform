@@ -51,11 +51,14 @@ class Admin::WebhookSettingsController < Admin::BaseController
   end
 
   def test
-    if @webhook_setting.test_webhook
-      redirect_to admin_webhook_settings_path, notice: 'Webhook de teste enviado com sucesso!'
-    else
-      redirect_to admin_webhook_settings_path, alert: 'Falha ao enviar webhook de teste. Verifique a URL e tente novamente.'
-    end
+    form = WebhookTestForm.new(@webhook_setting, params.fetch(:webhook_test, ActionController::Parameters.new).permit(*WebhookTestForm::FIELDS))
+    return render json: { errors: form.errors.full_messages }, status: :unprocessable_entity unless form.valid?
+    return render json: { errors: ["Este webhook está inativo."] }, status: :unprocessable_entity unless @webhook_setting.active?
+
+    payload = form.payload
+    result = WebhookService.deliver(@webhook_setting.whatsapp_webhook_url.presence || @webhook_setting.webhook_url, payload)
+    render json: { success: result[:success], http_status: result[:status], payload: payload,
+                   message: result[:success] ? "Teste enviado. HTTP #{result[:status]}." : "Falha no envio. HTTP #{result[:status] || 'indisponível'}." }
   end
 
   def share_tracking

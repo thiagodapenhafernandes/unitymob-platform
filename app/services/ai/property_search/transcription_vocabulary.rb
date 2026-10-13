@@ -18,17 +18,23 @@ module Ai
       end
 
       def call
-        return nil if @tenant.blank?
+        list = terms
+        return nil if list.empty?
 
-        Rails.cache.fetch("ai_property_search/vocab/#{@tenant.id}", expires_in: CACHE_TTL) do
-          build_prompt
-        end.presence
+        build_prompt(list).presence
+      end
+
+      def terms
+        return [] if @tenant.blank?
+
+        Rails.cache.fetch("ai_property_search/vocab_terms/#{@tenant.id}", expires_in: CACHE_TTL) do
+          (cities + neighborhoods + developments).map { |name| name.to_s.strip }.compact_blank.uniq
+        end
       end
 
       private
 
-      def build_prompt
-        terms = (cities + neighborhoods + developments).map { |name| name.to_s.strip }.compact_blank.uniq
+      def build_prompt(terms)
         return "" if terms.empty?
 
         prompt = "Vocabulário: "

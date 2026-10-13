@@ -1,6 +1,7 @@
 <%
   group_classes = ["ax-radio-group", class_name].compact.join(" ")
   item_classes = ["ax-radio-group__item", item_class].compact.join(" ")
+  selected_value = local_assigns[:selected]&.to_s
 %>
 
 <fieldset class="<%= group_classes %>">
@@ -8,7 +9,7 @@
   <div class="ax-radio-group__options">
     <% choices.each do |choice_label, choice_value| %>
       <label class="<%= item_classes %>">
-        <%= form.radio_button method, choice_value, class: "ax-radio-group__input", disabled: disabled, data: input_data %>
+        <%= form.radio_button method, choice_value, { checked: (selected_value.nil? ? nil : choice_value.to_s == selected_value) }.compact.merge(class: "ax-radio-group__input", disabled: disabled, data: input_data) %>
         <span class="ax-radio-group__mark" aria-hidden="true"></span>
         <span class="ax-radio-group__text"><%= choice_label %></span>
       </label>

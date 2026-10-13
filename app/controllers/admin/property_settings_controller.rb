@@ -3,14 +3,8 @@ module Admin
     RETURN_ANCHORS = %w[
       property-settings-media
       property-settings-card
-      property-settings-ai-search
-      property-settings-ai-activation
-      property-settings-ai-interpretation
-      property-settings-ai-scope
-      property-settings-ai-context
-      property-settings-ai-access
+      property-settings-ai-hub
       property-settings-ai-aliases
-      property-settings-ai-sharing
       property-settings-ai-learning
     ].freeze
 
@@ -145,74 +139,6 @@ module Admin
         :notify_internal_review_events,
         :notify_email_review_events,
         :review_notification_emails,
-        :ai_property_search_enabled,
-        :voice_property_search_enabled,
-        :ai_property_search_instructions,
-        :ai_property_search_welcome_message,
-        :ai_property_search_processing_message,
-        :ai_property_search_no_results_message,
-        :ai_property_search_data_source,
-        :ai_property_search_max_results,
-        :ai_property_search_default_sort,
-        :ai_property_search_allow_flexible_results,
-        :ai_property_search_price_tolerance_percentage,
-        :ai_property_search_allow_clarifying_questions,
-        :ai_property_search_require_filter_confirmation,
-        :ai_property_search_max_audio_duration_seconds,
-        :ai_property_search_language,
-        :ai_property_search_temperature,
-        :ai_property_search_top_p,
-        :ai_property_search_frequency_penalty,
-        :ai_property_search_presence_penalty,
-        :ai_property_search_history_enabled,
-        :ai_property_search_history_retention_days,
-        :ai_property_search_development_name_enabled,
-        :ai_property_search_developer_name_enabled,
-        :ai_property_search_fuzzy_matching_enabled,
-        :ai_property_search_fuzzy_similarity_threshold,
-        :ai_property_search_location_fuzzy_threshold,
-        :ai_property_search_resilient_search_enabled,
-        :ai_property_search_transcription_vocabulary_enabled,
-        :ai_property_search_development_aliases_enabled,
-        :ai_property_search_search_by_characteristics_enabled,
-        :ai_property_search_catalog_property_types_limit,
-        :ai_property_search_catalog_cities_limit,
-        :ai_property_search_catalog_neighborhoods_limit,
-        :ai_property_search_catalog_developments_limit,
-        :ai_property_search_catalog_feature_terms_limit,
-        :ai_property_search_catalog_alias_names_limit,
-        :ai_property_search_sharing_enabled,
-        :ai_property_search_share_max_properties,
-        :ai_property_search_share_expiration_days,
-        :ai_property_search_visitor_recognition_days,
-        :ai_property_search_share_title,
-        :ai_property_search_share_message,
-        :ai_property_search_public_eyebrow,
-        :ai_property_search_public_title,
-        :ai_property_search_public_description,
-        :ai_property_search_view_property_label,
-        :ai_property_search_interest_button_label,
-        :ai_property_search_identity_title,
-        :ai_property_search_identity_description,
-        :ai_property_search_identity_name_label,
-        :ai_property_search_identity_phone_label,
-        :ai_property_search_identity_submit_label,
-        :ai_property_search_identity_cancel_label,
-        :ai_property_search_interest_success_message,
-        :ai_property_search_lead_origin,
-        :ai_property_search_broker_panel_title,
-        :ai_property_search_broker_event_message,
-        :ai_property_search_selection_count_message,
-        :ai_property_search_share_button_label,
-        :ai_property_search_link_copied_message,
-        :ai_property_search_share_error_message,
-        :ai_property_search_interest_error_message,
-        :ai_property_search_broker_event_meta,
-        :ai_property_search_sharing_disabled_message,
-        :ai_property_search_broker_events_limit,
-        ai_property_search_allowed_fields: [],
-        ai_property_search_result_fields: [],
-        ai_property_search_allowed_profiles: [],
         required_broker_intake_checks: [],
         returnable_intake_edit_sections: []
       )
