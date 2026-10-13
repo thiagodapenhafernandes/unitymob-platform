@@ -78,6 +78,21 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(response.body).not_to include("voice ativo", "voice pendente", ">Matching<", ">Voice<")
   end
 
+  it "renderiza remoção do token dedicado sem habilitar o provedor inativo" do
+    Ai::Provider.all.each_value do |provider|
+      Setting.set(provider.voice_api_key_setting, "dedicated-test-token", tenant: admin.tenant)
+    end
+    get admin_ai_integration_path
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    active = Ai::Provider.active_key(tenant: admin.tenant)
+    Ai::Provider.all.each_key do |key|
+      input = html.at_css("#ai_#{key}_clear_voice_api_key")
+      expect(input).to be_present
+      expect(input.key?("disabled")).to eq(key != active)
+    end
+  end
+
   it "renderiza o workspace operacional de IA" do
     get admin_ai_integration_path
 
