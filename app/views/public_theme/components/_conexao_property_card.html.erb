@@ -13,14 +13,15 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "conexao-property-card-original-v1",
+    "conexao-property-card-original-v2",
     PublicSite::PageVersion.current(public_tenant.id),
     public_tenant.id,
     request.host,
     property.cache_key_with_version,
     property_constructor&.cache_key_with_version,
     current_admin_user.present?,
-    priority_image
+    priority_image,
+    public_property_share_token(property)
   ]
 %>
 <% cache_if current_admin_user.blank?, card_cache_key, expires_in: 5.minutes do %>
@@ -208,6 +209,8 @@
                   data-marketing-tracker-target-url-value="<%= property_path %>"
                   data-marketing-tracker-habitation-id-value="<%= property.id %>"
                   data-property-id="<%= property.id %>"
+                  data-share-token="<%= public_property_share_token(property) %>"
+                  data-require-lead-form="<%= public_property_share_token(property).present? %>"
                   data-property-code="<%= property.codigo %>"
                   data-property-title="<%= property_title %>"
                   data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
@@ -233,6 +236,8 @@
                   data-marketing-tracker-target-url-value="<%= property_path %>"
                   data-marketing-tracker-habitation-id-value="<%= property.id %>"
                   data-property-id="<%= property.id %>"
+                  data-share-token="<%= public_property_share_token(property) %>"
+                  data-require-lead-form="<%= public_property_share_token(property).present? %>"
                   data-property-code="<%= property.codigo %>"
                   data-property-title="<%= property_title %>"
                   data-negotiation-type="<%= property.whatsapp_negotiation_type %>"

@@ -16,7 +16,7 @@
     <div class="public-theme-property-gallery__grid sl-detail__gallery-grid"
          data-controller="public-gallery-mobile"
          data-public-gallery-mobile-property-id-value="<%= habitation.id %>"
-         data-public-gallery-mobile-property-url-value="<%= habitation_path(habitation) %>"
+         data-public-gallery-mobile-property-url-value="<%= public_habitation_detail_path(habitation) %>"
          data-public-gallery-mobile-property-title-value="<%= title %>"
          data-public-gallery-mobile-property-image-url-value="<%= public_image_url(images.first) %>"
          data-public-gallery-mobile-property-price-value="<%= number_to_currency((has_rent_price ? habitation.valor_locacao_cents : habitation.valor_venda_cents).to_i / 100.0, unit: 'R$ ', separator: ',', delimiter: '.', precision: 0) if (has_rent_price || has_sale_price) %>"

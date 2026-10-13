@@ -92,8 +92,11 @@ module Leads
               "archived_at", "archive_reason_id", "archive_note")
             existing.skip_automatic_routing = true
             route = distribution_rule.present? || !inquiry.skip_automatic_routing?
-            routing = DistributorService.redistribute(existing, inquiry: inquiry,
-              rule: distribution_rule || inquiry.distribution_rule) if route
+            routing = if route && RoutingService.assign_shared_inquiry!(existing, inquiry)
+              :direct
+            elsif route
+              DistributorService.redistribute(existing, inquiry: inquiry, rule: distribution_rule || inquiry.distribution_rule)
+            end
             InquiryComplement.complement!(existing, inquiry, notify: false,
               metadata: { "previous_assignment" => previous_assignment })
             if routing == :kept
@@ -105,6 +108,7 @@ module Leads
             end
             existing.other_information = existing.other_information.merge("intake_reconciled" => true)
             existing.save! if existing.changed?
+            NotificationDispatcher.notify_direct_assignment(existing) if routing == :direct
             if route && previous_assignment["status"] != existing.status
               Automation::Dispatcher.dispatch(:lead_stage_changed, existing, source: "lead",
                 payload: { from: previous_assignment["status"], to: existing.status })

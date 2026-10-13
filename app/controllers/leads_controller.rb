@@ -166,6 +166,11 @@ class LeadsController < ApplicationController
     share_link = HabitationShareLink.active.joins(:habitation).where(habitations: { tenant_id: public_tenant.id }).find_by(token: token, habitation_id: lead.property_id)
     return unless share_link
     return unless share_link.admin_user&.active?
+    # O vínculo da página pública depende do token explícito, sem contaminar o site normal por cookie.
+    if share_link.broker_page? && (current_admin_user.present? || lead.share_token.blank?)
+      lead.share_token = nil
+      return
+    end
 
     lead.share_token = share_link.token
     lead.admin_user_id = share_link.admin_user_id

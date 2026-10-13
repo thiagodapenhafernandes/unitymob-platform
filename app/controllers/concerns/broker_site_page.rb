@@ -23,6 +23,7 @@ module BrokerSitePage
       .includes(*PublicListingSearch::PUBLIC_LISTING_INCLUDES)
       .paginate(page: requested_public_listing_page, per_page: PublicListingSearch::PUBLIC_LISTING_PER_PAGE, total_entries: total_entries)
     @filter_params = filter_params
+    @broker_share_links = HabitationShareLink.for_broker_page(broker: @broker, habitations: @habitations) if current_admin_user.blank?
     load_filter_options
     @home_setting ||= HomeSetting.instance(tenant: public_tenant)
     # A página renderiza o próprio shell do drawer global (com submit no corretor);

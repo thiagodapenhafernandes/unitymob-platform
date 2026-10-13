@@ -1,5 +1,6 @@
 class HabitationShareLink < ApplicationRecord
   COOKIE_KEY = :habitation_share_token
+  BROKER_PAGE_TOKEN_PREFIX = "broker-page-".freeze
   DEFAULT_EXPIRATION_DAYS = 30
   MIN_EXPIRATION_DAYS = 1
   MAX_EXPIRATION_DAYS = 365
@@ -17,7 +18,7 @@ class HabitationShareLink < ApplicationRecord
   before_validation :ensure_expires_at, on: :create
 
   def self.create_or_reuse_for(habitation:, admin_user:)
-    active.where(habitation: habitation, admin_user: admin_user)
+    active.where(habitation: habitation, admin_user: admin_user).where.not("token LIKE ?", "#{BROKER_PAGE_TOKEN_PREFIX}%")
           .order(expires_at: :desc)
           .first || create!(habitation: habitation, admin_user: admin_user)
   end
@@ -27,12 +28,30 @@ class HabitationShareLink < ApplicationRecord
     raw_value.to_i.clamp(MIN_EXPIRATION_DAYS, MAX_EXPIRATION_DAYS)
   end
 
+  def self.for_broker_page(broker:, habitations:)
+    properties = habitations.to_a
+    raise ArgumentError, "Imóveis de outra conta" unless properties.all? { |property| property.tenant_id == broker.tenant_id }
+
+    links = active.where(admin_user: broker, habitation_id: properties.map(&:id))
+      .where("token LIKE ?", "#{BROKER_PAGE_TOKEN_PREFIX}%")
+      .order(expires_at: :desc).to_a.group_by(&:habitation_id).transform_values(&:first)
+    properties.each do |property|
+      links[property.id] ||= create!(habitation: property, admin_user: broker,
+        token: "#{BROKER_PAGE_TOKEN_PREFIX}#{SecureRandom.urlsafe_base64(24)}")
+    end
+    links
+  end
+
   def self.expiration_period(tenant: Current.tenant)
     expiration_days(tenant: tenant).days
   end
 
   def expired?
     expires_at <= Time.current
+  end
+
+  def broker_page?
+    token.to_s.start_with?(BROKER_PAGE_TOKEN_PREFIX)
   end
 
   def register_click!

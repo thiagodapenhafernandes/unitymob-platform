@@ -1,7 +1,8 @@
+<% share_urls = public_property_share_urls(property) %>
 <div class="broker-share"
      data-controller="broker-share"
-     data-broker-share-generate-url-value="<%= current_admin_user.present? ? share_link_habitation_path(property) : '' %>"
-     data-broker-share-fallback-url-value="<%= habitation_url(property) %>"
+     data-broker-share-generate-url-value="<%= share_urls[:generate] %>"
+     data-broker-share-fallback-url-value="<%= share_urls[:fallback] %>"
      data-broker-share-property-title-value="<%= property.display_title %>">
   <button type="button"
           class="broker-share__trigger"

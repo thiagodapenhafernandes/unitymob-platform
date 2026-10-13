@@ -1,6 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Brokers", type: :request do
+  include Devise::Test::IntegrationHelpers
   before { host! "localhost" }
 
   it "exibe apenas corretores marcados para aparecer no site" do
@@ -97,6 +98,84 @@ RSpec.describe "Brokers", type: :request do
   end
 
   describe "página do corretor" do
+    Tenant::PUBLIC_SITE_THEMES.each_key do |theme|
+      it "vincula links, captura e compartilhamento ao dono da página no tema #{theme}" do
+        broker = create_broker("Dono da Pagina")
+        property = create(:habitation, tenant: tenant, admin_user: broker)
+        tenant.update_columns(public_site_theme: theme)
+
+        get "/dono-da-pagina"
+        expect(response).to have_http_status(:ok)
+        link = HabitationShareLink.active.find_by!(habitation: property, admin_user: broker)
+        html = Nokogiri::HTML(response.body)
+        card = html.at_css("[data-property-id='#{property.id}']")
+        urls = card.css("a[href]").map { |node| node["href"] }.select { |url| url.include?(property.slug) }
+        urls << card["data-clickable-card-url-value"] if card["data-clickable-card-url-value"]
+        expect(urls).to be_present
+        expect(urls).to all(include("share_token=#{link.token}"))
+        cta = card.at_css("button[data-share-token]")
+        expect(cta["data-share-token"]).to eq(link.token)
+        share_menu = card.at_css("[data-controller='broker-share']")
+        if share_menu
+          expect(share_menu["data-broker-share-fallback-url-value"]).to include("share_token=#{link.token}")
+          expect(share_menu["data-broker-share-generate-url-value"]).to eq("")
+        end
+
+        get habitation_path(property, share_token: link.token)
+        expect(response).to have_http_status(:ok)
+        detail = Nokogiri::HTML(response.body)
+        expect(detail.at_css(".public-habitations-show__broker-card").text).to include(broker.name)
+        expect(detail.at_css("[data-controller='broker-share']")["data-broker-share-fallback-url-value"]).to include("share_token=#{link.token}")
+      end
+    end
+
+    it "mantém os links comuns quando o corretor está logado" do
+      broker = create_broker("Dono da Pagina")
+      other = create_broker("Outro Corretor")
+      property = create(:habitation, tenant: tenant, admin_user: broker)
+      sign_in other
+      get "/dono-da-pagina", headers: { "Turbo-Frame" => "public-listing-grid" }
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("share_token=broker-page-")
+      expect(HabitationShareLink.where(habitation: property)).to be_empty
+    end
+
+    it "copia link comum para administrador do sistema sem conta, sem tentar gerar vínculo" do
+      broker = create_broker("Dono da Pagina")
+      property = create(:habitation, tenant: tenant, admin_user: broker)
+      tenant.update_columns(public_site_theme: "conexaoimobiliaria")
+      sign_in create(:admin_user, super_admin: true)
+      get "/dono-da-pagina"
+      expect(response).to have_http_status(:ok)
+      menu = Nokogiri::HTML(response.body).at_css("[data-controller='broker-share']")
+      expect(menu["data-broker-share-generate-url-value"]).to eq("")
+      expect(menu["data-broker-share-fallback-url-value"]).to eq(habitation_url(property))
+      expect(HabitationShareLink.where(habitation: property)).to be_empty
+      post share_link_habitation_path(property), as: :json
+      expect(response).to have_http_status(:forbidden)
+      expect(response.parsed_body["error"]).to include("vinculado a uma conta")
+    end
+
+    it "isola o cache entre páginas de corretores e a listagem genérica, renovando links expirados" do
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      first = create_broker("Primeiro Corretor")
+      second = create_broker("Segundo Corretor")
+      property = create(:habitation, tenant: tenant, admin_user: first)
+      HabitationBrokerAssignment.create!(habitation: property, admin_user: second, role: :captador)
+      get "/primeiro-corretor"
+      one = HabitationShareLink.active.find_by!(habitation: property, admin_user: first)
+      get "/segundo-corretor"
+      two = HabitationShareLink.active.find_by!(habitation: property, admin_user: second)
+      expect(response.body).to include("share_token=#{two.token}")
+      expect(response.body).not_to include("share_token=#{one.token}")
+      get habitations_path
+      expect(response.body).not_to include("share_token=#{one.token}", "share_token=#{two.token}")
+      one.update!(expires_at: 1.minute.ago)
+      get "/primeiro-corretor"
+      expect(response.body).not_to include("share_token=#{one.token}")
+      expect(HabitationShareLink.active.find_by!(habitation: property, admin_user: first).token).not_to eq(one.token)
+    end
+
     it "lista apenas os imóveis do corretor com hero e filtros" do
       broker = create_broker("Abner Marcelo")
       other = create_broker("Ze Ninguem")

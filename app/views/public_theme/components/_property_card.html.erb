@@ -3,7 +3,7 @@
   card_tenant = respond_to?(:public_tenant) ? public_tenant : property.tenant
   variant = local_assigns.fetch(:variant, "default")
   card_class = ["public-theme-property-card", "public-theme-property-card--#{variant}", local_assigns[:class_name]].compact.join(" ")
-  property_url = habitation_path(property)
+  property_url = public_habitation_detail_path(property)
   title = property.display_title
   location = [property.public_neighborhood, property.cidade].compact_blank.join(" · ")
   context_name = property.nome_empreendimento.to_s.squish.presence
@@ -159,6 +159,7 @@
             data-marketing-tracker-target-url-value="<%= property_url %>"
             data-marketing-tracker-habitation-id-value="<%= property.id %>"
             data-property-id="<%= property.id %>"
+            data-share-token="<%= public_property_share_token(property) %>"
             data-property-code="<%= property.codigo %>"
             data-property-title="<%= title %>"
             data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
