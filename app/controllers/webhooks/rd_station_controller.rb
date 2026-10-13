@@ -12,7 +12,9 @@ module Webhooks
         request:
       )
 
-      if result.success?
+      if result.ignored_source
+        render json: { ok: true, ignored: true, reason: "blocked_source", source: result.ignored_source }, status: :ok
+      elsif result.success?
         render json: { ok: true, lead_id: result.lead.id }, status: :created
       else
         render json: { error: "Payload inválido", details: result.errors }, status: :unprocessable_entity

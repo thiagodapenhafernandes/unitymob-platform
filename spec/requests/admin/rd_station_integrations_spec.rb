@@ -25,6 +25,7 @@ RSpec.describe "Admin::RdStationIntegrations", type: :request do
   end
 
   it "gera a URL do webhook ao abrir a tela" do
+    Setting.set(RdStationIntegrationSetting::WEBHOOK_SECRET_KEY, "", tenant: admin.tenant)
     expect {
       get admin_rd_station_integration_path
     }.to change { Setting.tenant_get(RdStationIntegrationSetting::WEBHOOK_SECRET_KEY, tenant: admin.tenant).present? }.from(false).to(true)
@@ -128,5 +129,18 @@ RSpec.describe "Admin::RdStationIntegrations", type: :request do
     expect(response).to redirect_to(admin_rd_station_integration_path)
     expect(Setting.tenant_get(RdStationIntegrationSetting::API_TOKEN_KEY, tenant: admin.tenant)).to eq("access-rd")
     expect(Setting.tenant_get(RdStationIntegrationSetting::REFRESH_TOKEN_KEY, tenant: admin.tenant)).to eq("refresh-rd")
+  end
+
+  it "salva e limpa o bloqueio por origem com fontes personalizadas na mesma tela" do
+    patch admin_rd_station_integration_path, params: { rd_station: {
+      blocked_sources: ["", "meta", "google"], custom_blocked_sources: "Parceiro Áurea\nNEWSLETTER\n", enabled: "false"
+    } }
+    expect(response).to redirect_to(admin_rd_station_integration_path)
+    setting = RdStationIntegrationSetting.current(tenant: admin.tenant)
+    expect(setting.blocked_sources).to match_array(%w[meta google parceiro\ aurea newsletter])
+    get admin_rd_station_integration_path
+    expect(response.body).to include("Origens a bloquear", "Facebook / Instagram (Meta)", "parceiro aurea")
+    patch admin_rd_station_integration_path, params: { rd_station: { blocked_sources: [""], custom_blocked_sources: "" } }
+    expect(RdStationIntegrationSetting.current(tenant: admin.tenant).blocked_sources).to eq([])
   end
 end

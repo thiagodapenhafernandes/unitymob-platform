@@ -15,6 +15,7 @@ class RdStationIntegrationSetting
   WEBHOOK_MESSAGE_KEY = "#{PREFIX}.webhook_message".freeze
   DEFAULT_BUSINESS_TYPE_KEY = "#{PREFIX}.default_business_type".freeze
   DEFAULT_ORIGIN_KEY = "#{PREFIX}.default_origin".freeze
+  BLOCKED_SOURCES_KEY = "#{PREFIX}.blocked_sources".freeze
 
   DEFAULT_ORIGIN = "RD Station".freeze
   BUSINESS_TYPES = {
@@ -42,6 +43,8 @@ class RdStationIntegrationSetting
   attribute :webhook_secret, :string
   attribute :default_business_type, :string, default: "auto"
   attribute :default_origin, :string, default: DEFAULT_ORIGIN
+  attribute :blocked_sources, default: -> { [] }
+  attribute :custom_blocked_sources, :string
 
   validates :tenant, presence: true
   validates :default_origin, presence: true
@@ -57,7 +60,8 @@ class RdStationIntegrationSetting
       enabled: Setting.tenant_get(ENABLED_KEY, "false", tenant: tenant) == "true",
       client_id: Setting.tenant_get(CLIENT_ID_KEY, "", tenant: tenant),
       default_business_type: Setting.tenant_get(DEFAULT_BUSINESS_TYPE_KEY, "auto", tenant: tenant),
-      default_origin: Setting.tenant_get(DEFAULT_ORIGIN_KEY, DEFAULT_ORIGIN, tenant: tenant)
+      default_origin: Setting.tenant_get(DEFAULT_ORIGIN_KEY, DEFAULT_ORIGIN, tenant: tenant),
+      blocked_sources: JSON.parse(Setting.tenant_get(BLOCKED_SOURCES_KEY, "[]", tenant: tenant))
     )
   end
 
@@ -85,12 +89,26 @@ class RdStationIntegrationSetting
     Setting.set(WEBHOOK_SECRET_KEY, normalized_webhook_secret, "Segredo do webhook RD Station", tenant: tenant) if normalized_webhook_secret.present?
     Setting.set(DEFAULT_BUSINESS_TYPE_KEY, normalized_default_business_type, "Tipo comercial padrão para leads RD Station", tenant: tenant)
     Setting.set(DEFAULT_ORIGIN_KEY, normalized_default_origin, "Origem padrão para leads RD Station", tenant: tenant)
+    sources = Array(blocked_sources)
+    if !custom_blocked_sources.nil?
+      sources = sources.select { |source| RdStation::EntrySource::OPTIONS.key?(source) } + custom_blocked_sources.lines
+    end
+    self.blocked_sources = sources.map { |source| RdStation::EntrySource.normalize(source) }.reject(&:blank?).uniq
+    Setting.set(BLOCKED_SOURCES_KEY, blocked_sources.to_json, "Origens bloqueadas na entrada RD Station", tenant: tenant)
 
     true
   end
 
   def enabled?
     ActiveModel::Type::Boolean.new.cast(enabled)
+  end
+
+  def custom_blocked_sources_text
+    custom_blocked_sources || (Array(blocked_sources) - RdStation::EntrySource::OPTIONS.keys).join("\n")
+  end
+
+  def blocks_source?(source)
+    (Array(blocked_sources) & [source[:key], source[:raw]]).any?
   end
 
   def configured?

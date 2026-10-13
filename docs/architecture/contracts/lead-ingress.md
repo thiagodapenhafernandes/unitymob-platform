@@ -13,3 +13,24 @@ A validação de novos leads registra a política Unitymob em `other_information
 A correlação das tentativas de saída pertence ao `WebhookDeliveryJob`, não aos
 controllers/receptores. IDs do envelope são preservados no retry; logs seguros
 registram host e status HTTP, sem contato, caminho ou query do destino.
+
+## Filtro de origens RD Station
+
+Em `/admin/rd_station_integration`, a conta seleciona origens que não deseja receber
+via RD, incluindo fontes personalizadas (uma por linha). A configuração é armazenada
+em `rd_station.leads.blocked_sources`, sem fallback global, inicialmente vazia.
+`RdStation::EntrySource` identifica a fonte por UTM/origem do contato ou do funil
+(incluindo `Busca Paga | Google`); tags Meta conhecidas são fallback quando a fonte
+não é informada. Campos de perfil social e nome do formulário não são evidência.
+Comparações de fontes personalizadas são exatas, ignorando acentos, caixa e espaços
+redundantes. Facebook e Instagram são agrupados em Meta.
+
+O receptor verifica o filtro antes de `Leads::Intake`: uma origem bloqueada retorna
+HTTP 200 com `ignored: true`, `reason: blocked_source` e `source`, sem criar lead,
+complementar histórico ou redistribuir. As integrações diretas continuam independentes;
+o filtro não altera registros anteriores nem desativa o webhook no RD.
+
+Limite: o webhook RD entrega o perfil atual do contato, não uma prova da origem de
+cada conversão. Tags podem persistir entre conversões; não inferir correlação exata
+com uma conversão da Meta. Sem fonte confiável, a categoria é `unknown`, controlável
+na tela. Referência: https://developers.rdstation.com/reference/webhooks-payload-mkt

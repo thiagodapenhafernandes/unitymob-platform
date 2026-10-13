@@ -81,7 +81,9 @@ class Admin::RdStationIntegrationsController < Admin::BaseController
       :client_secret,
       :api_token,
       :default_business_type,
-      :default_origin
+      :default_origin,
+      :custom_blocked_sources,
+      blocked_sources: []
     )
   end
 

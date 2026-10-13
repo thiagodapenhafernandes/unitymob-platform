@@ -1,3 +1,8 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "RD Station", back_path: admin_root_path,
+        status: @rd_station_setting.enabled? ? "Ativa" : "Inativa" %>
+<% end %>
+
 <div class="ax-integration-layout">
   <%= ax_workspace_heading(
         eyebrow: "Integrações · Leads",
@@ -72,6 +77,20 @@
                       select_options: { selected: @rd_station_setting.default_business_type }
                     ) %>
               </div>
+            <% end %>
+
+            <%= ax_field_group(title: "Origens a bloquear", class_name: "tw-mt-4") do %>
+              <p class="ax-field__hint tw-mb-3">Marque as origens que você não quer receber através da RD Station. As demais continuam permitidas. Isso não bloqueia as integrações diretas com a Unitymob e não altera leads existentes.</p>
+              <%= ax_check_group(form: f, method: :blocked_sources,
+                    choices: RdStation::EntrySource::OPTIONS.to_a, selected: @rd_station_setting.blocked_sources,
+                    legend: "Bloquear recebimento via RD") %>
+              <%= ax_text_field(form: f, method: :custom_blocked_sources, type: :textarea,
+                    label: "Outras origens a bloquear", value: @rd_station_setting.custom_blocked_sources_text,
+                    rows: 3, class_name: "tw-mt-3",
+                    hint: "Uma origem por linha, conforme o valor de origem/utm_source enviado pelo RD. A comparação ignora maiúsculas e acentos.") %>
+              <%= ax_inline_notice(tone: :neutral, icon: "info-circle", compact: true, announce: false, class_name: "tw-mt-3") do %>
+                A identificação usa origem/UTM e, quando faltam, tags reconhecidas como “instagram leads”. Esses dados refletem o perfil enviado pelo RD e podem representar uma origem anterior. Nome de formulário não identifica a origem. Sem esses sinais, vale a opção “Origem não identificada”.
+              <% end %>
             <% end %>
 
             <%= ax_form_actions(sticky: false) do %>
