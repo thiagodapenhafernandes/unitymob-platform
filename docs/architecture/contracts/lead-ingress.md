@@ -34,3 +34,26 @@ Limite: o webhook RD entrega o perfil atual do contato, não uma prova da origem
 cada conversão. Tags podem persistir entre conversões; não inferir correlação exata
 com uma conversão da Meta. Sem fonte confiável, a categoria é `unknown`, controlável
 na tela. Referência: https://developers.rdstation.com/reference/webhooks-payload-mkt
+
+## Página pública do corretor e conversão direta
+
+Somente visitantes sem login da página pública do corretor recebem o vínculo
+automático. `BrokerSitePage` carrega/reutiliza em lote `HabitationShareLink` dedicados
+(prefixo `broker-page-`), separados dos compartilhamentos administrativos existentes.
+Os helpers públicos mantêm esse contexto nos cards, links, menu e galeria. As chaves
+de cache separam os tokens da grade/card; links expirados são substituídos ao renderizar.
+Acesso logado à página usa os links normais, sem gerar o vínculo automático.
+
+Ao abrir o imóvel pelo link dessa página, o token permanece explícito na URL e no
+formulário. Ele não é salvo como cookie de atribuição: voltar ao imóvel/listagem normal
+não carrega o dono da página. A conversão logada também ignora esse tipo de vínculo.
+A captura obrigatória adicionada vale apenas para tokens `broker-page-`; opções de
+captura e compartilhamento comuns conservam o comportamento anterior.
+
+`LeadsController#apply_share_attribution` valida token ativo, imóvel, conta e corretor
+ativo. Somente os tokens dedicados têm a nova precedência na reentrada por
+`RoutingService.assign_shared_inquiry!`: reutiliza o cadastro, atribui ao dono do link,
+limpa arquivamento/contingência/distribuição e registra o responsável anterior. Entradas
+comuns do site continuam passando pelas regras de distribuição existentes; um cookie
+com token dedicado não concede atribuição automática. Os compartilhamentos manuais
+preexistentes mantêm seu contrato, sem receber essa nova precedência na reentrada.

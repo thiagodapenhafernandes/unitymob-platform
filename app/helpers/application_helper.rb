@@ -128,7 +128,24 @@ module ApplicationHelper
   def public_habitation_detail_path(property)
     return "#" if property.blank?
 
-    property.empreendimento? ? empreendimento_details_path(property) : habitation_path(property)
+    token = public_property_share_token(property)
+    options = token.present? ? { share_token: token } : {}
+    property.empreendimento? ? empreendimento_details_path(property, **options) : habitation_path(property, **options)
+  end
+
+  def public_property_share_token(property)
+    link = @broker_share_links&.[](property.id)
+    link ||= @share_link if @share_link&.broker_page? && current_admin_user.blank? && @share_link.habitation_id == property.id
+    link&.token
+  end
+
+  def public_property_share_urls(property)
+    if public_property_share_token(property).present?
+      { generate: "", fallback: "#{request.base_url}#{public_habitation_detail_path(property)}" }
+    else
+      account_user = current_admin_user.present? && current_admin_user.tenant_id == property.tenant_id
+      { generate: account_user ? share_link_habitation_path(property) : "", fallback: habitation_url(property) }
+    end
   end
 
   def public_image_srcset(source, widths:, aspect_ratio: nil, crop: false, format: :webp, representation_proxy: false)

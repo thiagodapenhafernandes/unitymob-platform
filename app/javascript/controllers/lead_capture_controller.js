@@ -42,7 +42,7 @@ export default class extends Controller {
     const leadOrigin = trigger.dataset.leadOrigin || "Site"
     const shareToken = trigger.dataset.shareToken || this.shareTokenValue || ""
     const negotiationType = trigger.dataset.negotiationType || "sale"
-    const forceLeadForm = trigger.dataset.requireLeadForm === "true"
+    const forceLeadForm = trigger.dataset.requireLeadForm === "true" || shareToken.startsWith("broker-page-")
     const requiresLeadForm = forceLeadForm || this.requiresLeadForm(negotiationType)
 
     // Store message for redirect

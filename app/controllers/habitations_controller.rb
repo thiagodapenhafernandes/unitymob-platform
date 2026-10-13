@@ -428,6 +428,9 @@ class HabitationsController < ApplicationController
   end
 
   def set_shareable_habitation
+    unless current_admin_user.tenant.present?
+      return render json: { success: false, error: "A geração de link de corretor exige um usuário vinculado a uma conta." }, status: :forbidden
+    end
     scope = current_admin_user.tenant.habitations
     @habitation = internal_id_lookup? ? scope.find_by(id: params[:id]) : find_habitation_in_scope(params[:id], scope)
     return if @habitation
@@ -752,13 +755,14 @@ class HabitationsController < ApplicationController
       cookies.delete(HabitationShareLink::COOKIE_KEY)
       return
     end
+    return if link.broker_page? && (current_admin_user.present? || params[:share_token].blank?)
 
     @share_link = link
     @shared_broker = link.admin_user
     @lead_share_token = link.token
     return unless lgpd_consent_accepted?
 
-    remember_share_link(link)
+    remember_share_link(link) unless link.broker_page?
     link.register_click!
     Seo::ConversionTracker.record!(
       event_type: "share_click",

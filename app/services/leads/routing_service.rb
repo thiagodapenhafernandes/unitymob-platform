@@ -4,6 +4,27 @@ module Leads
       new(lead).route!
     end
 
+    def self.assign_shared_inquiry!(lead, inquiry)
+      return false if inquiry.share_token.blank? || inquiry.property_id.blank?
+      return false unless inquiry.admin_user_id.present? && inquiry.admin_user_id == inquiry.shared_by_admin_user_id
+      link = HabitationShareLink.active.joins(:habitation, :admin_user)
+        .where(habitations: { tenant_id: lead.tenant_id }, admin_users: { tenant_id: lead.tenant_id, active: true })
+        .find_by(token: inquiry.share_token, habitation_id: inquiry.property_id, admin_user_id: inquiry.admin_user_id)
+      return false unless link
+      return false unless link.broker_page?
+
+      # Uma conversão pelo link do corretor é atribuição explícita, inclusive na reentrada.
+      lead.assign_attributes(admin_user_id: link.admin_user_id, shared_by_admin_user_id: link.admin_user_id,
+        share_token: link.token, status: :waiting_acceptance, distribution_rule: nil,
+        archived_at: nil, archived_by_admin_user: nil, archive_reason: nil, archive_note: nil,
+        distribution_cycle_started_at: Time.current, contingency_forwarded_at: nil, contingency_pending: false,
+        contingency_source_rule: nil, contingency_target_rule: nil, contingency_reason: nil)
+      LeadActivity.log!(lead: lead, kind: "assigned_directly", metadata: {
+        admin_user_id: link.admin_user_id, reason: "share_link", property_id: inquiry.property_id
+      })
+      true
+    end
+
     def initialize(lead)
       @lead = lead
     end
