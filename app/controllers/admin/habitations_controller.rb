@@ -1589,10 +1589,10 @@ class Admin::HabitationsController < Admin::BaseController
 
     scope = if @intake_review == "administrative"
               administrative_intake_review_scope(scope)
-            elsif @codigo.present?
-              apply_ownership_scope(scope)
             elsif @intake_review == "pending"
               pending_intake_review_scope(scope)
+            elsif @codigo.present?
+              apply_ownership_scope(scope)
             else
               catalog_visible_habitations_scope(scope)
             end

@@ -1,0 +1,52 @@
+<%= ax_operational_panel(eyebrow: "Operação", title: "Geração em lote", actions: ax_badge(ai_batch_status_label(@batch_status), tone: @batch_status == "failed" ? :red : :blue)) do %>
+          <p class="tw-text-sm tw-text-ink-muted">
+            Gere sugestões de título e descrição para todos os imóveis em segundo plano.
+          </p>
+
+          <div class="tw-mb-3">
+            <% unless @batch_status == "idle" %>
+            <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1">
+              <span>Status: <strong><%= ai_batch_status_label(@batch_status) %></strong></span>
+              <span><%= @batch_progress %>%</span>
+            </div>
+            <%= ax_progress(value: @batch_progress, tone: @batch_status == "failed" ? :red : :blue) %>
+            <% end %>
+            <p class="tw-text-sm tw-text-ink-muted tw-mt-2 tw-mb-0"><%= @batch_message %></p>
+            <% if @batch_last_at.present? %>
+              <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Última atualização: <%= l(@batch_last_at, format: :short) %></p>
+            <% end %>
+          </div>
+
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <div class="integration-stat-tile">
+                <strong><%= number_with_delimiter(@pending_suggestions_count) %></strong>
+                <div class="tw-text-sm tw-text-ink-muted">Sugestões pendentes</div>
+              </div>
+            </div>
+            <div class="ax-span-6">
+              <div class="integration-stat-tile">
+                <strong><%= number_with_delimiter(@failed_suggestions_count) %></strong>
+                <div class="tw-text-sm tw-text-ink-muted">Falhas</div>
+              </div>
+            </div>
+          <% end %>
+
+          <% unless @content_connected %>
+            <%= ax_inline_notice(tone: :warning, icon: "key") do %>
+              Configure o token do provedor de conteúdo em <%= link_to "Conexões e módulos", admin_ai_integration_path(anchor: "ai-integration-connections") %> para iniciar o lote.
+            <% end %>
+          <% end %>
+          <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+            <strong>Revisão dos imóveis:</strong> o lote apenas gera sugestões. Confirme cada sugestão na edição do imóvel antes de alterar título, descrição ou SEO. As automações do SEO do site têm configuração própria acima.
+          <% end %>
+          <div class="ax-integration-actions">
+          <%= button_to generate_batch_admin_ai_integration_path,
+              method: :post,
+              class: "ax-btn ax-btn--primary",
+              disabled: !@content_connected,
+              data: { turbo_confirm: "Gerar sugestões para todos os imóveis em segundo plano? Nada será aplicado automaticamente." } do %>
+            <i class="bi bi-magic ax-ico"></i>Gerar sugestões para todos os imóveis
+          <% end %>
+          </div>
+        <% end %>

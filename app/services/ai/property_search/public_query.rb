@@ -17,7 +17,8 @@ module Ai
       end
 
       def self.voice_available?(tenant:)
-        available?(tenant: tenant) && setting_for(tenant).voice_property_search_enabled?
+        setting = setting_for(tenant)
+        setting.present? && setting.ai_property_search_enabled? && setting.voice_property_search_enabled? && Configuration.voice_connected?(tenant: tenant)
       end
 
       # find_by (e não .instance): uma visita pública nunca cria configuração.
@@ -34,13 +35,13 @@ module Ai
       end
 
       def call
-        raise Unavailable, "Busca por descrição indisponível." unless self.class.available?(tenant: @tenant)
+        raise Unavailable, "Busca por descrição indisponível." unless (@audio.present? ? self.class.voice_available?(tenant: @tenant) : self.class.available?(tenant: @tenant))
 
         setting = self.class.setting_for(@tenant)
         text = @audio.present? ? transcribe(setting) : @text
         raise ArgumentError, "Descreva o imóvel que você procura." if text.blank?
 
-        interpretation = Interpreter.new(setting: setting, text: text).call
+        interpretation = Interpreter.new(setting: setting, text: text, voice: @audio.present?).call
         filters = LocationResolver.new(tenant: @tenant, setting: setting, filters: interpretation.filters).call.filters
         params = PublicParams.new(filters, default_transaction: @default_transaction).call
         raise ArgumentError, "Não consegui entender o que você procura. Tente citar o tipo, a região ou o valor." if params.except("transaction_type").empty?

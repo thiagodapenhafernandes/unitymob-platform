@@ -61,21 +61,10 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Prévia")
     expect(response.body).to include("Busca inteligente por IA")
     expect(response.body).to include(
-      "property-settings-ai-panel--activation",
-      "property-settings-ai-panel--interpretation",
-      "property-settings-ai-panel--scope",
-      "property-settings-ai-panel--context",
-      "property-settings-ai-panel--access",
       "property-settings-ai-panel--aliases",
-      "property-settings-ai-panel--sharing",
       "property-settings-ai-panel--learning"
     )
-    expect(response.body).to include("Ativação", "Interpretação", "Abrangência", "Contexto", "Acesso e resultado", "Nomes alternativos", "Compartilhamento", "Aprendizado")
-    expect(response.body).to include("Seleção e validade", "Página pública", "Identificação e lead", "Mensagens operacionais")
-    expect(response.body).to include("Recursos da busca", "Instruções da IA", "Consulta e mensagens", "Profundidade do contexto do catálogo")
-    expect(response.body).to include("Parâmetros da resposta")
-    expect(response.body).to include("Temperature", "Top P", "Frequency penalty", "Presence penalty")
-    expect(Nokogiri::HTML(response.body).css(".property-settings-ai-search-group").size).to eq(10)
+    expect(response.body).to include("Busca inteligente", "Nomes alternativos", "Aprendizado")
     expect(response.body).to include("Nenhum nome alternativo cadastrado", "ax-empty-state")
     expect(response.body).to include("Aprendizado supervisionado", "Termos candidatos", "Buscas recentes")
     html = Nokogiri::HTML(response.body)
@@ -87,9 +76,11 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(html.at_css('.ax-file-field input[data-watermark-preview-target="fileInput"]')).to be_present
     expect(html.css(".tab-content, .tab-pane, .property-settings-tabs-card, .property-settings-range, .property-settings-position-option")).to be_empty
     ai_sections = html.css(".ax-studio__stage > .ax-studio-section[id^='property-settings-ai-']")
-    expect(ai_sections.size).to eq(8)
-    expect(ai_sections.flat_map { |section| section.css(".ax-field > label.ax-field-label").to_a }.size).to be >= 35
-    expect(html.css(".ax-studio-nav [data-ax-tabs-target-param^='#property-settings-ai-']").size).to eq(8)
+    expect(ai_sections.map { |section| section["id"] }).to contain_exactly(
+      "property-settings-ai-hub", "property-settings-ai-aliases", "property-settings-ai-learning"
+    )
+    expect(html.css(".ax-studio-nav [data-ax-tabs-target-param^='#property-settings-ai-']").size).to eq(3)
+    expect(html.at_css("#property-settings-ai-hub a[href*='ai_integration']")).to be_present
     expect(html.at_css('input[name="return_anchor"][data-form-return-anchor-target="input"]')).to be_present
     expect(html.at_css('select#development_alias_development_id[name="development_id"]')).to be_present
     expect(html.at_css('textarea#development_alias_names[name="names"]')).to be_present
@@ -184,17 +175,41 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
     with_forgery_protection_disabled do
       patch admin_property_setting_path, params: {
-        return_anchor: "property-settings-ai-scope",
+        return_anchor: "property-settings-ai-aliases",
+        property_setting: { watermark_position: "top_right" }
+      }
+    end
+
+    expect(response).to redirect_to(edit_admin_property_setting_path(anchor: "property-settings-ai-aliases"))
+  end
+
+  it "ignora parâmetros de IA na tela legada e preserva o conteúdo configurado" do
+    setting = PropertySetting.instance
+    setting.update!(
+      ai_property_search_enabled: true,
+      ai_property_search_language: "pt-BR",
+      ai_property_search_max_results: 12,
+      ai_property_search_allowed_profiles: %w[account_owner]
+    )
+    sign_in create(:admin_user, :admin)
+
+    with_forgery_protection_disabled do
+      patch admin_property_setting_path, params: {
         property_setting: {
-          ai_property_search_enabled: "1",
-          ai_property_search_allowed_fields: %w[city price],
-          ai_property_search_result_fields: %w[property_code title],
-          ai_property_search_allowed_profiles: %w[account_owner]
+          watermark_position: "top_right",
+          ai_property_search_enabled: "0",
+          ai_property_search_language: "en",
+          ai_property_search_max_results: "99"
         }
       }
     end
 
-    expect(response).to redirect_to(edit_admin_property_setting_path(anchor: "property-settings-ai-scope"))
+    setting.reload
+    expect(setting.watermark_position).to eq("top_right")
+    expect(setting.ai_property_search_enabled).to be(true)
+    expect(setting.ai_property_search_language).to eq("pt-BR")
+    expect(setting.ai_property_search_max_results).to eq(12)
+    expect(setting.ai_property_search_allowed_profiles).to eq(%w[account_owner])
   end
 
   it "gerencia aliases de empreendimento na aba da busca inteligente" do

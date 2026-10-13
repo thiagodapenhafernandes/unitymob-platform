@@ -1,0 +1,8 @@
+<%# locals: name, id, label, value, hint, rows %>
+<div data-controller="ax-textarea-expand" data-ax-textarea-expand-compact-rows-value="<%= rows %>">
+  <%= ax_standalone_field(name: name, id: id, label: label, value: value, type: :textarea,
+        class_name: "ax-field--stacked", hint: hint, rows: rows,
+        data: { ax_textarea_expand_target: "field" }) %>
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-mt-2" aria-controls="<%= id %>" aria-expanded="false"
+          data-ax-textarea-expand-target="button" data-action="ax-textarea-expand#toggle">Expandir editor</button>
+</div>

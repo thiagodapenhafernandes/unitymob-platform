@@ -68,15 +68,15 @@ module Ai
     PROMPT
 
     def self.api_key(tenant: Current.tenant)
-      Provider.active(tenant: tenant).api_key(tenant: tenant)
+      ModuleConfiguration.new(:property_content, tenant: tenant).api_key
     end
 
     def self.model(tenant: Current.tenant)
-      Provider.active(tenant: tenant).model(tenant: tenant)
+      ModuleConfiguration.new(:property_content, tenant: tenant).model
     end
 
     def self.resolved_model(tenant: Current.tenant)
-      Provider.active(tenant: tenant).resolved_model(tenant: tenant)
+      ModuleConfiguration.new(:property_content, tenant: tenant).resolved_model
     end
 
     def self.instructions(tenant: Current.tenant)
@@ -176,9 +176,9 @@ module Ai
 
     def request_generation
       tenant = @habitation.tenant
-      response = Provider.build_client(tenant: tenant, api_key: self.class.api_key(tenant: tenant)).create_response(
+      response = ModuleConfiguration.new(:property_content, tenant: tenant).build_client.create_response(
         openai_payload,
-        fallback_model: Provider.active(tenant: tenant).fallback_response_model(self.class.resolved_model(tenant: tenant))
+        fallback_model: ModuleConfiguration.new(:property_content, tenant: tenant).fallback_model
       )
       text = extract_text(response)
       parsed = JSON.parse(text)

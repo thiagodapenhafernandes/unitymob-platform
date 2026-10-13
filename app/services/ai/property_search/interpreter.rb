@@ -5,19 +5,20 @@ module Ai
     class Interpreter
       Result = Data.define(:intent, :filters, :missing_required_information, :clarifying_question)
 
-      def initialize(setting:, text:, current_filters: {})
+      def initialize(setting:, text:, current_filters: {}, voice: false)
         @setting = setting
         @text = text.to_s.strip
         @current_filters = current_filters
         @contract = FilterContract.new(setting)
+        @configuration = Configuration.configuration(tenant: setting.tenant, voice: voice)
       end
 
       def call
         raise ArgumentError, "Descreva o imóvel que você procura." if @text.blank?
 
-        response = Ai::Provider.build_client(tenant: @setting.tenant, api_key: Configuration.api_key(tenant: @setting.tenant)).create_response(
+        response = @configuration.build_client.create_response(
           payload,
-          fallback_model: Ai::Provider.active(tenant: @setting.tenant).fallback_response_model(Configuration.resolved_model(tenant: @setting.tenant))
+          fallback_model: @configuration.fallback_model
         )
         parsed = JSON.parse(extract_text(response))
         Result.new(
@@ -32,7 +33,7 @@ module Ai
 
       def payload
         {
-          model: Configuration.resolved_model(tenant: @setting.tenant),
+          model: @configuration.resolved_model,
           instructions: instructions,
           input: {
             request: @text,

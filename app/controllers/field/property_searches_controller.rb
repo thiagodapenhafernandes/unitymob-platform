@@ -212,7 +212,8 @@ module Field
         Ai::PropertySearch::Interpreter.new(
           setting: @setting,
           text: transcription,
-          current_filters: parsed_current_filters
+          current_filters: parsed_current_filters,
+          voice: params[:audio].present?
         ).call
       end
     rescue JSON::ParserError

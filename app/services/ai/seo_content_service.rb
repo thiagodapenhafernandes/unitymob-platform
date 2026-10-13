@@ -18,7 +18,7 @@ module Ai
     PROMPT_SETTING = "seo_ai_strategy_prompt".freeze
 
     def self.connected?(tenant: Current.tenant)
-      Ai::PropertyContentService.connected?(tenant: tenant)
+      Ai::ModuleConfiguration.new(:seo, tenant: tenant).connected?
     end
 
     def self.instructions(tenant: Current.tenant)
@@ -70,9 +70,9 @@ module Ai
     private
 
     def request_generation
-      response = Ai::Provider.build_client(tenant: tenant, api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(
+      response = Ai::ModuleConfiguration.new(:seo, tenant: tenant).build_client.create_response(
         openai_payload,
-        fallback_model: Ai::Provider.active(tenant: tenant).fallback_response_model(Ai::PropertyContentService.resolved_model(tenant: tenant))
+        fallback_model: Ai::ModuleConfiguration.new(:seo, tenant: tenant).fallback_model
       )
       parsed = JSON.parse(extract_text(response))
       validate!(parsed)
@@ -81,7 +81,7 @@ module Ai
 
     def openai_payload
       {
-        model: Ai::PropertyContentService.resolved_model(tenant: tenant),
+        model: Ai::ModuleConfiguration.new(:seo, tenant: tenant).resolved_model,
         instructions: system_instructions,
         input: page_payload.to_json,
         text: {

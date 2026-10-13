@@ -182,3 +182,14 @@
 .ax-table--comfortable tbody td { padding: 13px 16px; }
 .ax-table--comfortable thead th { background: var(--admin-surface-header); color: var(--ab-muted); }
 .ax-table--comfortable tbody td { color: var(--admin-ink); border-color: var(--ax-border-soft); }
+
+/* Tabelas de configuração mantêm os mesmos campos em linhas no desktop e blocos no mobile. */
+.ax-table--form caption { padding: 12px; text-align: left; white-space: normal; }
+.ax-table--form tbody th { padding: 12px; text-align: left; }
+@media (max-width: 767px) {
+  .ax-table-wrap .ax-table--form { min-width: 0; width: 100%; }
+  .ax-table--form thead { display: none; }
+  .ax-table--form tbody { display: block; }
+  .ax-table--form tbody tr { display: grid; min-width: 0; padding: 12px; border-top: 1px solid var(--ax-border-soft); }
+  .ax-table--form tbody :is(th, td) { display: block; min-width: 0; padding: 6px 0; border: 0; white-space: normal; }
+}

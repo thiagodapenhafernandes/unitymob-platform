@@ -1,0 +1,8 @@
+<%# locals: module_keys %>
+<%= ax_inline_notice(tone: :info, icon: "diagram-3") do %>
+  <% module_keys.each do |key| %>
+    <% configuration = Ai::ModuleConfiguration.new(key, tenant: current_tenant) %>
+    <div><strong><%= Ai::ModuleConfiguration::MODULES.fetch(key).fetch(:label) %>:</strong> <%= configuration.provider.label %> · <%= configuration.resolved_model %></div>
+  <% end %>
+  <%= link_to "Ver / alterar vínculos", admin_ai_integration_path(anchor: "ai-integration-connections"), class: "ax-btn ax-btn--ghost ax-btn--sm tw-mt-2" %>
+<% end %>

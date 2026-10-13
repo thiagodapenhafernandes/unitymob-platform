@@ -10,6 +10,21 @@ module Dashboard
     INPUT_TOKEN_PRICE_MICROCENTS = 15
     OUTPUT_TOKEN_PRICE_MICROCENTS = 60
 
+    def self.budget_reais_to_cents(value)
+      text = value.to_s.strip
+      normalized = if text.match?(/\A\d{1,3}(?:\.\d{3})*,\d{1,2}\z/) || text.match?(/\A\d+,\d{1,2}\z/)
+        text.delete(".").tr(",", ".")
+      elsif text.match?(/\A\d+(?:\.\d{1,2})?\z/)
+        text
+      end
+      raise ArgumentError, "Informe o teto mensal em reais, por exemplo 10,00." unless normalized
+
+      cents = (BigDecimal(normalized) * 100).to_i
+      raise ArgumentError, "O teto mensal deve estar entre R$ 0,00 e R$ 1.000,00." unless cents.between?(0, 100_000)
+
+      cents
+    end
+
     def self.enabled?(tenant:)
       ActiveModel::Type::Boolean.new.cast(Setting.tenant_get(ENABLED_SETTING, "false", tenant: tenant))
     end
@@ -51,7 +66,7 @@ module Dashboard
     attr_reader :tenant, :period, :metrics, :admin_user
 
     def ai_available?
-      ai_enabled? && Ai::PropertyContentService.connected?(tenant: tenant)
+      ai_enabled? && Ai::ModuleConfiguration.new(:dashboard_diagnosis, tenant: tenant).connected?
     end
 
     def ai_enabled?
@@ -123,9 +138,9 @@ module Dashboard
     end
 
     def request_diagnosis
-      response = Ai::Provider.build_client(tenant: tenant, api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(
+      response = Ai::ModuleConfiguration.new(:dashboard_diagnosis, tenant: tenant).build_client.create_response(
         openai_payload,
-        fallback_model: Ai::Provider.active(tenant: tenant).fallback_response_model(Ai::PropertyContentService.resolved_model(tenant: tenant))
+        fallback_model: Ai::ModuleConfiguration.new(:dashboard_diagnosis, tenant: tenant).fallback_model
       )
       parsed = JSON.parse(extract_text(response))
         .with_indifferent_access
@@ -140,7 +155,7 @@ module Dashboard
 
     def openai_payload
       {
-        model: Ai::PropertyContentService.resolved_model(tenant: tenant),
+        model: Ai::ModuleConfiguration.new(:dashboard_diagnosis, tenant: tenant).resolved_model,
         instructions: system_instructions,
         input: metrics.to_json,
         text: {
@@ -201,19 +216,20 @@ module Dashboard
     end
 
     def cache_key
-      "#{CACHE_SETTING_PREFIX}_#{Time.current.strftime("%G_%V")}_#{period}"
+      configuration = Ai::ModuleConfiguration.new(:dashboard_diagnosis, tenant: tenant)
+      "#{CACHE_SETTING_PREFIX}_#{Time.current.strftime("%G_%V")}_#{period}_#{Digest::SHA256.hexdigest([configuration.provider.key, configuration.resolved_model].join(":"))}"
     end
 
     def record_usage!(response, status:, error: nil)
       usage = response.to_h["usage"].to_h
       input_tokens = usage["input_tokens"].to_i
       output_tokens = usage["output_tokens"].to_i
-      provider_key = Ai::Provider.active_key(tenant: tenant)
+      provider_key = Ai::ModuleConfiguration.new(:dashboard_diagnosis, tenant: tenant).provider.key
       OpenAiUsageEvent.create!(
         tenant: tenant,
         admin_user: admin_user,
         feature: FEATURE,
-        model: Ai::PropertyContentService.resolved_model(tenant: tenant),
+        model: Ai::ModuleConfiguration.new(:dashboard_diagnosis, tenant: tenant).resolved_model,
         status: status,
         input_tokens: input_tokens,
         output_tokens: output_tokens,

@@ -1,6 +1,15 @@
 require "rails_helper"
 
 RSpec.describe Dashboard::AiDiagnosis do
+  describe ".budget_reais_to_cents" do
+    { "0" => 0, "10,00" => 1000, "25.50" => 2550, "1.000,00" => 100000 }.each do |input, cents|
+      it("converte #{input} sem perda de centavos") { expect(described_class.budget_reais_to_cents(input)).to eq(cents) }
+    end
+    ["", "abc", "1.000", "-1", "1000,01", "10,001"].each do |input|
+      it("rejeita valor inválido #{input.inspect}") { expect { described_class.budget_reais_to_cents(input) }.to raise_error(ArgumentError) }
+    end
+  end
+
   let(:tenant) { Tenant.create!(name: "Tenant IA BI #{SecureRandom.hex(3)}", slug: "tenant-ia-bi-#{SecureRandom.hex(3)}") }
   let(:admin) { create(:admin_user, :admin, tenant: tenant) }
   let(:metrics) do
@@ -32,7 +41,7 @@ RSpec.describe Dashboard::AiDiagnosis do
     Setting.set(described_class::ENABLED_SETTING, "true", "IA BI", tenant: tenant)
     Setting.set(described_class::WEEKLY_REQUEST_LIMIT_SETTING, "1", "Limite", tenant: tenant)
     OpenAiUsageEvent.create!(tenant: tenant, admin_user: admin, feature: described_class::FEATURE, status: "succeeded", created_at: Time.current)
-    allow(Ai::PropertyContentService).to receive(:connected?).and_return(true)
+    Setting.set(Ai::PropertyContentService::API_KEY_SETTING, "token", "Token", tenant: tenant)
     allow(OpenAi::Client).to receive(:new)
 
     result = described_class.new(tenant: tenant, admin_user: admin, period: 7, metrics: metrics).call
@@ -47,9 +56,8 @@ RSpec.describe Dashboard::AiDiagnosis do
     Setting.set(described_class::ENABLED_SETTING, "true", "IA BI", tenant: tenant)
     Setting.set(described_class::WEEKLY_REQUEST_LIMIT_SETTING, "2", "Limite", tenant: tenant)
     Setting.set(described_class::MONTHLY_BUDGET_CENTS_SETTING, "1000", "Teto", tenant: tenant)
-    allow(Ai::PropertyContentService).to receive(:connected?).and_return(true)
-    allow(Ai::PropertyContentService).to receive(:api_key).and_return("token")
-    allow(Ai::PropertyContentService).to receive(:resolved_model).and_return("gpt-4.1-mini")
+    Setting.set(Ai::PropertyContentService::API_KEY_SETTING, "token", "Token", tenant: tenant)
+    Setting.set(Ai::PropertyContentService::MODEL_SETTING, "gpt-4.1-mini", "Modelo", tenant: tenant)
     allow(OpenAi::ModelCatalog).to receive(:fallback_response_model).and_return("gpt-4.1-mini")
     client = instance_double(OpenAi::Client)
     allow(OpenAi::Client).to receive(:new).and_return(client)

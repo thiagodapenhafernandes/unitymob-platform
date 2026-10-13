@@ -10,36 +10,45 @@ module Ai
 
       module_function
 
+      def configuration(tenant: Current.tenant, voice: false)
+        Ai::ModuleConfiguration.new(voice ? :property_search_voice : :property_search_text, tenant: tenant)
+      end
+
       def api_key(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).voice_api_key(tenant: tenant)
+        configuration(tenant: tenant).api_key
       end
 
       def dedicated_api_key(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).dedicated_voice_api_key(tenant: tenant)
+        configuration(tenant: tenant).provider.dedicated_voice_api_key(tenant: tenant)
       end
 
       def dedicated_api_key_configured?(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).dedicated_voice_api_key_configured?(tenant: tenant)
+        dedicated_api_key(tenant: tenant).present?
       end
 
       def connected?(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).voice_connected?(tenant: tenant)
+        configuration(tenant: tenant).connected?
+      end
+
+      def voice_connected?(tenant: Current.tenant)
+        configuration(tenant: tenant, voice: true).connected? &&
+          Ai::ModuleConfiguration.new(:property_search_transcription, tenant: tenant).connected?
       end
 
       def model(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).voice_model(tenant: tenant)
+        configuration(tenant: tenant).model
       end
 
       def resolved_model(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).resolved_voice_model(tenant: tenant)
+        configuration(tenant: tenant).resolved_model
       end
 
       def transcription_model(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).voice_transcription_model(tenant: tenant)
+        Ai::ModuleConfiguration.new(:property_search_transcription, tenant: tenant).model
       end
 
       def resolved_transcription_model(tenant: Current.tenant)
-        Ai::Provider.active(tenant: tenant).resolved_voice_transcription_model(tenant: tenant)
+        Ai::ModuleConfiguration.new(:property_search_transcription, tenant: tenant).resolved_model
       end
     end
   end

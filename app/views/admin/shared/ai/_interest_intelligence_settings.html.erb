@@ -1,0 +1,64 @@
+<%# Locals: f, layout_setting. Contrato único de configurações de interesse. %>
+<% interest_settings = InterestIntelligence::Settings::DEFAULTS.merge(layout_setting.interest_intelligence_settings.to_h) %>
+<%= ax_operational_panel(title: "Ativação e comunicação", class_name: "ax-panel--settings layout-settings-panel--interest-intelligence tw-mb-4") do %>
+  <%= ax_studio_group(title: "Leitura de interesse") do %>
+    <%= ax_switch_field(form: f, method: :interest_intelligence_enabled,
+          label: "Ativar leitura de interesse lead-imóvel",
+          description: "Usa navegação pública, imóveis vistos, filtros e dados reais do lead para gerar eventos no builder de automação.", class_name: "ax-switch--card") %>
+  <% end %>
+  <%= ax_studio_group(title: "Comunicação e privacidade") do %>
+    <div class="ax-studio-switches">
+      <% InterestIntelligence::Settings::SAFEGUARD_FIELDS.each do |key, label, description| %>
+        <%= hidden_field_tag "layout_setting[interest_intelligence_settings][#{key}]", "0", id: nil %>
+        <%= ax_switch_field(name: "layout_setting[interest_intelligence_settings][#{key}]",
+              id: "layout_setting_interest_intelligence_settings_#{key}",
+              checked: ActiveModel::Type::Boolean.new.cast(interest_settings[key]),
+              label: label, description: description, class_name: "ax-switch--card") %>
+      <% end %>
+    </div>
+    <%= ax_inline_notice(tone: :info, compact: true, icon: "person-check") do %>
+      Com revisão humana ativa, a plataforma mantém rascunho ou nota para o corretor, mesmo quando a opção de envio direto está marcada.
+    <% end %>
+  <% end %>
+<% end %>
+
+<%= ax_operational_panel(title: "Recomendações de imóveis", class_name: "ax-panel--settings tw-mb-4") do %>
+  <% [
+    ["Critérios das sugestões", %w[minimum_match_score max_suggestions price_tolerance_percent]],
+    ["Sinais e recuperação", %w[strong_interest_views idle_without_match_hours]]
+  ].each do |title, keys| %>
+    <%= ax_studio_group(title: title) do %>
+      <%= ax_field_grid do %>
+        <% InterestIntelligence::Settings::NUMBER_FIELDS.select { |field| keys.include?(field.first) }.each do |key, label, hint, min, max, unit| %>
+          <div class="ax-span-4">
+            <%= ax_standalone_field(name: "layout_setting[interest_intelligence_settings][#{key}]",
+                  id: "layout_setting_interest_intelligence_settings_#{key}", label: label,
+                  value: interest_settings[key], type: :number, suffix: unit,
+                  min: min, max: max, step: 1, hint: hint) %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  <% end %>
+  <details class="ax-studio-advanced" <%= "open" if layout_setting.errors.any? %>>
+    <summary><i class="bi bi-sliders"></i><span>Ajustar pesos da compatibilidade</span><i class="bi bi-chevron-down"></i></summary>
+    <%= ax_studio_group(title: "Pesos da compatibilidade", subtitle: "Cada peso vai de 0 a 100. Os valores são independentes e não precisam somar 100.") do %>
+      <%= ax_field_grid do %>
+        <% InterestIntelligence::Settings::WEIGHT_FIELDS.each do |key, label| %>
+          <div class="ax-span-2">
+            <%= ax_standalone_field(name: "layout_setting[interest_intelligence_settings][#{key}]",
+                  id: "layout_setting_interest_intelligence_settings_#{key}", label: label,
+                  value: interest_settings[key.to_s], type: :number, min: 0, max: 100, step: 1) %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </details>
+<% end %>
+
+<%= ax_operational_panel(title: "Instruções da IA", class_name: "ax-panel--settings tw-mb-4") do %>
+  <%= render "admin/shared/ui/expandable_textarea",
+        name: "layout_setting[interest_intelligence_instructions]", id: "layout_setting_interest_intelligence_instructions",
+        label: "Diretriz", value: layout_setting.interest_intelligence_instructions.presence || InterestIntelligence::SystemInstructions::DEFAULT_TEXT,
+        hint: "#{layout_setting.interest_intelligence_instructions.present? ? 'Diretriz personalizada da conta.' : 'Usando a diretriz padrão do sistema.'} Se deixar vazio ou mantiver o texto padrão, a plataforma usa a diretriz padrão. Personalize quando a conta tiver uma estratégia própria de recomendação.", rows: 7 %>
+<% end %>

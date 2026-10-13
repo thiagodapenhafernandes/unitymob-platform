@@ -1,211 +1,125 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "IA", subtitle: "Configurações de IA", back_path: admin_root_path, status: @active_provider.label %>
+<% end %>
 <div class="ax-integration-layout">
 <div class="integration-workspace ai-integration-workspace">
 <%= ax_workspace_heading(
       eyebrow: "Integrações · IA",
+      class_name: "ax-workspace-heading--desktop",
       icon: "stars",
       title: "IA",
-      pills: [@content_connected ? "conteúdo conectado" : "conteúdo pendente", @voice_connected ? "voice ativo" : "voice pendente", "provedor: #{@active_provider.label}"],
-      subtitle: "Configure credenciais de IA e acompanhe a geração assistida de conteúdo dos imóveis.",
+      pills: [@content_connected ? "conteúdo conectado" : "conteúdo pendente", @voice_connected ? "voz conectada" : "voz pendente", "padrão: #{@active_provider.label}"],
+      subtitle: "Conexões em um só lugar. Instruções, regras e limites organizados por módulo.",
       metrics: [
         { value: number_with_delimiter(@pending_suggestions_count), label: "pendentes" },
         { value: number_with_delimiter(@failed_suggestions_count), label: "falhas" }
       ]
     ) %>
 
-<%= form_with url: admin_ai_integration_path, method: :patch, scope: :ai, local: true do |f| %>
-  <%= f.hidden_field :section, value: "provider" %>
-  <%= ax_operational_panel(eyebrow: "Provedor", title: "Provedor de IA ativo", actions: ax_badge(@active_provider.label, tone: :blue)) do %>
-    <p class="tw-text-sm tw-text-ink-muted">
-      Vale para conteúdo, voice, SEO, resumos e diagnóstico do BI. As credenciais de cada provedor ficam nas abas abaixo.
-    </p>
-    <%= ax_radio_group(
-          form: f,
-          method: :provider,
-          label: "Provedor ativo da conta",
-          choices: Ai::Provider.all.map { |key, provider| ["#{provider.label}#{provider.connected?(tenant: current_tenant) ? " · conectada" : " · sem token"}", key] },
-          selected: @ai_provider
-        ) %>
-    <div class="tw-mt-3">
-      <%= f.submit "Ativar provedor", class: "ax-btn ax-btn--primary" %>
-    </div>
-  <% end %>
-<% end %>
-
-<ul class="ax-form-tabs tw-mb-4" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#ai-integration-tab-content">
+<ul class="ax-form-tabs tw-mb-4" role="tablist" data-controller="ax-tabs" data-ax-tabs-reveal-active-value="true" data-ax-tabs-panel-selector-value="#ai-integration-tab-content">
   <li>
-    <button class="ax-form-tabs__item active" id="ai-integration-content-tab" type="button" role="tab" aria-controls="ai-integration-content" aria-selected="true" tabindex="0" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-content" data-action="click->ax-tabs#select">
+    <button class="ax-form-tabs__item active" id="ai-integration-connections-tab" type="button" role="tab" aria-controls="ai-integration-connections" aria-selected="true" tabindex="0" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-connections" data-action="click->ax-tabs#select">
+      <i class="bi bi-diagram-3" aria-hidden="true"></i> Conexões e módulos
+    </button>
+  </li>
+  <li>
+    <button class="ax-form-tabs__item" id="ai-integration-content-tab" type="button" role="tab" aria-controls="ai-integration-content" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-content" data-action="click->ax-tabs#select">
       <i class="bi bi-pencil-square" aria-hidden="true"></i> Conteúdo
     </button>
   </li>
   <li>
     <button class="ax-form-tabs__item" id="ai-integration-voice-tab" type="button" role="tab" aria-controls="ai-integration-voice" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-voice" data-action="click->ax-tabs#select">
-      <i class="bi bi-mic" aria-hidden="true"></i> Voice PWA
+      <i class="bi bi-mic" aria-hidden="true"></i> Busca e voz
+    </button>
+  </li>
+  <li>
+    <button class="ax-form-tabs__item" id="ai-integration-leads-tab" type="button" role="tab" aria-controls="ai-integration-leads" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-leads" data-action="click->ax-tabs#select">
+      <i class="bi bi-bullseye" aria-hidden="true"></i> Leads
+    </button>
+  </li>
+  <li>
+    <button class="ax-form-tabs__item" id="ai-integration-data-tab" type="button" role="tab" aria-controls="ai-integration-data" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-data" data-action="click->ax-tabs#select">
+      <i class="bi bi-graph-up" aria-hidden="true"></i> Dados
     </button>
   </li>
 </ul>
 
 <div class="ax-form-tabs__panels" id="ai-integration-tab-content">
-  <section class="ax-form-tabs__panel" id="ai-integration-content" role="tabpanel" aria-labelledby="ai-integration-content-tab" aria-hidden="false" tabindex="0">
-    <div class="integration-split-layout">
-      <main class="integration-split-layout__main">
-        <%= form_with url: admin_ai_integration_path, method: :patch, scope: :ai, local: true do |f| %>
-          <%= f.hidden_field :section, value: "content" %>
-
-          <% Ai::Provider.all.each_value do |provider| %>
-            <%= render "provider_content_fields", f: f, provider: provider %>
-          <% end %>
-
-          <%= ax_panel(title: "Instrução e parâmetros", subtitle: "Instrução principal e parâmetros da resposta. Valem para todos os provedores.") do %>
-            <div class="tw-mb-3">
-              <%= f.label :property_enrichment_prompt, "Instruções para autopreenchimento e enriquecimento", class: "ax-label tw-font-semibold" %>
-              <%= f.text_area :property_enrichment_prompt,
-                  class: "ax-control font-monospace",
-                  rows: 18,
-                  value: @property_enrichment_prompt %>
-              <div class="ax-field-hint">
-                Este texto é a instrução principal usada pela IA. Alterações aqui passam a valer para as próximas sugestões.
-              </div>
-            </div>
-
-            <div class="tw-mb-3">
-              <%= ax_field_group(title: "Parâmetros da resposta", token: "IA") do %>
-                <%= ax_field_grid do %>
-                  <div class="ax-span-3">
-                    <%= f.label :temperature, "Temperature", class: "ax-label tw-font-semibold" %>
-                    <%= f.number_field :temperature, class: "ax-control", min: 0, max: 2, step: 0.01, value: @response_parameters.fetch(:temperature) %>
-                    <div class="ax-field-hint">Padrão conservador: 0,20.</div>
-                  </div>
-                  <div class="ax-span-3">
-                    <%= f.label :top_p, "Top P", class: "ax-label tw-font-semibold" %>
-                    <%= f.number_field :top_p, class: "ax-control", min: 0, max: 1, step: 0.01, value: @response_parameters.fetch(:top_p) %>
-                    <div class="ax-field-hint">Padrão: 0,80.</div>
-                  </div>
-                  <div class="ax-span-3">
-                    <%= f.label :frequency_penalty, "Frequency penalty", class: "ax-label tw-font-semibold" %>
-                    <%= f.number_field :frequency_penalty, class: "ax-control", min: -2, max: 2, step: 0.01, value: @response_parameters.fetch(:frequency_penalty) %>
-                    <div class="ax-field-hint">Padrão: 0,50.</div>
-                  </div>
-                  <div class="ax-span-3">
-                    <%= f.label :presence_penalty, "Presence penalty", class: "ax-label tw-font-semibold" %>
-                    <%= f.number_field :presence_penalty, class: "ax-control", min: 0, max: 2, step: 0.01, value: @response_parameters.fetch(:presence_penalty) %>
-                    <div class="ax-field-hint">Padrão: 0,20.</div>
-                  </div>
-                <% end %>
-              <% end %>
-            </div>
-          <% end %>
-
-          <div class="tw-mb-3" id="ai-dashboard-diagnosis">
-            <%= ax_operational_panel(eyebrow: "BI", title: "Diagnóstico textual do dashboard", actions: ax_badge(@dashboard_diagnosis_enabled ? "habilitado" : "desligado", tone: @dashboard_diagnosis_enabled ? :green : :gray)) do %>
-              <div class="tw-mb-3">
-                <%= hidden_field_tag "ai[dashboard_diagnosis_enabled]", "0" %>
-                <%= ax_check_field(
-                      name: "ai[dashboard_diagnosis_enabled]",
-                      value: "1",
-                      id: "ai_dashboard_diagnosis_enabled",
-                      checked: @dashboard_diagnosis_enabled,
-                      label: "Usar IA (provedor ativo) para o diagnóstico semanal do BI"
-                    ) %>
-                <div class="ax-field-hint">Quando desligado, o dashboard mostra um diagnóstico determinístico sem custo externo.</div>
-              </div>
-
-              <%= ax_field_grid do %>
-                <div class="ax-span-6">
-                  <%= f.label :dashboard_diagnosis_weekly_limit, "Limite semanal de diagnósticos", class: "ax-label tw-font-semibold" %>
-                  <%= f.number_field :dashboard_diagnosis_weekly_limit, class: "ax-control", min: 0, max: 10, value: @dashboard_diagnosis_weekly_limit %>
-                  <div class="ax-field-hint"><%= @dashboard_diagnosis_weekly_used %> usado(s) nesta semana.</div>
-                </div>
-                <div class="ax-span-6">
-                  <%= f.label :dashboard_diagnosis_monthly_budget_cents, "Teto mensal estimado em centavos", class: "ax-label tw-font-semibold" %>
-                  <%= f.number_field :dashboard_diagnosis_monthly_budget_cents, class: "ax-control", min: 0, max: 100000, step: 100, value: @dashboard_diagnosis_monthly_budget_cents %>
-                  <div class="ax-field-hint">
-                    Gasto estimado no mês:
-                    <%= number_to_currency(@dashboard_diagnosis_monthly_cost_cents.to_i / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>.
-                  </div>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-
-          <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
-        <% end %>
-      </main>
-
-      <aside class="integration-split-layout__aside">
-        <%= ax_operational_panel(eyebrow: "Operação", title: "Geração em lote", actions: ax_badge(@batch_status, tone: @batch_status == "failed" ? :red : :blue)) do %>
-          <p class="tw-text-sm tw-text-ink-muted">
-            O lote gera sugestões de título e descrição para os imóveis, mas não aplica automaticamente. Cada sugestão precisa ser revisada e confirmada na edição do imóvel.
-          </p>
-
-          <div class="tw-mb-3">
-            <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1">
-              <span>Status: <strong><%= @batch_status %></strong></span>
-              <span><%= @batch_progress %>%</span>
-            </div>
-            <%= ax_progress(value: @batch_progress, tone: @batch_status == "failed" ? :red : :blue) %>
-            <p class="tw-text-sm tw-text-ink-muted tw-mt-2 tw-mb-0"><%= @batch_message %></p>
-            <% if @batch_last_at.present? %>
-              <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Última atualização: <%= l(@batch_last_at, format: :short) %></p>
-            <% end %>
-          </div>
-
-          <%= ax_field_grid do %>
-            <div class="ax-span-6">
-              <div class="integration-stat-tile">
-                <strong><%= number_with_delimiter(@pending_suggestions_count) %></strong>
-                <div class="tw-text-sm tw-text-ink-muted">Sugestões pendentes</div>
-              </div>
-            </div>
-            <div class="ax-span-6">
-              <div class="integration-stat-tile">
-                <strong><%= number_with_delimiter(@failed_suggestions_count) %></strong>
-                <div class="tw-text-sm tw-text-ink-muted">Falhas</div>
-              </div>
-            </div>
-          <% end %>
-
-          <%= button_to generate_batch_admin_ai_integration_path,
-              method: :post,
-              class: "ax-btn ax-btn--ghost tw-w-full",
-              data: { turbo_confirm: "Gerar sugestões para todos os imóveis em segundo plano? Nada será aplicado automaticamente." } do %>
-            <i class="bi bi-magic ax-ico"></i>Gerar sugestões para todos os imóveis
-          <% end %>
-        <% end %>
-
-        <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
-          <strong>Fluxo seguro:</strong> a IA apenas sugere. Para alterar título, descrição e SEO do imóvel, abra a edição do imóvel e confirme a sugestão manualmente.
-        <% end %>
-      </aside>
-    </div>
+  <section class="ax-form-tabs__panel" id="ai-integration-connections" role="tabpanel" aria-labelledby="ai-integration-connections-tab" aria-hidden="false" tabindex="0">
+    <%= render "connections" %>
+  </section>
+  <section class="ax-form-tabs__panel" id="ai-integration-content" role="tabpanel" aria-labelledby="ai-integration-content-tab" aria-hidden="true" tabindex="0" hidden>
+    <%= render "content" %>
   </section>
 
   <section class="ax-form-tabs__panel" id="ai-integration-voice" role="tabpanel" aria-labelledby="ai-integration-voice-tab" aria-hidden="true" tabindex="0" hidden>
-    <div class="integration-split-layout">
-      <main class="integration-split-layout__main">
-        <%= form_with url: admin_ai_integration_path(anchor: "ai-integration-voice"), method: :patch, scope: :ai, local: true do |f| %>
-          <%= f.hidden_field :section, value: "voice_pwa" %>
-
-          <% Ai::Provider.all.each_value do |provider| %>
-            <%= render "provider_voice_fields", f: f, provider: provider %>
-          <% end %>
-
-          <div class="tw-mt-3">
-            <%= f.submit "Salvar Voice PWA", class: "ax-btn ax-btn--primary" %>
-          </div>
-        <% end %>
-      </main>
-
-      <aside class="integration-split-layout__aside">
-        <%= ax_operational_panel(eyebrow: "Busca inteligente", title: "Ajustes operacionais", actions: ax_badge("PropertySetting", tone: :gray)) do %>
-          <p class="tw-text-sm tw-text-ink-muted">
-            Ativação, abrangência, tolerâncias, histórico e compartilhamento continuam nas configurações de imóveis.
-          </p>
-          <%= link_to edit_admin_property_setting_path(anchor: "property-settings-ai-search"), class: "ax-btn ax-btn--ghost tw-w-full" do %>
-            <i class="bi bi-sliders ax-ico"></i><span>Abrir ajustes da busca</span>
-          <% end %>
-        <% end %>
-      </aside>
+    <div class="ax-integration-actions tw-mb-3">
+      <% { "Texto" => "property_search_text", "Voz" => "property_search_voice", "Transcrição" => "property_search_transcription" }.each do |label, module_key| %>
+        <span><%= label %>: <%= render "admin/shared/ai/module_binding_badge", module_key: module_key %></span>
+      <% end %>
     </div>
+    <%= form_with model: @property_setting, url: admin_ai_integration_path(anchor: "ai-integration-voice"), method: :patch, local: true do |f| %>
+      <%= hidden_field_tag "ai[section]", "search", id: nil %>
+      <%= render "admin/shared/ai/property_search_settings", f: f, property_setting: @property_setting %>
+      <%= render "admin/shared/ai/property_search_sharing", f: f, property_setting: @property_setting %>
+      <div class="ax-integration-actions tw-mt-3">
+        <%= link_to "Nomes alternativos", edit_admin_property_setting_path(anchor: "property-settings-ai-aliases"), class: "ax-btn ax-btn--ghost" %>
+        <%= link_to "Aprendizado supervisionado", edit_admin_property_setting_path(anchor: "property-settings-ai-learning"), class: "ax-btn ax-btn--ghost" %>
+      </div>
+      <div class="ax-integration-actions tw-mt-3">
+        <%= f.submit "Salvar ajustes da busca", class: "ax-btn ax-btn--primary" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="ax-form-tabs__panel" id="ai-integration-leads" role="tabpanel" aria-labelledby="ai-integration-leads-tab" aria-hidden="true" tabindex="0" hidden>
+    <div class="ax-integration-actions tw-mb-3">
+      <span>Resumo de interesse do lead: <%= render "admin/shared/ai/module_binding_badge", module_key: "interest_summary" %></span>
+    </div>
+    <p class="tw-text-sm tw-text-ink-muted tw-mb-3">
+      Como a IA lê o interesse do lead e sugere imóveis na ficha. O resumo usa o vínculo definido em Conexões e módulos.
+    </p>
+    <%= form_with model: @layout_setting, url: admin_ai_integration_path(anchor: "ai-integration-leads"), method: :patch, local: true do |f| %>
+      <%= hidden_field_tag "ai[section]", "interest", id: nil %>
+      <%= render "admin/shared/ai/interest_intelligence_settings", f: f, layout_setting: @layout_setting %>
+      <div class="tw-mt-3">
+        <%= f.submit "Salvar inteligência de interesse", class: "ax-btn ax-btn--primary" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="ax-form-tabs__panel" id="ai-integration-data" role="tabpanel" aria-labelledby="ai-integration-data-tab" aria-hidden="true" tabindex="0" hidden>
+    <div class="ax-integration-actions tw-mb-3">
+      <span>Diagnóstico do BI: <%= render "admin/shared/ai/module_binding_badge", module_key: "dashboard_diagnosis" %></span>
+    </div>
+    <%= form_with url: admin_ai_integration_path(anchor: "ai-integration-data"), method: :patch, scope: :ai, local: true do |f| %>
+      <%= f.hidden_field :section, value: "diagnosis", id: nil %>
+      <%= ax_operational_panel(title: "Diagnóstico do BI", class_name: "ax-panel--settings tw-mb-4", actions: ax_badge(@dashboard_diagnosis_enabled ? "habilitado" : "desligado", tone: @dashboard_diagnosis_enabled ? :green : :gray)) do %>
+        <%= ax_studio_group(title: "Uso de IA") do %>
+          <%= hidden_field_tag "ai[dashboard_diagnosis_enabled]", "0", id: nil %>
+          <%= ax_switch_field(name: "ai[dashboard_diagnosis_enabled]", id: "ai_dashboard_diagnosis_enabled", checked: @dashboard_diagnosis_enabled,
+                label: "Usar IA para o diagnóstico do BI", description: "Quando desligado, o dashboard mantém a análise automática sem chamada externa.", class_name: "ax-switch--card") %>
+        <% end %>
+        <%= ax_studio_group(title: "Limites e consumo") do %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= ax_number_field(form: f, method: :dashboard_diagnosis_weekly_limit, label: "Limite semanal de diagnósticos", min: 0, max: 10, value: @dashboard_diagnosis_weekly_limit,
+                    hint: "#{@dashboard_diagnosis_weekly_used} usado(s) nesta semana. Limita novas consultas; não agenda a geração.") %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_currency_field(form: f, method: :dashboard_diagnosis_monthly_budget_reais, label: "Teto mensal estimado", value: number_with_precision(@dashboard_diagnosis_monthly_budget_cents.to_i / 100.0, precision: 2, separator: ",", delimiter: "."), inputmode: "decimal", placeholder: "10,00") %>
+              <p class="ax-field__hint">Gasto estimado no mês: <%= number_to_currency(@dashboard_diagnosis_monthly_cost_cents.to_i / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>. Teto de R$ 0,00 a R$ 1.000,00.</p>
+            </div>
+          <% end %>
+          <%= ax_inline_notice(tone: :info, compact: true, icon: "info-circle") do %>
+            Valor zero em qualquer limite impede novas chamadas externas. Diagnósticos já armazenados podem continuar disponíveis. O gasto é uma estimativa, não uma fatura.
+          <% end %>
+        <% end %>
+      <% end %>
+      <div class="ax-integration-actions">
+        <%= f.submit "Salvar diagnóstico do BI", class: "ax-btn ax-btn--primary" %>
+      </div>
+    <% end %>
   </section>
 </div>
 </div>

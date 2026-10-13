@@ -1,0 +1,33 @@
+<%= form_with url: admin_ai_integration_path, method: :patch, scope: :ai, local: true, class: "ax-integration-sections" do |f| %>
+  <%= f.hidden_field :section, value: "provider_connection", id: nil %>
+  <div class="ax-integration-sections" data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+    <%= ax_operational_panel(eyebrow: "Conexão", title: "Provedores de IA", class_name: "ax-panel--settings") do %>
+      <p class="tw-text-sm tw-text-ink-muted">Escolha o provedor. As configurações salvas dele são carregadas automaticamente; na primeira configuração, os modelos já vêm preenchidos com o preset padrão.</p>
+      <%= ax_standalone_select_field(name: "ai[provider]", id: "ai_provider", label: "Provedor padrão da conta",
+            choices: Ai::Provider.all.map { |key, provider| [provider.label, key] }, selected: @ai_provider,
+            data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" }) %>
+    <% Ai::Provider.all.each_value do |provider| %>
+      <div data-conditional-reveal-target="panel" data-conditional-reveal-values="<%= provider.key %>" <%= "hidden" unless provider.key == @ai_provider %>>
+        <%= render "provider_connection_fields", f: f, provider: provider, active: provider.key == @active_provider.key %>
+      </div>
+    <% end %>
+    <% end %>
+  </div>
+
+  <%= ax_operational_panel(eyebrow: "Módulos", title: "Uso por módulo", class_name: "ax-panel--settings") do %>
+    <p class="tw-text-sm tw-text-ink-muted">Os módulos seguem o provedor e os modelos definidos acima. Use esta seção apenas para configurar exceções; escolhas específicas já salvas são preservadas.</p>
+    <div class="ax-table-wrap">
+      <table class="ax-table ax-table--form" role="table">
+        <caption class="tw-text-left tw-text-sm tw-text-ink-muted tw-pb-2">Por padrão, os módulos herdam o preset. Ative “Configurar exceção” somente quando precisar de outro provedor ou modelo. As alterações passam a valer ao salvar.</caption>
+        <thead><tr><th scope="col">Módulo / função</th><th scope="col" colspan="2">Configuração</th></tr></thead>
+        <tbody>
+          <% Ai::ModuleConfiguration::MODULES.each do |key, metadata| %>
+            <%= render "admin/shared/ai/module_binding_fields", module_key: key, metadata: metadata %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <div class="tw-mt-3 tw-mb-4"><%= f.submit "Salvar conexões e módulos", class: "ax-btn ax-btn--primary" %></div>
+<% end %>

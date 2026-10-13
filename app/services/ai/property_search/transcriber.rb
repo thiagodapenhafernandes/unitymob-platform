@@ -17,12 +17,12 @@ module Ai
 
         prompt = vocabulary_prompt
         tenant = @setting.tenant
-        provider = Ai::Provider.active(tenant: tenant)
-        transcription = provider.build_client(api_key: Configuration.api_key(tenant: tenant)).transcribe(
+        configuration = Ai::ModuleConfiguration.new(:property_search_transcription, tenant: tenant)
+        transcription = configuration.build_client.transcribe(
           file: @audio,
           language: @setting.ai_property_search_language,
-          model: Configuration.resolved_transcription_model(tenant: tenant),
-          fallback_model: provider.fallback_transcription_model(Configuration.resolved_transcription_model(tenant: tenant)),
+          model: configuration.resolved_model,
+          fallback_model: configuration.fallback_model,
           prompt:,
           keywords: vocabulary_terms
         )

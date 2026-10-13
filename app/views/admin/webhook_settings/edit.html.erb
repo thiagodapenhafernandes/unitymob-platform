@@ -25,7 +25,7 @@
         <% end %>
         <p class="webhook-settings-help-text">Alterar URLs afeta os próximos envios. Valide o endpoint antes de salvar.</p>
         <p class="webhook-settings-help-text">O teste usa a configuração salva, não as alterações pendentes no formulário.</p>
-        <%= button_to "Testar configuração salva", test_admin_webhook_setting_path(@webhook_setting), method: :post, class: "ax-btn ax-btn--secondary tw-w-full" %>
+        <button type="button" class="ax-btn ax-btn--secondary tw-w-full" data-ax-modal-open="webhookTest<%= @webhook_setting.id %>">Testar configuração salva</button>
       <% end %>
 
       <%= ax_operational_panel(eyebrow: "Ação irreversível", title: "Excluir webhook") do %>
@@ -53,3 +53,5 @@
       preload_class: "ax-webhook-editor-aside-collapsed-preload" %>
 
 </div>
+
+<%= render "test_modal", webhook: @webhook_setting %>

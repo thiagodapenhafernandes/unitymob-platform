@@ -44,3 +44,5 @@ Próximos recortes exigem paridade própria: uma família de métricas do dashbo
 Os testes locais registrados na entrega não comprovam produção, performance ou equivalência de todas as integrações. Responsável pela aprovação de regras e finalidade: operação/controlador da conta; contratos técnicos são mantidos junto aos consumidores neste repositório.
 
 Auditoria de rastreamento: [evidências e recorte implementado](tracking-audit.md).
+
+- `WebhookTestForm`: formulário de diagnóstico compartilhado pela listagem e edição de webhooks; reutiliza o envelope e a entrega de `WebhookService`, com destino e permissões da configuração salva.

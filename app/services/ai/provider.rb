@@ -26,12 +26,12 @@ module Ai
     attr_reader :key, :label, :client_class, :catalog_class,
                 :api_key_setting, :model_setting,
                 :voice_api_key_setting, :voice_model_setting, :voice_transcription_model_setting,
-                :default_model, :default_transcription_model, :token_placeholder
+                :default_model, :default_transcription_model, :token_placeholder, :dashboard_url
 
     def initialize(key:, label:, client_class:, catalog_class:,
                    api_key_setting:, model_setting:,
                    voice_api_key_setting:, voice_model_setting:, voice_transcription_model_setting:,
-                   default_model:, default_transcription_model:, token_placeholder:)
+                   default_model:, default_transcription_model:, token_placeholder:, dashboard_url:)
       @key = key
       @label = label
       @client_class = client_class
@@ -44,6 +44,7 @@ module Ai
       @default_model = default_model
       @default_transcription_model = default_transcription_model
       @token_placeholder = token_placeholder
+      @dashboard_url = dashboard_url
     end
 
     class << self
@@ -61,7 +62,8 @@ module Ai
             voice_transcription_model_setting: Ai::PropertySearch::Configuration::TRANSCRIPTION_MODEL_SETTING,
             default_model: Ai::PropertyContentService::DEFAULT_MODEL,
             default_transcription_model: Ai::PropertySearch::Configuration::DEFAULT_TRANSCRIPTION_MODEL,
-            token_placeholder: "Cole o token da OpenAI"
+            token_placeholder: "Cole o token da OpenAI",
+            dashboard_url: "https://platform.openai.com/api-keys"
           ),
           "muse" => new(
             key: "muse",
@@ -75,7 +77,8 @@ module Ai
             voice_transcription_model_setting: MUSE_VOICE_TRANSCRIPTION_MODEL_SETTING,
             default_model: MetaAi::ModelCatalog::DEFAULT_RESPONSE_MODEL,
             default_transcription_model: MetaAi::ModelCatalog::DEFAULT_TRANSCRIPTION_MODEL,
-            token_placeholder: "Cole o token da Meta (MODEL_API_KEY)"
+            token_placeholder: "Cole o token da Meta (MODEL_API_KEY)",
+            dashboard_url: "https://dev.meta.ai/docs/overview"
           )
         }
       end

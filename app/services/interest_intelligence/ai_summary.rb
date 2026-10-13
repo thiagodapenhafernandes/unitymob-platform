@@ -14,7 +14,7 @@ module InterestIntelligence
     end
 
     def call
-      return fallback_summary.merge("source" => "deterministic") unless Ai::PropertyContentService.connected?(tenant: tenant)
+      return fallback_summary.merge("source" => "deterministic") unless Ai::ModuleConfiguration.new(:interest_summary, tenant: tenant).connected?
 
       parsed = request_summary
       fallback_summary.merge(parsed).merge("source" => "openai")
@@ -26,16 +26,16 @@ module InterestIntelligence
     private
 
     def request_summary
-      response = Ai::Provider.build_client(tenant: tenant, api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(
+      response = Ai::ModuleConfiguration.new(:interest_summary, tenant: tenant).build_client.create_response(
         openai_payload,
-        fallback_model: Ai::Provider.active(tenant: tenant).fallback_response_model(Ai::PropertyContentService.resolved_model(tenant: tenant))
+        fallback_model: Ai::ModuleConfiguration.new(:interest_summary, tenant: tenant).fallback_model
       )
       JSON.parse(extract_text(response))
     end
 
     def openai_payload
       {
-        model: Ai::PropertyContentService.resolved_model(tenant: tenant),
+        model: Ai::ModuleConfiguration.new(:interest_summary, tenant: tenant).resolved_model,
         instructions: system_instructions,
         input: user_payload,
         text: {

@@ -214,7 +214,6 @@ Rails.application.routes.draw do
     end
     resources :seo_settings, except: :show do
       collection do
-        patch :update_strategy
         post :discover
       end
       member do
