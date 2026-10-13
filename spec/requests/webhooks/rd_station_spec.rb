@@ -50,4 +50,39 @@ RSpec.describe "Webhooks::RdStation", type: :request do
 
     expect(response).to have_http_status(:unauthorized)
   end
+
+  it "ignora Meta bloqueada antes de complementar ou redistribuir um lead existente" do
+    lead = create(:lead, tenant:, phone: "47999992222", status: "Represado", origin: "Facebook Lead Ads")
+    original = lead.attributes
+    Setting.set(RdStationIntegrationSetting::BLOCKED_SOURCES_KEY, '["meta"]', tenant:)
+    expect(Leads::Intake).not_to receive(:receive!)
+    expect {
+      post "/webhooks/rd_station/rd-webhook-secret", params: {
+        contact: { name: "Cliente RD", mobile_phone: "47999992222", tags: ["instagram leads"], funnel: { origin: "Desconhecido" } }
+      }, as: :json
+    }.not_to change(LeadActivity, :count)
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body).to include("ignored" => true, "reason" => "blocked_source", "source" => "meta")
+    expect(lead.reload.attributes).to eq(original)
+  end
+
+  it "bloqueia outras fontes configuradas e permite fontes não bloqueadas" do
+    Setting.set(RdStationIntegrationSetting::BLOCKED_SOURCES_KEY, '["google","parceiro aurea","unknown"]', tenant:)
+    [{ funnel: { origin: "Busca Paga | Google" } }, { utm_source: "Parceiro Áurea" }, {}].each do |source|
+      post "/webhooks/rd_station/rd-webhook-secret", params: { contact: { name: "Contato" }.merge(source) }, as: :json
+      expect(response.parsed_body["ignored"]).to eq(true)
+    end
+    expect {
+      post "/webhooks/rd_station/rd-webhook-secret", params: { contact: { name: "Permitido", mobile_phone: "47999995555", utm_source: "linkedin" } }, as: :json
+    }.to change(tenant.leads, :count).by(1)
+    expect(response).to have_http_status(:created)
+  end
+
+  it "não aplica o bloqueio de outra conta" do
+    other = Tenant.create!(name: "Outra RD", slug: "outra-rd-#{SecureRandom.hex(4)}")
+    Setting.set(RdStationIntegrationSetting::BLOCKED_SOURCES_KEY, '["meta"]', tenant: other)
+    expect {
+      post "/webhooks/rd_station/rd-webhook-secret", params: { contact: { name: "Permitido", mobile_phone: "47999995555", utm_source: "facebook" } }, as: :json
+    }.to change(tenant.leads, :count).by(1)
+  end
 end

@@ -1,6 +1,6 @@
 module RdStation
   class LeadReceiver
-    Result = Struct.new(:lead, :errors, keyword_init: true) do
+    Result = Struct.new(:lead, :errors, :ignored_source, keyword_init: true) do
       def success?
         lead&.persisted?
       end
@@ -21,6 +21,10 @@ module RdStation
     end
 
     def call
+      source = EntrySource.call(payload)
+      if RdStationIntegrationSetting.current(tenant: tenant).blocks_source?(source)
+        return Result.new(errors: [], ignored_source: source[:key])
+      end
       lead = tenant.leads.new(lead_attributes)
       begin
         lead = Leads::Intake.receive!(lead)
