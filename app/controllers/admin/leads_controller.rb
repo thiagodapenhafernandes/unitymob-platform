@@ -1087,9 +1087,13 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def hide_waiting_acceptance_from_common_scope(scope)
-    return scope if explicit_waiting_acceptance_filter?
+    return scope if explicit_waiting_acceptance_filter? || searching_without_status?
 
     scope.where("leads.status IS NULL OR leads.status <> ?", Lead.status_value(:waiting_acceptance, tenant: current_tenant))
+  end
+
+  def searching_without_status?
+    @q.present? && @status_filters.blank?
   end
 
   def explicit_waiting_acceptance_filter?
@@ -3088,6 +3092,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def lead_statuses_for_kanban(lead_scope)
     configured_statuses = lead_status_options_for_selected_context
+    configured_statuses = configured_statuses + [Lead.status_value(:waiting_acceptance, tenant: current_tenant)] if searching_without_status?
     if @selected_pipeline.blank?
       default_pipeline = LeadPipeline.default_for(tenant: current_tenant)
       default_statuses = default_pipeline ? visible_stages_for(default_pipeline.stages.active.ordered).map(&:name) : []
@@ -3118,7 +3123,8 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def hidden_kanban_status_values
-    HIDDEN_KANBAN_STATUSES.map { |status| Lead.status_value(status, tenant: current_tenant) }.uniq
+    statuses = HIDDEN_KANBAN_STATUSES.map { |status| Lead.status_value(status, tenant: current_tenant) }.uniq
+    searching_without_status? ? statuses.excluding(Lead.status_value(:waiting_acceptance, tenant: current_tenant)) : statuses
   end
 
   def visible_stages_for(scope)

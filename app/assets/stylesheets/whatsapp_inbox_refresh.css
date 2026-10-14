@@ -769,7 +769,7 @@ html.wa-fullscreen-lock, html.wa-fullscreen-lock body { overflow: hidden !import
 .lead-property-card .ax-context-pin__link { flex: 1; }
 .lead-property-share-check { display: inline-flex; align-items: center; margin: 0 0 0 4px; }
 .lead-property-share-check input { width: 18px; height: 18px; accent-color: #365f8f; }
-.lead-property-share-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border: 1px solid transparent; border-radius: 999px; font-size: 12px; font-weight: 800; }
+.lead-property-share-badge { display: inline-flex; align-items: center; min-height: 20px; height: 22px; padding: 0 8px; border: 1px solid transparent; border-radius: 999px; font-size: 12px; font-weight: 800; margin-right: 4px; }
 .lead-property-share-badge--sent { background: color-mix(in srgb, var(--ax-accent-green) 14%, var(--ab-panel, #fff)); border-color: color-mix(in srgb, var(--ax-accent-green) 35%, var(--ab-panel, #fff)); color: color-mix(in srgb, var(--ax-accent-green) 80%, var(--ab-ink, #1f2733)); }
 .lead-property-share-badge--viewed { background: color-mix(in srgb, var(--ax-accent-blue) 14%, var(--ab-panel, #fff)); border-color: color-mix(in srgb, var(--ax-accent-blue) 35%, var(--ab-panel, #fff)); color: color-mix(in srgb, var(--ax-accent-blue) 80%, var(--ab-ink, #1f2733)); }
 .lead-property-share-badge--opened { background: color-mix(in srgb, var(--ax-accent-violet) 14%, var(--ab-panel, #fff)); border-color: color-mix(in srgb, var(--ax-accent-violet) 35%, var(--ab-panel, #fff)); color: color-mix(in srgb, var(--ax-accent-violet) 80%, var(--ab-ink, #1f2733)); }

@@ -496,7 +496,7 @@ html[data-admin-theme="dark"] .prof-res__main span { color: var(--ax-dark-text-m
 .ax-context-pin {
   --ax-pin-accent: var(--admin-primary);
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
   flex: 0 0 auto;
   min-width: 0;
   max-width: 240px;
