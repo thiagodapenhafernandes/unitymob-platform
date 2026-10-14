@@ -11,6 +11,23 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     sign_in admin
   end
 
+  it "inclui lead antigo aceito no bolsão no período na performance, Excel e ranking" do
+    travel_to Time.zone.local(2026, 10, 14, 12) do
+      broker = create(:admin_user, tenant: admin.tenant, name: "Corretor Bolsao Antigo")
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, name: "Cadastro Antigo Aceito Agora", created_at: 1.year.ago, status: "Em Atendimento")
+      lead.activities.create!(kind: "accepted", metadata: { shark_tank: true, admin_user_id: broker.id }, created_at: 2.days.ago)
+      get admin_dashboard_section_path("broker_performance", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_broker_performance" }
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(lead.name, "Bolsão")
+      get admin_dashboard_broker_performance_report_path(period: 7)
+      expect(response).to have_http_status(:ok)
+      expect(response.body.dup.force_encoding("UTF-8")).to include(lead.name)
+      get admin_dashboard_section_path("pool_ranking", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_pool_ranking" }
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(broker.name)
+    end
+  end
+
   it "abre a aba Leads como principal sem carregar slices de outras áreas" do
     get admin_root_path
 

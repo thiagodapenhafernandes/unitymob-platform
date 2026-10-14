@@ -314,8 +314,10 @@ class Admin::DashboardController < Admin::BaseController
   # responsável. "Assume em" = entrada no bolsão até aceitar; "atende em" =
   # aceitar até a primeira tentativa de contato ou resposta do cliente.
   def pool_ranking_rows
-    period_scope = valid_dashboard_leads_scope(scoped_dashboard_report_leads(:dashboard_pool_ranking))
-      .where(leads: { created_at: dashboard_window_start..dashboard_window_end })
+    period_scope = Dashboard::LeadPerformancePeriodQuery.new(
+      scope: valid_dashboard_leads_scope(scoped_dashboard_report_leads(:dashboard_pool_ranking)),
+      starts_at: dashboard_window_start, ends_at: dashboard_window_end
+    ).call
       .where.not(admin_user_id: nil)
     leads = period_scope.order("leads.created_at DESC").to_a
     return [] if leads.empty?
@@ -1932,8 +1934,10 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def broker_performance_rows
-    period_scope = valid_dashboard_leads_scope(scoped_dashboard_report_leads(:dashboard_broker_performance))
-      .where(leads: { created_at: dashboard_window_start..dashboard_window_end })
+    period_scope = Dashboard::LeadPerformancePeriodQuery.new(
+      scope: valid_dashboard_leads_scope(scoped_dashboard_report_leads(:dashboard_broker_performance)),
+      starts_at: dashboard_window_start, ends_at: dashboard_window_end
+    ).call
       .where.not(admin_user_id: nil)
       .includes(:distribution_rule)
     leads = period_scope.order("leads.created_at DESC").to_a
