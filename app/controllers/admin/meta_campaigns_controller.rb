@@ -82,7 +82,7 @@ class Admin::MetaCampaignsController < Admin::BaseController
       spend: spend, meta_leads: meta_leads, crm_leads: crm_leads,
       impressions: @spend_rows.sum { |row| row.impressions.to_i },
       clicks: @spend_rows.sum { |row| row.clicks.to_i },
-      qualified: qualified, visits: visits, sales: sales,
+      qualified: qualified, visits: visits, sales: sales, accepted_proposals: @funnel_rows.sum { |row| row[:accepted_proposals] },
       cpl: meta_leads.positive? ? spend / meta_leads : nil,
       cost_per_sale: sales.positive? ? spend / sales : nil
     }

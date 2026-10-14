@@ -18,12 +18,16 @@ module InterestIntelligence
       return [] if profile_incomplete?
       return [] if @lead&.tenant_id.blank?
 
-      candidate_scope.limit(250).filter_map do |habitation|
+      results = []
+      candidate_scope.find_each(batch_size: 500) do |habitation|
         score, reasons = score_for(habitation)
         next if score < @settings["minimum_match_score"].to_i
 
-        Result.new(habitation: habitation, score: score, reasons: reasons)
-      end.sort_by { |result| -result.score }.first(@limit)
+        results << Result.new(habitation: habitation, score: score, reasons: reasons)
+        results.sort_by! { |result| [-result.score, -result.habitation.updated_at.to_f, -result.habitation.id] }
+        results = results.first(@limit)
+      end
+      results
     end
 
     def profile
@@ -40,15 +44,19 @@ module InterestIntelligence
     def candidate_scope
       # Escopo obrigatório por tenant: sem ele a sugestão vazaria imóveis de
       # outras imobiliárias (Habitation não tem default_scope de tenant).
-      scope = Habitation.for_tenant(@lead.tenant_id).active.with_price
+      scope = Habitation.for_tenant(@lead.tenant_id).active.with_price.includes(:address)
       scope = scope.where.not(id: ignored_property_ids) if ignored_property_ids.any?
       criteria = @profile[:criteria] || {}
 
       if criteria[:cities].present?
-        scope = scope.where(cidade: criteria[:cities])
+        scope = scope.by_city(criteria[:cities])
       end
 
-      scope.order(updated_at: :desc)
+      case @profile.dig(:criteria, :business_type)
+      when "venda" then scope.for_sale
+      when "locacao" then scope.for_rent
+      else scope
+      end
     end
 
     def score_for(habitation)
@@ -101,7 +109,7 @@ module InterestIntelligence
       max = criteria[:max_price_cents].to_i
       return false if min.zero? && max.zero?
 
-      price = habitation.valor_venda_cents.presence || habitation.valor_locacao_cents
+      price = BusinessType.price_for(habitation, criteria[:business_type])
       return false if price.to_i <= 0
 
       tolerance = @settings["price_tolerance_percent"].to_i / 100.0

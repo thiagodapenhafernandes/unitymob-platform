@@ -49,7 +49,7 @@ module Portal
 
       {
         eligible_count: eligible_count,
-        rejected_count: top_reasons.values.sum,
+        rejected_count: base.where.not(id: eligible_scope.select(:id)).distinct.count,
         top_reasons: top_reasons
       }
     end

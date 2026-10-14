@@ -35,6 +35,7 @@ module Meta
           leads: row_leads.size,
           qualified: row_leads.count { |lead| qualified?(lead) },
           visits: ids.count { |id| milestones[:visits].include?(id) },
+          accepted_proposals: ids.count { |id| milestones[:accepted_proposals].include?(id) },
           sales: ids.count { |id| milestones[:sales].include?(id) }
         }
       end
@@ -69,14 +70,9 @@ module Meta
       visit_ids = Appointment.where(tenant_id: @tenant.id, lead_id: lead_ids, kind: "visita", status: "realizado")
                              .distinct.pluck(:lead_id).to_set
       proposal_ids = Proposal.where(lead_id: lead_ids, status: "aceita").distinct.pluck(:lead_id).to_set
-      won_stage_ids = @tenant.lead_pipeline_stages.where(stage_type: "won").pluck(:id).to_set
-      concluido = Lead.status_value(:concluido, tenant: @tenant)
+      won_ids = @tenant.leads.won_in_crm(tenant: @tenant).where(id: lead_ids).pluck(:id).to_set
 
-      stage_or_status_ids = Lead.where(id: lead_ids).pluck(:id, :lead_pipeline_stage_id, :status)
-                                .select { |(_, stage_id, status)| won_stage_ids.include?(stage_id) || status == concluido }
-                                .map(&:first).to_set
-
-      { visits: visit_ids, sales: proposal_ids | stage_or_status_ids }
+      { visits: visit_ids, accepted_proposals: proposal_ids, sales: won_ids }
     end
 
     # Nome mais recente do snapshot (autoritativo); fallback para o que o lead guarda.

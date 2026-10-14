@@ -3,7 +3,7 @@ module Meta
   # (qualificado, visita, venda) via milestone; etapas do funil via event_name
   # direto do mapeamento da etapa. Só leads de origem Meta Ads e só contas com
   # config CAPI ativa; o event_id estável (um por lead por evento) faz a Meta
-  # dedupar reenvios e caminhos duplos (ex.: proposta aceita + etapa de venda).
+  # dedupar reenvios da mesma etapa ou marco comercial.
   class ConversionDispatcher
     EVENTS = {
       qualified: "QualifiedLead",

@@ -23,6 +23,7 @@ module InterestIntelligence
 
     def criteria
       {
+        business_type: business_type,
         cities: top_values(:city),
         neighborhoods: top_values(:neighborhood),
         categories: top_values(:category),
@@ -67,7 +68,15 @@ module InterestIntelligence
     end
 
     def price_range
-      prices = property_snapshots.filter_map { |snapshot| snapshot.with_indifferent_access[:price_cents].presence&.to_i }.reject(&:zero?)
+      prices = property_snapshots.filter_map do |snapshot|
+        data = snapshot.with_indifferent_access
+        value = if business_type.present?
+          data["#{business_type}_price_cents"] || (data[:price_cents] if BusinessType.normalize(data[:business_type]) == business_type)
+        else
+          data[:price_cents]
+        end
+        value.to_i if value.to_i.positive?
+      end
       return [nil, nil] if prices.blank?
 
       [prices.min, prices.max]
@@ -85,9 +94,11 @@ module InterestIntelligence
 
     def property_snapshots
       @property_snapshots ||= begin
-        snapshots = property_events.map { |event| event.property_snapshot.to_h }
-        manual_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
-          explicit_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
+        snapshots = property_events.includes(habitation: :address).map do |event|
+          snapshot_for(event.habitation).to_h.merge(event.property_snapshot.to_h)
+        end
+        manual_interests.includes(habitation: :address).filter_map { |interest| snapshot_for(interest.habitation) } +
+          explicit_interests.includes(habitation: :address).filter_map { |interest| snapshot_for(interest.habitation) } +
           shared_habitations.filter_map { |habitation| snapshot_for(habitation) } +
           favorite_habitations.filter_map { |habitation| snapshot_for(habitation) } +
           snapshots
@@ -103,8 +114,27 @@ module InterestIntelligence
         "category" => habitation.categoria,
         "bedrooms" => habitation.dormitorios_qtd,
         "parking_spaces" => habitation.vagas_qtd,
-        "price_cents" => habitation.valor_venda_cents.presence || habitation.valor_locacao_cents
+        "business_type" => BusinessType.for_property(habitation),
+        "venda_price_cents" => habitation.valor_venda_cents,
+        "locacao_price_cents" => habitation.valor_locacao_cents,
+        "price_cents" => BusinessType.price_for(habitation)
       }.compact
+    end
+
+    def business_type
+      return @business_type if defined?(@business_type)
+
+      @business_type = begin
+        explicit = BusinessType.normalize(@lead.attribution_data.to_h["business_type"]) ||
+          BusinessType.normalize(@lead.other_information.to_h["business_type"]) ||
+          BusinessType.normalize(@lead.business_label)
+        searched = search_events.filter_map do |event|
+          params = event.search_params.to_h.with_indifferent_access
+          BusinessType.normalize(params[:transaction_type] || params[:business_type])
+        end.first
+        inferred = property_snapshots.filter_map { |snapshot| BusinessType.normalize(snapshot.with_indifferent_access[:business_type]) }.uniq
+        explicit || searched || (inferred.first if inferred.one?)
+      end
     end
 
     def search_values(attribute)
@@ -196,11 +226,11 @@ module InterestIntelligence
     end
 
     def favorite_habitations
-      @favorite_habitations ||= Habitation.for_tenant(@lead.tenant_id).where(id: FavoriteSync.property_ids_for(@lead)).to_a
+      @favorite_habitations ||= Habitation.for_tenant(@lead.tenant_id).where(id: FavoriteSync.property_ids_for(@lead)).includes(:address).to_a
     end
 
     def shared_habitations
-      @shared_habitations ||= Habitation.for_tenant(@lead.tenant_id).where(id: shared_property_view_ids)
+      @shared_habitations ||= Habitation.for_tenant(@lead.tenant_id).where(id: shared_property_view_ids).includes(:address)
     end
 
     def repeated_property_views

@@ -51,4 +51,22 @@ RSpec.describe Portal::EligibilityScope do
       )
     end
   end
+  it "conta imóveis rejeitados únicos mesmo quando há mais de cinco motivos" do
+    tenant = Tenant.create!(name: "Teste isolado", slug: "teste-isolado-#{SecureRandom.hex(4)}")
+    eligible = create(:habitation, tenant: tenant)
+    rejected = create(:habitation, tenant: tenant, pictures: [], valor_venda_cents: 0,
+                                   valor_locacao_cents: 0, exibir_no_site_flag: false,
+                                   titulo_anuncio: nil, descricao_web: nil)
+    rejected.update_columns(titulo_anuncio: nil, descricao_web: nil)
+    create(:habitation, tenant: Tenant.create!(name: "Teste isolado", slug: "teste-isolado-#{SecureRandom.hex(4)}"), pictures: [])
+    integration = instance_double(PortalIntegration, tenant: tenant,
+      allowed_statuses: ["Locação"], allowed_business_types: ["venda"],
+      require_exibir_no_site?: true, portal: "zapimoveis")
+    eligible.update_columns(status: "Locação", titulo_anuncio: "Imóvel apto", publicar_zapimoveis: true)
+    preview = described_class.new(integration).preview
+    expect(preview[:eligible_count]).to eq(1)
+    expect(preview[:rejected_count]).to eq(1)
+    expect(preview[:top_reasons].values.sum).to be > preview[:rejected_count]
+    expect(preview[:top_reasons].size).to eq(5)
+  end
 end

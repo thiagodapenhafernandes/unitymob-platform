@@ -132,4 +132,20 @@ RSpec.describe "Admin::MetaConversions", type: :request do
       patch admin_appointment_path(other_visit), params: { appointment: { status: "realizado" } }
     end.not_to have_enqueued_job(MetaConversionJob)
   end
+  it "preserva Purchase configurado na etapa ganha após separar aceite de proposta" do
+    allow_any_instance_of(Admin::LeadsController).to receive(:verified_request?).and_return(true)
+    pipeline = LeadPipeline.ensure_default!(tenant: tenant)
+    open_stage = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Negociação Meta", stage_type: "open")
+    won_stage = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Fechamento Meta", stage_type: "won", meta_conversion_event: "Purchase")
+    lead = meta_lead
+    lead.update_columns(lead_pipeline_stage_id: open_stage.id, status: open_stage.name)
+
+    expect do
+      patch admin_lead_path(lead), params: { lead: { lead_pipeline_stage_id: won_stage.id, status: won_stage.name } },
+        headers: { "ACCEPT" => "application/json" }
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, "Purchase", kind_of(String), kind_of(String), nil)
+    expect(response).to have_http_status(:ok)
+    expect(lead.reload.lead_pipeline_stage_id).to eq(won_stage.id)
+  end
+
 end

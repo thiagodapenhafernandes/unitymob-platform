@@ -564,4 +564,13 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(doc.at_css(".distribution-rule-show__state > .distribution-rule-show__state-row")).to be_present
     expect(doc.at_css(".distribution-rule-show__queue-handle[aria-hidden='true']")).to be_nil
   end
+  it "explica pesos manuais e usa o mesmo rótulo no formulário e na listagem" do
+    rule = create(:distribution_rule, tenant: admin.tenant, distribution_mode: :performance)
+    get edit_admin_distribution_rule_path(rule)
+    expect(response.body).to include("Sorteio ponderado", "não aprendem com conversões", "Pesos definidos manualmente")
+    mode = Nokogiri::HTML(response.body).at_css("#mode_performance")
+    expect(mode["data-distribution-mode-label"]).to eq("Sorteio ponderado")
+    get admin_distribution_rules_path
+    expect(response.body).to include("Sorteio ponderado")
+  end
 end
