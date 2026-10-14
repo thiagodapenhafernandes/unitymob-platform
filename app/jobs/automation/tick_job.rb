@@ -10,11 +10,9 @@ module Automation
           hours = rule.idle_hours
           next if hours <= 0
 
-          scope = rule.tenant.leads.where("leads.updated_at <= ?", hours.hours.ago)
-          stage = rule.conditions_hash[:stage]
-          scope = scope.where(status: Lead.status_value(stage)) if stage.present?
-          source = rule.conditions_hash[:source]
-          scope = scope.where("origin ILIKE ?", source) if source.present?
+          scope = Automation::LeadCandidates.for(rule.tenant, rule.conditions_hash, trigger: "lead_idle")
+          scope = scope.where.not(id: rule.tenant.automation_events.where(name: "lead_idle", source: "automation_tick")
+            .where("payload ->> 'automation_rule_id' = ?", rule.id.to_s).where.not(lead_id: nil).select(:lead_id))
 
           # Dedup: não reprocessar leads que esta regra já tocou — anti-join no
           # banco (NOT EXISTS) em vez de materializar todos os ids em memória;

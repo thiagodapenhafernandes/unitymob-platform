@@ -79,7 +79,7 @@ export default class extends Controller {
     }
 
     this.insertNodeAfter(this.pendingInsertion?.afterId, node, this.pendingInsertion?.mode || "sequential")
-    if (conversation) this.scaffoldQuestion(node)
+    if (conversation && conversation !== "template_buttons") this.scaffoldQuestion(node)
     this.selectedNodeId = node.id
     this.pendingInsertion = null
     this.inspectorMode = "node"
@@ -286,6 +286,7 @@ export default class extends Controller {
     this.sync()
     this.renderCanvas()
     this.refreshLiteralSummary()
+    this.refreshValidity()
     if (event.currentTarget.tagName === "SELECT" || ["retry_enabled", "retry_question", "use_as_receptive"].includes(field)) this.renderInspector()
   }
 
@@ -352,6 +353,12 @@ export default class extends Controller {
   renderCanvas() {
     this.canvasTarget.replaceChildren()
 
+    // Anima só o que é novo (ou tudo na primeira pintura, em cascata); re-render por digitação não pisca.
+    const firstPaint = !this.seenNodeIds
+    const seen = this.seenNodeIds || new Set()
+    const selectionChanged = this.lastCanvasSelectedId !== this.selectedNodeId
+    this.lastCanvasSelectedId = this.selectedNodeId
+
     const layout = this.workflowLayout()
     layout.levels.forEach((nodes, index) => {
       const visibleNodes = nodes.filter(Boolean)
@@ -363,7 +370,14 @@ export default class extends Controller {
         const slot = document.createElement("div")
         slot.className = "automation-workflow-builder__slot"
         if (node) {
-          slot.appendChild(this.nodeElement(node, visibleNodes))
+          const element = this.nodeElement(node, visibleNodes)
+          if (!seen.has(node.id)) {
+            element.classList.add("is-entering")
+            element.style.setProperty("--enter-delay", `${firstPaint ? index * 70 : 0}ms`)
+          } else if (selectionChanged && node.id === this.selectedNodeId) {
+            element.classList.add("is-selected-pop")
+          }
+          slot.appendChild(element)
           if (!this.endsFlow(node)) slot.appendChild(this.inlineAddElement(node))
         } else {
           slot.classList.add("automation-workflow-builder__slot--empty")
@@ -375,6 +389,7 @@ export default class extends Controller {
       if (index < layout.levels.length - 1) this.canvasTarget.appendChild(this.connectorElement(layout, index))
     })
 
+    this.seenNodeIds = new Set(this.definition.nodes.map((item) => item.id))
     this.applyCanvasZoom()
     this.scheduleConnectionsDraw()
   }
@@ -382,6 +397,15 @@ export default class extends Controller {
   renderInspector() {
     const node = this.selectedNode()
     this.inspectorTarget.replaceChildren()
+
+    const swapKey = `${this.inspectorMode}:${node?.id || ""}`
+    if (this.lastInspectorKey !== swapKey) {
+      this.lastInspectorKey = swapKey
+      this.inspectorTarget.classList.remove("is-swapping")
+      void this.inspectorTarget.offsetWidth // reinicia a animação
+      this.inspectorTarget.classList.add("is-swapping")
+    }
+    if (this.hasAsideTarget) this.asideTarget.dataset.tone = node ? this.nodeTone(node) : "entry"
 
     if (this.inspectorMode === "step_chooser") {
       this.inspectorTitleTarget.textContent = "Adicionar intervenção"
@@ -398,8 +422,11 @@ export default class extends Controller {
       return
     }
 
-    this.inspectorTarget.appendChild(this.field("Nome do bloco", "label", node.label || this.nodeTitle(node)))
+    this.inspectorTarget.appendChild(this.blockToolbar(node))
+    this.inspectorTarget.appendChild(this.field("Nome do bloco", "label", node.label || this.nodeTitle(node), "text", { required: true, maxlength: 80 }))
     this.inspectorTarget.appendChild(this.literalSummaryPanel(node))
+    const buttonContext = this.buttonContextFor(node)
+    if (buttonContext) this.inspectorTarget.appendChild(this.buttonContextPanel(buttonContext))
 
     if (node.type === "action") {
       if (node.config?.action_type) {
@@ -431,14 +458,89 @@ export default class extends Controller {
       this.inspectorTarget.appendChild(this.field("Resumo dos criterios", "summary", node.config?.summary || ""))
     }
 
-    if (node.type !== "entry") {
-      const button = document.createElement("button")
-      button.type = "button"
-      button.className = "automation-workflow-builder__danger"
-      button.dataset.action = "automation-workflow-builder#removeNode"
-      button.innerHTML = '<i class="bi bi-trash"></i><span>Remover etapa</span>'
-      this.inspectorTarget.appendChild(button)
-    }
+    this.refreshValidity()
+  }
+
+  // Cabeçalho do bloco: status (Pronto/Pendente) + duplicar + remover (confirmação em 2 cliques).
+  blockToolbar(node) {
+    const bar = document.createElement("div")
+    bar.className = "automation-workflow-builder__block-toolbar"
+
+    const status = document.createElement("span")
+    status.className = "automation-workflow-builder__status"
+    status.dataset.blockStatus = "true"
+    status.setAttribute("role", "status")
+
+    const actions = document.createElement("span")
+    actions.className = "automation-workflow-builder__block-actions"
+
+    const duplicate = document.createElement("button")
+    duplicate.type = "button"
+    duplicate.className = "automation-workflow-builder__icon-btn"
+    duplicate.title = "Duplicar etapa em paralelo"
+    duplicate.setAttribute("aria-label", "Duplicar etapa")
+    duplicate.innerHTML = '<i class="bi bi-copy"></i>'
+    duplicate.dataset.action = "automation-workflow-builder#duplicateNode"
+
+    const remove = document.createElement("button")
+    remove.type = "button"
+    remove.className = "automation-workflow-builder__icon-btn automation-workflow-builder__icon-btn--danger"
+    remove.title = "Remover etapa"
+    remove.setAttribute("aria-label", "Remover etapa")
+    remove.innerHTML = '<i class="bi bi-trash"></i>'
+    remove.addEventListener("click", (event) => {
+      if (remove.dataset.confirm !== "true") {
+        remove.dataset.confirm = "true"
+        remove.classList.add("is-confirming")
+        remove.innerHTML = '<i class="bi bi-trash"></i><span>Confirmar remoção</span>'
+        remove.timer = setTimeout(() => {
+          delete remove.dataset.confirm
+          remove.classList.remove("is-confirming")
+          remove.innerHTML = '<i class="bi bi-trash"></i>'
+        }, 3500)
+        return
+      }
+      clearTimeout(remove.timer)
+      this.removeNode(event)
+    })
+
+    actions.append(duplicate, remove)
+    bar.append(status, actions)
+    return bar
+  }
+
+  duplicateNode(event) {
+    event?.preventDefault()
+    const node = this.selectedNode()
+    const from = node && this.incomingEdges(node.id)[0]?.from
+    if (!node || node.type === "entry" || !from) return
+
+    const copy = JSON.parse(JSON.stringify(node))
+    copy.id = this.uniqueNodeId(node.type)
+    copy.label = `${node.label || this.nodeTitle(node)} (cópia)`
+    this.insertNodeAfter(from, copy, "parallel")
+    this.selectedNodeId = copy.id
+    this.sync()
+    this.render()
+  }
+
+  // Marca campos obrigatórios vazios e atualiza o selo do bloco sem recriar o inspector (mantém o foco).
+  refreshValidity() {
+    const controls = Array.from(this.inspectorTarget.querySelectorAll("[data-required]"))
+    let pending = 0
+    controls.forEach((control) => {
+      const empty = String(control.value ?? "").trim() === ""
+      if (empty) pending += 1
+      control.closest(".automation-workflow-builder__field")?.classList.toggle("is-invalid", empty)
+      control.setAttribute("aria-invalid", empty ? "true" : "false")
+    })
+
+    const status = this.inspectorTarget.querySelector("[data-block-status]")
+    if (!status) return
+    status.classList.toggle("is-pending", pending > 0)
+    status.innerHTML = pending > 0
+      ? `<i class="bi bi-exclamation-circle"></i>${pending === 1 ? "1 campo pendente" : `${pending} campos pendentes`}`
+      : '<i class="bi bi-check-circle"></i>Pronto'
   }
 
   normalizeEntryConfigForTrigger(node) {
@@ -493,6 +595,13 @@ export default class extends Controller {
   }
 
   normalizeActionConfig(node, changedField) {
+    if (node.config?.action_type === "capture_answer") {
+      this.normalizeCaptureConfig(node, changedField)
+      return
+    }
+
+    if (node.config?.action_type === "send_whatsapp_template" && changedField === "template") this.afterTemplateChosen(node)
+
     if (node.config?.action_type === "set_flow_result") {
       if (changedField === "action_type") {
         node.config.result = node.config.result || "no_attendance"
@@ -516,6 +625,199 @@ export default class extends Controller {
     }
   }
 
+  // ----- Guardar resposta do cliente -----
+  captureOperatorFor(type) {
+    return { email: "valid_email", phone: "valid_phone", number: "valid_number" }[type] || "present"
+  }
+
+  captureAnswerTypes() {
+    return { text: "Texto livre", email: "E-mail", phone: "Telefone", number: "Número" }
+  }
+
+  captureTargetLabel(node) {
+    const target = node.config?.lead_target
+    if (target === "name") return "Nome"
+    if (target === "email") return "E-mail"
+    if (target === "custom") return node.config?.custom_label || node.config?.custom_key || "campo personalizado"
+    return ""
+  }
+
+  normalizeCaptureConfig(node, changedField) {
+    node.config = node.config || {}
+    if (changedField === "action_type") {
+      node.config.variable = node.config.variable || "resposta"
+      node.config.answer_type = node.config.answer_type || "text"
+      node.config.lead_target = node.config.lead_target || "none"
+    }
+    if (changedField === "answer_type") {
+      const type = node.config.answer_type
+      if (node.config.lead_target === "email" && type !== "email") node.config.lead_target = "none"
+      if (node.config.lead_target === "name" && type !== "text") node.config.lead_target = "none"
+    }
+    if (changedField === "variable") node.config.variable = this.slugify(node.config.variable)
+    this.syncCaptureCondition(node)
+  }
+
+  slugify(value) {
+    return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40)
+  }
+
+  // A condição que leva a este bloco valida o mesmo tipo de resposta (e-mail válido, telefone válido...).
+  syncCaptureCondition(node) {
+    this.incomingEdges(node.id).map((edge) => this.nodeById(edge.from)).filter((item) => item?.type === "response_condition" && item.config?.capture_path).forEach((condition) => {
+      condition.config.operator = this.captureOperatorFor(node.config?.answer_type)
+      condition.label = { email: "Se respondeu um e-mail válido", phone: "Se respondeu um telefone válido", number: "Se respondeu um número" }[node.config?.answer_type] || "Se respondeu"
+    })
+  }
+
+  // Variáveis guardadas por blocos do fluxo, para oferecer em mensagens e notas.
+  capturedVariables() {
+    const seen = new Set()
+    return this.definition.nodes
+      .filter((node) => node.type === "action" && node.config?.action_type === "capture_answer" && node.config?.variable)
+      .map((node) => node.config.variable)
+      .filter((variable) => !seen.has(variable) && seen.add(variable))
+  }
+
+  renderCaptureFields(node) {
+    const type = node.config?.answer_type || "text"
+    const variable = node.config?.variable || ""
+    this.inspectorTarget.appendChild(this.field("Nome da variável", "variable", variable, "text", {
+      required: true,
+      maxlength: 40,
+      placeholder: "email",
+      info: "Como esta resposta será chamada neste fluxo. Use {{resposta.nome_da_variavel}} nas mensagens, notas e webhook seguintes.",
+      hint: variable ? `Para usar depois: {{resposta.${this.slugify(variable)}}}` : "Só letras, números e _ (ex.: email, bairro, orcamento)."
+    }))
+    this.inspectorTarget.appendChild(this.selectField("Tipo de resposta", "answer_type", type, this.captureAnswerTypes(), {
+      required: true,
+      placeholder: "Selecione o tipo",
+      info: "A resposta é validada por este tipo. Se não for válida, o cliente é avisado e a pergunta se repete (veja o caminho \"Não entendi\")."
+    }))
+
+    const targets = { none: "Só guardar neste fluxo" }
+    if (type === "text") targets.name = "Nome do lead"
+    if (type === "email") targets.email = "E-mail do lead"
+    targets.custom = "Campo personalizado do lead"
+    this.inspectorTarget.appendChild(this.selectField("Salvar também no cadastro do lead", "lead_target", node.config?.lead_target || "none", targets, {
+      placeholder: "Só guardar neste fluxo",
+      info: "Reaproveita os campos que o lead já tem. O valor anterior fica registrado na linha do tempo do lead."
+    }))
+    if (node.config?.lead_target === "custom") {
+      this.inspectorTarget.appendChild(this.field("Nome do campo", "custom_key", node.config?.custom_key || "", "text", { required: true, maxlength: 40, placeholder: "bairro_de_interesse" }))
+      this.inspectorTarget.appendChild(this.field("Rótulo exibido", "custom_label", node.config?.custom_label || "", "text", { maxlength: 60, placeholder: "Bairro de interesse" }))
+    }
+    this.inspectorTarget.appendChild(this.entryEventNotice("Telefone e número não substituem o telefone do lead: ficam na variável ou em um campo personalizado."))
+  }
+
+  // ----- Template com botões no meio do fluxo -----
+  flowTemplateByName(name) {
+    return (this.catalog.whatsapp_flow_templates || []).find((template) => template.name === name) || null
+  }
+
+  // Template cujo menu uma etapa está tratando: o enviado mais perto acima dela (ou o do início).
+  templateForNode(node) {
+    const visited = new Set()
+    const queue = [node.id]
+    while (queue.length) {
+      const id = queue.shift()
+      if (visited.has(id)) continue
+      visited.add(id)
+      const current = this.nodeById(id)
+      if (current?.type === "action" && current.config?.action_type === "send_whatsapp_template") {
+        const template = this.flowTemplateByName(current.config.template)
+        if (template) return template
+      }
+      if (current?.type === "entry") return this.entryTemplate()
+      this.incomingEdges(id).forEach((edge) => queue.push(edge.from))
+    }
+    return null
+  }
+
+  templateButtonPaths(template) {
+    const conditions = template.scaffold.nodes.filter((item) => item.type === "response_condition")
+    const replies = template.scaffold.nodes.filter((item) => item.type === "action")
+    const clone = (value) => JSON.parse(JSON.stringify(value))
+    return conditions.map((condition, index) => [
+      this.buildUniqueNode("response_condition", condition.label, { ...clone(condition.config), option_path: true }),
+      this.buildUniqueNode("action", replies[index]?.label || `Responder: ${condition.config.button_text}`, { ...clone(replies[index]?.config || { action_type: "send_whatsapp", message: "Obrigado!" }), default_reply: true })
+    ])
+  }
+
+  // Ao escolher um template de botões num bloco "template e tratar botões", os caminhos nascem sozinhos.
+  afterTemplateChosen(node) {
+    const template = this.flowTemplateByName(node.config.template)
+    if (!template || !node.config.template_flow || node.config.scaffold) return
+
+    this.mapTemplateButtons(node, template)
+  }
+
+  mapTemplateButtons(node, template) {
+    this.clearScaffold(node)
+    this.scaffoldQuestion(node, { paths: this.templateButtonPaths(template) })
+    node.config.template_scaffold_name = template.name
+  }
+
+  clearScaffold(node) {
+    const created = new Set(node.config?.scaffold?.created || [])
+    if (created.size) {
+      this.definition.nodes = this.definition.nodes.filter((item) => !created.has(item.id))
+      this.definition.edges = this.definition.edges.filter((edge) => !created.has(edge.from) && !created.has(edge.to))
+    }
+    delete node.config.scaffold
+  }
+
+  renderTemplateActionFields(node) {
+    const flowTemplates = this.catalog.whatsapp_flow_templates || []
+    const options = node.config?.template_flow ? Object.fromEntries(flowTemplates.map((template) => [template.name, template.name])) : this.catalog.templates
+    this.inspectorTarget.appendChild(this.selectField("Modelo WhatsApp", "template", node.config?.template, options, {
+      placeholder: "Selecione o modelo",
+      required: true,
+      emptyHint: { message: "Nenhum modelo com botões de resposta aprovado.", href: "/admin/whatsapp/templates", linkLabel: "Cadastrar modelo" }
+    }))
+
+    const template = this.flowTemplateByName(node.config?.template)
+    if (!template) {
+      if (node.config?.template) this.inspectorTarget.appendChild(this.entryEventNotice("Este modelo não tem botões de resposta: ele é enviado e o fluxo segue em frente."))
+      return
+    }
+
+    this.inspectorTarget.appendChild(this.templatePreview(template))
+    this.inspectorTarget.appendChild(this.templateMappingControl(node, template))
+  }
+
+  templateMappingControl(node, template) {
+    const mapped = Boolean(node.config?.scaffold)
+    const stale = mapped && node.config.template_scaffold_name && node.config.template_scaffold_name !== template.name
+    const wrap = document.createElement("div")
+    wrap.className = "automation-workflow-builder__field"
+
+    const note = mapped
+      ? (stale ? `Os caminhos abaixo são do modelo “${node.config.template_scaffold_name}”. Refaça para usar os botões deste.` : "Cada botão do modelo virou um caminho abaixo. Escolha o que acontece em cada um.")
+      : "Crie um caminho para cada botão do modelo: o fluxo espera o clique e segue por ele."
+    wrap.appendChild(this.entryEventNotice(note))
+
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "automation-workflow-builder__options-add"
+    const label = mapped ? "Refazer caminhos pelos botões do modelo" : "Criar um caminho para cada botão"
+    button.innerHTML = `<i class="bi bi-diagram-3"></i>${label}`
+    button.addEventListener("click", () => {
+      if (mapped && button.dataset.confirm !== "true") {
+        button.dataset.confirm = "true"
+        button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>Descarta os caminhos atuais. Clique para confirmar'
+        button.timer = setTimeout(() => { delete button.dataset.confirm; button.innerHTML = `<i class="bi bi-diagram-3"></i>${label}` }, 4000)
+        return
+      }
+      clearTimeout(button.timer)
+      this.mapTemplateButtons(node, template)
+      this.sync()
+      this.render()
+    })
+    wrap.appendChild(button)
+    return wrap
+  }
+
   nodeElement(node, columnNodes = []) {
     const wrapper = document.createElement("div")
     wrapper.className = "automation-workflow-builder__node-wrap"
@@ -526,6 +828,7 @@ export default class extends Controller {
     button.className = `automation-workflow-builder__node automation-workflow-builder__node--${node.type} ${node.id === this.selectedNodeId ? "active" : ""}`
     button.dataset.action = "automation-workflow-builder#selectNode"
     button.dataset.nodeId = node.id
+    button.dataset.tone = this.nodeTone(node)
 
     const icon = document.createElement("i")
     icon.className = `bi ${this.nodeIcon(node)}`
@@ -632,7 +935,12 @@ export default class extends Controller {
     this.appendStepChooserGroup(panel, "Conversa com o cliente", "Pergunte, deixe o cliente escolher e passe para um atendente quando precisar.", [
       ...this.actionStepOptions(["send_whatsapp_buttons", "send_whatsapp_list"]).map((option) => ({ ...option, conversation: option.actionType === "send_whatsapp_list" ? "list" : "buttons" })),
       { type: "action", actionType: "send_whatsapp", conversation: "text", icon: "bi-chat-left-text", title: "Perguntar com resposta livre", copy: "Envia uma pergunta e segue quando o cliente responder com qualquer texto.", badge: "pergunta" },
+      ...(this.catalog.whatsapp_flow_templates?.length ? [{ type: "action", actionType: "send_whatsapp_template", conversation: "template_buttons", icon: "bi-layout-text-window-reverse", title: "Enviar template e tratar botões", copy: "Escolha um template aprovado: cada botão dele vira um caminho, com o preview ao lado.", badge: "template" }] : []),
       ...this.actionStepOptions(["transfer_to_attendant"])
+    ])
+    this.appendStepChooserGroup(panel, "Capturar dados", "Guarde o que o cliente responde para usar no fluxo e no cadastro do lead.", [
+      { type: "action", actionType: "send_whatsapp", conversation: "capture", icon: "bi-input-cursor-text", title: "Perguntar e guardar resposta", copy: "Pergunta, valida (e-mail, telefone, número ou texto), repete se estiver errado e guarda a resposta.", badge: "dados" },
+      ...this.actionStepOptions(["capture_answer"])
     ])
     this.appendStepChooserGroup(panel, "Comunicação", "Mensagens enviadas ao lead durante a jornada.", this.actionStepOptions(["send_whatsapp", "send_whatsapp_template"]))
     this.appendStepChooserGroup(panel, "Integrações", "Saídas técnicas para sistemas externos.", this.actionStepOptions(["send_webhook"]))
@@ -718,12 +1026,16 @@ export default class extends Controller {
     heading.innerHTML = `<strong>${title}</strong><span>${copy}</span>`
     group.appendChild(heading)
 
-    options.forEach((option) => {
+    group.dataset.tone = this.nodeTone({ type: options[0].type, config: { action_type: options[0].actionType } })
+
+    options.forEach((option, index) => {
       const button = document.createElement("button")
       button.type = "button"
       button.className = "automation-workflow-builder__step-option"
       button.dataset.action = "automation-workflow-builder#chooseStep"
       button.dataset.type = option.type
+      button.dataset.tone = this.nodeTone({ type: option.type, config: { action_type: option.actionType } })
+      button.style.setProperty("--i", index)
       button.dataset.searchText = this.normalizedSearchText([option.title, option.copy, option.badge].filter(Boolean).join(" "))
       if (option.actionType) button.dataset.actionType = option.actionType
       if (option.preset) button.dataset.preset = option.preset
@@ -796,6 +1108,12 @@ export default class extends Controller {
     } else if (kind === "list") {
       node.label = "Perguntar com lista"
       node.config = { ...node.config, action_type: "send_whatsapp_list", message: "Escolha uma opção:", list_button: "Ver opções", options: "Opção 1\nOpção 2\nOpção 3" }
+    } else if (kind === "capture") {
+      node.label = "Perguntar e guardar resposta"
+      node.config = { ...node.config, action_type: "send_whatsapp", message: "Qual é o seu e-mail?", ask_free_text: true, capture: true }
+    } else if (kind === "template_buttons") {
+      node.label = "Enviar template e tratar botões"
+      node.config = { ...node.config, action_type: "send_whatsapp_template", template_flow: true }
     } else {
       node.label = "Perguntar (resposta livre)"
       node.config = { ...node.config, action_type: "send_whatsapp", message: "Qual é a sua dúvida?", ask_free_text: true }
@@ -835,21 +1153,25 @@ export default class extends Controller {
   }
 
   // Cria: pergunta -> aguardar resposta -> um caminho por opção (+ "não entendi" e "sem resposta").
-  scaffoldQuestion(question) {
+  scaffoldQuestion(question, { paths: overridePaths = null } = {}) {
+    const existingIds = new Set(this.definition.nodes.map((node) => node.id))
     const wait = this.buildUniqueNode("await_whatsapp_response", "Aguardar resposta", { timeout_amount: "2", timeout_unit: "hours" })
     this.insertNodeAfter(question.id, wait, "sequential")
     let at = this.definition.nodes.findIndex((node) => node.id === wait.id) + 1
 
     const options = question.config.ask_free_text ? [] : this.questionOptions(question)
-    const paths = options.length ? options.map((option) => [this.optionCondition(option), this.optionReply(option)]) : [[
+    const paths = overridePaths || (question.config.capture ? [this.capturePath()] : options.length ? options.map((option) => [this.optionCondition(option), this.optionReply(option)]) : [[
       this.buildUniqueNode("response_condition", "Se respondeu", { category: "lead_text", field: "message.body", operator: "present", value: "", option_path: true }),
       this.buildUniqueNode("action", "Responder", { action_type: "send_whatsapp", message: "Obrigado! Edite esta mensagem e continue a conversa.", default_reply: true })
-    ]]
+    ]])
     const ids = []
-    paths.forEach(([condition, reply]) => {
-      at = this.attachNode(condition, wait.id, at)
-      at = this.attachNode(reply, condition.id, at)
-      ids.push(condition.id)
+    paths.forEach((chain) => {
+      let from = wait.id
+      chain.forEach((node) => {
+        at = this.attachNode(node, from, at)
+        from = node.id
+      })
+      ids.push(chain[0].id)
     })
 
     const unknown = this.buildUniqueNode("response_fallback", "Não entendi (repete a pergunta)", { fallback_type: "no_match", retry_question: true, max_attempts: "2" })
@@ -872,7 +1194,17 @@ export default class extends Controller {
     at = this.attachNode(timeout, wait.id, at)
     this.attachNode(timeoutReply, timeout.id, at)
 
-    question.config.scaffold = { wait: wait.id, options: ids }
+    const created = this.definition.nodes.map((node) => node.id).filter((id) => !existingIds.has(id))
+    question.config.scaffold = { wait: wait.id, options: ids, created }
+  }
+
+  // Pergunta que guarda a resposta: condição (tipo válido) -> guardar -> agradecer.
+  capturePath() {
+    return [
+      this.buildUniqueNode("response_condition", "Se respondeu um e-mail válido", { category: "lead_text", field: "message.body", operator: "valid_email", value: "", option_path: true, capture_path: true }),
+      this.buildUniqueNode("action", "Guardar resposta", { action_type: "capture_answer", variable: "email", answer_type: "email", lead_target: "email", default_reply: true }),
+      this.buildUniqueNode("action", "Agradecer", { action_type: "send_whatsapp", message: "Obrigado! Anotei o seu e-mail: {{resposta.email}}", default_reply: true })
+    ]
   }
 
   defaultReplyOf(conditionId) {
@@ -1194,96 +1526,140 @@ export default class extends Controller {
     input.value = value || ""
     input.dataset.field = field
     input.dataset.action = "input->automation-workflow-builder#updateNode"
+    if (config.placeholder) input.placeholder = config.placeholder
+    if (config.min !== undefined) input.min = config.min
+    if (config.max !== undefined) input.max = config.max
+    if (config.maxlength) input.maxLength = config.maxlength
 
-    wrap.append(this.fieldLabel(label, config.info), input)
+    wrap.append(this.fieldLabel(label, config.info, config.required), input)
+    this.decorateControl(wrap, input, config)
     return wrap
+  }
+
+  // Recursos compartilhados por field/textArea/selectField: obrigatório, atalhos, variáveis, contador, dica.
+  decorateControl(wrap, input, config = {}) {
+    if (config.required) {
+      input.dataset.required = "true"
+      input.setAttribute("aria-required", "true")
+    }
+
+    if (config.presets?.length) wrap.appendChild(this.presetChips(input, config.presets, config.presetSuffix))
+    if (config.variables) wrap.appendChild(this.variableChips(input))
+    if (config.maxlength || config.counter) wrap.appendChild(this.characterCounter(input, config.maxlength))
+    if (config.hint) {
+      const hint = document.createElement("small")
+      hint.className = "automation-workflow-builder__field-hint"
+      hint.textContent = config.hint
+      wrap.appendChild(hint)
+    }
+  }
+
+  presetChips(input, presets, suffix = "") {
+    const row = document.createElement("span")
+    row.className = "automation-workflow-builder__chips"
+    row.setAttribute("role", "group")
+    row.setAttribute("aria-label", "Atalhos de valor")
+
+    const buttons = presets.map(([text, value]) => {
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "automation-workflow-builder__chip"
+      button.textContent = text
+      button.addEventListener("click", () => {
+        input.value = value
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+      return [button, String(value)]
+    })
+    const markActive = () => buttons.forEach(([button, value]) => button.classList.toggle("is-active", input.value === value))
+    input.addEventListener("input", markActive)
+    markActive()
+
+    row.append(...buttons.map(([button]) => button))
+    if (suffix) {
+      const unit = document.createElement("em")
+      unit.textContent = suffix
+      row.appendChild(unit)
+    }
+    return row
+  }
+
+  // Tokens suportados por Automation::ActionExecutor#render_text.
+  variableChips(input) {
+    const row = document.createElement("span")
+    row.className = "automation-workflow-builder__chips automation-workflow-builder__chips--variables"
+    row.setAttribute("role", "group")
+    row.setAttribute("aria-label", "Inserir variável")
+
+    ;[["Nome", "{{nome}}"], ["Corretor", "{{corretor}}"], ["Telefone", "{{telefone}}"], ["E-mail", "{{email}}"], ["Origem", "{{origem}}"]].forEach(([text, token]) => {
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "automation-workflow-builder__chip"
+      button.title = `Inserir ${token}`
+      button.innerHTML = `<i class="bi bi-braces"></i>${this.escapeHtml(text)}`
+      button.addEventListener("click", () => {
+        const start = input.selectionStart ?? input.value.length
+        const end = input.selectionEnd ?? input.value.length
+        input.setRangeText(token, start, end, "end")
+        input.focus()
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+      row.appendChild(button)
+    })
+
+    this.capturedVariables().forEach((variable) => {
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "automation-workflow-builder__chip automation-workflow-builder__chip--captured"
+      button.title = "Resposta guardada neste fluxo"
+      button.innerHTML = `<i class="bi bi-input-cursor-text"></i>${this.escapeHtml(variable)}`
+      button.addEventListener("click", () => {
+        const token = `{{resposta.${variable}}}`
+        const start = input.selectionStart ?? input.value.length
+        const end = input.selectionEnd ?? input.value.length
+        input.setRangeText(token, start, end, "end")
+        input.focus()
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+      row.appendChild(button)
+    })
+    return row
+  }
+
+  characterCounter(input, limit) {
+    const counter = document.createElement("small")
+    counter.className = "automation-workflow-builder__counter"
+    const update = () => {
+      const size = input.value.length
+      counter.textContent = limit ? `${size}/${limit}` : `${size} caracteres`
+      counter.classList.toggle("is-over", Boolean(limit) && size > limit)
+    }
+    input.addEventListener("input", update)
+    update()
+    return counter
   }
 
   checkboxField(label, field, checked, help = "") {
     const wrap = document.createElement("label")
-    wrap.className = "automation-workflow-builder__check-field"
+    wrap.className = "automation-workflow-builder__switch"
 
     const input = document.createElement("input")
     input.type = "checkbox"
+    input.setAttribute("role", "switch")
     input.checked = [true, "true", "1", 1].includes(checked)
     input.dataset.field = field
     input.dataset.action = "change->automation-workflow-builder#updateNode"
 
+    const track = document.createElement("span")
+    track.className = "automation-workflow-builder__switch-track"
+    track.setAttribute("aria-hidden", "true")
+
     const copy = document.createElement("span")
+    copy.className = "automation-workflow-builder__switch-copy"
     copy.innerHTML = `<strong>${label}</strong>${help ? `<small>${help}</small>` : ""}`
 
-    wrap.append(input, copy)
+    wrap.append(input, track, copy)
     return wrap
-  }
-
-  entryPolicyPanel(node) {
-    const panel = document.createElement("section")
-    panel.className = "automation-workflow-builder__entry-panel"
-
-    const header = document.createElement("div")
-    header.className = "automation-workflow-builder__entry-header"
-    header.innerHTML = `
-      <span class="automation-workflow-builder__entry-icon"><i class="bi bi-people-fill"></i></span>
-      <span>
-        <small>Quando observar</small>
-        <strong>Defina o momento da intervenção</strong>
-      </span>
-    `
-
-    const selected = node.config?.entry_policy || "future"
-    const options = this.entryPolicyDetails()
-    const selectedDetail = options[selected] || options.future
-    const select = document.createElement("div")
-    select.className = `automation-workflow-builder__entry-select ${this.entryPolicyMenuOpen ? "is-open" : ""}`
-
-    const trigger = document.createElement("button")
-    trigger.type = "button"
-    trigger.className = "automation-workflow-builder__entry-select-trigger"
-    trigger.dataset.action = "automation-workflow-builder#toggleEntryPolicyMenu"
-    trigger.setAttribute("aria-haspopup", "listbox")
-    trigger.setAttribute("aria-expanded", this.entryPolicyMenuOpen ? "true" : "false")
-    trigger.innerHTML = `
-      <span class="automation-workflow-builder__entry-select-copy">
-        <strong>${selectedDetail.title}</strong>
-        <span>${selectedDetail.copy}</span>
-      </span>
-      <span class="automation-workflow-builder__entry-select-badge">${selectedDetail.badge}</span>
-      <i class="bi bi-chevron-down"></i>
-    `
-    select.appendChild(trigger)
-
-    if (this.entryPolicyMenuOpen) {
-      const menu = document.createElement("div")
-      menu.className = "automation-workflow-builder__entry-select-menu"
-      menu.setAttribute("role", "listbox")
-
-      Object.entries(options).forEach(([value, detail]) => {
-        const option = document.createElement("button")
-        option.type = "button"
-        option.className = `automation-workflow-builder__entry-select-option ${value === selected ? "is-selected" : ""}`
-        option.dataset.action = "automation-workflow-builder#chooseEntryPolicy"
-        option.dataset.value = value
-        option.setAttribute("role", "option")
-        option.setAttribute("aria-selected", value === selected ? "true" : "false")
-        option.innerHTML = `
-          <span class="automation-workflow-builder__entry-select-option-main">
-            <strong>${detail.title}</strong>
-            <span>${detail.copy}</span>
-          </span>
-          <em>${detail.badge}</em>
-        `
-        menu.appendChild(option)
-      })
-
-      select.appendChild(menu)
-    }
-
-    const info = document.createElement("p")
-    info.className = "automation-workflow-builder__entry-note"
-    info.innerHTML = `<i class="bi bi-info-circle"></i><span>${selectedDetail.note}</span>`
-
-    panel.append(header, select, info)
-    return panel
   }
 
   selectField(label, field, value, options, config = {}) {
@@ -1301,16 +1677,37 @@ export default class extends Controller {
     select.dataset.action = "change->automation-workflow-builder#updateNode"
     if (config.disabled) select.disabled = true
 
-    Object.entries(options || {}).forEach(([optionValue, optionLabel]) => {
+    // Chaves numéricas de objeto vêm antes de "" em JS: sem isto o placeholder ia para o fim e o 1º item parecia escolhido.
+    const entries = Object.entries(options || {})
+    const current = String(value ?? "")
+    ;[...entries.filter(([key]) => key === ""), ...entries.filter(([key]) => key !== "")].forEach(([optionValue, optionLabel]) => {
       const option = document.createElement("option")
       option.value = optionValue
       option.textContent = optionLabel
-      option.selected = String(optionValue) === String(value)
+      option.selected = String(optionValue) === current
       select.appendChild(option)
     })
 
-    wrap.append(this.fieldLabel(label, config.info), select)
+    wrap.append(this.fieldLabel(label, config.info, config.required), select)
+    if (config.required) select.dataset.required = "true"
+    const hasOptions = Object.keys(options || {}).some((key) => key !== "")
+    if (config.emptyHint && !hasOptions) wrap.appendChild(this.emptyOptionsNotice(config.emptyHint))
     return wrap
+  }
+
+  emptyOptionsNotice({ message, href, linkLabel }) {
+    const notice = document.createElement("small")
+    notice.className = "automation-workflow-builder__field-hint automation-workflow-builder__field-hint--warn"
+    notice.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${this.escapeHtml(message)}`
+    if (href) {
+      const link = document.createElement("a")
+      link.href = href
+      link.target = "_blank"
+      link.rel = "noopener"
+      link.textContent = linkLabel || "Cadastrar"
+      notice.append(" ", link)
+    }
+    return notice
   }
 
   multiSelectField(label, field, values, options, config = {}) {
@@ -1342,13 +1739,21 @@ export default class extends Controller {
     return wrap
   }
 
-  fieldLabel(label, info = "") {
+  fieldLabel(label, info = "", required = false) {
     const text = document.createElement("span")
     text.className = "automation-workflow-builder__field-label"
 
     const labelText = document.createElement("span")
     labelText.textContent = label
     text.appendChild(labelText)
+
+    if (required) {
+      const mark = document.createElement("b")
+      mark.className = "automation-workflow-builder__required"
+      mark.textContent = "*"
+      mark.title = "Obrigatório"
+      text.appendChild(mark)
+    }
 
     if (info) {
       const help = document.createElement("button")
@@ -1374,7 +1779,7 @@ export default class extends Controller {
       }, { placeholder: "Selecione a frequência" }))
 
       if ((node.config?.schedule_frequency || "every_n_minutes") === "every_n_minutes") {
-        container.appendChild(this.field("Intervalo em minutos", "interval", node.config?.interval || "60", "number"))
+        container.appendChild(this.field("Intervalo em minutos (mínimo 1)", "interval", node.config?.interval || "60", "number"))
       } else {
         container.appendChild(this.field("Horário", "time_of_day", node.config?.time_of_day || "09:00", "time"))
 
@@ -1473,12 +1878,97 @@ export default class extends Controller {
         !this.flowTemplatesFor(node).some((template) => String(template.id) === String(node.config.whatsapp_template_id))) {
       delete node.config.whatsapp_template_id
     }
-    if (field === "whatsapp_template_id") this.applyTemplateScaffold(node)
+    if (field === "whatsapp_template_id") {
+      // Trocou de template: remapeia os botões sozinho se os caminhos ainda são os gerados (sem edição do usuário).
+      if (this.definition.nodes.length > 1 && this.isPristineScaffold(node)) this.resetToEntry(node)
+      this.applyTemplateScaffold(node)
+    }
+  }
+
+  resetToEntry(entry) {
+    this.definition.nodes = this.definition.nodes.filter((node) => node.id === entry.id)
+    this.definition.edges = []
+  }
+
+  // true quando as etapas (fora a entrada) são idênticas ao scaffold de algum template: nada foi editado.
+  isPristineScaffold(entry) {
+    const rest = JSON.stringify(this.definition.nodes.filter((node) => node.id !== entry.id))
+    return (this.catalog.whatsapp_flow_templates || []).some((template) =>
+      JSON.stringify(template.scaffold.nodes.filter((node) => node.type !== "entry")) === rest
+    )
   }
 
   flowTemplatesFor(node) {
     const sender = (this.catalog.whatsapp_senders || []).find((item) => String(item.id) === String(node.config?.whatsapp_sender_number_id))
     return (this.catalog.whatsapp_flow_templates || []).filter((template) => !sender?.waba_id || !template.waba_id || template.waba_id === sender.waba_id)
+  }
+
+  // Preview do template: HTML renderizado pelo servidor com a mesma partial de /admin/whatsapp/fluxos-resposta.
+  templatePreview(template, activeKey = null) {
+    const box = document.createElement("div")
+    box.className = "automation-workflow-builder__template-preview"
+    box.innerHTML = template.preview_html || ""
+    if (activeKey) {
+      box.classList.add("has-active-button")
+      box.querySelectorAll("[data-button-key]").forEach((button) => button.classList.toggle("is-active", button.dataset.buttonKey === String(activeKey)))
+    }
+    return box
+  }
+
+  // Template + botão a que uma etapa pertence (a própria condição de botão ou a mais próxima acima dela).
+  entryTemplate() {
+    const entry = this.definition.nodes.find((item) => item.type === "entry")
+    return (this.catalog.whatsapp_flow_templates || []).find((item) => String(item.id) === String(entry?.config?.whatsapp_template_id)) || null
+  }
+
+  buttonContextFor(node) {
+    const template = this.templateForNode(node)
+    if (!template || node.type === "entry") return null
+
+    const visited = new Set()
+    const queue = [node.id]
+    while (queue.length) {
+      const id = queue.shift()
+      if (visited.has(id)) continue
+      visited.add(id)
+      const current = this.nodeById(id)
+      if (current?.type === "response_condition" && current.config?.button_key) return { template, key: current.config.button_key, label: current.config.button_text }
+      this.incomingEdges(id).forEach((edge) => queue.push(edge.from))
+    }
+    return null
+  }
+
+  buttonContextPanel(context) {
+    const section = document.createElement("section")
+    section.className = "automation-workflow-builder__button-context"
+    section.innerHTML = `<small><i class="bi bi-hand-index"></i> Caminho do botão <strong>${this.escapeHtml(context.label || "")}</strong></small>`
+    section.appendChild(this.templatePreview(context.template, context.key))
+    return section
+  }
+
+  // Refaz os caminhos pelos botões do template atual (descarta as etapas existentes; confirma com 2º clique).
+  remapButtonsControl(entry, template) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "automation-workflow-builder__options-add"
+    button.innerHTML = '<i class="bi bi-arrow-repeat"></i>Refazer caminhos pelos botões do template'
+    button.addEventListener("click", () => {
+      if (button.dataset.confirm !== "true") {
+        button.dataset.confirm = "true"
+        button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>Descarta as etapas atuais. Clique para confirmar'
+        button.timer = setTimeout(() => {
+          delete button.dataset.confirm
+          button.innerHTML = '<i class="bi bi-arrow-repeat"></i>Refazer caminhos pelos botões do template'
+        }, 4000)
+        return
+      }
+      clearTimeout(button.timer)
+      this.resetToEntry(entry)
+      this.applyTemplateScaffold(entry)
+      this.sync()
+      this.render()
+    })
+    return button
   }
 
   applyTemplateScaffold(entry) {
@@ -1515,20 +2005,59 @@ export default class extends Controller {
     }
 
     this.inspectorTarget.append(...steps)
-
-    const limits = document.createElement("div")
-    limits.className = "automation-workflow-builder__step-loose"
-    limits.appendChild(this.multiSelectField("Regras de distribuição", "distribution_rule_ids", node.config?.distribution_rule_ids, this.catalog.distribution_rules, {
-      placeholder: "Qualquer regra",
-      info: "Limita esta automação aos leads vinculados a uma das regras selecionadas. Sem seleção, vale para qualquer regra."
-    }))
-    this.inspectorTarget.appendChild(limits)
+    this.inspectorTarget.appendChild(this.entryStep(steps.length + 1, "Regras de distribuição", [this.distributionRuleChips(node)]))
 
     const advanced = document.createElement("details")
     advanced.className = "automation-workflow-builder__entry-advanced"
     advanced.innerHTML = "<summary><i class=\"bi bi-sliders\"></i><span>Política de entrada e nome do bloco</span></summary>"
     advanced.append(this.entryPolicyPanel(node), this.field("Nome do bloco", "label", node.label || this.nodeTitle(node)), this.literalSummaryPanel(node))
     this.inspectorTarget.appendChild(advanced)
+  }
+
+  // Filtro por regra de distribuição: chips clicáveis; nenhum marcado = vale para qualquer regra.
+  distributionRuleChips(node) {
+    const rules = Object.entries(this.catalog.distribution_rules || {})
+    const wrap = document.createElement("div")
+    wrap.className = "automation-workflow-builder__field"
+    wrap.appendChild(this.fieldLabel("Limitar a leads destas regras", "Sem seleção, a automação vale para leads de qualquer regra de distribuição."))
+
+    if (!rules.length) {
+      wrap.appendChild(this.emptyOptionsNotice(this.noDistributionRulesHint()))
+      return wrap
+    }
+
+    const selected = new Set(Array(node.config?.distribution_rule_ids || []).map(String))
+    const row = document.createElement("div")
+    row.className = "automation-workflow-builder__chips"
+    row.setAttribute("role", "group")
+    row.setAttribute("aria-label", "Regras de distribuição")
+    const status = document.createElement("small")
+    status.className = "automation-workflow-builder__field-hint"
+    const refreshStatus = () => { status.textContent = selected.size ? `${selected.size} de ${rules.length} regras selecionadas` : "Vale para qualquer regra." }
+
+    rules.forEach(([id, name]) => {
+      const chip = document.createElement("button")
+      chip.type = "button"
+      chip.className = "automation-workflow-builder__chip"
+      chip.textContent = name
+      chip.setAttribute("aria-pressed", selected.has(String(id)))
+      chip.classList.toggle("is-active", selected.has(String(id)))
+      chip.addEventListener("click", () => {
+        selected.has(String(id)) ? selected.delete(String(id)) : selected.add(String(id))
+        chip.classList.toggle("is-active", selected.has(String(id)))
+        chip.setAttribute("aria-pressed", selected.has(String(id)))
+        node.config = node.config || {}
+        node.config.distribution_rule_ids = Array.from(selected)
+        this.sync()
+        this.renderCanvas()
+        this.refreshLiteralSummary()
+        refreshStatus()
+      })
+      row.appendChild(chip)
+    })
+    refreshStatus()
+    wrap.append(row, status)
+    return wrap
   }
 
   entryStep(number, title, children) {
@@ -1554,6 +2083,12 @@ export default class extends Controller {
       return [["Número de WhatsApp", this.entryEventNotice("Nenhum número de WhatsApp ativo. Conecte um número em Integrações › WhatsApp para começar por um template.")]]
     }
 
+    if (!node.config?.whatsapp_sender_number_id && senders.length === 1) {
+      node.config = node.config || {}
+      node.config.whatsapp_sender_number_id = String(senders[0].id)
+      this.sync()
+    }
+
     const sender = senders.find((item) => String(item.id) === String(node.config?.whatsapp_sender_number_id))
     const senderOptions = { "": "Selecione o número", ...Object.fromEntries(senders.map((item) => [item.id, `${item.label} · ${item.phone}`])) }
     const steps = [["Número de WhatsApp", this.selectField("Número", "whatsapp_sender_number_id", node.config?.whatsapp_sender_number_id, senderOptions, { placeholder: "Selecione o número" })]]
@@ -1561,38 +2096,62 @@ export default class extends Controller {
 
     const templates = this.flowTemplatesFor(node)
     if (!templates.length) {
+      steps.push(["Receptivo", ...this.receptiveControls(node, sender, null)])
       steps.push(["Template", this.entryEventNotice("Este número não tem templates aprovados com botão de resposta.")])
       return steps
     }
 
     const templateOptions = { "": "Selecione o template", ...Object.fromEntries(templates.map((template) => [template.id, template.name])) }
     const chosen = templates.find((template) => String(template.id) === String(node.config?.whatsapp_template_id))
-    const templateChildren = [this.selectField("Template deste número", "whatsapp_template_id", node.config?.whatsapp_template_id, templateOptions, { placeholder: "Selecione o template" })]
+    const templateChildren = [this.selectField("Template deste número", "whatsapp_template_id", node.config?.whatsapp_template_id, templateOptions, { placeholder: "Selecione o template", required: this.booleanConfig(node.config?.use_as_receptive, false) })]
     if (chosen) {
       const buttons = chosen.scaffold.nodes.filter((item) => item.type === "response_condition").map((item) => item.config?.button_text).filter(Boolean)
-      const next = this.definition.nodes.length > 1 ? "Adicione uma resposta condicional para tratar cada botão." : "Cada botão virou um cartão no canvas: escolha o que fazer com ele."
+      const next = this.definition.nodes.length > 1 ? "Se os caminhos não correspondem a estes botões, use “Refazer caminhos pelos botões do template”." : "Cada botão virou um cartão no canvas: escolha o que fazer com ele."
       templateChildren.push(this.entryEventNotice(`Botões: ${buttons.join(", ")}. ${next}`))
+      templateChildren.push(this.templatePreview(chosen))
+      if (this.definition.nodes.length > 1) templateChildren.push(this.remapButtonsControl(node, chosen))
     }
+    steps.push(["Receptivo", ...this.receptiveControls(node, sender, chosen)])
     steps.push(["Template", ...templateChildren])
-    if (chosen) steps.push(["Receptivo", ...this.receptiveControls(node, sender, chosen)])
 
     return steps
   }
 
+  // O switch fica sempre visível depois do número. Só trava quando há motivo (e o motivo aparece junto).
   receptiveControls(node, sender, template) {
-    if (template.existing_flow && template.existing_flow.workflow_id !== this.catalog.workflow_id) {
-      return [this.entryEventNotice(`Este template já tem o fluxo de resposta “${template.existing_flow.name}”. Para usá-lo como receptivo por aqui, edite ou remova esse fluxo em Fluxos de Resposta.`)]
-    }
-    if (!template.receptive_ok) {
-      return [this.entryEventNotice("Para ser receptivo, classifique o template como “Fluxos de resposta” ou “Atendimento” em Templates.")]
+    const owner = template?.existing_flow && template.existing_flow.workflow_id !== this.catalog.workflow_id ? template.existing_flow : null
+    let blocked = ""
+    if (owner) blocked = `Este template já é usado pelo fluxo de resposta “${owner.name}”. Edite ou remova esse fluxo em Fluxos de Resposta, ou escolha outro template.`
+    else if (template && !template.receptive_ok) blocked = "Para ser receptivo, classifique o template como “Fluxos de resposta” ou “Atendimento” em Templates."
+
+    // Bloqueado não pode ficar ligado: a publicação falharia.
+    if (blocked && this.booleanConfig(node.config?.use_as_receptive, false)) {
+      node.config.use_as_receptive = false
+      this.sync()
     }
 
-    const controls = [this.checkboxField(
-      "Usar como receptivo deste número",
-      "use_as_receptive",
-      node.config?.use_as_receptive,
-      `Quando alguém escrever para ${sender.label} · ${sender.phone}, este fluxo envia o menu do template e cada botão segue o caminho montado aqui. Vale ao publicar.`
-    )]
+    const help = template
+      ? `Quando alguém escrever para ${sender.label} · ${sender.phone}, este fluxo envia o menu do template e cada botão segue o caminho montado aqui. Vale ao publicar.`
+      : `Quando alguém escrever para ${sender.label} · ${sender.phone}, este fluxo envia o menu do template. Escolha o template abaixo.`
+    const toggle = this.checkboxField("Usar como receptivo deste número", "use_as_receptive", node.config?.use_as_receptive, help)
+    const controls = [toggle]
+
+    if (blocked) {
+      toggle.classList.add("is-disabled")
+      toggle.querySelector("input").disabled = true
+      const notice = this.entryEventNotice(blocked)
+      if (owner?.id) {
+        const link = document.createElement("a")
+        link.href = `/admin/whatsapp/fluxos-resposta/${owner.id}/edit`
+        link.target = "_blank"
+        link.rel = "noopener"
+        link.textContent = "Abrir fluxo"
+        notice.append(" ", link)
+      }
+      controls.push(notice)
+      return controls
+    }
+
     const current = sender.receptive_flow
     if (node.config?.use_as_receptive && current && current.workflow_id !== this.catalog.workflow_id) {
       controls.push(this.entryEventNotice(`Hoje este número usa o fluxo “${current.name}” como receptivo. Ao publicar, ele será substituído por este.`))
@@ -1666,7 +2225,8 @@ export default class extends Controller {
     const description = document.createElement("small")
     description.textContent = this.actionDescription(actionType)
 
-    value.append(icon, title, description)
+    value.append(icon, title)
+    value.title = description.textContent
 
     panel.append(label, value)
     return panel
@@ -1871,6 +2431,10 @@ export default class extends Controller {
     } else if (actionType === "transfer_to_attendant") {
       const queue = this.valueLabel(this.catalog.distribution_rules, node.config?.distribution_rule_id, "uma fila ainda não selecionada")
       summary = `Passar a conversa para um atendente da fila "${queue}", levando as respostas do cliente como anotação.`
+    } else if (actionType === "capture_answer") {
+      const variable = node.config?.variable ? `{{resposta.${node.config.variable}}}` : "uma variável ainda não nomeada"
+      const target = this.captureTargetLabel(node)
+      summary = `Guardar a resposta do cliente em ${variable}${target ? ` e no campo "${target}" do lead` : ""}.`
     } else if (actionType === "send_whatsapp_template") {
       const template = this.valueLabel(this.catalog.templates, node.config?.template, "um modelo ainda não selecionado")
       summary = `Enviar modelo WhatsApp "${template}" para o lead.`
@@ -1983,8 +2547,8 @@ export default class extends Controller {
       existing_and_future: {
         title: "Base atual e novos encaixes",
         badge: "Inclui atuais",
-        copy: "A intervenção considera leads que já atendem às condições agora e os que atenderem depois.",
-        note: "Use esta opção quando o acompanhamento também deve avaliar leads que já estão no processo no momento da ativação."
+        copy: "Ao publicar, avalia a base atual pelos filtros da entrada e continua observando novos eventos.",
+        note: "Em respostas WhatsApp, propostas e mudanças de etapa, usa o evento histórico real mais recente de cada lead; não inventa eventos."
       }
     }
   }
@@ -2000,7 +2564,7 @@ export default class extends Controller {
     }, { placeholder: "Selecione o tipo" }))
 
     if (mode === "datetime") {
-      this.inspectorTarget.appendChild(this.field("Executar em", "run_at", node.config?.run_at || "", "datetime-local"))
+      this.inspectorTarget.appendChild(this.field("Executar em", "run_at", node.config?.run_at || "", "datetime-local", { required: true }))
       this.inspectorTarget.appendChild(this.entryEventNotice("Se a data/hora já tiver passado quando a etapa rodar, a automação continua imediatamente."))
       return
     }
@@ -2011,7 +2575,7 @@ export default class extends Controller {
         hours: "Horas",
         days: "Dias"
       }, { placeholder: "Selecione a unidade" }))
-      this.inspectorTarget.appendChild(this.field("Quantidade", "amount", node.config?.amount || "1", "number"))
+      this.inspectorTarget.appendChild(this.field("Quantidade", "amount", node.config?.amount || "1", "number", { min: 1, required: true, presets: [["1", "1"], ["2", "2"], ["3", "3"], ["7", "7"], ["15", "15"], ["30", "30"]] }))
     }
 
     if (mode === "business_duration" || mode === "next_business_window") {
@@ -2023,7 +2587,7 @@ export default class extends Controller {
   }
 
   renderAwaitEventFields(node) {
-    this.inspectorTarget.appendChild(this.selectField("Evento esperado", "trigger", node.config?.trigger, this.awaitableEvents(), { placeholder: "Selecione o evento" }))
+    this.inspectorTarget.appendChild(this.selectField("Evento esperado", "trigger", node.config?.trigger, this.awaitableEvents(), { placeholder: "Selecione o evento", required: true }))
 
     if (node.config?.trigger === "lead_stage_changed") {
       this.inspectorTarget.appendChild(this.selectField("De etapa", "from_stage", node.config?.from_stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
@@ -2042,7 +2606,7 @@ export default class extends Controller {
       }
     }
 
-    this.inspectorTarget.appendChild(this.field("Timeout", "timeout_amount", node.config?.timeout_amount || "1", "number"))
+    this.inspectorTarget.appendChild(this.field("Timeout", "timeout_amount", node.config?.timeout_amount || "1", "number", { min: 1, presets: [["1", "1"], ["2", "2"], ["3", "3"], ["7", "7"]] }))
     this.inspectorTarget.appendChild(this.selectField("Unidade do timeout", "timeout_unit", node.config?.timeout_unit, {
       minutes: "Minutos",
       hours: "Horas",
@@ -2063,6 +2627,8 @@ export default class extends Controller {
       info: "Filtro opcional para ignorar respostas com termos indesejados."
     }))
     this.inspectorTarget.appendChild(this.field("Timeout", "timeout_amount", node.config?.timeout_amount || "1", "number", {
+      min: 1,
+      presets: [["1", "1"], ["2", "2"], ["3", "3"], ["7", "7"]],
       info: "Tempo máximo aguardando a resposta antes de liberar o caminho de fallback por timeout."
     }))
     this.inspectorTarget.appendChild(this.selectField("Unidade do timeout", "timeout_unit", node.config?.timeout_unit || "days", {
@@ -2078,25 +2644,81 @@ export default class extends Controller {
 
   renderResponseConditionFields(node) {
     const category = node.config?.category || "template_buttons"
+    const template = this.templateForNode(node)
+    const buttons = template ? template.scaffold.nodes.filter((item) => item.type === "response_condition") : []
+
+    // Caminho de botão de template: o usuário só escolhe o botão; o resto (payload, operador, valor) é técnico.
+    if (category === "template_buttons" && buttons.length) {
+      this.inspectorTarget.appendChild(this.templateButtonPicker(node, buttons))
+      const advanced = document.createElement("details")
+      advanced.className = "automation-workflow-builder__entry-advanced"
+      advanced.innerHTML = '<summary><i class="bi bi-sliders"></i><span>Configuração técnica (avançado)</span></summary>'
+      this.appendResponseConditionTechnicalFields(node, category, advanced)
+      this.inspectorTarget.appendChild(advanced)
+      return
+    }
+
+    this.appendResponseConditionTechnicalFields(node, category, this.inspectorTarget)
+  }
+
+  // "Quando o cliente clicar em ..." com os botões do template como opções (já usados ficam sinalizados).
+  templateButtonPicker(node, buttons) {
+    const section = document.createElement("section")
+    section.className = "automation-workflow-builder__field"
+    section.appendChild(this.fieldLabel("Quando o cliente clicar em", "Escolha qual botão do template inicia este caminho. Tudo o que vem depois só roda para quem clicar nele.", true))
+
+    const used = new Set(this.definition.nodes
+      .filter((item) => item.type === "response_condition" && item.id !== node.id)
+      .map((item) => String(item.config?.button_key || "")))
+
+    const row = document.createElement("div")
+    row.className = "automation-workflow-builder__chips"
+    row.setAttribute("role", "radiogroup")
+    row.setAttribute("aria-label", "Botão do template")
+    buttons.forEach((buttonNode) => {
+      const key = String(buttonNode.config.button_key)
+      const chip = document.createElement("button")
+      chip.type = "button"
+      chip.setAttribute("role", "radio")
+      const active = key === String(node.config?.button_key || "")
+      chip.setAttribute("aria-checked", active)
+      chip.className = `automation-workflow-builder__chip${active ? " is-active" : ""}`
+      chip.innerHTML = `<i class="bi bi-reply"></i>${this.escapeHtml(buttonNode.config.button_text)}${used.has(key) ? ' <em title="Outro caminho já usa este botão">em uso</em>' : ""}`
+      chip.addEventListener("click", () => {
+        if (active) return
+        node.config = { ...node.config, ...JSON.parse(JSON.stringify(buttonNode.config)) }
+        node.label = buttonNode.label
+        this.sync()
+        this.render()
+      })
+      row.appendChild(chip)
+    })
+    section.appendChild(row)
+    section.appendChild(this.entryEventNotice("Se o cliente clicar neste botão, o fluxo segue pelas etapas ligadas abaixo. Se clicar em outro, segue o caminho do outro botão."))
+    return section
+  }
+
+  appendResponseConditionTechnicalFields(node, category, container) {
     const detail = this.responseRouterCategoryDetails()[category] || this.responseRouterCategoryDetails().template_buttons
 
-    this.inspectorTarget.appendChild(this.selectField("Tipo de resposta", "category", category, this.responseRouterCategoryOptions(), {
+    container.appendChild(this.selectField("Tipo de resposta", "category", category, this.responseRouterCategoryOptions(), {
       placeholder: "Selecione o tipo",
       info: "Define quais campos aparecem abaixo. Esta condição lê a resposta gravada pelo bloco Aguardar resposta WhatsApp."
     }))
-    this.inspectorTarget.appendChild(this.responseRouterInfoPanel(detail))
-    this.inspectorTarget.appendChild(this.selectField("Campo avaliado", "field", node.config?.field || this.defaultResponseField(category), this.responseRouterFieldOptions(category), {
+    container.appendChild(this.responseRouterInfoPanel(detail))
+    container.appendChild(this.selectField("Campo avaliado", "field", node.config?.field || this.defaultResponseField(category), this.responseRouterFieldOptions(category), {
       placeholder: "Selecione o campo",
       info: "Campo da resposta ou do lead que será comparado."
     }))
-    this.inspectorTarget.appendChild(this.selectField("Operador", "operator", node.config?.operator || "equals", this.responseRouterOperatorOptions(), {
+    container.appendChild(this.selectField("Operador", "operator", node.config?.operator || "equals", this.responseRouterOperatorOptions(), {
       placeholder: "Selecione o operador",
       info: "Como o campo recebido será comparado com o valor esperado."
     }))
-    this.inspectorTarget.appendChild(this.field("Valor esperado", "value", node.config?.value || "", "text", {
+    container.appendChild(this.field("Valor esperado", "value", node.config?.value || "", "text", {
+      required: !this.valueFreeOperator(node.config?.operator || "equals"),
       info: "Texto, payload, status ou valor esperado. Quando o operador for Existe, pode ficar vazio."
     }))
-    this.inspectorTarget.appendChild(this.entryEventNotice("Se esta condição casar, o caminho continua para as intervenções conectadas depois dela. Se não casar, este caminho para aqui."))
+    container.appendChild(this.entryEventNotice("Se esta condição casar, o caminho continua para as intervenções conectadas depois dela. Se não casar, este caminho para aqui."))
   }
 
   renderResponseFallbackFields(node) {
@@ -2619,7 +3241,10 @@ export default class extends Controller {
       equals: "Igual",
       contains: "Contém",
       not_contains: "Não contém",
-      present: "Existe"
+      present: "Existe",
+      valid_email: "É um e-mail válido",
+      valid_phone: "É um telefone válido",
+      valid_number: "É um número"
     }
   }
 
@@ -2642,27 +3267,27 @@ export default class extends Controller {
     const actionType = node.config?.action_type || "create_task"
 
     if (actionType === "create_task") {
-      this.inspectorTarget.appendChild(this.field("Titulo da tarefa", "title", node.config?.title || node.config?.message || ""))
-      this.inspectorTarget.appendChild(this.field("Vencimento em horas", "due_in_hours", node.config?.due_in_hours || "24", "number"))
+      this.inspectorTarget.appendChild(this.field("Titulo da tarefa", "title", node.config?.title || node.config?.message || "", "text", { required: true, placeholder: "Ex.: Ligar para o lead" }))
+      this.inspectorTarget.appendChild(this.field("Vencimento em horas", "due_in_hours", node.config?.due_in_hours || "24", "number", { presets: [["2h", "2"], ["4h", "4"], ["24h", "24"], ["48h", "48"], ["3 dias", "72"]], presetSuffix: "horas", min: 1 }))
       this.renderTaskAssigneeFallbackField(node)
     } else if (actionType === "send_whatsapp") {
-      this.inspectorTarget.appendChild(this.textArea("Mensagem WhatsApp", "message", node.config?.message || ""))
+      this.inspectorTarget.appendChild(this.textArea("Mensagem WhatsApp", "message", node.config?.message || "", { required: true, variables: true, counter: true, rows: 4, placeholder: "Olá {{nome}}, tudo bem?" }))
     } else if (actionType === "send_whatsapp_buttons" || actionType === "send_whatsapp_list") {
       const list = actionType === "send_whatsapp_list"
-      this.inspectorTarget.appendChild(this.textArea("Pergunta", "message", node.config?.message || "", { info: "O que o cliente vai ler. Você pode usar {{nome}} para o nome dele." }))
-      if (list) this.inspectorTarget.appendChild(this.field("Texto do botão que abre a lista", "list_button", node.config?.list_button || "Ver opções", "text", { info: "Até 20 caracteres." }))
-      this.inspectorTarget.appendChild(this.textArea(list ? "Opções (uma por linha, até 10)" : "Opções (uma por linha, até 3)", "options", node.config?.options || "", {
-        info: list ? "Cada opção pode ter até 24 caracteres. Cada uma ganha um caminho abaixo: edite as respostas de cada caminho." : "Cada opção pode ter até 20 caracteres. Cada uma ganha um caminho abaixo: edite as respostas de cada caminho."
-      }))
+      this.inspectorTarget.appendChild(this.textArea("Pergunta", "message", node.config?.message || "", { required: true, variables: true, maxlength: 1024, rows: 3, info: "O que o cliente vai ler. Use as variáveis abaixo para personalizar." }))
+      if (list) this.inspectorTarget.appendChild(this.field("Texto do botão que abre a lista", "list_button", node.config?.list_button || "Ver opções", "text", { required: true, maxlength: 20, info: "Até 20 caracteres." }))
+      this.inspectorTarget.appendChild(this.optionsListField(node, { max: list ? 10 : 3, maxlength: list ? 24 : 20 }))
     } else if (actionType === "transfer_to_attendant") {
-      this.inspectorTarget.appendChild(this.selectField("Fila de atendimento", "distribution_rule_id", node.config?.distribution_rule_id, this.catalog.distribution_rules, { placeholder: "Selecione a fila" }))
-      this.inspectorTarget.appendChild(this.field("Assunto (o atendente vê na lista)", "topic", node.config?.topic || "Atendimento automático", "text", { info: "Aparece na lista de conversas e na gestão de atendimentos." }))
-      this.inspectorTarget.appendChild(this.textArea("Mensagem ao finalizar o atendimento", "finish_message", node.config?.finish_message || "", { info: "Enviada ao cliente quando o atendente clicar em Finalizar. Vazio usa a mensagem padrão." }))
+      this.inspectorTarget.appendChild(this.selectField("Fila de atendimento", "distribution_rule_id", node.config?.distribution_rule_id, this.catalog.distribution_rules, { placeholder: "Selecione a fila", required: true, emptyHint: this.noDistributionRulesHint() }))
+      this.inspectorTarget.appendChild(this.field("Assunto (o atendente vê na lista)", "topic", node.config?.topic || "Atendimento automático", "text", { maxlength: 80, info: "Aparece na lista de conversas e na gestão de atendimentos." }))
+      this.inspectorTarget.appendChild(this.textArea("Mensagem ao finalizar o atendimento", "finish_message", node.config?.finish_message || "", { variables: true, rows: 3, info: "Enviada ao cliente quando o atendente clicar em Finalizar. Vazio usa a mensagem padrão." }))
+    } else if (actionType === "capture_answer") {
+      this.renderCaptureFields(node)
     } else if (actionType === "send_whatsapp_template") {
-      this.inspectorTarget.appendChild(this.selectField("Modelo WhatsApp", "template", node.config?.template, this.catalog.templates, { placeholder: "Selecione o modelo" }))
+      this.renderTemplateActionFields(node)
     } else if (actionType === "send_webhook") {
       const webhookContext = this.webhookContextFor(node)
-      this.inspectorTarget.appendChild(this.field("URL do webhook", "url", node.config?.url || "", "url"))
+      this.inspectorTarget.appendChild(this.field("URL do webhook", "url", node.config?.url || "", "url", { required: true, placeholder: "https://exemplo.com/webhook" }))
       this.inspectorTarget.appendChild(this.selectField("Método", "http_method", node.config?.http_method || "post", {
         post: "POST",
         put: "PUT",
@@ -2702,15 +3327,19 @@ export default class extends Controller {
       if (result === "generates_attendance") {
         this.inspectorTarget.appendChild(this.selectField("Destino do atendimento", "distribution_rule_id", node.config?.distribution_rule_id, this.catalog.distribution_rules, {
           placeholder: "Selecione a regra",
+          required: true,
+          emptyHint: this.noDistributionRulesHint(),
           info: "Regra de distribuição que assume o atendimento quando este caminho gerar atendimento."
         }))
       }
       this.inspectorTarget.appendChild(this.textArea("Nota interna", "note", node.config?.note || "", {
+        variables: true,
+        rows: 3,
         info: "Texto opcional registrado junto do resultado do caminho."
       }))
       this.inspectorTarget.appendChild(this.entryEventNotice(this.flowResultNotice(result)))
     } else if (actionType === "move_stage") {
-      this.inspectorTarget.appendChild(this.selectField("Mover para etapa", "to", node.config?.to, this.catalog.automation_stages || this.catalog.statuses, { placeholder: "Selecione a etapa" }))
+      this.inspectorTarget.appendChild(this.selectField("Mover para etapa", "to", node.config?.to, this.catalog.automation_stages || this.catalog.statuses, { placeholder: "Selecione a etapa", required: true }))
       this.inspectorTarget.appendChild(this.moveStageNotice())
     } else if (actionType === "update_lead_lifecycle") {
       this.inspectorTarget.appendChild(this.selectField("Ação no lead", "lifecycle_action", node.config?.lifecycle_action || "mark_no_interest", this.lifecycleActionOptions(), {
@@ -2722,30 +3351,32 @@ export default class extends Controller {
         info: "Etapa aplicada ao lead quando esta intervenção executar. Ajuste para o padrão comercial da operação."
       }))
       this.inspectorTarget.appendChild(this.textArea("Nota interna", "note", node.config?.note || "", {
+        variables: true,
+        rows: 3,
         info: "Texto opcional registrado junto da mudança para explicar a decisão."
       }))
     } else if (actionType === "assign_agent") {
       this.inspectorTarget.appendChild(this.legacyVerticalActionNotice())
     } else if (actionType === "add_note") {
-      this.inspectorTarget.appendChild(this.textArea("Nota interna", "body", node.config?.body || node.config?.message || ""))
+      this.inspectorTarget.appendChild(this.textArea("Nota interna", "body", node.config?.body || node.config?.message || "", { required: true, variables: true, rows: 3 }))
     } else if (actionType === "create_interest_curation_task") {
-      this.inspectorTarget.appendChild(this.field("Titulo da tarefa", "title", node.config?.title || "Curar imóveis para o lead"))
-      this.inspectorTarget.appendChild(this.field("Vencimento em horas", "due_in_hours", node.config?.due_in_hours || "4", "number"))
+      this.inspectorTarget.appendChild(this.field("Titulo da tarefa", "title", node.config?.title || "Curar imóveis para o lead", "text", { required: true }))
+      this.inspectorTarget.appendChild(this.field("Vencimento em horas", "due_in_hours", node.config?.due_in_hours || "4", "number", { presets: [["2h", "2"], ["4h", "4"], ["24h", "24"], ["48h", "48"], ["3 dias", "72"]], presetSuffix: "horas", min: 1 }))
       this.renderTaskAssigneeFallbackField(node)
-      this.inspectorTarget.appendChild(this.textArea("Orientação para o responsável", "notes", node.config?.notes || "Validar imóveis compatíveis antes de enviar ao cliente."))
+      this.inspectorTarget.appendChild(this.textArea("Orientação para o responsável", "notes", node.config?.notes || "Validar imóveis compatíveis antes de enviar ao cliente.", { variables: true }))
     } else if (actionType === "add_interest_note") {
-      this.inspectorTarget.appendChild(this.textArea("Nota interna", "body", node.config?.body || "Registrar perfil de interesse detectado automaticamente."))
+      this.inspectorTarget.appendChild(this.textArea("Nota interna", "body", node.config?.body || "Registrar perfil de interesse detectado automaticamente.", { variables: true, rows: 3 }))
     } else if (actionType === "suggest_matching_properties") {
-      this.inspectorTarget.appendChild(this.field("Quantidade máxima de sugestões", "limit", node.config?.limit || "5", "number"))
+      this.inspectorTarget.appendChild(this.field("Quantidade máxima de sugestões", "limit", node.config?.limit || "5", "number", { min: 1, max: 10, presets: [["3", "3"], ["5", "5"], ["10", "10"]] }))
       this.inspectorTarget.appendChild(this.entryEventNotice("A sugestão registra uma nota interna com imóveis compatíveis. O envio ao cliente continua sendo decisão da operação."))
     } else if (actionType === "notify_broker_interest_opportunity") {
-      this.inspectorTarget.appendChild(this.field("Titulo da tarefa", "title", node.config?.title || "Oportunidade de interesse para o lead"))
-      this.inspectorTarget.appendChild(this.field("Vencimento em horas", "due_in_hours", node.config?.due_in_hours || "2", "number"))
+      this.inspectorTarget.appendChild(this.field("Titulo da tarefa", "title", node.config?.title || "Oportunidade de interesse para o lead", "text", { required: true }))
+      this.inspectorTarget.appendChild(this.field("Vencimento em horas", "due_in_hours", node.config?.due_in_hours || "2", "number", { presets: [["2h", "2"], ["4h", "4"], ["24h", "24"], ["48h", "48"], ["3 dias", "72"]], presetSuffix: "horas", min: 1 }))
       this.renderTaskAssigneeFallbackField(node)
       this.inspectorTarget.appendChild(this.entryEventNotice("Cria uma tarefa para o responsável atual do lead agir sobre uma oportunidade detectada pela navegação e pelos imóveis compatíveis."))
     } else if (actionType === "prepare_matching_properties_whatsapp") {
-      this.inspectorTarget.appendChild(this.field("Quantidade de imóveis", "limit", node.config?.limit || "3", "number"))
-      this.inspectorTarget.appendChild(this.textArea("Introdução da mensagem", "message_prefix", node.config?.message_prefix || "Separei algumas opções que combinam com o que você está buscando."))
+      this.inspectorTarget.appendChild(this.field("Quantidade de imóveis", "limit", node.config?.limit || "3", "number", { min: 1, max: 10, presets: [["1", "1"], ["3", "3"], ["5", "5"]] }))
+      this.inspectorTarget.appendChild(this.textArea("Introdução da mensagem", "message_prefix", node.config?.message_prefix || "Separei algumas opções que combinam com o que você está buscando.", { variables: true, rows: 3 }))
       this.renderTaskAssigneeFallbackField(node)
       this.inspectorTarget.appendChild(this.entryEventNotice("Se revisão humana estiver ativa, a plataforma cria rascunho/nota. Envio direto só acontece quando permitido nas configurações."))
     } else if (actionType === "generate_interest_ai_summary") {
@@ -2756,6 +3387,73 @@ export default class extends Controller {
     }
 
     this.renderRetryFields(node)
+  }
+
+  noDistributionRulesHint() {
+    return { message: "Nenhuma regra de distribuição cadastrada.", href: "/admin/distribution_rules", linkLabel: "Cadastrar regra" }
+  }
+
+  // Editor de opções (botões/lista): uma linha por opção, com limite visível.
+  // Grava em um input oculto `options` (texto separado por \n), mantendo o contrato do updateNode.
+  optionsListField(node, { max, maxlength }) {
+    const wrap = document.createElement("div")
+    wrap.className = "automation-workflow-builder__field automation-workflow-builder__options"
+
+    const hidden = document.createElement("input")
+    hidden.type = "hidden"
+    hidden.dataset.field = "options"
+    hidden.dataset.action = "input->automation-workflow-builder#updateNode"
+
+    const rows = String(node.config?.options || "").split("\n").map((item) => item.trim()).filter(Boolean)
+    const list = document.createElement("ol")
+    list.className = "automation-workflow-builder__options-list"
+    const add = document.createElement("button")
+    add.type = "button"
+    add.className = "automation-workflow-builder__options-add"
+    add.innerHTML = '<i class="bi bi-plus-lg"></i>Adicionar opção'
+
+    const commit = () => {
+      const values = Array.from(list.querySelectorAll("input")).map((input) => input.value.trim()).filter(Boolean)
+      hidden.value = values.join("\n")
+      hidden.dispatchEvent(new Event("input", { bubbles: true }))
+      add.disabled = list.children.length >= max
+      list.querySelectorAll("button[data-remove]").forEach((button) => { button.disabled = list.children.length <= 1 })
+    }
+
+    const addRow = (value = "") => {
+      const item = document.createElement("li")
+      const input = document.createElement("input")
+      input.className = "ax-input"
+      input.value = value
+      input.maxLength = maxlength
+      input.placeholder = `Opção ${list.children.length + 1}`
+      input.setAttribute("aria-label", `Opção ${list.children.length + 1}`)
+      input.addEventListener("input", commit)
+      const count = document.createElement("small")
+      const refresh = () => { count.textContent = `${input.value.length}/${maxlength}` }
+      input.addEventListener("input", refresh)
+      refresh()
+      const remove = document.createElement("button")
+      remove.type = "button"
+      remove.dataset.remove = "true"
+      remove.className = "automation-workflow-builder__icon-btn"
+      remove.setAttribute("aria-label", "Remover opção")
+      remove.innerHTML = '<i class="bi bi-x-lg"></i>'
+      remove.addEventListener("click", () => { item.remove(); commit() })
+      item.append(input, count, remove)
+      list.appendChild(item)
+      return input
+    }
+
+    ;(rows.length ? rows : [""]).forEach((value) => addRow(value))
+    add.addEventListener("click", () => { addRow().focus(); commit() })
+
+    const head = this.fieldLabel(`Opções (até ${max})`, "Cada opção vira um caminho abaixo, onde você edita as respostas.", true)
+    wrap.append(head, list, add, hidden)
+    hidden.value = rows.join("\n")
+    hidden.dataset.required = "true"
+    commit()
+    return wrap
   }
 
   renderTaskAssigneeFallbackField(node) {
@@ -2778,8 +3476,8 @@ export default class extends Controller {
 
     if (![true, "true", "1", 1].includes(node.config?.retry_enabled)) return
 
-    this.inspectorTarget.appendChild(this.field("Máximo de retentativas", "retry_attempts", node.config?.retry_attempts || "3", "number"))
-    this.inspectorTarget.appendChild(this.field("Intervalo da retentativa", "retry_delay_amount", node.config?.retry_delay_amount || "15", "number"))
+    this.inspectorTarget.appendChild(this.field("Máximo de retentativas", "retry_attempts", node.config?.retry_attempts || "3", "number", { min: 1, max: 10, presets: [["1", "1"], ["3", "3"], ["5", "5"]] }))
+    this.inspectorTarget.appendChild(this.field("Intervalo da retentativa", "retry_delay_amount", node.config?.retry_delay_amount || "15", "number", { min: 1, presets: [["5", "5"], ["15", "15"], ["30", "30"], ["60", "60"]] }))
     this.inspectorTarget.appendChild(this.selectField("Unidade do intervalo", "retry_delay_unit", node.config?.retry_delay_unit, {
       minutes: "Minutos",
       hours: "Horas",
@@ -2850,28 +3548,7 @@ export default class extends Controller {
 
 
   finalActionField(node) {
-    const wrap = document.createElement("label")
-    wrap.className = "automation-workflow-builder__final-action"
-
-    const input = document.createElement("input")
-    input.type = "checkbox"
-    input.checked = this.endsFlow(node)
-    input.dataset.field = "stop_flow"
-    input.dataset.action = "change->automation-workflow-builder#updateNode"
-
-    const marker = document.createElement("span")
-    marker.className = "automation-workflow-builder__final-action-marker"
-    marker.innerHTML = '<i class="bi bi-check2"></i>'
-
-    const copy = document.createElement("span")
-    copy.className = "automation-workflow-builder__final-action-copy"
-    copy.innerHTML = `
-      <strong>Encerrar acompanhamento após esta intervenção</strong>
-      <span>Quando marcado, a automação termina assim que esta intervenção for executada.</span>
-    `
-
-    wrap.append(input, marker, copy)
-    return wrap
+    return this.checkboxField("Encerrar acompanhamento após esta intervenção", "stop_flow", this.endsFlow(node), "Quando ativo, a automação termina assim que esta intervenção for executada.")
   }
 
   textArea(label, field, value, config = {}) {
@@ -2883,8 +3560,19 @@ export default class extends Controller {
     input.value = value || ""
     input.dataset.field = field
     input.dataset.action = "input->automation-workflow-builder#updateNode"
+    if (config.placeholder) input.placeholder = config.placeholder
+    input.rows = config.rows || 5
 
-    wrap.append(this.fieldLabel(label, config.info), input)
+    // Cresce com o conteúdo (até 360px) para não cobrir/cortar notas maiores.
+    const grow = () => {
+      input.style.height = "auto"
+      input.style.height = `${Math.min(input.scrollHeight + 2, 360)}px`
+    }
+    input.addEventListener("input", grow)
+    requestAnimationFrame(grow)
+
+    wrap.append(this.fieldLabel(label, config.info, config.required), input)
+    this.decorateControl(wrap, input, config)
     return wrap
   }
 
@@ -3850,6 +4538,29 @@ export default class extends Controller {
     }[node.type] || "Etapa"
   }
 
+  // Cor por função da etapa (CSS: [data-tone] define --tone).
+  nodeTone(node) {
+    if (node.type === "action") {
+      const type = node.config?.action_type || ""
+      if (type.startsWith("send_whatsapp") || type === "prepare_matching_properties_whatsapp") return "whatsapp"
+      if (type === "transfer_to_attendant" || type === "set_flow_result") return "attendance"
+      if (type === "send_webhook") return "webhook"
+      if (type === "capture_answer") return "capture"
+      if (["move_stage", "update_lead_lifecycle", "assign_agent"].includes(type)) return "stage"
+      return "task"
+    }
+    return {
+      entry: "entry",
+      wait: "wait",
+      await_event: "event",
+      await_whatsapp_response: "whatsapp",
+      response_condition: "response",
+      response_router: "response",
+      response_fallback: "fallback",
+      condition: "condition"
+    }[node.type] || "task"
+  }
+
   nodeIcon(node) {
     return {
       entry: "bi-people-fill",
@@ -3883,7 +4594,8 @@ export default class extends Controller {
       suggest_matching_properties: "bi-building-check",
       notify_broker_interest_opportunity: "bi-bell",
       prepare_matching_properties_whatsapp: "bi-whatsapp",
-      generate_interest_ai_summary: "bi-magic"
+      generate_interest_ai_summary: "bi-magic",
+      capture_answer: "bi-input-cursor-text"
     }[actionType] || "bi-lightning-charge"
   }
 
@@ -3906,7 +4618,8 @@ export default class extends Controller {
       suggest_matching_properties: "Busca imóveis compatíveis e registra sugestões para a operação revisar.",
       notify_broker_interest_opportunity: "Cria uma tarefa de oportunidade para o responsável atual do lead.",
       prepare_matching_properties_whatsapp: "Prepara uma mensagem com imóveis sugeridos, respeitando revisão humana.",
-      generate_interest_ai_summary: "Gera classificação frio, morno ou quente com resumo inteligente do interesse."
+      generate_interest_ai_summary: "Gera classificação frio, morno ou quente com resumo inteligente do interesse.",
+      capture_answer: "Guarda o que o cliente respondeu (e-mail, nome, telefone...) para usar nas próximas mensagens e no cadastro do lead."
     }[actionType] || "Executa uma intervenção automática no lead."
   }
 
@@ -3927,7 +4640,8 @@ export default class extends Controller {
       suggest_matching_properties: "match",
       notify_broker_interest_opportunity: "alerta",
       prepare_matching_properties_whatsapp: "revisão",
-      generate_interest_ai_summary: "IA"
+      generate_interest_ai_summary: "IA",
+      capture_answer: "dados"
     }[actionType]
   }
 
@@ -3977,8 +4691,13 @@ export default class extends Controller {
     return this.endsFlow(node) ? `${summary} · encerra acompanhamento` : summary
   }
 
+  // Operadores que não comparam com um valor digitado.
+  valueFreeOperator(operator) {
+    return ["present", "valid_email", "valid_phone", "valid_number"].includes(operator)
+  }
+
   responseConditionExpectedValueSummary(node) {
-    if ((node.config?.operator || "equals") === "present") return ""
+    if (this.valueFreeOperator(node.config?.operator || "equals")) return ""
 
     const value = String(node.config?.value || "").trim().replace(/\s+/g, " ")
     if (!value) return ""

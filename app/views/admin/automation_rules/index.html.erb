@@ -5,8 +5,8 @@
         title: "Automação de acompanhamento",
         subtitle: "Crie intervenções horizontais para apoiar a jornada dos leads sem substituir a Distribuição de Leads.",
         metrics: [
-          { value: @workflows.size, label: "fluxos" },
-          { value: @rules.size, label: "regras" }
+          { value: @workflow_count, label: "fluxos" },
+          { value: @rule_count, label: "regras" }
         ],
         actions: safe_join([
           ax_button("Eventos recentes", admin_automation_events_path, size: :sm, icon: "activity"),
@@ -23,12 +23,17 @@
         text: "A Distribuição de Leads continua dona de origem, destino, fila, corretor, aceite, represamento e horários. A automação observa estados e faz pequenas intervenções de apoio.") %>
 
   <% if @workflows.any? %>
-    <%= ax_operational_panel(eyebrow: "Builder", title: "Fluxos recentes", class_name: "tw-mb-4") do %>
+    <%= ax_operational_panel(eyebrow: "Builder", title: "Fluxos", class_name: "tw-mb-4") do %>
       <div class="ax-record-list">
         <% @workflows.each do |workflow| %>
           <% workflow_actions = capture do %>
             <% if workflow.whatsapp_campaign_source? %>
               <%= ax_button("Ver disparo", admin_whatsapp_campaign_path(workflow.whatsapp_campaign_source_id), size: :sm, icon: "megaphone") %>
+            <% end %>
+            <% if workflow.active? %>
+              <%= button_to "Pausar", pause_admin_automation_workflow_path(workflow), method: :patch, class: "ax-btn ax-btn--sm", form_class: "tw-inline", data: { turbo_confirm: "Pausar novas entradas e execuções? As esperas serão preservadas." } %>
+            <% elsif workflow.status == "paused" %>
+              <%= button_to "Retomar", resume_admin_automation_workflow_path(workflow), method: :patch, class: "ax-btn ax-btn--sm", form_class: "tw-inline" %>
             <% end %>
             <%= ax_button("Abrir builder", builder_admin_automation_workflow_path(workflow), size: :sm, icon: "pencil-square") %>
           <% end %>
@@ -49,6 +54,7 @@
           <% end %>
         <% end %>
       </div>
+      <%= ax_pagination(@workflows, param_name: :workflows_page) %>
     <% end %>
   <% end %>
 
@@ -107,6 +113,7 @@
           <% end %>
         <% end %>
       </div>
+      <%= ax_pagination(@rules, param_name: :rules_page) %>
     <% else %>
       <%= ax_empty_state(
             title: "Nenhuma intervenção automatizada ainda",

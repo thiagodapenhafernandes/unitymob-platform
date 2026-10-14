@@ -15,20 +15,14 @@ module Automation
           idle_hours = entry.dig(:config, :idle_hours).to_i
           next unless idle_hours.positive?
 
-          scope = workflow.tenant.leads.where("leads.updated_at <= ?", idle_hours.hours.ago)
-          stage = entry.dig(:config, :stage)
-          scope = scope.where(status: Lead.status_value(stage)) if stage.present?
-          source = entry.dig(:config, :source)
-          scope = scope.where("origin ILIKE ?", source) if source.present?
-          distribution_rule_ids = distribution_rule_ids_for(entry.fetch(:config, {}))
-          scope = scope.where(distribution_rule_id: distribution_rule_ids) if distribution_rule_ids.any?
+          scope = Automation::LeadCandidates.for(workflow.tenant, entry.fetch(:config, {}), trigger: "lead_idle")
+          scope = scope.where.not(id: workflow.tenant.automation_events
+            .where(name: "lead_idle", source: %w[automation_tick automation_backfill])
+            .where("payload ->> 'workflow_id' = ?", workflow.id.to_s)
+            .where.not(lead_id: nil).select(:lead_id))
 
-          processed = AutomationExecution
-            .where(tenant: workflow.tenant, automation_workflow_id: workflow.id)
-            .where.not(lead_id: nil)
-            .pluck(:lead_id)
-            .uniq
-          scope = scope.where.not(id: processed) if processed.any?
+          processed = workflow.executions.where.not(lead_id: nil).select(:lead_id)
+          scope = scope.where.not(id: processed)
 
           scope.limit(limit).find_each do |lead|
             Automation::Dispatcher.dispatch(
@@ -43,7 +37,7 @@ module Automation
       end
     end
 
-    def self.dispatch_scheduled_routines(limit: 200)
+    def self.dispatch_scheduled_routines(limit: nil)
       active_workflows_for_event("scheduled_routine").each do |workflow|
         Current.set(tenant: workflow.tenant) do
           entry = entry_node(workflow)
@@ -51,13 +45,12 @@ module Automation
           next unless Automation::ScheduleCalculator.recurring_due?(config)
 
           bucket = Automation::ScheduleCalculator.recurring_bucket(config)
-          scope = workflow.tenant.leads
-          stage = config[:stage]
-          scope = scope.where(status: Lead.status_value(stage)) if stage.present?
-          source = config[:source]
-          scope = scope.where("origin ILIKE ?", source) if source.present?
-          distribution_rule_ids = distribution_rule_ids_for(config)
-          scope = scope.where(distribution_rule_id: distribution_rule_ids) if distribution_rule_ids.any?
+          scope = Automation::LeadCandidates.for(workflow.tenant, config)
+
+          scope = scope.where.not(id: workflow.tenant.automation_events
+            .where(name: "scheduled_routine", source: %w[automation_tick automation_backfill])
+            .where("payload ->> 'workflow_id' = ? AND payload ->> 'bucket' = ?", workflow.id.to_s, bucket.to_s)
+            .where.not(lead_id: nil).select(:lead_id))
 
           scope.limit(limit).find_each do |lead|
             Automation::Dispatcher.dispatch(
@@ -94,11 +87,14 @@ module Automation
       tenant = @lead&.tenant || @automation_event&.tenant || Current.tenant
       Current.set(tenant: tenant) do
         self.class.active_workflows_for_event(@event).each do |workflow|
+          next if @automation_event && !@automation_event.targets_automation?(:workflow, workflow.id)
+          target_version = @automation_event&.payload_hash&.dig(:workflow_version_id)
+          next if target_version.present? && target_version.to_i != workflow.active_version_id
           next unless entry_matches_event?(self.class.entry_node(workflow))
 
           Automation::WorkflowRunner.start(workflow, @lead, event: @event, automation_event: @automation_event)
         end
-        resume_waiting_executions
+        resume_waiting_executions unless @automation_event&.source == "automation_backfill"
       end
     end
 
@@ -121,6 +117,9 @@ module Automation
         lead_matches?(config, fields: %i[stage])
       when *interest_events
         lead_matches?(config, fields: %i[stage source]) && interest_score_matches?(config)
+      when "lead_idle"
+        hours = config[:idle_hours].to_i
+        hours.positive? && Automation::ConditionMatcher.match_conditions?(config, @lead)
       when "scheduled_routine"
         lead_matches?(config, fields: %i[stage source])
       else
@@ -137,41 +136,39 @@ module Automation
       scope
         .includes(:automation_workflow, :automation_workflow_version)
         .find_each do |execution|
-          next unless execution.automation_workflow&.active?
+          execution.with_lock do
+            next unless execution.status == "waiting" && execution.automation_workflow&.reload&.active?
 
-          step = execution.steps.where(status: "waiting", node_type: %w[await_event await_whatsapp_response response_router]).order(:id).last
-          next unless step
+            step = execution.steps.where(status: "waiting", node_type: %w[await_event await_whatsapp_response response_router]).order(:id).last
+            next unless step
 
-          node = waiting_node_for(execution, step.node_id, step.node_type)
-          next unless node
+            node = waiting_node_for(execution, step.node_id, step.node_type)
+            next unless node
 
-          if step.node_type.to_s == "response_router"
-            resume_response_router(execution, step, node)
-            next
-          end
+            if step.node_type.to_s == "response_router"
+              resume_response_router(execution, step, node)
+              next
+            end
 
-          if step.node_type.to_s == "await_whatsapp_response"
-            resume_await_whatsapp_response(execution, step, node)
-            next
-          end
+            if step.node_type.to_s == "await_whatsapp_response"
+              resume_await_whatsapp_response(execution, step, node)
+              next
+            end
 
-          next unless await_event_matches?(node)
+            next unless await_event_matches?(node)
 
-          output = step.output.to_h.with_indifferent_access
-          next_ids = Array(output[:resume_node_ids].presence || output[:resume_node_id]).reject(&:blank?)
-          step.update!(
-            status: "completed",
-            finished_at: Time.current,
-            output: step.output.to_h.merge(
-              "matched_event_id" => @automation_event.id,
-              "matched_event" => @event
+            output = step.output.to_h.with_indifferent_access
+            next_ids = Array(output[:resume_node_ids].presence || output[:resume_node_id]).reject(&:blank?)
+            step.update!(
+              status: "completed",
+              finished_at: Time.current,
+              output: step.output.to_h.merge(
+                "matched_event_id" => @automation_event.id,
+                "matched_event" => @event
+              )
             )
-          )
-          execution.update!(status: "pending", current_node_id: nil)
-          if next_ids.any?
-            next_ids.each { |next_id| Automation::RunWorkflowJob.perform_later(execution.id, next_id) }
-          else
-            Automation::RunWorkflowJob.perform_later(execution.id)
+            execution.update!(status: "pending", current_node_id: nil)
+            step.enqueue_resume!(node_ids: next_ids, cause: "event:#{@automation_event.id}")
           end
         end
     end
@@ -303,7 +300,7 @@ module Automation
         )
       )
       execution.update!(status: "pending", current_node_id: nil, context: context)
-      Automation::RunWorkflowJob.perform_later(execution.id, node[:id])
+      step.enqueue_resume!(node_ids: [node[:id]], cause: "event:#{@automation_event.id}")
     end
 
     def resume_await_whatsapp_response(execution, step, node)
@@ -329,11 +326,7 @@ module Automation
       )
       execution.update!(status: "pending", current_node_id: nil, context: context)
 
-      if next_ids.any?
-        next_ids.each { |next_id| Automation::RunWorkflowJob.perform_later(execution.id, next_id) }
-      else
-        Automation::RunWorkflowJob.perform_later(execution.id)
-      end
+      step.enqueue_resume!(node_ids: next_ids, cause: "event:#{@automation_event.id}")
     end
 
     # O clique que iniciou a automação é o mesmo evento que chega ao despachante: não é resposta à pergunta.

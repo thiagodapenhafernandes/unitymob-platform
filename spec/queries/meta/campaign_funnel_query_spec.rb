@@ -52,4 +52,21 @@ RSpec.describe Meta::CampaignFunnelQuery do
       expect(empty).to eq([])
     end
   end
+  it "separa propostas aceitas de ganhos no CRM e conta cada lead uma vez" do
+    Current.set(tenant: tenant) do
+      pipeline = LeadPipeline.ensure_default!(tenant: tenant)
+      won = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Fechamento confirmado", stage_type: "won")
+      open_stage = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Em negociação", stage_type: "open")
+      pending = meta_lead("outcomes")
+      pending.update_columns(lead_pipeline_stage_id: open_stage.id, status: open_stage.name)
+      gained = meta_lead("outcomes")
+      gained.update_columns(lead_pipeline_stage_id: won.id)
+      [pending, pending, gained].each do |lead|
+        Proposal.create!(lead: lead, admin_user: admin, status: "aceita", title: "Oferta", valor_cents: 100_00)
+      end
+      create(:lead, tenant: Tenant.create!(name: "Teste isolado", slug: "teste-isolado-#{SecureRandom.hex(4)}"), other_information: { "meta_campaign_id" => "outcomes" })
+      row = described_class.new(tenant: tenant, starts_at: 30.days.ago, ends_at: Time.current).call.rows.first
+      expect(row).to include(leads: 2, accepted_proposals: 2, sales: 1)
+    end
+  end
 end

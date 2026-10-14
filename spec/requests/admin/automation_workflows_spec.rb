@@ -56,6 +56,38 @@ RSpec.describe "Admin::AutomationWorkflows", type: :request do
     end
   end
 
+  describe "controle operacional" do
+    it "pagina fluxos antigos e mostra contagem total" do
+      13.times { |i| AutomationWorkflow.create!(name: "Fluxo paginado #{i}") }
+      get admin_automation_rules_path
+      expect(response.body).to include("workflows_page=2")
+      expect(response.body).not_to include("Fluxo paginado 0</")
+      get admin_automation_rules_path, params: { workflows_page: 2 }
+      expect(response.body).to include("Fluxo paginado 0")
+    end
+
+    it "pausa e retoma sem publicar outra versão" do
+      flow = AutomationWorkflow.create!(name: "Pausar")
+      version = flow.draft_version!
+      version.update!(definition: publishable_definition)
+      flow.publish!(version: version)
+      patch pause_admin_automation_workflow_path(flow)
+      expect(flow.reload.status).to eq("paused")
+      expect(flow.active_version_id).to eq(version.id)
+      patch resume_admin_automation_workflow_path(flow)
+      expect(flow.reload.status).to eq("active")
+      expect(flow.active_version_id).to eq(version.id)
+    end
+
+    it "não controla um fluxo de outra conta" do
+      other = Tenant.create!(name: "Outra operação", slug: "other-flow-#{SecureRandom.hex(4)}")
+      flow = AutomationWorkflow.create!(tenant: other, name: "Outra")
+      patch pause_admin_automation_workflow_path(flow)
+      expect(response).to have_http_status(:not_found)
+      expect(flow.reload.status).to eq("draft")
+    end
+  end
+
   describe "GET builder" do
     it "renderiza o builder com o JSON versionado" do
       workflow = AutomationWorkflow.create!(name: "Nutrir lead")
@@ -177,6 +209,40 @@ RSpec.describe "Admin::AutomationWorkflows", type: :request do
     end
   end
 
+  describe "proteção do rascunho" do
+    it "rejeita JSON vazio, malformado e de tipo incorreto sem substituir a definição" do
+      workflow = AutomationWorkflow.create!(name: "Preservar")
+      version = workflow.draft_version!
+      version.update!(definition: publishable_definition)
+      original = version.definition
+
+      ["", "{", "{}", "[]", "null"].each do |raw|
+        patch save_draft_admin_automation_workflow_path(workflow), params: {
+          automation_workflow: { name: "Alterado", definition_json: raw }
+        }
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(version.reload.definition).to eq(original)
+        expect(workflow.reload.name).to eq("Preservar")
+      end
+    end
+
+    it "não persiste nome nem definição quando o vínculo receptivo impede publicar" do
+      workflow = AutomationWorkflow.create!(name: "Original")
+      version = workflow.draft_version!
+      original = version.definition
+      allow(Automation::ReceptiveBinding).to receive(:call).and_raise(Automation::ReceptiveBinding::Error, "Conflito receptivo")
+
+      patch publish_admin_automation_workflow_path(workflow), params: {
+        automation_workflow: { name: "Alterado", definition_json: publishable_definition.to_json }
+      }
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(workflow.reload.name).to eq("Original")
+      expect(workflow.status).to eq("draft")
+      expect(version.reload.definition).to eq(original)
+      expect(version.status).to eq("draft")
+    end
+  end
+
   describe "PATCH publish" do
     it "publica a versao do fluxo" do
       workflow = AutomationWorkflow.create!(name: "Ativar")
@@ -215,6 +281,23 @@ RSpec.describe "Admin::AutomationWorkflows", type: :request do
       expect(draft.definition_hash[:nodes].last[:label]).to eq("Registrar nota")
       expect(draft.definition_hash[:edges]).to eq([{ "from" => "entry_1", "to" => "action_1" }])
       expect(response.body).to include("Registrar nota")
+    end
+
+    it "enfileira a base atual depois de publicar e não quando a publicação falha" do
+      flow = AutomationWorkflow.create!(name: "Base atual")
+      flow.draft_version!
+      definition = publishable_definition.deep_dup
+      definition["nodes"].first["config"]["entry_policy"] = "existing_and_future"
+      expect {
+        patch publish_admin_automation_workflow_path(flow), params: { automation_workflow: { name: flow.name, definition_json: definition.to_json } }
+      }.to have_enqueued_job(Automation::BackfillWorkflowJob)
+
+      blocked = AutomationWorkflow.create!(tenant: admin.tenant, name: "Bloqueada")
+      blocked.draft_version!
+      allow(Automation::ReceptiveBinding).to receive(:call).and_raise(Automation::ReceptiveBinding::Error, "Conflito")
+      expect {
+        patch publish_admin_automation_workflow_path(blocked), params: { automation_workflow: { name: blocked.name, definition_json: definition.to_json } }
+      }.not_to have_enqueued_job(Automation::BackfillWorkflowJob)
     end
 
     it "bloqueia publicacao de fluxo incompleto" do
@@ -352,6 +435,8 @@ RSpec.describe "Admin::AutomationWorkflows", type: :request do
       entry = catalog["whatsapp_flow_templates"].find { |item| item["id"] == template.id }
       expect(entry).to include("waba_id" => "waba-conv")
       expect(entry["scaffold"]["nodes"].map { |node| node["type"] }.tally).to include("response_condition" => 2)
+      expect(entry["preview_html"]).to include("ax-message-preview").and include("data-button-key")
+      expect(catalog["actions"]).to include("capture_answer" => "Guardar resposta do cliente")
     end
 
     it "monta um caminho por botao de resposta e o rascunho ja pode ser publicado" do

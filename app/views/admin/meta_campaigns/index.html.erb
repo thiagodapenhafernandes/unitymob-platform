@@ -20,7 +20,7 @@
     <%= ax_metric_card(label: "Investimento", value: @spend_rows.any? ? number_to_currency(@totals[:spend], unit: "R$", separator: ",", delimiter: ".") : "—", hint: "Dados da Meta · #{@period_days} dias", icon: "cash-coin") %>
     <%= ax_metric_card(label: "Custo por lead", value: meta_campaign_cost(@totals[:spend], @totals[:meta_leads]), hint: @spend_rows.any? ? "#{@totals[:meta_leads]} leads informados pela Meta" : "Aguardando dados da Meta", icon: "funnel") %>
     <%= ax_metric_card(label: "Leads no CRM", value: @totals[:crm_leads], hint: "#{@totals[:qualified]} qualificados · #{@totals[:visits]} com visita", icon: "people") %>
-    <%= ax_metric_card(label: "Vendas no CRM", value: @totals[:sales], hint: "Conversão de leads: #{meta_campaign_rate(@totals[:sales], @totals[:crm_leads])}", icon: "trophy", tone: :green) %>
+    <%= ax_metric_card(label: "Ganhos no CRM", value: @totals[:sales], hint: "#{@totals[:accepted_proposals]} com proposta aceita · #{meta_campaign_rate(@totals[:sales], @totals[:crm_leads])} ganhos", icon: "trophy", tone: :green) %>
   </div>
 
   <%= ax_inline_notice(tone: :neutral, icon: "clock-history") do %>
@@ -38,7 +38,7 @@
   <% end %>
 
 <% if @tab == "funnel" %>
-  <%= ax_form_section(title: "Funil por campanha", subtitle: "Compare qualificação, visitas e vendas dos leads que entraram no CRM neste período.", icon: "funnel", class_name: "ax-form-section--comfortable") do %>
+  <%= ax_form_section(title: "Funil por campanha", subtitle: "Compare qualificação, visitas, propostas aceitas e ganhos dos leads que entraram no CRM neste período.", icon: "funnel", class_name: "ax-form-section--comfortable") do %>
     <div class="ax-table-wrap">
       <table class="ax-table ax-table--comfortable">
         <caption class="ax-table__caption--sr-only"><%= @tab == "funnel" ? "Funil por campanha no CRM" : "Investimento por campanha na Meta" %></caption>
@@ -49,10 +49,11 @@
             <th scope="col" class="ax-num">Leads no CRM</th>
             <th scope="col" class="ax-num">Qualificados</th>
             <th scope="col" class="ax-num">Visitas</th>
-            <th scope="col" class="ax-num">Vendas</th>
-            <th scope="col" class="ax-num">Custo por venda</th>
+            <th scope="col" class="ax-num">Propostas aceitas</th>
+            <th scope="col" class="ax-num">Ganhos no CRM</th>
+            <th scope="col" class="ax-num">Custo por ganho no CRM</th>
             <th scope="col" class="ax-num">Qualificação</th>
-            <th scope="col" class="ax-num">Conversão em venda</th>
+            <th scope="col" class="ax-num">Conversão em ganho</th>
           </tr>
         </thead>
         <tbody>
@@ -63,6 +64,7 @@
               <td class="ax-num"><%= row[:leads] %></td>
               <td class="ax-num"><%= row[:qualified] %></td>
               <td class="ax-num"><%= row[:visits] %></td>
+              <td class="ax-num"><%= row[:accepted_proposals] %></td>
               <td class="ax-num"><%= row[:sales] %></td>
               <td class="ax-num"><%= meta_campaign_cost(row[:spend], row[:sales]) %></td>
               <td class="ax-num"><%= meta_campaign_rate(row[:qualified], row[:leads]) %></td>
@@ -127,8 +129,8 @@
 
   <%= ax_form_section(title: "Como interpretar os números", icon: "info-circle", collapse_id: "meta-campaign-methodology", collapsed: true) do %>
     <p class="tw-text-sm tw-text-ink-muted"><strong>Meta:</strong> investimento, impressões, todos os cliques e leads informados pela plataforma no período filtrado. Impressões são exibições; não representam pessoas únicas.</p>
-    <p class="tw-text-sm tw-text-ink-muted"><strong>CRM:</strong> leads criados no período com campanha identificada. Qualificados têm qualificação do corretor ou gestor; visitas contam leads com visita realizada; vendas contam leads com proposta aceita, etapa ganha ou status concluído.</p>
-    <p class="tw-text-sm tw-text-ink-muted"><strong>Conversões:</strong> qualificados ou vendas divididos pelos leads da campanha no CRM. Os custos cruzam o investimento do período com os resultados desse grupo de leads, que podem evoluir depois. Leads na Meta e no CRM têm critérios diferentes e podem divergir.</p>
+    <p class="tw-text-sm tw-text-ink-muted"><strong>CRM:</strong> leads criados no período com campanha identificada. Qualificados têm qualificação do corretor ou gestor; visitas contam leads com visita realizada; propostas aceitas contam leads com ao menos uma proposta aceita; ganhos contam somente leads em etapa ganha ou status concluído. Esses sinais não comprovam receita ou comissão recebida.</p>
+    <p class="tw-text-sm tw-text-ink-muted"><strong>Conversões:</strong> qualificados ou ganhos divididos pelos leads da campanha no CRM. Os custos cruzam o investimento do período com os resultados desse grupo de leads, que podem evoluir depois. Leads na Meta e no CRM têm critérios diferentes e podem divergir.</p>
     <p class="tw-text-sm tw-text-ink-muted">Um traço indica que não há base para calcular o indicador. Receita, ROAS e alcance único ainda não são medidos neste relatório.</p>
   <% end %>
 </div>

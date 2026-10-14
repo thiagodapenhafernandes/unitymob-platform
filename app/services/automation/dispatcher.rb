@@ -33,6 +33,7 @@ module Automation
         rule_tenant = @automation_event&.tenant || @lead&.tenant || Current.tenant
         rule_scope = rule_tenant&.automation_rules || AutomationRule
         rule_scope.for_event(@event).ordered.find_each do |rule|
+          next unless @automation_event.targets_automation?(:rule, rule.id)
           next unless Automation::ConditionMatcher.match?(rule, @lead)
 
           Automation::RunActionsJob.perform_later(rule.id, @lead.id, 0, @automation_event.id)
@@ -40,8 +41,6 @@ module Automation
       end
 
       Automation::WorkflowDispatcher.dispatch_event(@automation_event)
-    rescue => e
-      Rails.logger.warn("[automation dispatch] #{e.class}: #{e.message}")
     end
   end
 end

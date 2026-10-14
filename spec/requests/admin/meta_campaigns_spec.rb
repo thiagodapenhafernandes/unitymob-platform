@@ -103,4 +103,13 @@ RSpec.describe "Admin::MetaCampaigns", type: :request do
     end
   end
 
+  it "expõe propostas e ganhos separadamente sem prometer receita recebida" do
+    lead = create(:lead, tenant: tenant, admin_user: admin, other_information: { "meta_campaign_id" => "accepted" })
+    Proposal.create!(lead: lead, admin_user: admin, status: "aceita", title: "Oferta", valor_cents: 100_00)
+    get admin_meta_campaigns_path
+    expect(response.body).to include("Propostas aceitas", "Ganhos no CRM", "não comprovam receita ou comissão recebida")
+    cells = Nokogiri::HTML(response.body).at_css(".ax-table tbody tr").css("td")
+    expect(cells[5].text.strip).to eq("1")
+    expect(cells[6].text.strip).to eq("0")
+  end
 end

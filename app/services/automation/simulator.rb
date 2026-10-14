@@ -2,7 +2,7 @@ module Automation
   class Simulator
     SAMPLE_LIMIT = 8
 
-    Result = Struct.new(:title, :summary, :candidate_count, :sample_leads, :actions, :warnings, keyword_init: true)
+    Result = Struct.new(:title, :summary, :candidate_count, :sample_leads, :actions, :warnings, :paths, keyword_init: true)
 
     def self.workflow(definition)
       new(definition: definition).workflow
@@ -20,21 +20,22 @@ module Automation
     end
 
     def workflow
-      nodes = Array(@definition[:nodes]).map { |node| node.is_a?(Hash) ? node.with_indifferent_access : {} }
+      nodes = Array(@definition[:nodes]).filter_map { |node| node.with_indifferent_access if node.is_a?(Hash) }
       entry = nodes.find { |node| node[:type].to_s == "entry" } || {}
-      entry_config = entry[:config].is_a?(Hash) ? entry[:config].with_indifferent_access : {}
-      conditions = nodes.select { |node| node[:type].to_s == "condition" }.map { |node| node[:config].is_a?(Hash) ? node[:config].with_indifferent_access : {} }
-      actions = nodes.select { |node| node[:type].to_s == "action" }.map { |node| Automation::WorkflowActionAdapter.to_action(node) }
-      waits = nodes.select { |node| %w[wait await_event await_whatsapp_response response_condition response_fallback].include?(node[:type].to_s) }
+      config = entry.fetch(:config, {}).with_indifferent_access
+      scope = Automation::LeadCandidates.for(Current.tenant || raise(ArgumentError, "Tenant obrigatório para simular automação"), config, trigger: config[:trigger])
+      scope = scope.order(updated_at: :desc)
+      sample = scope.limit(SAMPLE_LIMIT).to_a
+      paths = sample.to_h { |lead| [lead.id, trace_path(nodes, entry, lead)] }
+      labels = paths.values.flat_map { |path| path[:actions] }.uniq
+      warnings = warnings_for(config[:trigger], config[:entry_policy], [])
+      warnings << "A contagem considera os filtros da entrada. Os caminhos abaixo são calculados somente para a amostra."
+      warnings << "O caminho para na espera ou resposta futura; intervenções posteriores ainda não são determinadas." if paths.values.any? { |path| path[:uncertain] }
 
-      build_result(
-        title: "Simulação do builder",
-        trigger_event: entry_config[:trigger],
-        entry_policy: entry_config[:entry_policy],
-        conditions: merge_conditions([entry_config] + conditions),
-        actions: actions,
-        waits: waits
-      )
+      count = scope.count
+      Result.new(title: "Simulação do builder", summary: summary_for(config[:trigger], config[:entry_policy], count),
+                 candidate_count: count, sample_leads: sample, actions: labels,
+                 warnings: warnings, paths: paths)
     end
 
     def rule
@@ -49,6 +50,36 @@ module Automation
     end
 
     private
+
+    def trace_path(nodes, entry, lead)
+      by_id = nodes.index_by { |node| node[:id].to_s }
+      edges = Array(@definition[:edges]).filter_map { |edge| edge.with_indifferent_access if edge.is_a?(Hash) }
+      queue = [entry]
+      visited = []
+      labels = []
+      uncertain = false
+      until queue.empty? || visited.size >= Automation::WorkflowRunner::MAX_STEPS
+        node = queue.shift
+        next if node.blank?
+        visited << node[:id].to_s
+        type = node[:type].to_s
+        if type == "condition"
+          next unless Automation::ConditionMatcher.workflow_node?(node, lead)
+        elsif %w[wait await_event await_whatsapp_response response_condition response_fallback response_router].include?(type)
+          labels << wait_label(node)
+          uncertain = true
+          next
+        elsif type == "action"
+          labels << Automation::ActionExecutor.label(Automation::WorkflowActionAdapter.to_action(node))
+          next if ActiveModel::Type::Boolean.new.cast(node.dig(:config, :stop_flow))
+        elsif type == "exit"
+          next
+        end
+        queue.concat(edges.select { |edge| edge[:from].to_s == node[:id].to_s }.filter_map { |edge| by_id[edge[:to].to_s] })
+      end
+      uncertain ||= queue.any?
+      { actions: labels, node_ids: visited, uncertain: uncertain }
+    end
 
     def build_result(title:, trigger_event:, entry_policy:, conditions:, actions:, waits:)
       scope = lead_scope(trigger_event, conditions)
@@ -83,18 +114,6 @@ module Automation
       end
 
       scope
-    end
-
-    def merge_conditions(conditions)
-      conditions.each_with_object({}.with_indifferent_access) do |config, merged|
-        merged[:stage] ||= config[:stage].presence
-        merged[:from_stage] ||= config[:from_stage].presence
-        merged[:to_stage] ||= config[:to_stage].presence
-        merged[:source] ||= config[:source].presence
-        merged[:idle_hours] ||= config[:idle_hours].presence
-        merged[:message_contains] ||= config[:message_contains].presence
-        merged[:message_not_contains] ||= config[:message_not_contains].presence
-      end
     end
 
     def warnings_for(trigger_event, entry_policy, actions)
@@ -141,6 +160,7 @@ module Automation
 
     def wait_label(node)
       config = node[:config].is_a?(Hash) ? node[:config].with_indifferent_access : {}
+      return "aguardar resposta condicional futura" if node[:type].to_s == "response_router"
       if node[:type].to_s == "await_event"
         amount = config[:timeout_amount].presence || 1
         unit = { "minutes" => "minuto(s)", "hours" => "hora(s)", "days" => "dia(s)" }[config[:timeout_unit].to_s] || "dia(s)"

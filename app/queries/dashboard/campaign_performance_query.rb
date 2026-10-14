@@ -52,7 +52,7 @@ module Dashboard
       attended_at = attended_at_by_lead(attendance_events)
       visit_ids = Appointment.where(kind: "visita", lead_id: lead_ids).distinct.pluck(:lead_id).index_with(true)
       proposal_ids = Proposal.where.not(status: "rascunho").where(lead_id: lead_ids).distinct.pluck(:lead_id).index_with(true)
-      closed_ids = leads.select { |lead| Lead.status_value(lead.status) == Lead.status_value(:concluido) }.map(&:id).index_with(true)
+      closed_ids = @scope.won_in_crm(tenant: @tenant).where(id: lead_ids).pluck(:id).index_with(true)
 
       {
         attempts: attempts,

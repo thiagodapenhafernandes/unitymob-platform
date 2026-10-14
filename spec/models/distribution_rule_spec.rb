@@ -47,4 +47,13 @@ RSpec.describe DistributionRule, type: :model do
       [first_user.id, 3]
     ])
   end
+  it "preserva o sorteio ponderado com pesos manuais sem rotacionar a fila" do
+    rule = create(:distribution_rule, distribution_mode: :performance)
+    first = create(:distribution_rule_agent, distribution_rule: rule, weight: 1, position: 1)
+    weighted = create(:distribution_rule_agent, distribution_rule: rule, weight: 5, position: 2)
+    allow(rule).to receive(:rand).and_return(0.5)
+    expect(rule.next_available_agent).to eq(weighted)
+    expect(first.reload.position).to eq(1)
+    expect(weighted.reload.weight).to eq(5)
+  end
 end

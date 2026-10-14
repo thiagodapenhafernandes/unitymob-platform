@@ -51,11 +51,8 @@ export default class extends Controller {
 
   // ---- render ----
   render() {
-    const modeLabels = {
-      rotary: "fila rotativa",
-      performance: "sorteio por performance",
-      shark_tank: "shark tank (primeiro a aceitar)"
-    }
+    const selectedMode = this.element.querySelector('input[name="distribution_rule[distribution_mode]"]:checked')
+    const modeLabel = selectedMode?.dataset.distributionModeLabel || this.mode()
     const sources = []
     if (this.checked("source_tiktok")) sources.push("TikTok Ads")
     if (this.checked("source_linkedin")) sources.push("LinkedIn Ads")
@@ -71,7 +68,7 @@ export default class extends Controller {
     if (this.hasLineTarget) {
       const src = sources.length ? `<b>${sources.join(", ")}</b>` : "<b>nenhuma origem</b>"
       const who = n ? `<b>${n} corretor${n > 1 ? "es" : ""}</b>` : "<b>sem corretores</b>"
-      this.lineTarget.innerHTML = `Leads de ${src} → ${who} em <b>${modeLabels[this.mode()] || this.mode()}</b>.`
+      this.lineTarget.innerHTML = `Leads de ${src} → ${who} em <b>${modeLabel}</b>.`
     }
 
     if (this.hasChipsTarget) {

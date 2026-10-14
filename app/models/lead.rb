@@ -208,6 +208,13 @@ class Lead < ApplicationRecord
   scope :represado, -> { where(status: status_value(:represado)) }
   scope :descartado, -> { where(status: status_value(:descartado)) }
   scope :concluido, -> { where(status: status_value(:concluido)) }
+  # Negócio declarado ganho no CRM; não comprova receita ou comissão recebida.
+  scope :won_in_crm, ->(tenant:) {
+    base = where(tenant_id: tenant.id)
+    stages = tenant.lead_pipeline_stages.where(stage_type: "won")
+    statuses = stages.active.pluck(:name) + [status_value(:concluido, tenant: tenant)]
+    base.where(lead_pipeline_stage_id: stages.select(:id)).or(base.where(status: statuses))
+  }
   scope :holding, -> { represado }
   scope :by_origin, ->(origin) { where(origin: origin) if origin.present? }
   scope :unverified_inquiries, -> { where("(leads.other_information ->> 'unverified_inquiry') = 'true'") }

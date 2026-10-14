@@ -28,6 +28,7 @@ class AutomationWorkflow < ApplicationRecord
     return current_draft if current_draft
 
     versions.create!(
+      tenant: tenant,
       version_number: next_version_number,
       status: "draft",
       definition: draft_seed_definition
@@ -55,6 +56,18 @@ class AutomationWorkflow < ApplicationRecord
         last_activated_at: Time.current
       )
     end
+  end
+
+  def pause!
+    with_lock { update!(status: "paused") if active? }
+  end
+
+  def resume!
+    with_lock do
+      return unless status == "paused" && active_version
+      update!(status: "active")
+    end
+    Automation::ResumeWorkflowJob.perform_later(id)
   end
 
   def status_label

@@ -32,6 +32,8 @@ module Automation
         action["message"] = @config[:message]
         action["options"] = self.class.option_lines(@config[:options])
         action["list_button"] = @config[:list_button] if type == "send_whatsapp_list" && @config[:list_button].present?
+      when "capture_answer"
+        %w[variable answer_type lead_target custom_key custom_label].each { |key| action[key] = @config[key] if @config[key].present? }
       when "transfer_to_attendant"
         action["distribution_rule_id"] = @config[:distribution_rule_id] if @config[:distribution_rule_id].present?
         action["finish_message"] = @config[:finish_message] if @config[:finish_message].present?

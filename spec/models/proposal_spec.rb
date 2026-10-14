@@ -4,7 +4,7 @@ RSpec.describe Proposal, type: :model do
   let(:admin) { create(:admin_user, :admin) }
   let(:tenant) { admin.tenant }
 
-  it "enfileira Purchase com valor ao aceitar proposta de lead Meta" do
+  it "preserva aceite e automação sem declarar Purchase ao aceitar proposta" do
     MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
     lead = create(:lead, tenant: tenant, attribution_channel: "meta_ads", admin_user: admin)
@@ -13,7 +13,10 @@ RSpec.describe Proposal, type: :model do
 
     expect do
       proposal.decide!("aceita")
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, "Purchase", kind_of(String), kind_of(String), 850000.0)
+    end.not_to have_enqueued_job(MetaConversionJob)
+    expect(proposal.reload.status).to eq("aceita")
+    expect(proposal.responded_at).to be_present
+    expect(AutomationEvent.where(lead: lead, name: "proposal_accepted")).to exist
   end
 
   it "não enfileira ao recusar nem para lead de outra origem" do

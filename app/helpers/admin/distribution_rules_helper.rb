@@ -18,12 +18,13 @@ module Admin::DistributionRulesHelper
   end
 
   def distribution_rule_mode_label(rule)
+    mode = rule.respond_to?(:distribution_mode) ? rule.distribution_mode : rule.to_s
     {
       "rotary" => "Rotativo",
-      "performance" => "Performance",
+      "performance" => "Sorteio ponderado",
       "shark_tank" => "Shark Tank",
       "attendance" => "Atendimento"
-    }.fetch(rule.distribution_mode, rule.distribution_mode.to_s.humanize)
+    }.fetch(mode, mode.humanize)
   end
 
   def distribution_rule_price_range(rule)

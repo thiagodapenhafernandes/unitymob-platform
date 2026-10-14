@@ -71,4 +71,27 @@ RSpec.describe InterestIntelligence::ProfileBuilder do
     expect(profile[:property_ids]).to include(viewed.id, interested.id)
     expect(profile[:criteria][:cities]).to include("Balneário Camboriú")
   end
+  it "usa a modalidade da busca para interpretar eventos antigos de imóveis mistos" do
+    lead = create(:lead, lead_type: "site")
+    habitation = create(:habitation, valor_venda_cents: 900_000_00, valor_locacao_cents: 4_000_00)
+    session = PublicNavigationSession.create!(lead: lead, token: SecureRandom.uuid)
+    session.events.create!(lead: lead, name: "property_search", search_params: { transaction_type: "aluguel" })
+    session.events.create!(lead: lead, habitation: habitation, name: "property_view", property_snapshot: { price_cents: 900_000_00 })
+    criteria = described_class.call(lead)[:criteria]
+    expect(criteria).to include(business_type: "locacao", min_price_cents: 4_000_00, max_price_cents: 4_000_00)
+  end
+
+  it "infere locação de imóvel sem preço de venda e não mistura modalidades conhecidas" do
+    lead = create(:lead)
+    habitation = create(:habitation, valor_venda_cents: 0, valor_locacao_cents: 2_000_00)
+    lead.property_interests.create!(tenant: lead.tenant, habitation: habitation)
+    expect(described_class.call(lead)[:criteria]).to include(business_type: "locacao", max_price_cents: 2_000_00)
+  end
+  it "respeita a modalidade de conversão do site para imóveis mistos" do
+    lead = create(:lead, attribution_data: { business_type: "rent" })
+    property = create(:habitation, valor_venda_cents: 900_000_00, valor_locacao_cents: 5_000_00)
+    lead.property_interests.create!(tenant: lead.tenant, habitation: property)
+    expect(described_class.call(lead)[:criteria]).to include(business_type: "locacao", max_price_cents: 5_000_00)
+  end
+
 end

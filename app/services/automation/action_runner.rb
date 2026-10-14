@@ -22,8 +22,17 @@ module Automation
 
       Current.set(tenant: tenant) do
         Thread.current[:automation_depth] = (Thread.current[:automation_depth] || 0) + 1
+        @from = from.to_i
+        if @automation_event
+          @run = @rule.automation_runs.where(lead: @lead, automation_event: @automation_event)
+            .where("COALESCE(result ->> 'from', '0') = ?", @from.to_s).order(:id).last
+          return if @run && %w[executed scheduled].include?(@run.status)
+        end
+        @run ||= @rule.automation_runs.create!(lead: @lead, automation_event: @automation_event,
+          status: "running", result: { from: @from, next_index: @from, actions: [] })
+        @log = Array(@run.result["actions"])
         actions = @rule.action_list
-        i = from
+        i = (@run.result["next_index"] || @from).to_i
         scheduled = false
 
         while i < actions.size
@@ -35,6 +44,7 @@ module Automation
           end
           execute(action)
           i += 1
+          @run.update!(result: { from: @from, next_index: i, actions: @log })
         end
 
         @rule.register_run! if from.zero?
@@ -50,14 +60,8 @@ module Automation
     private
 
     def record_run(status, error: nil)
-      AutomationRun.create!(
-        automation_rule: @rule,
-        lead: @lead,
-        automation_event: @automation_event,
-        status: status,
-        executed_at: Time.current,
-        result: { actions: @log, error: error }.compact
-      )
+      @run&.update!(status: status, executed_at: Time.current,
+                    result: @run.result.merge("actions" => @log, "error" => error).compact)
     end
 
     def execute(action)

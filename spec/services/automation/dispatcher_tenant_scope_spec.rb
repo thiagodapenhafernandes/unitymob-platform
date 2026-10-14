@@ -53,4 +53,21 @@ RSpec.describe Automation::Dispatcher do
       Automation::Dispatcher.process_event(event_a)
     }.to have_enqueued_job(Automation::RunActionsJob).with(rule.id, lead_a.id, 0, event_a.id)
   end
+  it "despacha eventos periódicos somente para a regra que selecionou o lead" do
+    rules = 2.times.map { |i| AutomationRule.create!(tenant: tenant_a, name: "Regra #{i}", trigger_event: "lead_idle", conditions: { idle_hours: 1 }, actions: [{ type: "add_note", body: "oi" }]) }
+    lead = create(:lead, admin_user: admin_a, updated_at: 2.hours.ago)
+    event = AutomationEvent.create!(tenant: tenant_a, lead: lead, name: "lead_idle", source: "automation_tick", payload: { automation_rule_id: rules.first.id })
+    clear_enqueued_jobs
+    Automation::Dispatcher.process_event(event)
+    expect(enqueued_jobs.select { |job| job[:job] == Automation::RunActionsJob }.map { |job| job[:args].first }).to eq([rules.first.id])
+  end
+
+  it "marca o evento como falho quando o despachante de fluxos lança erro" do
+    lead = create(:lead, admin_user: admin_a)
+    event = AutomationEvent.create!(tenant: tenant_a, lead: lead, name: "lead_created")
+    allow(Automation::WorkflowDispatcher).to receive(:dispatch_event).and_raise("Falha no runtime")
+    expect { Automation::ProcessEventJob.perform_now(event.id) }.to raise_error("Falha no runtime")
+    expect(event.reload.status).to eq("failed")
+  end
+
 end

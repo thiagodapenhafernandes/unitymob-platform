@@ -82,7 +82,7 @@ module Automation
         errors << "tem espera de resposta WhatsApp com unidade de timeout invalida" unless %w[minutes hours days].include?(unit.to_s)
       when "response_condition"
         errors << "tem condicao de resposta sem campo" if config[:field].blank?
-        errors << "tem condicao de resposta com operador invalido" unless %w[equals contains not_contains present].include?(config[:operator].to_s.presence || "equals")
+        errors << "tem condicao de resposta com operador invalido" unless %w[equals contains not_contains present valid_email valid_phone valid_number].include?(config[:operator].to_s.presence || "equals")
       when "response_fallback"
         errors << "tem fallback de resposta com tipo invalido" unless %w[timeout no_match exhausted].include?(config[:fallback_type].to_s.presence || "no_match")
         errors << "tem fallback de resposta com tentativas invalidas" if config[:max_attempts].present? && !(1..5).cover?(config[:max_attempts].to_i)
@@ -107,6 +107,7 @@ module Automation
     end
 
     def validate_wait_config(config, errors)
+      errors.concat(Automation::ScheduleCalculator.validation_messages(config))
       mode = config[:mode].presence || "duration"
       errors << "tem espera com modo invalido" unless %w[duration datetime business_duration next_business_window].include?(mode.to_s)
 
@@ -156,10 +157,7 @@ module Automation
           errors << "tem entrada de lead parado sem horas validas"
         end
         if type == "entry" && config[:trigger].to_s == "scheduled_routine"
-          frequency = config[:schedule_frequency].presence || "every_n_minutes"
-          errors << "tem rotina agendada com frequencia invalida" unless %w[every_n_minutes daily weekly monthly].include?(frequency.to_s)
-          errors << "tem rotina agendada sem intervalo valido" if frequency.to_s == "every_n_minutes" && config[:interval].to_i <= 0
-          errors << "tem rotina agendada mensal sem dia valido" if frequency.to_s == "monthly" && config[:month_day].to_i <= 0
+          errors.concat(Automation::ScheduleCalculator.recurring_validation_messages(config))
         end
 
         if type == "response_router"
@@ -200,6 +198,8 @@ module Automation
           validate_question_action(config, errors)
         when "transfer_to_attendant"
           errors << "tem acao de atendente sem fila de atendimento" if config[:distribution_rule_id].blank?
+        when "capture_answer"
+          errors.concat(Automation::AnswerCapture.validation_messages(config))
         when "send_webhook"
           errors << "tem acao de webhook sem URL" if config[:url].blank?
           if config[:url].present? && Automation::WebhookUrlPolicy.blocked?(config[:url])

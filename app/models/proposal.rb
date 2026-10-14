@@ -66,7 +66,6 @@ class Proposal < ApplicationRecord
   def decide!(decision)
     new_status = decision.to_s == "aceita" ? "aceita" : "recusada"
     update!(status: new_status, responded_at: Time.current)
-    Meta::ConversionDispatcher.call(lead: lead, milestone: :sale, value: valor) if new_status == "aceita"
     LeadActivity.log!(lead: lead, kind: "proposal_#{new_status}", metadata: { proposal_id: id })
     Automation::Dispatcher.dispatch(
       new_status == "aceita" ? :proposal_accepted : :proposal_rejected,

@@ -12,7 +12,9 @@ module Automation
         return unless lead
         return if automation_event_id.present? && automation_event.blank?
 
-        Automation::ActionRunner.run(rule, lead, from: from, automation_event: automation_event)
+        lead.with_lock do
+          Automation::ActionRunner.run(rule, lead, from: from, automation_event: automation_event)
+        end
       end
     end
   end

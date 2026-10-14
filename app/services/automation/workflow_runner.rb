@@ -7,37 +7,43 @@ module Automation
       return unless workflow.tenant_id == lead&.tenant_id
       return if automation_event.present? && automation_event.tenant_id != workflow.tenant_id
 
-      key = idempotency_key(workflow, workflow.active_version, lead, event, automation_event: automation_event)
-      execution = workflow.tenant.automation_executions.find_or_initialize_by(idempotency_key: key)
-      if execution.persisted?
-        if %w[failed canceled].include?(execution.status)
-          execution.update!(
-            status: "pending",
-            current_node_id: nil,
-            failed_at: nil,
-            error_message: nil
-          )
-          Automation::RunWorkflowJob.perform_later(execution.id)
+      workflow.with_lock do
+        return unless workflow.active?
+        target_version = automation_event&.payload_hash&.dig(:workflow_version_id)
+        return if target_version.present? && target_version.to_i != workflow.active_version_id
+        key = idempotency_key(workflow, workflow.active_version, lead, event, automation_event: automation_event)
+        execution = workflow.tenant.automation_executions.find_or_initialize_by(idempotency_key: key)
+        if execution.persisted?
+          if %w[failed canceled].include?(execution.status)
+            retry_from = execution.current_node_id if execution.status == "failed"
+            execution.update!(
+              status: "pending",
+              current_node_id: retry_from,
+              failed_at: nil,
+              error_message: nil
+            )
+            Automation::RunWorkflowJob.perform_later(execution.id, retry_from)
+          end
+          return execution
         end
-        return execution
-      end
 
-      execution.assign_attributes(
-        tenant: workflow.tenant,
-        automation_workflow: workflow,
-        automation_workflow_version: workflow.active_version,
-        lead: lead,
-        automation_event: automation_event,
-        status: "pending",
-        context: {
-          "event" => event.to_s,
-          "automation_event_id" => automation_event&.id,
-          "automation_event_source" => automation_event&.source
-        }.compact.merge(initial_response_context(event, automation_event)).merge(trigger_message_context(event, automation_event))
-      )
-      execution.save!
-      Automation::RunWorkflowJob.perform_later(execution.id)
-      execution
+        execution.assign_attributes(
+          tenant: workflow.tenant,
+          automation_workflow: workflow,
+          automation_workflow_version: workflow.active_version,
+          lead: lead,
+          automation_event: automation_event,
+          status: "pending",
+          context: {
+            "event" => event.to_s,
+            "automation_event_id" => automation_event&.id,
+            "automation_event_source" => automation_event&.source
+          }.compact.merge(initial_response_context(event, automation_event)).merge(trigger_message_context(event, automation_event))
+        )
+        execution.save!
+        Automation::RunWorkflowJob.perform_later(execution.id)
+        execution
+      end
     end
 
     def self.run(execution, from_node_id: nil)
@@ -88,6 +94,7 @@ module Automation
       @lead = execution.lead
       @definition = @version.definition_hash
       @executor = Automation::ActionExecutor.new(@lead, automation_event: execution.automation_event)
+      @executor.variables = captured_variables
     end
 
     def run(from_node_id: nil)
@@ -148,6 +155,12 @@ module Automation
         end
       when "action"
         action = Automation::WorkflowActionAdapter.to_action(node)
+        if action["type"] == "capture_answer"
+          capture_answer(step, node, action)
+          return :completed if stop_after_node?(node)
+
+          return
+        end
         action = action.merge("answers" => Array(@execution.context.to_h["answers"])) if action["type"] == "transfer_to_attendant"
         begin
           @executor.execute(action)
@@ -209,7 +222,28 @@ module Automation
       end
     rescue => e
       step&.update!(status: "failed", finished_at: Time.current, error_message: e.message)
+      @execution.update!(current_node_id: node[:id])
       raise
+    end
+
+    # Guarda a última resposta como variável do fluxo ({{resposta.<nome>}}) e, se configurado, no lead.
+    def capture_answer(step, node, action)
+      result = Automation::AnswerCapture.call(lead: @lead, config: action, response_body: whatsapp_response_context[:body])
+      if result.variable.present? && result.value.present?
+        context = @execution.context.to_h.deep_dup
+        context["variables"] = (context["variables"] || {}).merge(result.variable => result.value)
+        @execution.update!(context: context)
+        @executor.variables = context["variables"]
+      end
+      complete_step(step, output: {
+        "action" => action, "label" => Automation::ActionExecutor.label(action),
+        "variable" => result.variable, "captured" => result.value.present?, "lead_field" => result.lead_field,
+        "lead_written" => result.lead_written, "note" => result.note
+      }.compact)
+    end
+
+    def captured_variables
+      @execution.context.to_h["variables"].to_h
     end
 
     def schedule_wait(step, node)
@@ -227,7 +261,7 @@ module Automation
       )
       @execution.update!(status: "waiting", current_node_id: node[:id])
 
-      schedule_resume_jobs(scheduled_for, next_ids)
+      step.enqueue_resume!(node_ids: next_ids, scheduled_for: scheduled_for)
     end
 
     def schedule_await_event(step, node)
@@ -251,7 +285,7 @@ module Automation
       )
       @execution.update!(status: "waiting", current_node_id: node[:id])
 
-      schedule_resume_jobs(scheduled_for, next_ids)
+      step.enqueue_resume!(node_ids: next_ids, scheduled_for: scheduled_for)
     end
 
     def schedule_response_router(step, node)
@@ -276,7 +310,7 @@ module Automation
       )
       @execution.update!(status: "waiting", current_node_id: node[:id])
 
-      schedule_resume_jobs(scheduled_for, next_ids)
+      step.enqueue_resume!(node_ids: next_ids, scheduled_for: scheduled_for)
     end
 
     def schedule_await_whatsapp_response(step, node)
@@ -304,18 +338,7 @@ module Automation
       )
       @execution.update!(status: "waiting", current_node_id: node[:id])
 
-      schedule_resume_jobs(scheduled_for, timeout_next_ids.presence || next_ids)
-    end
-
-    def schedule_resume_jobs(scheduled_for, next_ids)
-      ids = Array(next_ids).reject(&:blank?)
-      if ids.any?
-        ids.each do |next_id|
-          Automation::RunWorkflowJob.set(wait_until: scheduled_for).perform_later(@execution.id, next_id)
-        end
-      else
-        Automation::RunWorkflowJob.set(wait_until: scheduled_for).perform_later(@execution.id)
-      end
+      step.enqueue_resume!(node_ids: timeout_next_ids.presence || next_ids, scheduled_for: scheduled_for)
     end
 
     def schedule_action_retry(step, node, error)
@@ -342,7 +365,7 @@ module Automation
         }
       )
       @execution.update!(status: "waiting", current_node_id: node[:id])
-      Automation::RunWorkflowJob.set(wait_until: scheduled_for).perform_later(@execution.id, node[:id])
+      step.enqueue_resume!(node_ids: [node[:id]], scheduled_for: scheduled_for)
       :waiting
     end
 
@@ -359,22 +382,7 @@ module Automation
     end
 
     def condition_matched?(node)
-      config = (node[:config] || {}).with_indifferent_access
-      checks = []
-
-      if config[:stage].present?
-        return false unless @lead
-        checks << (Lead.status_value(@lead.status) == Lead.status_value(config[:stage]))
-      end
-
-      if config[:source].present?
-        return false unless @lead
-        checks << @lead.origin.to_s.casecmp?(config[:source].to_s)
-      end
-
-      return true if checks.empty?
-
-      config[:operator].to_s == "or" ? checks.any? : checks.all?
+      Automation::ConditionMatcher.workflow_node?(node, @lead)
     end
 
     def response_condition_matched?(node)
