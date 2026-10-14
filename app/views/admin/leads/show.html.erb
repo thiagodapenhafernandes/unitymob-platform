@@ -1598,6 +1598,9 @@
     }
 
   }
+  @media (max-width: 767.98px) {
+    .lead-desktop-journey-trigger, .lead-desktop-panels { display: none !important; }
+  }
 </style>
 
 <div class="lead-show-workspace" data-controller="attribute-manager" data-attribute-manager-modal-id-value="attributeManagerModalLead">
@@ -1833,6 +1836,9 @@
     <button type="button" class="ax-btn ax-btn--sm" data-ax-modal-open="#leadAuditHistoryModal">
       <i class="bi bi-clock-history ax-ico"></i><span>Histórico</span>
     </button>
+    <button type="button" class="ax-btn ax-btn--sm lead-desktop-journey-trigger" data-ax-modal-open="#leadJourneyModal">
+      <i class="bi bi-signpost-2 ax-ico"></i><span>Jornada</span>
+    </button>
   <% end %>
 
 <%
@@ -1852,6 +1858,7 @@
       actions: @lead_heading_actions
     ) %>
 
+<div id="lead-attendance" class="lead-desktop-panels">
 <%= render "admin/leads/origin_line", lead: @lead, origin: (@lead_origin_taxonomy ||= lead_origin_for(@lead, tenant: current_tenant)) %>
 <%= render "admin/shared/ui/lead_form_responses", lead: @lead %>
 
@@ -2205,6 +2212,13 @@
   </div>
 </div>
 
+</div>
+<% journey_modal_body = capture do %>
+  <%= turbo_frame_tag dom_id(@lead, :journey), src: journey_admin_lead_path(@lead), loading: :lazy do %>
+    <%= ax_empty_state(title: "Carregando jornada", description: "Consultando os registros deste lead.", icon: "clock-history") %>
+  <% end %>
+<% end %>
+<%= ax_quick_modal(id: "leadJourneyModal", title: "Jornada do atendimento · #{@lead.display_name}", size: :xl, body: journey_modal_body) %>
 <%= render "admin/shared/attribute_manager_modal", modal_id: "attributeManagerModalLead" %>
 <%= render "admin/leads/audit_history_modal", lead: @lead, audit_logs: @lead_audit_logs %>
 </div>

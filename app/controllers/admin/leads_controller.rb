@@ -122,8 +122,8 @@ class Admin::LeadsController < Admin::BaseController
   requires_permission :edit, :leads, only: [:update, :reply_instagram, :share_properties, :suggest_properties, :reconcile_inquiry]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
+  before_action :set_lead, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
+  before_action :authorize_lead_access!, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -425,6 +425,11 @@ class Admin::LeadsController < Admin::BaseController
     @interest_settings = InterestIntelligence::Settings.current
     load_lead_favorite_context
     @lead_vcard_enabled = LeadSetting.instance(tenant: current_tenant).vcard_enabled?
+  end
+
+  def journey
+    @journey = Leads::Journey.new(@lead)
+    render partial: "admin/leads/journey", locals: { lead: @lead, journey: @journey }
   end
 
   def toggle_favorite

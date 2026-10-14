@@ -282,6 +282,7 @@ Rails.application.routes.draw do
       get :preview, on: :member
       patch :toggle_favorite, on: :member
       post :log_contact, on: :member
+      get :journey, on: :member
       get :interest_intelligence, on: :member
       post :open_whatsapp_conversation, on: :member
       post :activate_whatsapp_template, on: :member

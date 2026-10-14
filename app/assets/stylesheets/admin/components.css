@@ -95,4 +95,5 @@
  *= require admin/components/lead_migration_integration
  *= require admin/components/lead_pipeline_stages
  *= require admin/components/public_header_studio
+ *= require admin/components/journey_explorer
  */

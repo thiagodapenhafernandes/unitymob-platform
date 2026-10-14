@@ -1,0 +1,27 @@
+<section class="ax-journey" aria-label="Jornada do atendimento"
+         data-controller="ax-journey" data-ax-journey-data-value="<%= journey.to_json %>"
+         data-ax-journey-chart-url-value="<%= asset_path('echarts.esm.min.js') %>">
+  <div class="ax-journey__story"><span class="ax-journey__dot"></span><strong><%= journey[:summary] %></strong><span data-ax-journey-target="summaryClock"></span></div>
+  <div class="ax-journey__workspace">
+    <section class="ax-journey__plot">
+      <header class="ax-journey__heading"><div><h2>Uma jornada, três perspectivas</h2><p>Selecione um evento ou amplie o início para investigar as evidências.</p></div><button type="button" class="ax-btn ax-btn--outline ax-btn--sm" data-action="ax-journey#zoom" data-ax-journey-target="zoomButton"><i class="bi bi-zoom-in" aria-hidden="true"></i> Ampliar início</button></header>
+      <p hidden data-ax-journey-target="error" role="status">Não foi possível carregar o gráfico. As evidências continuam disponíveis pelos eventos abaixo.</p>
+      <div class="ax-journey__chart" data-ax-journey-target="chart" role="img" aria-label="Jornada nas perspectivas de Entrada, Automação e Corretor; selecione os eventos pelos botões abaixo para consultar as evidências"></div>
+      <nav class="ax-journey__events" aria-label="Eventos da jornada">
+        <% journey[:milestones].each do |milestone| %>
+          <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="ax-journey#select" data-key="<%= milestone[:key] %>" aria-pressed="false" data-ax-journey-target="event"><span class="ax-journey__event-dot" data-confirmed="<%= milestone[:confirmed] %>"></span><%= milestone[:title] %></button>
+        <% end %>
+      </nav>
+      <footer class="ax-journey__legend"><span>● Evento confirmado</span><span>● Sistema</span><span>● Pendente / sem confirmação</span><span>Zoom pelo mouse ou pelo controle</span></footer>
+    </section>
+    <aside class="ax-journey__inspector" aria-label="Evidências do evento selecionado" data-ax-journey-target="inspector">
+      <small>EVENTO SELECIONADO</small><h2 aria-live="polite" data-ax-journey-target="title"></h2><span class="ax-badge" data-ax-journey-target="state"></span>
+      <div class="ax-journey__clock" data-ax-journey-target="clock" hidden></div>
+      <p data-ax-journey-target="description"></p>
+      <dl class="ax-journey__facts"><dt>Responsável atual</dt><dd><%= journey[:lead][:owner] %></dd><dt>Origem do cadastro</dt><dd><%= journey[:lead][:origin] %></dd><dt>Imóvel do cadastro</dt><dd><%= journey[:lead][:property] %></dd></dl>
+      <div class="ax-journey__evidence" data-ax-journey-target="evidence"></div>
+      <div class="ax-journey__next"><small>ONDE AGIR</small><h3 data-ax-journey-target="nextTitle"></h3><button type="button" class="ax-btn ax-btn--primary" data-action="ax-journey#attendance" data-ax-journey-target="action">Continuar em Atendimento</button></div>
+    </aside>
+  </div>
+  <p class="ax-journey__note">As posições representam os marcos do processo; as datas vêm das fontes reais. Aceite não confirma contato, agendamento não confirma visita realizada e proposta aceita não confirma fechamento ou pagamento. Até 10 registros recentes por fonte, preservando confirmações antigas; o histórico completo permanece em Atendimento.</p>
+</section>
