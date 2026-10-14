@@ -108,7 +108,7 @@ class WebhookService
         pais_iso: "BR",
         legal_bases: Privacy::LegalBases.for_information(values[:other_information]),
         lead_id: lead_event ? values[:id]&.to_s : nil,
-        business_type: { "sale" => "venda", "rent" => "locacao" }.fetch(values[:business_type].to_s, values[:business_type]),
+        business_type: Leads::Attribution.business_type(values[:business_type]),
         value: values[:value],
         currency: values[:value].present? ? (values[:currency].presence || "BRL") : nil,
         user_data: lead_event ? lead_user_data(values) : nil,

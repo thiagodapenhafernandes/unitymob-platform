@@ -48,3 +48,5 @@ Auditoria de rastreamento: [evidências e recorte implementado](tracking-audit.m
 - `WebhookTestForm`: formulário de diagnóstico compartilhado pela listagem e edição de webhooks; reutiliza o envelope e a entrega de `WebhookService`, com destino e permissões da configuração salva.
 
 - `Dashboard::LeadPerformancePeriodQuery`: período compartilhado de performance de corretores/Excel e ranking do bolsão. Inclui criação no período ou aceite no período marcado como shark tank ou precedido por `pocket_pool_ready`, sem duplicar leads. Mantém responsáveis atuais, permissões, conta, filtros e exclusão de contatos internos do escopo recebido; não modifica os indicadores de aquisição por data de criação.
+
+- `Leads::Attribution.business_type` / `BUSINESS_TYPE_VALUES`: contrato canônico de modalidade no webhook e no envelope público de tracking. Os aliases do dataLayer preservam compatibilidade com containers existentes.

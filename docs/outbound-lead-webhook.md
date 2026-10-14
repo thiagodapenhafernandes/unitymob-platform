@@ -137,3 +137,9 @@ O botão de teste do admin envia sempre dados fictícios completos (contato, im�
 Na listagem e na edição, o botão abre o mesmo modal HTML com dados fictícios editáveis. Cada abertura renova `event_id`, `transaction_id` e o timestamp; o nome padrão é `lead_crm`. O usuário pode alterar evento, contato, conversão, imóvel, rastreamento e contexto. O servidor valida os campos, fixa `diagnostic: true` e `origin_form: test_webhook`, e usa somente a URL salva no webhook autorizado da conta. Não cria lead nem altera a configuração.
 
 O modal mostra o status HTTP e o payload efetivamente enviado, com opção de copiar. HTTP 2xx confirma a resposta do destino, não o processamento das tags. Os campos legados `data` e `source.utm` refletem as alterações do formulário. `WebhookTestForm` concentra a montagem e validação do teste; o envio utiliza `WebhookService.deliver`.
+
+### Nomes canônicos entre site e webhook
+
+`business_type` é o campo padrão: `venda`, `locacao`, `venda_locacao` (ambos) ou `geral`. A tradução de valores legados é definida em `Leads::Attribution::BUSINESS_TYPE_VALUES`, reutilizada pelo webhook e serializada para o rastreamento do site. No navegador, `negotiation_type` permanece com seus valores anteriores para compatibilidade. O roteamento WhatsApp interno continua usando seu contrato original.
+
+O site envia `event_name` junto com `event` (obrigatório para gatilhos do dataLayer). Para imóveis, `property_id` e `property_code` usam o código público, como no webhook; `habitation_id` continua sendo o ID interno legado. Quando não houver código disponível, os campos públicos ficam vazios, sem substituir pelo ID interno. Eventos de clique e de captura/qualificação continuam distintos: padronizar campos não significa que sejam a mesma conversão nem que compartilhem identificação de deduplicação.

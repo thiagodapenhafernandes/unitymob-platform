@@ -1,5 +1,12 @@
 module Leads
   class Attribution
+    BUSINESS_TYPE_VALUES = { "sale" => "venda", "rent" => "locacao", "rental" => "locacao",
+                             "sale_rent" => "venda_locacao", "general" => "geral" }.freeze
+
+    def self.business_type(value)
+      BUSINESS_TYPE_VALUES.fetch(value.to_s, value)
+    end
+
     TRACKING_KEYS = %w[
       landing_url referrer_url utm_source utm_medium utm_campaign utm_term
       utm_content utm_id campaign_id campaign_name ad_id adset_id form_id

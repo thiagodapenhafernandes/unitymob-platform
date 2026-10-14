@@ -1,4 +1,5 @@
 require "rails_helper"
+require "open3"
 
 RSpec.describe "Tracking tags", type: :request do
   include Devise::Test::IntegrationHelpers
@@ -61,6 +62,24 @@ RSpec.describe "Tracking tags", type: :request do
     expect(response.body).to include("https://load.gtm.saluteimoveis.com.br", 'cookie("si_uid")', 'safari = safari && !!uid')
     expect(response.body).not_to include("https://www.googletagmanager.com/gtm.js", "https://www.googletagmanager.com/ns.html")
     expect(response.body).to include('negotiation_type: target.dataset.negotiationType || "general"')
+  end
+
+  it "padroniza o envelope do site e preserva aliases sem confundir ID interno com código" do
+    Setting.set(TrackingIntegrationSetting::GTM_ENABLED_KEY, "true")
+    Setting.set(TrackingIntegrationSetting::GTM_CONTAINER_ID_KEY, "GTM-ABC123")
+    get root_path
+    function = response.body[/function trackingPayload\(eventName, payload\).*?(?=function track\()/m]
+    expect(function).to be_present
+    script = "var w = {location: {href: 'https://example.test'}}; #{function}; console.log(JSON.stringify(['sale','rent','sale_rent','general'].map(type => trackingPayload('whatsapp_click', {negotiation_type:type, habitation_id:'23680', property_code:'AP1234'}))));"
+    output, error, status = Open3.capture3("node", "-e", script)
+    expect(status.success?).to be(true), error
+    payloads = JSON.parse(output)
+    expect(payloads.map { |data| data["business_type"] }).to eq(%w[venda locacao venda_locacao geral])
+    expect(%w[sale rent sale_rent general].map { |value| Leads::Attribution.business_type(value) }).to eq(%w[venda locacao venda_locacao geral])
+    payloads.each do |data|
+      expect(data).to include("event" => "whatsapp_click", "event_name" => "whatsapp_click", "property_id" => "AP1234", "property_code" => "AP1234", "habitation_id" => "23680")
+    end
+    expect(payloads.map { |data| data["negotiation_type"] }).to eq(%w[sale rent sale_rent general])
   end
 
 end

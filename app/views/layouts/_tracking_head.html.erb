@@ -37,9 +37,16 @@
 
       function trackingPayload(eventName, payload) {
         var data = payload || {};
+        var businessTypes = <%= raw Leads::Attribution::BUSINESS_TYPE_VALUES.to_json %>;
+        var businessType = data.business_type || data.negotiation_type || "general";
+        var propertyCode = data.property_code || "";
 
         return {
           event: eventName,
+          event_name: eventName,
+          business_type: businessTypes[businessType] || businessType,
+          property_id: propertyCode,
+          property_code: propertyCode,
           event_category: data.event_category || "public_site",
           event_label: data.event_label || data.label || "",
           click_url: data.click_url || data.target_url || "",
@@ -47,7 +54,7 @@
           placement: data.placement || "",
           component: data.component || "",
           habitation_id: data.habitation_id || "",
-          negotiation_type: data.negotiation_type || "general"
+          negotiation_type: data.negotiation_type || Object.keys(businessTypes).find(function(key) { return businessTypes[key] === businessType; }) || businessType
         };
       }
 
@@ -93,7 +100,9 @@
           click_url: target.href || target.dataset.trackingUrl || "",
           placement: target.dataset.trackingPlacement || "",
           component: target.dataset.trackingComponent || "",
+          business_type: target.dataset.businessType || target.dataset.negotiationType || "general",
           negotiation_type: target.dataset.negotiationType || "general",
+          property_code: target.dataset.propertyCode || "",
           habitation_id: target.dataset.propertyId || target.dataset.habitationId || ""
         });
       }
