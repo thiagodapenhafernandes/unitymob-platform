@@ -145,16 +145,6 @@
   transition: background-color .15s ease, opacity .15s ease;
 }
 
-.whatsapp-response-simulator__template.has-active-button .ax-message-preview__button:not(.is-active) {
-  opacity: .5;
-}
-
-.whatsapp-response-simulator__template .ax-message-preview__button.is-active {
-  background: #d9fdd3;
-  color: #0b6b2c;
-  font-weight: 800;
-}
-
 .whatsapp-response-simulator__thread {
   display: grid;
   gap: 6px;

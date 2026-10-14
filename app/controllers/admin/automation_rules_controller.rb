@@ -3,8 +3,10 @@ class Admin::AutomationRulesController < Admin::BaseController
   before_action :set_rule, only: [:edit, :update, :destroy, :toggle_active]
 
   def index
-    @rules = current_tenant.automation_rules.ordered
-    @workflows = current_tenant.automation_workflows.includes(:active_version).recent.limit(12)
+    @rule_count = current_tenant.automation_rules.count
+    @workflow_count = current_tenant.automation_workflows.count
+    @rules = current_tenant.automation_rules.ordered.paginate(page: params[:rules_page], per_page: 20)
+    @workflows = current_tenant.automation_workflows.includes(:active_version).recent.paginate(page: params[:workflows_page], per_page: 12)
     @recent_runs = AutomationRun.joins(:automation_rule).where(automation_rules: { tenant_id: current_tenant.id }).includes(:automation_rule, :lead).recent.limit(20)
     @page_title = "Automação de acompanhamento"
   end

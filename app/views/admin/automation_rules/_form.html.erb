@@ -70,26 +70,7 @@
   <% end %>
 
   <% if @simulation_result %>
-    <%= ax_operational_panel(eyebrow: "Prévia", title: "Resultado da simulação", class_name: "tw-mb-4") do %>
-        <div class="tw-flex tw-items-start tw-gap-3">
-          <i class="bi bi-search tw-text-primary" aria-hidden="true"></i>
-          <div>
-            <h2 class="ax-page-title tw-text-base tw-mb-1"><%= @simulation_result.title %></h2>
-            <p class="ax-page-subtitle tw-mb-2"><%= @simulation_result.summary %></p>
-            <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mb-2">
-              <% @simulation_result.actions.each do |label| %>
-                <%= ax_badge(label, tone: :green) %>
-              <% end %>
-            </div>
-            <% if @simulation_result.sample_leads.any? %>
-              <p class="ax-page-subtitle tw-mb-2"><strong>Amostra:</strong> <%= @simulation_result.sample_leads.map(&:display_name).to_sentence %></p>
-            <% end %>
-            <% @simulation_result.warnings.each do |warning| %>
-              <%= ax_inline_notice(tone: :warning, icon: "info-circle", class_name: "tw-mb-1") { warning } %>
-            <% end %>
-          </div>
-        </div>
-    <% end %>
+    <%= render "admin/shared/automation_simulation", result: @simulation_result %>
   <% end %>
 
   <%= ax_form_actions do %>

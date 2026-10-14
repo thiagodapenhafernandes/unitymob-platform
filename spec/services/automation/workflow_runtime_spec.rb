@@ -40,6 +40,37 @@ RSpec.describe "Automation workflow runtime" do
     }
   end
 
+  it "não inicia outro workflow em eventos direcionados e valida filtros de lead parado" do
+    workflows = [1, 48].map do |hours|
+      entry = entry_node(trigger: "lead_idle")
+      entry["config"].merge!("idle_hours" => hours, "stage" => "Em Atendimento", "source" => "Site")
+      publish_workflow(definition_with(entry,
+        { "id" => "action_1", "type" => "action", "config" => { "action_type" => "add_note", "body" => "oi" } },
+        edges: [{ "from" => "entry_1", "to" => "action_1" }]))
+    end
+    lead.update_columns(updated_at: 2.hours.ago)
+    event = AutomationEvent.create!(lead: lead, name: "lead_idle", source: "automation_tick", payload: { workflow_id: workflows.first.id })
+    Automation::WorkflowDispatcher.dispatch_event(event)
+    expect(AutomationExecution.where(automation_event: event).pluck(:automation_workflow_id)).to eq([workflows.first.id])
+
+    event.update!(payload: { workflow_id: workflows.last.id })
+    expect { Automation::WorkflowDispatcher.dispatch_event(event) }.not_to change(AutomationExecution, :count)
+  end
+
+  it "avança o lote da rotina agendada sem reenviar leads do mesmo período" do
+    entry = entry_node(trigger: "scheduled_routine")
+    entry["config"]["interval"] = 60
+    workflow = publish_workflow(definition_with(entry,
+      { "id" => "action_1", "type" => "action", "config" => { "action_type" => "add_note", "body" => "oi" } },
+      edges: [{ "from" => "entry_1", "to" => "action_1" }]))
+    second = create(:lead, admin_user: admin)
+    Automation::WorkflowDispatcher.dispatch_scheduled_routines(limit: 1)
+    Automation::WorkflowDispatcher.dispatch_scheduled_routines(limit: 1)
+    events = AutomationEvent.where(name: "scheduled_routine", source: "automation_tick")
+    expect(events.pluck(:lead_id)).to contain_exactly(lead.id, second.id)
+    expect { Automation::WorkflowDispatcher.dispatch_scheduled_routines(limit: 1) }.not_to change { events.count }
+  end
+
   it "despacha workflow ativo para evento correspondente" do
     workflow = publish_workflow(
       definition_with(
@@ -480,7 +511,7 @@ RSpec.describe "Automation workflow runtime" do
     expect(step.output["retry_attempt"]).to eq(1)
     expect(execution.context["retries"]["action_1"]).to eq(1)
     expect(Automation::RunWorkflowJob).to have_received(:set).with(hash_including(:wait_until))
-    expect(Automation::RunWorkflowJob).to have_received(:perform_later).with(execution.id, "action_1")
+    expect(Automation::RunWorkflowJob).to have_received(:perform_later).with(execution.id, "action_1", anything, "timeout")
   end
 
   it "agenda continuacao quando encontra espera" do
@@ -519,7 +550,7 @@ RSpec.describe "Automation workflow runtime" do
     expect(execution.reload.status).to eq("waiting")
     expect(execution.steps.where(node_id: "wait_1").last.status).to eq("waiting")
     expect(Automation::RunWorkflowJob).to have_received(:set).with(hash_including(:wait_until))
-    expect(Automation::RunWorkflowJob).to have_received(:perform_later).with(execution.id, "action_1")
+    expect(Automation::RunWorkflowJob).to have_received(:perform_later).with(execution.id, "action_1", anything, "timeout")
   end
 
   it "agenda espera ate uma data e hora especifica" do
@@ -597,7 +628,7 @@ RSpec.describe "Automation workflow runtime" do
 
     expect {
       Automation::Dispatcher.process_event(event)
-    }.to have_enqueued_job(Automation::RunWorkflowJob).with(execution.id, "action_1")
+    }.to have_enqueued_job(Automation::RunWorkflowJob).with(execution.id, "action_1", anything, "event:#{event.id}")
 
     step = execution.steps.where(node_id: "await_1").last
     expect(step.reload.status).to eq("completed")

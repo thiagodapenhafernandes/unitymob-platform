@@ -49,3 +49,18 @@ RSpec.describe Automation::ResponseCondition do
     expect(matches(field: "lead.status", operator: "present")).to be false
   end
 end
+
+RSpec.describe Automation::ResponseCondition, "validadores de resposta" do
+  def matches?(operator, body)
+    described_class.new(payload: {}, lead: nil) { body }.matches?({ field: "message.body", operator: operator })
+  end
+
+  it "reconhece e-mail, telefone e numero validos e recusa o resto" do
+    expect(matches?("valid_email", "maria@exemplo.com")).to be(true)
+    expect(matches?("valid_email", "maria@")).to be(false)
+    expect(matches?("valid_phone", "(47) 99999-1234")).to be(true)
+    expect(matches?("valid_phone", "abc")).to be(false)
+    expect(matches?("valid_number", "1500,50")).to be(true)
+    expect(matches?("valid_number", "mil")).to be(false)
+  end
+end

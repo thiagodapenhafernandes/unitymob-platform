@@ -45,22 +45,7 @@
   <% end %>
 
   <% if simulation_result %>
-    <div class="automation-workflow-monitor__notice automation-workflow-monitor__notice--simulation">
-      <i class="bi bi-search"></i>
-      <div>
-        <strong><%= simulation_result.title %></strong>
-        <p><%= simulation_result.summary %></p>
-        <% if simulation_result.actions.any? %>
-          <p><strong>Intervenções:</strong> <%= simulation_result.actions.to_sentence %></p>
-        <% end %>
-        <% if simulation_result.sample_leads.any? %>
-          <p><strong>Amostra:</strong> <%= simulation_result.sample_leads.map(&:display_name).to_sentence %></p>
-        <% end %>
-        <% if simulation_result.warnings.any? %>
-          <p><strong>Avisos:</strong> <%= simulation_result.warnings.to_sentence %></p>
-        <% end %>
-      </div>
-    </div>
+    <%= render "admin/shared/automation_simulation", result: simulation_result %>
   <% end %>
 
   <div class="automation-workflow-monitor__grid">

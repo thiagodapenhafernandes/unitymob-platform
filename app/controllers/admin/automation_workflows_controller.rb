@@ -1,6 +1,6 @@
 class Admin::AutomationWorkflowsController < Admin::BaseController
   requires_permission :manage, :automacoes
-  before_action :set_workflow, only: [:show, :builder, :destroy, :save_draft, :publish, :simulate]
+  before_action :set_workflow, only: [:show, :builder, :destroy, :save_draft, :publish, :simulate, :pause, :resume]
   before_action :set_catalogs, only: [:builder]
 
   # A listagem de fluxos vive no hub de automação; esta rota só existia como alvo de "Sair para listagem".
@@ -66,9 +66,12 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
     version = @workflow.draft_version!
     definition = mark_campaign_workflow_customized(parse_definition)
     version.assign_attributes(definition: definition)
+    @workflow.assign_attributes(workflow_params)
 
-    if @workflow.update(workflow_params) && version.save
+    if @workflow.valid? && version.valid?
       ActiveRecord::Base.transaction do
+        @workflow.save!
+        version.save!
         @workflow.publish!(version: version, admin_user: current_admin_user)
         Automation::ReceptiveBinding.call(@workflow, entry_config(definition))
       end
@@ -107,6 +110,16 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
       flash.now[:alert] = "A simulação não pode ser gerada com a definição atual."
       render :builder, status: :unprocessable_entity
     end
+  end
+
+  def pause
+    @workflow.pause!
+    redirect_to admin_automation_rules_path, notice: "Fluxo pausado. As esperas foram preservadas."
+  end
+
+  def resume
+    @workflow.resume!
+    redirect_to admin_automation_rules_path, notice: "Fluxo retomado. Os prazos já agendados foram mantidos."
   end
 
   def destroy
@@ -154,7 +167,8 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
       { id: template.id, name: template.name, waba_id: template.waba_id,
         existing_flow: flow && { id: flow.id, name: flow.name, workflow_id: flow.automation_workflow_id },
         receptive_ok: %w[response_flow attendance].include?(template.usage_context.to_s),
-        scaffold: Automation::TemplateScaffold.call(template) }
+        scaffold: Automation::TemplateScaffold.call(template),
+        preview_html: render_to_string(partial: "admin/shared/ui/whatsapp_message_preview", formats: [:html], locals: { template: template }) }
     end
   end
 
@@ -184,8 +198,10 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
 
     return false unless @workflow.valid? && version.valid?
 
-    @workflow.save!
-    version.save!
+    ActiveRecord::Base.transaction do
+      @workflow.save!
+      version.save!
+    end
     true
   end
 
@@ -197,11 +213,10 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
 
   def parse_definition
     raw = params.dig(:automation_workflow, :definition_json).to_s
-    return Automation::WorkflowDefinition.default_definition if raw.blank?
-
-    JSON.parse(raw)
+    parsed = JSON.parse(raw)
+    parsed.is_a?(Hash) && parsed.present? ? parsed : { "nodes" => [] }
   rescue JSON::ParserError
-    {}
+    { "nodes" => [] }
   end
 
   def mark_campaign_workflow_customized(definition)

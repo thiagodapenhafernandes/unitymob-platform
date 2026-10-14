@@ -18,6 +18,12 @@ module Automation
       case condition[:operator].to_s
       when "present"
         value.present?
+      when "valid_email"
+        value.to_s.strip.match?(URI::MailTo::EMAIL_REGEXP)
+      when "valid_phone"
+        Phones::Normalizer.valid?(value.to_s)
+      when "valid_number"
+        value.to_s.strip.match?(/\A-?\d+([.,]\d+)?\z/)
       when "not_contains"
         expected.blank? || !value.to_s.downcase.include?(expected.downcase)
       when "contains"

@@ -49,12 +49,13 @@ class AutomationRule < ApplicationRecord
     "wait"                    => "Esperar (nutrição)",
     "send_whatsapp_buttons"   => "Perguntar com botões",
     "send_whatsapp_list"      => "Perguntar com lista",
-    "transfer_to_attendant"   => "Passar para atendente"
+    "transfer_to_attendant"   => "Passar para atendente",
+    "capture_answer"          => "Guardar resposta do cliente"
   }.freeze
 
   VERTICAL_DISTRIBUTION_ACTION_TYPES = %w[assign_agent].freeze
   # Ações de conversa só fazem sentido em fluxos do construtor (esperam resposta); ficam fora das regras legadas.
-  CONVERSATION_ACTION_TYPES = %w[send_whatsapp_buttons send_whatsapp_list transfer_to_attendant].freeze
+  CONVERSATION_ACTION_TYPES = %w[send_whatsapp_buttons send_whatsapp_list transfer_to_attendant capture_answer].freeze
   INTERVENTION_ACTION_TYPES = ACTION_TYPES.except(*VERTICAL_DISTRIBUTION_ACTION_TYPES, *CONVERSATION_ACTION_TYPES).freeze
   WORKFLOW_ACTION_TYPES = ACTION_TYPES.except(*VERTICAL_DISTRIBUTION_ACTION_TYPES).freeze
 

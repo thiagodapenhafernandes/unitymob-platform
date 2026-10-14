@@ -13,6 +13,7 @@ class AutomationWorkflowVersion < ApplicationRecord
            inverse_of: :automation_workflow_version
 
   before_validation :set_defaults
+  after_update_commit :enqueue_existing_leads!, if: -> { saved_change_to_status? && status == "published" }
 
   validates :version_number, numericality: { only_integer: true, greater_than: 0 }
   validates :version_number, uniqueness: { scope: :automation_workflow_id }
@@ -54,6 +55,13 @@ class AutomationWorkflowVersion < ApplicationRecord
     messages.each { |message| errors.add(:definition, message) }
     self.validation_snapshot = { "errors" => messages }
     update_column(:validation_snapshot, validation_snapshot) if persisted?
+  end
+
+  def enqueue_existing_leads!
+    entry = Array(definition_hash[:nodes]).find { |node| node[:type].to_s == "entry" }
+    return unless entry&.dig(:config, :entry_policy).to_s == "existing_and_future"
+
+    Automation::BackfillWorkflowJob.perform_later(automation_workflow_id, id)
   end
 
   private

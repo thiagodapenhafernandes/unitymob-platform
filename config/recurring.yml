@@ -174,7 +174,7 @@ production:
   automation_tick:
     class: Automation::TickJob
     queue: default
-    schedule: every 15 minutes
+    schedule: every minute
   lead_pipeline_stage_auto_advance:
     class: Leads::PipelineStageAutoAdvanceJob
     queue: default

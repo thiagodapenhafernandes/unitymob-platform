@@ -30,6 +30,7 @@ class AutomationEvent < ApplicationRecord
       "whatsapp" => "WhatsApp",
       "whatsapp_campaign" => "Disparo WhatsApp",
       "automation_tick" => "Rotina",
+      "automation_backfill" => "Base atual",
       "interest_intelligence" => "Inteligência de Interesse",
       "platform" => "Plataforma"
     }[source] || source.to_s.humanize
@@ -57,6 +58,14 @@ class AutomationEvent < ApplicationRecord
 
   def payload_hash
     payload.is_a?(Hash) ? payload.with_indifferent_access : {}
+  end
+
+  # Eventos da varredura pertencem à automação que selecionou o lead.
+  def targets_automation?(kind, id)
+    return true unless %w[automation_tick automation_backfill].include?(source)
+
+    key = kind.to_sym == :rule ? :automation_rule_id : :workflow_id
+    payload_hash[key].to_s == id.to_s
   end
 
   def pending?

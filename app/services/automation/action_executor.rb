@@ -15,6 +15,7 @@ module Automation
       when "send_whatsapp_buttons"  then "perguntar com botões"
       when "send_whatsapp_list"     then "perguntar com lista"
       when "transfer_to_attendant"  then "passar para atendente"
+      when "capture_answer"         then "guardar resposta em “#{action[:variable]}”"
       when "set_flow_result"        then flow_result_label(action)
       when "move_stage"             then "mover para “#{action[:to]}”"
       when "update_lead_lifecycle"  then lifecycle_label(action)
@@ -31,9 +32,13 @@ module Automation
       end
     end
 
+    # Variáveis capturadas no fluxo ({{resposta.nome}}); o runner as mantém atualizadas.
+    attr_writer :variables
+
     def initialize(lead, automation_event: nil)
       @lead = lead
       @automation_event = automation_event
+      @variables = {}
     end
 
     def execute(action)
@@ -47,6 +52,7 @@ module Automation
       when "send_whatsapp_buttons"  then act_send_question(action, list: false)
       when "send_whatsapp_list"     then act_send_question(action, list: true)
       when "transfer_to_attendant"  then act_transfer_to_attendant(action)
+      when "capture_answer"         then nil # executada pelo WorkflowRunner (precisa do contexto da execução)
       when "set_flow_result"        then act_set_flow_result(action)
       when "move_stage"             then act_move_stage(action)
       when "update_lead_lifecycle"  then act_update_lead_lifecycle(action)
@@ -485,6 +491,7 @@ module Automation
     def render_text(text)
       recipient = campaign_recipient
       text.to_s
+          .gsub(/\{\{\s*resposta\.([a-z0-9_]+)\s*\}\}/) { (@variables || {})[Regexp.last_match(1)].to_s }
           .gsub("{{nome}}", @lead&.display_name.to_s.presence || recipient&.display_name.to_s)
           .gsub("{{corretor}}", @lead&.admin_user&.name.to_s.presence || recipient&.admin_user&.name.to_s)
           .gsub("{{telefone}}", @lead&.display_phone.to_s.presence || recipient&.display_phone.to_s)

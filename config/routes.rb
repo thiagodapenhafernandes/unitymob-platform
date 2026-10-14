@@ -320,6 +320,8 @@ Rails.application.routes.draw do
       member do
         get :builder
         patch :save_draft
+        patch :pause
+        patch :resume
         patch :publish
         match :simulate, via: [:post, :patch]
       end

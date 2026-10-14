@@ -21,21 +21,18 @@ module Automation
     end
 
     def emit
-      event = find_or_build_event
-      return event if event.persisted? && !event.pending?
+      # Serializa a criação da chave e o enfileiramento, inclusive em ticks simultâneos.
+      tenant.with_lock do
+        event = find_or_build_event
+        return event if event.persisted?
 
-      event.assign_attributes(
-        tenant: tenant,
-        lead: @lead,
-        name: @name,
-        source: @source,
-        payload: @payload,
-        occurred_at: Time.current
-      )
-      event.save!
-      record_timeline(event) if @lead
-      dispatch(event)
-      event
+        event.assign_attributes(tenant: tenant, lead: @lead, name: @name, source: @source,
+                                payload: @payload, occurred_at: Time.current)
+        event.save!
+        record_timeline(event) if @lead
+        dispatch(event)
+        event
+      end
     end
 
     private

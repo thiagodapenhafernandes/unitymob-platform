@@ -1,0 +1,20 @@
+<%= ax_operational_panel(eyebrow: "Prévia", title: result.title, class_name: "tw-mb-3") do %>
+  <p class="ax-page-subtitle tw-mb-3"><%= result.summary %></p>
+  <% if result.paths.present? %>
+    <div class="ax-record-list">
+      <% result.sample_leads.each do |lead| %>
+        <% path = result.paths.fetch(lead.id) %>
+        <%= ax_record_item(title: lead.display_name, icon: "diagram-3") do %>
+          <p class="ax-page-subtitle"><%= path[:actions].presence&.to_sentence || "Nenhuma intervenção alcançada neste caminho." %></p>
+          <% if path[:uncertain] %><%= ax_badge("Depende de evento ou prazo futuro", tone: :amber) %><% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="ax-page-subtitle tw-mb-2"><%= result.actions.to_sentence %></p>
+    <% if result.sample_leads.any? %><p class="ax-page-subtitle tw-mb-2"><strong>Amostra:</strong> <%= result.sample_leads.map(&:display_name).to_sentence %></p><% end %>
+  <% end %>
+  <% result.warnings.each do |warning| %>
+    <%= ax_inline_notice(tone: :warning, icon: "info-circle", class_name: "tw-mt-2") { warning } %>
+  <% end %>
+<% end %>
