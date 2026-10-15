@@ -1,5 +1,5 @@
 <%
-  lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
+  lead_return_to_path = "#{admin_leads_path(lead_base_query_params)}#lead_#{lead.id}"
   property = lead.property_id.present? ? @properties_by_id[lead.property_id] : nil
   display_name = lead.display_name.presence || lead.name
   conversion = lead_conversion_summary(lead)

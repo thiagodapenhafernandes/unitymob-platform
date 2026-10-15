@@ -1,4 +1,4 @@
-<%= turbo_frame_tag "lead_pwa_section" do %>
+<%= turbo_frame_tag "lead_pwa_section", target: "_top" do %>
   <%
     lead_query_params = lead_base_query_params
     lead_active_filter_count = lead_filter_labels_list.size
