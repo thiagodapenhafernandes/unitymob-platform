@@ -26,6 +26,8 @@ class Appointment < ApplicationRecord
   scope :between, ->(a, b) { where(starts_at: a..b) }
   scope :ordered, -> { order(:starts_at) }
 
+  after_update { Ga4::ConversionRecorder.appointment_updated(self) }
+
   def kind_label = KINDS[kind] || kind
   def realizado? = status == "realizado"
   def cancelado? = status == "cancelado"

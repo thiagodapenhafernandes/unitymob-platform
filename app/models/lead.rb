@@ -186,6 +186,7 @@ class Lead < ApplicationRecord
   after_create :record_audit_create
   after_update :sync_open_activity_owners!, if: :saved_change_to_admin_user_id?
   after_update :record_audit_update
+  after_update :record_ga4_conversion, unless: :skip_automatic_routing?
   after_destroy :record_audit_destroy
   after_create_commit :enqueue_meta_enrichment
   after_create_commit :enqueue_c2s_export
@@ -763,5 +764,9 @@ class Lead < ApplicationRecord
 
   def dispatch_outbound_webhook_changes
     Leads::OutboundWebhook.dispatch_changes(self)
+  end
+
+  def record_ga4_conversion
+    Ga4::ConversionRecorder.lead_updated(self)
   end
 end

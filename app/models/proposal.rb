@@ -27,6 +27,7 @@ class Proposal < ApplicationRecord
   validate :associations_belong_to_lead_tenant
 
   before_validation :ensure_token, on: :create
+  after_update { Ga4::ConversionRecorder.proposal_updated(self) }
 
   scope :ordered, -> { order(created_at: :desc) }
 
