@@ -49,7 +49,7 @@ class LeadsController < ApplicationController
       business_type = lead_business_type(habitation)
       after_lead_created(habitation, business_type) if saved_new_lead
 
-      render json: lead_success_response(business_type, habitation:)
+      render json: lead_success_response(business_type, habitation:, created: saved_new_lead)
     else
       render json: {
         success: false,
@@ -85,13 +85,22 @@ class LeadsController < ApplicationController
     params.dig(:lead, :whatsapp_message).to_s
   end
 
-  def lead_success_response(business_type, habitation: nil)
+  def lead_success_response(business_type, habitation: nil, created: false)
     integration = WhatsappBusinessIntegration.current(public_tenant)
     contact_setting = ContactSetting.instance(tenant: public_tenant)
     response = {
       success: true,
       message: contact_setting.property_lead_success_message_for(business_type, lead: @lead, habitation:)
     }
+    if created
+      response[:analytics_event] = {
+        event: "generate_lead",
+        event_id: SecureRandom.uuid,
+        business_type: Leads::Attribution.business_type(business_type),
+        property_code: habitation&.codigo.to_s,
+        form_id: "whatsapp_modal"
+      }
+    end
     return response unless integration.redirect_after_capture_for?(business_type)
 
     whatsapp_message = contact_setting.property_whatsapp_message_for(business_type, lead: @lead, habitation:, fallback: lead_whatsapp_message)

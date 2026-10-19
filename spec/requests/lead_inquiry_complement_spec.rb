@@ -34,6 +34,7 @@ RSpec.describe "Lead inquiry complement", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(JSON.parse(response.body)["success"]).to be(true)
+    expect(response.parsed_body).not_to have_key("analytics_event")
     expect(first.reload.property_interests.map(&:habitation_id)).to include(second_property.id)
     expect(first.activities.where(kind: "inquiry_complemented").count).to eq(1)
     expect(welcome_delivery).not_to have_received(:deliver_later)

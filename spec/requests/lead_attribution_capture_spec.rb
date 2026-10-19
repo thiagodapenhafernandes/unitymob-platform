@@ -36,6 +36,14 @@ RSpec.describe "Lead attribution capture", type: :request do
     }, as: :json
 
     expect(response).to have_http_status(:ok), response.body
+    expect(response.parsed_body.fetch("analytics_event")).to include(
+      "event" => "generate_lead", "business_type" => "venda",
+      "property_code" => habitation.codigo, "form_id" => "whatsapp_modal"
+    )
+    expect(response.parsed_body.dig("analytics_event", "event_id")).to match(/\A[0-9a-f-]{36}\z/)
+    expect(response.parsed_body.fetch("analytics_event").keys).to contain_exactly(
+      "event", "event_id", "business_type", "property_code", "form_id"
+    )
     lead = Lead.order(:created_at).last
     expect(lead).to have_attributes(
       source_url: "https://site.example/imoveis/#{habitation.id}",
@@ -49,5 +57,30 @@ RSpec.describe "Lead attribution capture", type: :request do
       "utm_campaign" => "aluguel",
       "gclid" => "click-123"
     )
+  end
+
+  it "não anuncia conversão para contato interno ignorado" do
+    allow(Leads::InternalContactMatcher).to receive(:call).and_return(double(id: 123))
+    expect {
+      post leads_path, params: { lead: { name: "Contato interno", phone: "47999990000" } }, as: :json
+    }.not_to change(Lead, :count)
+    expect(response.parsed_body).to include("success" => true)
+    expect(response.parsed_body).not_to have_key("analytics_event")
+  end
+
+  it "não anuncia conversão para cadastro inválido" do
+    post leads_path, params: { lead: { name: "", phone: "" } }, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body).not_to have_key("analytics_event")
+  end
+
+  it "não expõe o código do imóvel de outra conta no evento" do
+    other = Tenant.create!(name: "Outra conta", slug: "tracking-other-#{SecureRandom.hex(4)}")
+    habitation = create(:habitation, tenant: other, codigo: "OUTRA-CONTA")
+    post leads_path, params: { lead: {
+      name: "Cliente público", phone: "47999997777", property_id: habitation.id
+    } }, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig("analytics_event", "property_code")).to eq("")
   end
 end
