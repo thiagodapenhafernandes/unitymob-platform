@@ -64,6 +64,32 @@ RSpec.describe "Tracking tags", type: :request do
     expect(response.body).to include('negotiation_type: target.dataset.negotiationType || "general"')
   end
 
+  it "respeita recusa e mantém callback do GTM fora do payload da Meta" do
+    Setting.set(TrackingIntegrationSetting::GTM_ENABLED_KEY, "true")
+    Setting.set(TrackingIntegrationSetting::GTM_CONTAINER_ID_KEY, "GTM-ABC123")
+    get root_path
+    functions = response.body[/function trackingPayload\(eventName, payload\).*?(?=function closestTrackedClick)/m]
+    script = <<~JS
+      const assert = require('node:assert/strict');
+      var accepted = false, meta = [];
+      var w = {location: {href: 'https://example.test'}, fbq: (...args) => meta.push(args)};
+      function consentAccepted() { return accepted; }
+      #{functions}
+      assert.equal(track('generate_lead', {}), false);
+      assert.equal(w.dataLayer, undefined);
+      accepted = true;
+      var complete = () => {};
+      assert.equal(track('generate_lead', {event_id: 'opaque', form_id: 'whatsapp_modal'}, {onComplete: complete}), true);
+      assert.equal(w.dataLayer.length, 1);
+      assert.equal(w.dataLayer[0].event_id, 'opaque');
+      assert.equal(w.dataLayer[0].eventCallback, complete);
+      assert.equal(w.dataLayer[0].eventTimeout, 500);
+      assert.equal(meta[0][2].eventCallback, undefined);
+    JS
+    _, error, status = Open3.capture3("node", "-e", script)
+    expect(status.success?).to be(true), error
+  end
+
   it "padroniza o envelope do site e preserva aliases sem confundir ID interno com código" do
     Setting.set(TrackingIntegrationSetting::GTM_ENABLED_KEY, "true")
     Setting.set(TrackingIntegrationSetting::GTM_CONTAINER_ID_KEY, "GTM-ABC123")

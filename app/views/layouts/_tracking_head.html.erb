@@ -44,6 +44,8 @@
         return {
           event: eventName,
           event_name: eventName,
+          event_id: data.event_id || "",
+          form_id: data.form_id || "",
           business_type: businessTypes[businessType] || businessType,
           property_id: propertyCode,
           property_code: propertyCode,
@@ -58,12 +60,17 @@
         };
       }
 
-      function track(eventName, payload) {
+      function track(eventName, payload, options) {
         if (!consentAccepted()) return false;
 
         var data = trackingPayload(eventName, payload);
         w.dataLayer = w.dataLayer || [];
-        w.dataLayer.push(data);
+        var layerData = Object.assign({}, data);
+        if (options && typeof options.onComplete === "function") {
+          layerData.eventCallback = options.onComplete;
+          layerData.eventTimeout = 500;
+        }
+        w.dataLayer.push(layerData);
 
         if (typeof w.fbq === "function") {
           w.fbq("trackCustom", eventName, data);

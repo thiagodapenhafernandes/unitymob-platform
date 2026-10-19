@@ -125,6 +125,8 @@ export default class extends Controller {
       ...this.trackingParams()
     })
 
+    await this.trackConfirmedLead(result)
+
     if (result?.success && !result.whatsapp_url) {
       this.showSuccessMessage(result.message || "Recebemos seu contato. Um corretor da nossa equipe irá falar com você em breve.")
       this.close()
@@ -144,6 +146,30 @@ export default class extends Controller {
 
     // Optional: Reset form
     event.target.reset()
+  }
+
+  async trackConfirmedLead(result) {
+    const confirmed = result?.analytics_event
+    if (!result?.success || confirmed?.event !== "generate_lead" || !confirmed.event_id) return
+    if (!window.UnitymobTracking?.track) return
+
+    // Aguarda as tags antes de sair para o WhatsApp, sem bloquear contato se falharem.
+    await new Promise(resolve => {
+      const timeout = setTimeout(resolve, 700)
+      const complete = () => { clearTimeout(timeout); resolve() }
+      try {
+        const tracked = window.UnitymobTracking.track("generate_lead", {
+          event_id: confirmed.event_id,
+          business_type: confirmed.business_type,
+          property_code: confirmed.property_code,
+          form_id: confirmed.form_id,
+          page_url: window.location.origin + window.location.pathname
+        }, { onComplete: complete })
+        if (!tracked) complete()
+      } catch (_) {
+        complete()
+      }
+    })
   }
 
   normalizePhone(value) {
