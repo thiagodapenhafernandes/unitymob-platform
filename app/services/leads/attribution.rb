@@ -67,6 +67,8 @@ module Leads
       result = new(raw: current, request: request).result
       context = browser_identifiers(request).stringify_keys
       if request
+        context["analytics_consent"] = request.respond_to?(:cookies) && request.cookies["unitymob_lgpd_consent"] == "accepted" ? "granted" : "denied"
+        context["analytics_consent_captured_at"] = Time.current.iso8601
         context.merge!("client_ip_address" => request.remote_ip, "client_user_agent" => request.user_agent.to_s.first(1024))
       end
       return lead if result.data.empty? && context.empty?

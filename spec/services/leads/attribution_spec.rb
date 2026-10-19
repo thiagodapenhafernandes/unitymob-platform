@@ -161,6 +161,7 @@ RSpec.describe Leads::Attribution, "attribution v2" do
       host: "example.test", cookies: { "unitymob_lgpd_consent" => "accepted", "_fbp" => "fb.1.browser", "_fbc" => "fb.1.click", "_ga" => "GA1.1.123.456" })
     described_class.apply!(lead, raw: { gclid: "click" }, request:)
     expect(lead.attribution_data).to include("fbc" => "fb.1.click", "fbp" => "fb.1.browser", "client_id" => "123.456",
+      "analytics_consent" => "granted", "analytics_consent_captured_at" => be_present,
       "client_ip_address" => "192.0.2.1", "client_user_agent" => "Browser")
     payload = WebhookService.build_payload("qualified_lead", lead.attributes)
     expect(payload).to include(fbc: "fb.1.click", fbp: "fb.1.browser", client_id: "123.456",
@@ -171,8 +172,9 @@ RSpec.describe Leads::Attribution, "attribution v2" do
     lead = build(:lead)
     request = instance_double(ActionDispatch::Request, remote_ip: "192.0.2.1", user_agent: "Browser",
       host: "example.test", cookies: { "unitymob_lgpd_consent" => "rejected", "_fbp" => "private" })
-    described_class.apply!(lead, raw: { gclid: "click" }, request:)
+    described_class.apply!(lead, raw: { gclid: "click", analytics_consent: "granted" }, request:)
     expect(lead.attribution_data.keys).not_to include("fbc", "fbp", "client_id")
+    expect(lead.attribution_data["analytics_consent"]).to eq("denied")
   end
 
 end

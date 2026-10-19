@@ -10,6 +10,10 @@
 #     schedule: at 5am every day
 
 development:
+  ga4_conversion_recovery:
+    class: Ga4ConversionRecoveryJob
+    queue: default
+    schedule: every 5 minutes
   tiktok_reconcile:
     class: TiktokReconcileJob
     queue: sync
@@ -54,6 +58,10 @@ development:
     schedule: every 5 minutes
 
 production:
+  ga4_conversion_recovery:
+    class: Ga4ConversionRecoveryJob
+    queue: default
+    schedule: every 5 minutes
   tiktok_reconcile:
     class: TiktokReconcileJob
     queue: sync

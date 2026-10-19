@@ -3207,6 +3207,84 @@ ALTER SEQUENCE public.friendly_id_slugs_id_seq OWNED BY public.friendly_id_slugs
 
 
 --
+-- Name: ga4_conversion_configs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ga4_conversion_configs (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    measurement_id character varying,
+    api_secret text,
+    activated_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ga4_conversion_configs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ga4_conversion_configs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ga4_conversion_configs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ga4_conversion_configs_id_seq OWNED BY public.ga4_conversion_configs.id;
+
+
+--
+-- Name: ga4_conversion_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ga4_conversion_events (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    deduplication_key character varying NOT NULL,
+    event_name character varying NOT NULL,
+    event_id character varying NOT NULL,
+    measurement_id character varying NOT NULL,
+    client_id text NOT NULL,
+    parameters jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    skip_reason character varying,
+    http_status integer,
+    attempted_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ga4_conversion_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ga4_conversion_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ga4_conversion_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ga4_conversion_events_id_seq OWNED BY public.ga4_conversion_events.id;
+
+
+--
 -- Name: google_calendar_integration_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8597,6 +8675,20 @@ ALTER TABLE ONLY public.friendly_id_slugs ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: ga4_conversion_configs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ga4_conversion_configs ALTER COLUMN id SET DEFAULT nextval('public.ga4_conversion_configs_id_seq'::regclass);
+
+
+--
+-- Name: ga4_conversion_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ga4_conversion_events ALTER COLUMN id SET DEFAULT nextval('public.ga4_conversion_events_id_seq'::regclass);
+
+
+--
 -- Name: google_calendar_integration_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9902,6 +9994,22 @@ ALTER TABLE ONLY public.friendly_id_slugs
 
 
 --
+-- Name: ga4_conversion_configs ga4_conversion_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ga4_conversion_configs
+    ADD CONSTRAINT ga4_conversion_configs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ga4_conversion_events ga4_conversion_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ga4_conversion_events
+    ADD CONSTRAINT ga4_conversion_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: google_calendar_integration_settings google_calendar_integration_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11144,6 +11252,13 @@ CREATE UNIQUE INDEX idx_email_settings_on_tenant_unique ON public.email_settings
 --
 
 CREATE UNIQUE INDEX idx_extension_operations_request ON public.browser_extension_operations USING btree (browser_extension_grant_id, request_key);
+
+
+--
+-- Name: idx_ga4_conversion_events_dedup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ga4_conversion_events_dedup ON public.ga4_conversion_events USING btree (tenant_id, deduplication_key);
 
 
 --
@@ -13622,6 +13737,41 @@ CREATE UNIQUE INDEX index_friendly_id_slugs_on_slug_and_sluggable_type_and_scope
 --
 
 CREATE INDEX index_friendly_id_slugs_on_sluggable_type_and_sluggable_id ON public.friendly_id_slugs USING btree (sluggable_type, sluggable_id);
+
+
+--
+-- Name: index_ga4_conversion_configs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ga4_conversion_configs_on_tenant_id ON public.ga4_conversion_configs USING btree (tenant_id);
+
+
+--
+-- Name: index_ga4_conversion_events_on_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ga4_conversion_events_on_event_id ON public.ga4_conversion_events USING btree (event_id);
+
+
+--
+-- Name: index_ga4_conversion_events_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ga4_conversion_events_on_lead_id ON public.ga4_conversion_events USING btree (lead_id);
+
+
+--
+-- Name: index_ga4_conversion_events_on_status_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ga4_conversion_events_on_status_and_created_at ON public.ga4_conversion_events USING btree (status, created_at);
+
+
+--
+-- Name: index_ga4_conversion_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ga4_conversion_events_on_tenant_id ON public.ga4_conversion_events USING btree (tenant_id);
 
 
 --
@@ -17506,6 +17656,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
 
 
 --
+-- Name: ga4_conversion_events fk_rails_06350ff601; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ga4_conversion_events
+    ADD CONSTRAINT fk_rails_06350ff601 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
 -- Name: blog_categorizations fk_rails_073b23b892; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18482,6 +18640,14 @@ ALTER TABLE ONLY public.home_section_items
 
 
 --
+-- Name: ga4_conversion_events fk_rails_5d32035e27; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ga4_conversion_events
+    ADD CONSTRAINT fk_rails_5d32035e27 FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+
+
+--
 -- Name: client_interactions fk_rails_5d58b5c954; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18591,6 +18757,14 @@ ALTER TABLE ONLY public.lead_pipeline_stage_policies
 
 ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
     ADD CONSTRAINT fk_rails_658c0aa041 FOREIGN KEY (reenabled_by_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: ga4_conversion_configs fk_rails_6720e24592; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ga4_conversion_configs
+    ADD CONSTRAINT fk_rails_6720e24592 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
 
 
 --
@@ -20450,6 +20624,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261019010000'),
 ('20261012180000'),
 ('20261011191320'),
 ('20261010010000'),
