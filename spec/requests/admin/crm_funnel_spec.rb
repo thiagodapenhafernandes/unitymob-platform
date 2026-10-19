@@ -13,6 +13,8 @@ RSpec.describe "Funil CRM e GA4 no dashboard", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Funil comercial e cobertura", "Conexão de leitura ainda não configurada", "Leads distintos")
     expect(response.body).not_to include("send-secret", "Impacto -&gt; venda")
+    # Turbo rejeita um frame retornado cujo src aponta para a própria resposta.
+    expect(Nokogiri::HTML(response.body).at_css("turbo-frame#admin_dashboard_funnel")["src"]).to be_nil
   end
 
   it "disponibiliza o mesmo painel sem configurar ou ativar GA4 na conta, inclusive Salute" do

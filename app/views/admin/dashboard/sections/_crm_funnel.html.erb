@@ -1,4 +1,4 @@
-<%= turbo_frame_tag "admin_dashboard_funnel", src: request.fullpath, data: { controller: "ax-frame-refresh" } do %>
+<%= turbo_frame_tag "admin_dashboard_funnel" do %>
   <%= ax_operational_panel(eyebrow: "CRM e Analytics", title: "Funil comercial e cobertura") do %>
     <div class="ax-panel-body">
       <p class="tw-text-ink-muted">Leads criados de <%= l(@dashboard_start_date) %> a <%= l(@dashboard_end_date) %>, com desfechos registrados até agora. Atualização automática a cada minuto enquanto esta aba estiver visível.</p>
