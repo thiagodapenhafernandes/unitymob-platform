@@ -3,10 +3,13 @@ class Admin::GoogleIntegrationsController < Admin::BaseController
 
   def show
     load_google_settings
-    @active_tab = params[:tab].presence_in(%w[sheets calendar maps]) || "sheets"
+    @active_tab = params[:tab].presence_in(%w[sheets calendar maps ga4]) || "sheets"
+    @active_tab = "sheets" if @active_tab == "ga4" && @ga4_config.nil?
   end
 
   def update
+    return update_ga4 if params[:ga4].present?
+
     load_google_settings
 
     if params[:google_maps].present?
@@ -31,9 +34,29 @@ class Admin::GoogleIntegrationsController < Admin::BaseController
   private
 
   def load_google_settings
+    @ga4_config = Ga4ConversionConfig.find_or_initialize_by(tenant_id: current_tenant.id) if tenant_owner?
     @google_sheets_setting = GoogleSheetsIntegrationSetting.current(tenant: current_tenant)
     @google_calendar_setting = GoogleCalendarIntegrationSetting.for(current_tenant)
     @google_maps_setting = GoogleMapsIntegrationSetting.for(current_tenant)
+  end
+
+  def update_ga4
+    config = Ga4ConversionConfig.find_or_initialize_by(tenant_id: current_tenant.id) if tenant_owner?
+    return head :not_found unless config
+
+    permitted = params.require(:ga4).permit(:reporting_enabled, :reporting_property_id, :reporting_credentials)
+    config.reporting_enabled = ActiveModel::Type::Boolean.new.cast(permitted[:reporting_enabled]) || false if permitted.key?(:reporting_enabled)
+    config.reporting_property_id = permitted[:reporting_property_id].to_s.strip if permitted.key?(:reporting_property_id)
+    config.reporting_credentials = permitted[:reporting_credentials].to_s.strip if permitted[:reporting_credentials].present?
+    if config.save
+      redirect_to admin_google_integration_path(tab: "ga4"), notice: "Conexão de leitura do GA4 salva. O painel consultará os relatórios automaticamente."
+    else
+      load_google_settings
+      @ga4_config = config
+      @active_tab = "ga4"
+      flash.now[:alert] = "Revise a conexão de leitura do GA4."
+      render :show, status: :unprocessable_content
+    end
   end
 
   def update_google_sheets

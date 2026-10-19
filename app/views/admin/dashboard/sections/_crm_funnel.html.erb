@@ -1,0 +1,77 @@
+<%= turbo_frame_tag "admin_dashboard_funnel", src: request.fullpath, data: { controller: "ax-frame-refresh" } do %>
+  <%= ax_operational_panel(eyebrow: "CRM e Analytics", title: "Funil comercial e cobertura") do %>
+    <div class="ax-panel-body">
+      <p class="tw-text-ink-muted">Leads criados de <%= l(@dashboard_start_date) %> a <%= l(@dashboard_end_date) %>, com desfechos registrados até agora. Atualização automática a cada minuto enquanto esta aba estiver visível.</p>
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <h3>Etapas registradas no CRM</h3>
+          <div class="ax-table-wrap tw-mt-3">
+            <table class="ax-table ax-dashboard-table" aria-label="Etapas por lead distinto">
+              <thead><tr><th scope="col">Etapa</th><th scope="col">Leads distintos</th><th scope="col">Sobre a coorte</th></tr></thead>
+              <tbody><% crm_funnel_rows(funnel).each do |row| %>
+                <tr><th scope="row" class="tw-text-left"><%= row[:label] %></th><td><%= number_with_delimiter(row[:count]) %></td><td><%= row[:share] %></td></tr>
+              <% end %></tbody>
+            </table>
+          </div>
+          <p class="tw-text-sm tw-text-ink-muted tw-mt-3">Qualificação pelo primeiro corretor ou gestor. Situação atual, sem inferir etapas anteriores. As etapas podem ser puladas; percentuais não são taxas sequenciais.</p>
+          <%= ax_status_list(rows: [
+            { label: "Visitas realizadas / leads visitados", value: "#{funnel[:completed_visits]} / #{funnel[:counts][:visited]}" },
+            { label: "Propostas em rascunho", value: funnel[:draft_proposals] },
+            { label: "Ganhos por status legado", value: funnel[:legacy_wins] },
+            { label: "Consulta CRM", value: l(funnel[:captured_at], format: :short) }
+          ]) %>
+        </div>
+        <div class="ax-span-6">
+          <h3>Lacunas para planejar</h3>
+          <%= ax_status_list(rows: [
+            { label: "Sem avaliação de qualificação", value: funnel[:gaps][:unassessed] },
+            { label: "Visitas passadas ainda agendadas", value: funnel[:gaps][:overdue_visits] },
+            { label: "Visitados sem qualificação atual", value: funnel[:gaps][:visited_without_qualification] },
+            { label: "Canal de atribuição vazio", value: funnel[:gaps][:missing_channel] },
+            { label: "Sem etapa de funil vinculada", value: funnel[:gaps][:missing_stage] },
+            { label: "Com consentimento e identificador válidos", value: "#{funnel[:eligible]} / #{funnel[:counts][:leads]}" }
+          ]) %>
+          <%= ax_inline_notice(tone: :neutral, compact: true) do %>
+            Qualificação ausente não significa cliente desqualificado. Visita agendada no passado exige conferência. Ganho no CRM não comprova receita. Dados anteriores à ativação não recebem identidade retroativa.
+          <% end %>
+        </div>
+      <% end %>
+      <hr class="tw-my-4">
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <h3>Entrega das etapas ao Google</h3>
+          <p class="tw-text-sm tw-text-ink-muted">Eventos ocorridos no período selecionado, respeitando os leads visíveis e os filtros. Não são totais da coorte de criação.</p>
+          <%= ax_status_list(rows: [
+            { label: "Pendentes", value: delivery_counts.fetch("pending", 0) },
+            { label: "Em tentativa", value: delivery_counts.fetch("sending", 0) },
+            { label: "Aceitos por HTTP", value: delivery_counts.fetch("http_accepted", 0) },
+            { label: "Incertos / rejeitados", value: delivery_counts.fetch("uncertain", 0) + delivery_counts.fetch("rejected", 0) },
+            { label: "Impedidos antes do envio", value: delivery_counts.fetch("skipped", 0) }
+          ]) %>
+          <p class="tw-text-sm tw-text-ink-muted">HTTP aceito não comprova processamento no GA4. Nenhum reenvio é acionado pelo painel.</p>
+        </div>
+        <div class="ax-span-6">
+          <h3>Eventos processados no GA4</h3>
+          <p class="tw-mt-3"><%= ga4_report_status_label(report.fetch(:status)) %></p>
+          <% if report[:counts] %>
+            <%= ax_status_list(rows: report[:counts].map { |name, count| { label: ga4_event_label(name), value: number_with_delimiter(count) } }) %>
+            <p class="tw-text-sm tw-text-ink-muted">Leitura: <%= l(report[:queried_at], format: :short) %>. Fuso da propriedade: <%= report[:timezone].presence || "não informado" %>. Cache de até 15 minutos; processamento do Google pode ter atraso.</p>
+            <% if report[:limited] %><%= ax_inline_notice(tone: :warning) { "O Google sinalizou limiares, amostragem ou perda de detalhamento neste relatório." } %><% end %>
+          <% end %>
+          <p class="tw-text-sm tw-text-ink-muted">Total da propriedade por data do evento, não leads distintos nem a coorte do CRM. Eventos podem se repetir por pessoa; os totais não devem ser somados ao CRM.</p>
+          <% if tenant_owner? && can?(:manage, :integracoes) %>
+            <%= link_to "Configurar conexão de leitura", admin_google_integration_path(tab: "ga4"), class: "ax-btn ax-btn--ghost", data: { turbo_frame: "_top" } %>
+          <% end %>
+        </div>
+      <% end %>
+      <hr class="tw-my-4">
+      <h3>Próximos passos</h3>
+      <ol class="tw-mt-3 tw-space-y-2">
+        <li>Conferir o desfecho das visitas passadas e registrar a avaliação dos novos atendimentos.</li>
+        <li>Registrar envios reais de propostas e conciliar os ganhos declarados com a operação.</li>
+        <li>Validar cada etapa entre CRM, entrega e GA4 antes de interpretar diferenças como perda.</li>
+        <li>Com coortes maduras e custos conciliados, acompanhar lead → qualificado → visita → proposta → ganho e tempo entre etapas. Sem denominador e histórico consistentes, a taxa é inconclusiva.</li>
+      </ol>
+    </div>
+  <% end %>
+<% end %>

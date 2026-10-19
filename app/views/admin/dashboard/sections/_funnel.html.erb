@@ -1,3 +1,6 @@
+<% if @crm_funnel %>
+  <%= render "admin/dashboard/sections/crm_funnel", funnel: @crm_funnel, report: @ga4_report, delivery_counts: @crm_delivery_counts, config: @crm_ga4_config %>
+<% else %>
 <%= turbo_frame_tag "admin_dashboard_funnel" do %>
   <article class="ax-dashboard-panel ax-dashboard-panel--funnel">
     <div class="ax-dashboard-panel__header">
@@ -78,4 +81,5 @@
       </div>
     </div>
   </article>
+<% end %>
 <% end %>

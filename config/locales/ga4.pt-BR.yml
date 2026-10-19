@@ -1,0 +1,9 @@
+pt-BR:
+  activerecord:
+    models:
+      ga4_conversion_config: "Conexão do Google Analytics"
+    attributes:
+      ga4_conversion_config:
+        reporting_enabled: "Leitura automática"
+        reporting_property_id: "Propriedade GA4"
+        reporting_credentials: "Credencial de leitura"
