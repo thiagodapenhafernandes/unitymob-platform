@@ -1187,12 +1187,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     get admin_dashboard_section_path("funnel"), headers: { "Turbo-Frame" => "admin_dashboard_funnel" }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Conversão comercial")
-    expect(response.body).to include("Clientes impactados")
-    expect(response.body).to include("Leads interessados")
-    expect(response.body).to include("Oportunidades")
-    expect(response.body).to include("Vendas")
-    expect(response.body).to include("ax-dashboard-funnel-layout")
+    expect(response.body).to include("Funil comercial e cobertura", "Qualificados", "Com visita realizada", "Com proposta enviada", "Ganhos no CRM")
     expect(response.body).to include("Gargalos do funil")
     expect(response.body).not_to include("Tempo médio em cada etapa")
     expect(response.body).not_to include("Referência:")

@@ -1,0 +1,41 @@
+<div class="ax-dashboard-channel-quality__rows">
+        <section class="ax-dashboard-channel-quality ax-dashboard-channel-quality--compact">
+          <div class="ax-dashboard-acquisition__title">
+            <h3>Gargalos do funil</h3>
+            <small>Perdas e voltas que merecem atenção</small>
+          </div>
+          <% flow_rows = (@stage_loss_rows.map { |row| row.merge(unit: "perdas") } + @stage_reopen_rows.map { |row| row.merge(unit: "voltas") }).select { |row| row[:value].to_i.positive? } %>
+          <% if flow_rows.any? %>
+            <div class="ax-dashboard-channel-quality__rows">
+              <% flow_rows.first(5).each do |row| %>
+                <%= link_to row[:path], class: "ax-dashboard-channel-quality__row", data: { turbo_frame: "_top" } do %>
+                  <span class="ax-dashboard-channel-quality__identity"><strong><%= row[:label] %></strong><small><%= row[:detail] %></small></span>
+                  <span class="ax-dashboard-channel-quality__rate"><b><%= number_with_delimiter(row[:value]) %></b><small><%= row[:unit] %></small></span>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="ax-dashboard-empty-row">Sem perda ou reabertura registrada no período.</div>
+          <% end %>
+        </section>
+
+        <section class="ax-dashboard-channel-quality ax-dashboard-channel-quality--compact">
+          <div class="ax-dashboard-acquisition__title">
+            <h3>Leads quentes/mornos sem ação</h3>
+            <small>Interpretação do sistema sem atualização recente</small>
+          </div>
+          <% active_temperature_rows = @lead_temperature_rows.select { |row| row[:value].to_i.positive? } %>
+          <% if active_temperature_rows.any? %>
+          <div class="ax-dashboard-channel-quality__rows">
+            <% active_temperature_rows.each do |row| %>
+              <%= link_to row[:path], class: "ax-dashboard-channel-quality__row", data: { turbo_frame: "_top" } do %>
+                <span class="ax-dashboard-channel-quality__identity"><strong><%= row[:label] %></strong><small><%= row[:detail] %></small></span>
+                <span class="ax-dashboard-channel-quality__rate"><b><%= number_with_delimiter(row[:value]) %></b><small>leads</small></span>
+              <% end %>
+            <% end %>
+          </div>
+          <% else %>
+            <div class="ax-dashboard-empty-row">Sem lead quente ou morno parado.</div>
+          <% end %>
+        </section>
+</div>

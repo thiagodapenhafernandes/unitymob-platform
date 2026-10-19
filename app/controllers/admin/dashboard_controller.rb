@@ -138,7 +138,7 @@ class Admin::DashboardController < Admin::BaseController
     requested_tab = "leads" if requested_tab == "field" && !@field_feature_enabled
     @dashboard_tab = @dashboard_allowed_tabs.include?(requested_tab) ? requested_tab : @dashboard_allowed_tabs.first
     @dashboard_updated_at = Time.current
-    @crm_ga4_config = Ga4ConversionConfig.where(tenant_id: current_tenant.id).where("enabled = TRUE OR reporting_enabled = TRUE").first
+    @crm_ga4_config = Ga4ConversionConfig.find_by(tenant_id: current_tenant.id)
     @dashboard_window_start = dashboard_window_start
     @dashboard_window_end = dashboard_window_end
     lead_setting = LeadSetting.instance(tenant: current_tenant)
@@ -245,28 +245,23 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def load_funnel_slice
-    if @crm_ga4_config
-      @crm_funnel = Dashboard::CrmFunnelQuery.new(
-        scope: valid_dashboard_leads_scope, tenant: current_tenant,
-        starts_at: dashboard_window_start, ends_at: dashboard_window_end
-      ).call
-      @crm_delivery_counts = Ga4ConversionEvent.where(tenant_id: current_tenant.id,
-        lead_id: valid_dashboard_leads_scope.reorder(nil).select(:id),
-        occurred_at: dashboard_window_start..dashboard_window_end).group(:status).count
-      @ga4_report = if !tenant_owner?
-        { status: :restricted }
-      elsif @dashboard_broker_ids.present? || @dashboard_business_type.present?
-        { status: :filtered }
-      else
-        Ga4::ReportSnapshot.call(config: @crm_ga4_config, start_date: @dashboard_start_date, end_date: @dashboard_end_date)
-      end
-      return
-    end
-
-    @commercial_funnel_rows = commercial_funnel_rows
     @stage_loss_rows = stage_loss_rows
     @lead_temperature_rows = lead_temperature_rows
     @stage_reopen_rows = stage_reopen_rows
+    @crm_funnel = Dashboard::CrmFunnelQuery.new(
+      scope: valid_dashboard_leads_scope, tenant: current_tenant,
+      starts_at: dashboard_window_start, ends_at: dashboard_window_end
+    ).call
+    @crm_delivery_counts = Ga4ConversionEvent.where(tenant_id: current_tenant.id,
+      lead_id: valid_dashboard_leads_scope.reorder(nil).select(:id),
+      occurred_at: dashboard_window_start..dashboard_window_end).group(:status).count
+    @ga4_report = if !tenant_owner?
+      { status: :restricted }
+    elsif @dashboard_broker_ids.present? || @dashboard_business_type.present?
+      { status: :filtered }
+    else
+      Ga4::ReportSnapshot.call(config: @crm_ga4_config, start_date: @dashboard_start_date, end_date: @dashboard_end_date)
+    end
   end
 
   def load_status_slice
