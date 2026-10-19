@@ -56,8 +56,8 @@ module Seo
         next if route[:controller] == "pages" && route[:action] == "simulador" && !public_profile.financing_simulator_enabled?
         next if route[:controller] == "pages" && route[:action] == "links_uteis" && public_profile.useful_link_options.empty?
         query = Rack::Utils.parse_nested_query(URI.parse(url).query.to_s)
-        next if seo.page_type == "property_listing" && !Seo::PageIdentity.indexable_property_filters?(query)
-        next if seo.page_type == "developments_index" && !Seo::PageIdentity.indexable_development_filters?(query)
+        next if route[:controller] == "habitations" && route[:action] == "index" && !Seo::PageIdentity.indexable_property_filters?(query)
+        next if route[:controller] == "empreendimentos" && route[:action] == "index" && !Seo::PageIdentity.indexable_development_filters?(query)
         if route[:controller] == "landing_pages"
           slug = URI.parse(url).path.delete_prefix("/")
           next unless published_page_slugs.include?(slug)
@@ -148,7 +148,7 @@ module Seo
 
     def add_entry(loc:, lastmod:, changefreq:, priority:)
       normalized = loc.to_s.split("#").first
-      return if normalized.blank? || @seen.include?(normalized)
+      return if normalized.blank? || @seen.include?(normalized) || noindex_urls.include?(normalized)
 
       @seen << normalized
       {
@@ -157,6 +157,13 @@ module Seo
         changefreq: changefreq,
         priority: priority
       }
+    end
+
+    def noindex_urls
+      @noindex_urls ||= @tenant.seo_settings.public_inventory
+        .where(active: true, apply_to_public: true, robots_index: false)
+        .select(:canonical_path, :canonical_url)
+        .filter_map { |seo| seo.public_url(@base_url) if seo.canonical_path.present? || seo.canonical_url.present? }.to_set
     end
 
     def absolute_url(value)

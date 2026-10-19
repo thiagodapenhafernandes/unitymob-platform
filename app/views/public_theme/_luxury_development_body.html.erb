@@ -32,6 +32,11 @@
       gallery_photos: dev_photos %>
 <div class="sl-container sl-development__layout">
   <div class="sl-development__main">
+    <% if local_assigns[:development_summary].present? %>
+      <%= render "public_theme/components/development_about",
+            variant: "salute-luxury", title: development_name,
+            body: development_summary %>
+    <% end %>
     <%= render "public_theme/components/development_about",
           id: "sobre", variant: "salute-luxury",
           title: "Sobre o empreendimento", body: dev.display_description,
@@ -52,6 +57,9 @@
               empty_message: "Nenhuma unidade publicada no momento." %>
       </section>
     <% end %>
+    <%= render "public_theme/components/development_faq",
+          variant: "salute-luxury", development_name: local_assigns[:development_name] || dev.display_title,
+          items: local_assigns.fetch(:development_faq_items, []) %>
   </div>
   <aside class="sl-development__aside">
     <%= render "public_theme/components/development_contact",

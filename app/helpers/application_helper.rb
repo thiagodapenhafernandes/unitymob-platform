@@ -204,6 +204,14 @@ module ApplicationHelper
     title.presence || "#{@layout_setting&.site_name.presence || public_tenant.name} - Encontre seu Imóvel Ideal"
   end
 
+  def public_canonical_url(seo = nil)
+    path = @canonical_url.presence ||
+      (seo.public_url(request.base_url) if seo&.public_applicable?) ||
+      @public_page_canonical_url.presence || Seo::PageIdentity.new(controller).to_h[:canonical_path]
+    base = public_tenant.public_base_url(fallback_base_url: request.base_url)
+    "#{base}#{Seo::PageIdentity.sanitize_path(path)}"
+  end
+
   def real_estate_agent_schema
     identity = Tenants::PublicIdentity.new(public_tenant)
     layout = LayoutSetting.instance(tenant: public_tenant)

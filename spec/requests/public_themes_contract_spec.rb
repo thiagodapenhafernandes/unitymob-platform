@@ -119,6 +119,24 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(html.at_css(".public-theme-navigation-overlay--#{variant}")).to be_present
       end
 
+      it "empreendimento: canonical limpo, oferta real e FAQ visível igual ao schema" do
+        development = create(:habitation, tenant: tenant, tipo: "Empreendimento", nome_empreendimento: "Residencial Contrato", slug: "legado-#{theme_key.dasherize}", address_attributes: address)
+        create(:habitation, tenant: tenant, codigo_empreendimento: development.codigo, suites_qtd: 1, vagas_qtd: 1, address_attributes: address)
+        get empreendimento_details_path(development), params: { class: "absolute", data: { action: "click" }, utm_source: "google" }
+
+        expect(response).to have_http_status(:ok)
+        expect(html.css("h1").size).to eq(1)
+        expect(html.at_css("title").text).to include("Residencial Contrato em Centro, Itajaí", "imóveis à venda")
+        expect(html.at_css('link[rel="canonical"]')["href"]).to eq("http://localhost/empreendimento/#{development.slug}")
+        faq = html.at_css(".public-theme-development-faq--#{variant}")
+        expect(faq).to be_present
+        expect(faq.text).to include("1 suíte", "1 vaga")
+        schema = html.css('script[type="application/ld+json"]').flat_map { |node| JSON.parse(node.text).fetch("@graph", []) }.find { |item| item["@type"] == "FAQPage" }
+        schema.fetch("mainEntity").each do |item|
+          expect(faq.text).to include(item["name"], item.dig("acceptedAnswer", "text"))
+        end
+      end
+
       it "página por blocos: vídeo, iframe, imagem e colunas na variante" do
         page = tenant.landing_pages.create!(title: "Mídia #{theme_key}", slug: "midia-#{theme_key.dasherize}", status: "published", layout_columns: 2)
         page.blocks.create!(block_type: "text", position: 1, data: { "heading" => "Esquerda", "span" => "1" })

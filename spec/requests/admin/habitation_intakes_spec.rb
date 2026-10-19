@@ -771,6 +771,29 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     )
   end
 
+  it "exibe opções e salva ocupação e situação para sala comercial" do
+    intake = create(:habitation, :broker_intake, admin_user: admin,
+      categoria: "Sala Comercial", intake_step: "caracteristicas", ocupacao_status: nil, situacao: nil)
+
+    get edit_admin_captacao_path(intake, step: "caracteristicas")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.css('select[name$="[ocupacao]"] option').map { |option| option["value"] })
+      .to include("Desocupado", "Inquilino", "Proprietário")
+    expect(document.css('select[name$="[situacao_imovel]"] option').map { |option| option["value"] })
+      .to include("Novo", "Usado", "Em construção")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "caracteristicas", direction: "forward",
+      captacao: { area_privativa: "45", salas: "1", banheiros: "1", vagas_garagem: "0",
+        ocupacao: "Desocupado", situacao_imovel: "Usado" }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "infraestrutura"))
+    expect(intake.reload).to have_attributes(ocupacao_status: "Desocupado", situacao: "Usado")
+  end
+
   it "exibe e salva ocupação e situação para galpão na etapa de características" do
     intake = create(
       :habitation,

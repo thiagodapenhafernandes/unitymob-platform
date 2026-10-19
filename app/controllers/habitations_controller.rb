@@ -233,7 +233,18 @@ class HabitationsController < ApplicationController
     # Incrementar contador de visualizações (em background)
     # increment_view_count(@habitation.id)
     
-    property_metadata = Seo::PropertyMetadataBuilder.new(@habitation).attributes
+    if @habitation.empreendimento?
+      @development_units = @habitation.development_units
+        .newest_first
+        .includes(
+          :address,
+          { constructor: { logo_attachment: :blob } },
+          { empreendimento: { constructor: { logo_attachment: :blob } } }
+        )
+        .to_a
+    end
+
+    property_metadata = Seo::PropertyMetadataBuilder.new(@habitation, development_units: @development_units).attributes
     @page_title = public_habitation_page_title(property_metadata)
     @page_description = property_metadata[:meta_description].presence || default_property_description(@habitation)
     @social_title = public_habitation_page_title(meta_title: property_metadata[:og_title])
@@ -253,14 +264,6 @@ class HabitationsController < ApplicationController
     # Detectar se é empreendimento e carregar unidades
     if @habitation.empreendimento?
       @is_development_page = true
-      @development_units = @habitation.development_units
-        .newest_first
-        .includes(
-          :address,
-          { constructor: { logo_attachment: :blob } },
-          { empreendimento: { constructor: { logo_attachment: :blob } } }
-        )
-        .to_a
       PublicSite::CardPhotoPreloader.new(@development_units, limit: 3).call
 
       # Sem isso, a página de empreendimento nunca ganhava Cache-Control

@@ -471,7 +471,7 @@ class Habitation < ApplicationRecord
 
   def self.public_sitemap_cache_key(tenant_id, base_url = nil)
     host_digest = ActiveSupport::Digest.hexdigest(base_url.to_s)
-    "public_sitemap_xml_v4/tenant/#{tenant_id}/#{host_digest}"
+    "public_sitemap_xml_v5/tenant/#{tenant_id}/#{host_digest}"
   end
 
   def self.public_listing_count_cache_key(tenant_id, filters)

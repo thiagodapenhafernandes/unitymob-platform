@@ -15,6 +15,7 @@
     next if normalized.blank?
 
     label = normalized.one? ? normalized.first.to_s : "#{normalized.first} a #{normalized.last}"
+    suffix = { "suítes" => "suíte", "dormitórios" => "dormitório", "vagas" => "vaga" }.fetch(suffix, suffix) if normalized == [1]
     suffix.present? ? "#{label} #{suffix}" : label
   end
   area_label = range_label.call(development_units.filter_map(&:public_area_m2), "m²")
@@ -22,8 +23,10 @@
   dorms_label = range_label.call(development_units.map(&:dormitorios_qtd), "dormitórios")
   vagas_label = range_label.call(development_units.map(&:vagas_qtd), "vagas")
   development_summary_metrics = [area_label, suites_label.presence || dorms_label, vagas_label].compact_blank
+  development_offer = Seo::PropertyMetadataBuilder.new(@habitation, development_units: development_units).development_offer
   development_summary = [
-    "#{development_name} em #{development_full_location.presence || @habitation.cidade}.",
+    [development_name, ("em #{development_full_location}" if development_full_location.present?)].compact.join(" ") + ".",
+    ("Confira #{development_offer}." if development_offer.present?),
     (@habitation.constructor_name.present? ? "Empreendimento da #{@habitation.constructor_name}." : nil),
     (development_summary_metrics.any? ? "Unidades disponíveis com #{development_summary_metrics.to_sentence}." : nil),
     (development_units_count.positive? ? "#{development_units_count} #{development_units_count == 1 ? "unidade disponível" : "unidades disponíveis"} para consulta." : nil)

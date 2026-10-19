@@ -286,29 +286,7 @@ class SeoSetting < ApplicationRecord
   end
 
   def sanitize_path(value)
-    value = value.to_s
-    return if value.blank?
-
-    uri = URI.parse(value.start_with?("http") ? value : "https://example.com#{value.start_with?("/") ? value : "/#{value}"}")
-    path = uri.path.presence || "/"
-    pairs = URI.decode_www_form(uri.query.to_s)
-               .filter_map do |key, val|
-                 clean_key = key.to_s.delete_suffix("[]")
-                 next if clean_key.match?(Seo::PageIdentity::IGNORED_PARAMS)
-                 next if val.blank?
-
-                 [clean_key, val.to_s.strip]
-               end
-               .sort
-
-    pairs = pairs.group_by(&:first).flat_map do |key, values|
-      values = values.uniq
-      values.map { |_, val| [values.size > 1 ? "#{key}[]" : key, val] }
-    end
-    query = pairs.any? ? "?#{URI.encode_www_form(pairs)}" : ""
-    "#{path}#{query}"
-  rescue URI::InvalidURIError
-    value
+    Seo::PageIdentity.sanitize_path(value)
   end
 
   private
