@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { loadPhoneInputStyles } from "lib/phone_input_styles"
 
 let ownerIntlTelInputPromise = null
 
@@ -394,9 +395,8 @@ export default class extends Controller {
   ensureOwnerPhoneInput(field) {
     if (!field || field.closest(".iti") || field._habitationOwnerIntlTelInput) return
 
-    this.loadOwnerPhoneStylesheet()
-    this.loadOwnerIntlTelInput()
-      .then((intlTelInput) => {
+    Promise.all([loadPhoneInputStyles(), this.loadOwnerIntlTelInput()])
+      .then(([, intlTelInput]) => {
         if (!field.isConnected || field.closest(".iti") || field._habitationOwnerIntlTelInput) return
 
         field._habitationOwnerIntlTelInput = intlTelInput(field, {
@@ -420,32 +420,6 @@ export default class extends Controller {
     }
 
     return ownerIntlTelInputPromise
-  }
-
-  loadOwnerPhoneStylesheet() {
-    if (!document.querySelector("link[data-phone-input-css]")) {
-      const link = document.createElement("link")
-      link.rel = "stylesheet"
-      link.href = "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/css/intlTelInput.css"
-      link.dataset.phoneInputCss = "true"
-      document.head.appendChild(link)
-    }
-
-    if (document.querySelector("style[data-phone-input-local-css]")) return
-
-    const style = document.createElement("style")
-    style.dataset.phoneInputLocalCss = "true"
-    style.textContent = `
-      .iti { width: 100%; display: block; }
-      .iti input.ax-control,
-      .iti input.form-control,
-      .iti input[type="tel"] { width: 100%; }
-      .iti--separate-dial-code .iti__selected-country {
-        background: #f6f8fb;
-        border-right: 1px solid #d8e0eb;
-      }
-    `
-    document.head.appendChild(style)
   }
 
   hidePanels() {

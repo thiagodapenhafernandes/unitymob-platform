@@ -602,23 +602,9 @@
           </div>
         </section>
 
-        <% if development_faq_items.any? %>
-          <section class="public-development-show__section public-development-show__faq bg-white rounded-xl shadow-sm p-8 border border-gray-100">
-            <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <div class="w-1 h-8 bg-golden-one rounded"></div>
-              Perguntas frequentes sobre <%= development_name %>
-            </h2>
-
-            <div class="divide-y divide-gray-100">
-              <% development_faq_items.each do |item| %>
-                <div class="py-5 first:pt-0 last:pb-0">
-                  <h3 class="text-lg font-semibold text-blue-three mb-2"><%= item[:question] %></h3>
-                  <p class="text-gray-700 leading-relaxed"><%= item[:answer] %></p>
-                </div>
-              <% end %>
-            </div>
-          </section>
-        <% end %>
+        <%= render "public_theme/components/development_faq",
+              variant: variant, development_name: development_name, items: development_faq_items,
+              class_name: "public-development-show__section public-development-show__faq" %>
     </div>
   </div>
 </div>

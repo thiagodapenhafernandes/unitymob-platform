@@ -26,6 +26,25 @@ Títulos e descrições manuais de SEO continuam tendo prioridade sobre os fallb
 Canonical e a proteção de buscas vazias funcionam mesmo com a descoberta automática
 desativada ou quando o visitante é um rastreador.
 
+## URLs e empreendimentos (18/10/2026)
+
+`Seo::PageIdentity.sanitize_path` normaliza as canonicals emitidas pelo layout e
+as URLs dos registros SEO antigos: remove campanhas, `class`, `style`, `data[...]`
+e a versão de interface `v`, preservando filtros múltiplos, ordenação e paginação.
+A URL canônica usa o domínio público da conta, inclusive sem descoberta automática.
+Tokens e parâmetros funcionais continuam no link visitado; a normalização não
+altera a requisição, o tracking ou o comportamento das URLs amigáveis `v=2`.
+
+O sitemap deduplica as URLs normalizadas, aplica a política de indexação pela rota
+real (mesmo com tipo SEO legado incorreto) e não reinsere páginas com `noindex`
+ativo pelo inventário de imóveis. O cache usa uma nova versão, sem excluir dados.
+
+Empreendimentos mantêm seus slugs e metadados editoriais no cadastro. O fallback
+automático conserva bairro/cidade e descreve venda/locação conforme as unidades
+públicas da própria conta. As descrições automáticas priorizam frases completas;
+resumo e FAQ usam os dados cadastrados, com singular/plural correto e FAQ visível
+nos temas padrão e luxury. Não há textos especiais por nome de condomínio.
+
 ## Operação externa
 
 Após deploy, validar o domínio real no Google Rich Results Test e Search Console e no Bing Webmaster Tools, cadastrando /sitemap.xml. Essas ferramentas exigem acesso à conta/propriedade do cliente. Não foram configuradas nem enviadas URLs externamente nesta implementação.

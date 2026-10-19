@@ -2,6 +2,47 @@ require "rails_helper"
 
 RSpec.describe Seo::SitemapBuilder do
   describe "#to_xml" do
+    it "does not reinsert a property explicitly excluded from indexing through the property inventory" do
+      tenant = Tenant.default
+      property = create(:habitation, tenant: tenant)
+      available = create(:habitation, tenant: tenant)
+      tenant.seo_settings.create!(page_name: "noindex-property", canonical_key: "property:#{property.codigo}", page_type: "property_show", canonical_path: "/imoveis/#{property.slug}", active: true, apply_to_public: true, robots_index: false, manual_mode: true)
+
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      expect(xml).not_to include("/imoveis/#{property.slug}")
+      expect(xml).to include("/imoveis/#{available.slug}")
+    end
+
+    it "does not treat a noindex record without a URL as a restriction on home" do
+      tenant = Tenant.default
+      tenant.seo_settings.create!(page_name: "orphan", canonical_key: "orphan", active: true, apply_to_public: true, robots_index: false)
+      tenant.seo_settings.create!(page_name: "home", canonical_key: "home", canonical_path: "/", canonical_url: "https://example.test/", active: true, apply_to_public: true, robots_index: true)
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      expect(xml).to include("<loc>https://example.test/</loc>")
+    end
+
+    it "deduplicates legacy interface URLs and applies listing rules by route, not stale page type" do
+      tenant = Tenant.default
+      other = Tenant.create!(name: "Outra conta", slug: "sitemap-url-other")
+      [
+        ["home-clean", "/"],
+        ["home-dirty", "/?class=absolute&data%5Baction%5D=click&v=old"],
+        ["listing-clean", "/imoveis?city=Recife"],
+        ["listing-dirty", "/imoveis?city=Recife&data%5Bcontroller%5D=marketing-tracker"],
+        ["internal-search", "/imoveis?search=texto"],
+        ["pagination", "/imoveis?page=3"],
+        ["development-search", "/empreendimentos?q=texto"]
+      ].each do |key, path|
+        seo = tenant.seo_settings.create!(page_name: key, canonical_key: key, page_type: "legacy", canonical_path: "/", canonical_url: "https://example.test/", active: true, apply_to_public: true, robots_index: true)
+        seo.update_columns(canonical_path: path, canonical_url: "https://example.test#{path}")
+      end
+      other.seo_settings.create!(page_name: "foreign", canonical_key: "foreign", canonical_path: "/contato", canonical_url: "https://other.test/contato", active: true, apply_to_public: true, robots_index: true)
+
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      urls = Nokogiri::XML(xml).remove_namespaces!.xpath("//loc").map(&:text)
+      expect(urls).to contain_exactly("https://example.test/", "https://example.test/imoveis?city=Recife")
+    end
+
     it "excludes stale and foreign property SEO entries but preserves available properties" do
       tenant = Tenant.default
       other = Tenant.create!(name: "Other sitemap", slug: "foreign-sitemap-#{SecureRandom.hex(3)}")

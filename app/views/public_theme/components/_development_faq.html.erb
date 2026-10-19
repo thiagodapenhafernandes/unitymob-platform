@@ -1,0 +1,11 @@
+<% if items.any? %>
+  <section class="public-theme-development-faq public-theme-development-faq--<%= variant %> <%= local_assigns[:class_name] %>">
+    <h2 class="public-theme-development-section__title">Perguntas frequentes sobre <%= development_name %></h2>
+    <% items.each do |item| %>
+      <div class="public-theme-development-faq__item">
+        <h3 class="public-theme-development-faq__question"><%= item[:question] %></h3>
+        <p class="public-theme-development-faq__answer"><%= item[:answer] %></p>
+      </div>
+    <% end %>
+  </section>
+<% end %>

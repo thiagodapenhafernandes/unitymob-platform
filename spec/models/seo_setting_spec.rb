@@ -1,6 +1,12 @@
 require "rails_helper"
 
 RSpec.describe SeoSetting, type: :model do
+  it "cleans legacy interface parameters without changing filters or pagination" do
+    seo = described_class.new(canonical_path: "/imoveis?class=absolute&data%5Baction%5D=click&v=2&city=Recife&city=Olinda&page=2&sort=price_asc&utm_source=google")
+    query = Rack::Utils.parse_nested_query(URI.parse(seo.sanitized_canonical_path).query)
+    expect(query).to eq("city" => %w[Olinda Recife], "page" => "2", "sort" => "price_asc")
+  end
+
   it "preserves multiple filters through URL sanitization and repeated saves" do
     seo = described_class.new(canonical_path: "/imoveis?characteristics=frente_mar&characteristics=mobiliado&characteristics=quadra_mar&utm_source=google")
     2.times do

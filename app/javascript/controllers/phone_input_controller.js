@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { loadPhoneInputStyles } from "lib/phone_input_styles"
 
 let intlTelInputPromise = null
 
@@ -51,8 +52,8 @@ export default class extends Controller {
 
     this.initializing = true
 
-    this.loadIntlTelInput()
-      .then((intlTelInput) => {
+    Promise.all([loadPhoneInputStyles(), this.loadIntlTelInput()])
+      .then(([, intlTelInput]) => {
         if (!this.element.isConnected || this.iti) return
 
         this.iti = intlTelInput(this.element, {
@@ -292,49 +293,6 @@ export default class extends Controller {
   }
 
   ensureEnhancedInput() {
-    this.loadStylesheet()
     this.initializeIntlTelInput()
-  }
-
-  loadStylesheet() {
-    if (!document.querySelector("link[data-phone-input-css]")) {
-      const link = document.createElement("link")
-      link.rel = "stylesheet"
-      link.href = "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/css/intlTelInput.css"
-      link.dataset.phoneInputCss = "true"
-      document.head.appendChild(link)
-    }
-
-    if (document.querySelector("style[data-phone-input-local-css]")) return
-
-    const style = document.createElement("style")
-    style.dataset.phoneInputLocalCss = "true"
-    style.textContent = `
-      .iti { width: 100%; display: block; }
-      .iti input.ax-control,
-      .iti input.form-control,
-      .iti input[type="tel"] { width: 100%; }
-      .iti--separate-dial-code .iti__selected-country {
-        background: #f6f8fb;
-        border-right: 1px solid #d8e0eb;
-      }
-      .phone-input-group { align-items: stretch; }
-      .phone-input-group > .iti {
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-      .phone-input-group > .ax-input-group__addon,
-      .phone-input-group > span[class*="bg-"] {
-        display: none;
-      }
-      .iti.is-readonly .iti__selected-country {
-        pointer-events: none;
-      }
-      .iti.is-readonly input {
-        background-color: #f4f7fb;
-        cursor: not-allowed;
-      }
-    `
-    document.head.appendChild(style)
   }
 }

@@ -3,10 +3,9 @@ module Seo
     include Rails.application.routes.url_helpers
 
     DESCRIPTION_LIMIT = 155
-    TITLE_LIMIT = 65
-
-    def initialize(habitation)
+    def initialize(habitation, development_units: nil)
       @habitation = habitation
+      @development_units = development_units
     end
 
     def attributes
@@ -21,6 +20,14 @@ module Seo
         og_title: social_title,
         og_description: social_description
       }
+    end
+
+    def development_offer
+      sale = development_units.any? { |unit| unit.status.in?(["Venda", "Venda e Aluguel"]) }
+      rent = development_units.any? { |unit| unit.status.in?(["Aluguel", "Venda e Aluguel"]) }
+      return "imóveis à venda e para alugar" if sale && rent
+      return "imóveis à venda" if sale
+      return "imóveis para alugar" if rent
     end
 
     private
@@ -65,18 +72,8 @@ module Seo
     def development_title_source
       return @habitation.meta_title if @habitation.meta_title.present?
 
-      name = development_name
-      location_candidates = [
-        [@habitation.public_neighborhood, @habitation.cidade].compact_blank.join(", "),
-        @habitation.cidade
-      ].compact_blank.uniq
-
-      location_candidates.each do |location|
-        candidate = "#{name} em #{location}"
-        return candidate if fits_with_site_suffix?(candidate)
-      end
-
-      name
+      title = "#{development_name}#{development_location_phrase}"
+      [title, development_offer].compact.join(": ")
     end
 
     def append_site_suffix(title)
@@ -84,10 +81,6 @@ module Seo
 
       suffix = " | #{site_name}"
       "#{title}#{suffix}"
-    end
-
-    def fits_with_site_suffix?(title)
-      "#{title} | #{site_name}".length <= TITLE_LIMIT
     end
 
     def meta_description
@@ -105,11 +98,13 @@ module Seo
 
     def development_description
       parts = []
-      parts << "Conheça o #{development_name}#{development_location_phrase}."
-      parts << "Empreendimento #{constructor_phrase}." if constructor_phrase.present?
-      parts << "Unidades disponíveis com #{development_unit_summary}." if development_unit_summary.present?
-      parts << "Veja fotos, endereço, detalhes e fale com a #{site_name}."
-      parts.compact_blank.join(" ")
+      parts << "#{development_name}#{development_location_phrase}."
+      parts << "Confira #{development_offer}." if development_offer.present?
+      parts << "#{development_unit_summary}." if development_unit_summary.present?
+      parts << "Consulte fotos, valores e disponibilidade."
+      parts.compact_blank.each_with_object([]) do |part, selected|
+        selected << part if (selected + [part]).join(" ").length <= DESCRIPTION_LIMIT
+      end.join(" ")
     end
 
     def meta_keywords
@@ -171,17 +166,13 @@ module Seo
       " em #{location}"
     end
 
-    def constructor_phrase
-      @habitation.constructor_name.presence
-    end
-
     def development_unit_summary
       @development_unit_summary ||= begin
         parts = []
         parts << "#{range_text(area_values)} m² de área privativa" if area_values.any?
-        parts << "#{range_text(suite_values)} suítes" if suite_values.any?
-        parts << "#{range_text(bedroom_values)} dormitórios" if suite_values.blank? && bedroom_values.any?
-        parts << "#{range_text(parking_values)} vagas" if parking_values.any?
+        parts << "#{range_text(suite_values)} #{suite_values.uniq == [1] ? 'suíte' : 'suítes'}" if suite_values.any?
+        parts << "#{range_text(bedroom_values)} #{bedroom_values.uniq == [1] ? 'dormitório' : 'dormitórios'}" if suite_values.blank? && bedroom_values.any?
+        parts << "#{range_text(parking_values)} #{parking_values.uniq == [1] ? 'vaga' : 'vagas'}" if parking_values.any?
         parts.join(", ").presence
       end
     end

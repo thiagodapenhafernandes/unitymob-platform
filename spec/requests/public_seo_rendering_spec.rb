@@ -1,6 +1,33 @@
 require "rails_helper"
 
 RSpec.describe "Public SEO rendering", type: :request do
+  ["0", "1"].each do |inventory_enabled|
+    it "keeps home canonical clean with inventory #{inventory_enabled}, including legacy records" do
+      tenant = Tenant.default
+      tenant.tenant_domains.create!(hostname: "canonical.example.test", primary_domain: true)
+      Setting.set(Seo::PageTracker::AUTO_INVENTORY_SETTING, inventory_enabled, tenant: tenant)
+      seo = tenant.seo_settings.create!(page_name: "home", canonical_key: "home", canonical_path: "/", active: true, apply_to_public: true, manual_mode: true, meta_title: "Título aprovado")
+      seo.update_columns(canonical_path: "/?class=absolute&data%5Bcontroller%5D=marketing-tracker&v=old")
+      host! "localhost"
+
+      get "/", params: { class: "absolute", data: { action: "click->marketing-tracker#track" }, v: "old", utm_source: "google" }
+
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      expect(html.at_css('link[rel="canonical"]')["href"]).to eq("https://canonical.example.test/")
+      expect(html.at_css('meta[property="og:url"]')["content"]).to eq("https://canonical.example.test/")
+      expect(html.at_css("title").text).to eq("Título aprovado")
+      expect(seo.reload.meta_title).to eq("Título aprovado")
+    end
+  end
+
+  it "cleans canonical even without an SEO record or automatic discovery" do
+    host! "localhost"
+    Setting.set(Seo::PageTracker::AUTO_INVENTORY_SETTING, "0", tenant: Tenant.default)
+    get "/", params: { class: "absolute", data: { controller: "marketing-tracker" }, v: "2", utm_source: "google" }
+    expect(Nokogiri::HTML(response.body).at_css('link[rel="canonical"]')["href"]).to eq("http://localhost/")
+  end
+
   it "uses the selected locations in the heading and preserves both in the canonical" do
     host! "localhost"
     create(:habitation, tenant: Tenant.default)

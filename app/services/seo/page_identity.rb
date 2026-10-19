@@ -13,7 +13,30 @@ module Seo
 
     TRACKING_PARAMS = /\A(utm_(source|medium|campaign|term|content|id)|fbclid|gclid|msclkid|_gl|gbraid|wbraid|gad_source|gad_campaignid|ttclid)\z/
 
-    IGNORED_PARAMS = Regexp.union(TRACKING_PARAMS, /\A(utm_.*|commit|authenticity_token|controller|action)\z/)
+    IGNORED_PARAMS = Regexp.union(TRACKING_PARAMS, /\A(utm_.*|commit|authenticity_token|controller|action|class|style|v)\z/, /\Adata(?:\[|\z)/)
+
+    # Mesma normalização para descoberta, registros antigos e HTML sem descoberta.
+    def self.sanitize_path(value)
+      return if value.blank?
+
+      value = value.to_s
+      uri = URI.parse(value.start_with?("http") ? value : "https://example.com#{value.start_with?("/") ? value : "/#{value}"}")
+      path = uri.path.presence || "/"
+      pairs = URI.decode_www_form(uri.query.to_s).filter_map do |key, val|
+        clean_key = key.delete_suffix("[]")
+        next if clean_key.match?(IGNORED_PARAMS) || val.blank?
+
+        [clean_key, val.strip]
+      end.sort
+      pairs = pairs.group_by(&:first).flat_map do |key, values|
+        values = values.uniq
+        values.map { |_, val| [values.size > 1 ? "#{key}[]" : key, val] }
+      end
+      query = pairs.any? ? "?#{URI.encode_www_form(pairs)}" : ""
+      "#{path}#{query}"
+    rescue URI::InvalidURIError, ArgumentError
+      value.to_s.split(/[?#]/).first.presence || "/"
+    end
 
     attr_reader :controller
 
@@ -145,7 +168,7 @@ module Seo
 
     def property_show_identity
       habitation = controller.instance_variable_get(:@habitation)
-      metadata = Seo::PropertyMetadataBuilder.new(habitation).attributes
+      metadata = Seo::PropertyMetadataBuilder.new(habitation, development_units: controller.instance_variable_get(:@development_units)).attributes
 
       metadata.merge(
         normalized_params: {},

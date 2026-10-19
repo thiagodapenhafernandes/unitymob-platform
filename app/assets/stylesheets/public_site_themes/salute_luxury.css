@@ -4564,6 +4564,7 @@ body.no-scroll { overflow: hidden; }
 
 /* Cartões de conteúdo */
 .public-theme-development-about--salute-luxury,
+.public-theme-development-faq--salute-luxury,
 .public-theme-development-features--salute-luxury,
 .public-theme-development-location--salute-luxury,
 .public-theme-development-units {
@@ -4575,6 +4576,9 @@ body.no-scroll { overflow: hidden; }
 .public-theme-development-about__body { font-size: 15.5px; line-height: 1.75; color: var(--ink); }
 .public-theme-development-about__body p { margin: 0 0 14px; }
 .public-theme-development-about__empty { color: var(--muted); font-style: italic; }
+.public-theme-development-faq--salute-luxury .public-theme-development-faq__item + .public-theme-development-faq__item { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+.public-theme-development-faq--salute-luxury .public-theme-development-faq__question { margin: 0 0 8px; font-size: 18px; font-weight: 600; color: var(--navy-800); }
+.public-theme-development-faq--salute-luxury .public-theme-development-faq__answer { margin: 0; font-size: 15.5px; line-height: 1.75; color: var(--ink); }
 
 /* Fotos restantes do álbum: fora da tela, mas no DOM e dentro do container do
    fancybox-gallery. display:none faria o plugin ignorá-las. */
@@ -4630,6 +4634,7 @@ body.no-scroll { overflow: hidden; }
   .public-theme-development-hero__title { font-size: clamp(30px, 9vw, 44px); }
   .sl-development__layout { padding: 28px 0 44px; }
   .public-theme-development-about--salute-luxury,
+  .public-theme-development-faq--salute-luxury,
   .public-theme-development-features--salute-luxury,
   .public-theme-development-location--salute-luxury,
   .public-theme-development-units { padding: 24px 20px; border-radius: 14px; }
