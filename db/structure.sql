@@ -3218,7 +3218,10 @@ CREATE TABLE public.ga4_conversion_configs (
     api_secret text,
     activated_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    reporting_enabled boolean DEFAULT false NOT NULL,
+    reporting_property_id character varying,
+    reporting_credentials text
 );
 
 
@@ -20624,6 +20627,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261019020000'),
 ('20261019010000'),
 ('20261012180000'),
 ('20261011191320'),

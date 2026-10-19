@@ -1,8 +1,11 @@
 <div class="ax-integration-layout">
-<% active_tab_label = { "sheets" => "Google Sheets", "calendar" => "Agenda", "maps" => "Mapa" }.fetch(@active_tab, @active_tab.to_s.humanize) %>
+<% active_tab_label = { "sheets" => "Google Sheets", "calendar" => "Agenda", "maps" => "Mapa", "ga4" => "Analytics" }.fetch(@active_tab, @active_tab.to_s.humanize) %>
 <%= ax_workspace_heading(eyebrow: "Integrações", icon: "google", title: "Google e Mapa", pills: [active_tab_label], subtitle: "Configure integrações administrativas e o provedor de mapa do site público.") %>
 
 <ul class="ax-form-tabs tw-mb-4">
+  <% if @ga4_config %>
+    <li><%= link_to "Analytics", admin_google_integration_path(tab: "ga4"), class: ["ax-form-tabs__item", ("active" if @active_tab == "ga4")].compact.join(" "), aria: { current: ("page" if @active_tab == "ga4") } %></li>
+  <% end %>
   <li>
     <%= link_to admin_google_integration_path(tab: "sheets"), class: ["ax-form-tabs__item", ("active" if @active_tab == "sheets")].compact.join(" "), aria: { current: ("page" if @active_tab == "sheets") } do %>
       <i class="bi bi-table" aria-hidden="true"></i>Google Sheets
@@ -19,6 +22,10 @@
     <% end %>
   </li>
 </ul>
+
+<% if @ga4_config && @active_tab == "ga4" %>
+  <%= render "ga4", config: @ga4_config %>
+<% end %>
 
 <div id="google-sheets" <%= "hidden" unless @active_tab == "sheets" %>>
   <%= ax_field_grid do %>

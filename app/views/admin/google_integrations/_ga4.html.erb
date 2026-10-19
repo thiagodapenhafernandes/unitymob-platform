@@ -1,0 +1,15 @@
+<%= ax_operational_panel(eyebrow: "Google Analytics", title: "Relatórios do GA4") do %>
+  <div class="ax-panel-body">
+    <%= ax_error_summary(config) %>
+    <%= ax_inline_notice(tone: :neutral) do %>
+      Esta conexão permite apenas ler relatórios. Não altera tags, conversões, campanhas ou a chave de envio já instalada. Use uma conta de serviço com acesso de Leitor somente à propriedade desta conta e habilite a Google Analytics Data API no projeto Google Cloud.
+    <% end %>
+    <%= form_with url: admin_google_integration_path, method: :patch, scope: :ga4, local: true do |f| %>
+      <%= ax_switch_field(label: "Ativar leitura automática dos relatórios", form: f, method: :reporting_enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-my-3", input_html: { checked: config.reporting_enabled? }) %>
+      <%= ax_text_field(form: f, method: :reporting_property_id, label: "ID numérico da propriedade GA4", value: config.reporting_property_id, placeholder: "ID da propriedade, não o código G-...", field_class: "tw-mb-3") %>
+      <%= ax_text_field(form: f, method: :reporting_credentials, label: "JSON da conta de serviço", type: :textarea, rows: 6, autocomplete: "off", placeholder: (config.reporting_credentials.present? ? "Credencial cifrada já salva. Preencha somente para substituir." : "Cole aqui o JSON da conta de serviço do Google Cloud"), tooltip: "A chave privada é cifrada no banco e nunca é exibida de volta. Não use a chave Measurement Protocol.", field_class: "tw-mb-3") %>
+      <%= ax_form_actions(sticky: false) do %><%= f.submit "Salvar conexão de leitura", class: "ax-btn ax-btn--primary" %><% end %>
+    <% end %>
+    <p class="tw-text-sm tw-text-ink-muted tw-mt-3">Painel: Dashboard → Leads → Funil comercial e cobertura. Acesso aos relatórios completos da propriedade restrito ao titular; demais usuários mantêm o escopo de leads permitido.</p>
+  </div>
+<% end %>
