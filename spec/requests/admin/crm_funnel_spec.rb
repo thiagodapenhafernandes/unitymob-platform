@@ -15,13 +15,13 @@ RSpec.describe "Funil CRM e GA4 no dashboard", type: :request do
     expect(response.body).not_to include("send-secret", "Impacto -&gt; venda")
   end
 
-  it "mantém o dashboard original para contas não habilitadas, inclusive Salute" do
-    config.update!(enabled: false)
+  it "disponibiliza o mesmo painel sem configurar ou ativar GA4 na conta, inclusive Salute" do
+    config.destroy!
     get admin_root_path
-    expect(response.body).not_to include('data-controller="ax-frame-refresh"')
+    expect(response.body).to include('data-controller="ax-frame-refresh"')
     get admin_dashboard_section_path("funnel"), headers: { "Turbo-Frame" => "admin_dashboard_funnel" }
-    expect(response.body).to include("Conversão comercial")
-    expect(response.body).not_to include("Funil comercial e cobertura")
+    expect(response.body).to include("Funil comercial e cobertura", "Conexão de leitura ainda não configurada")
+    expect(Ga4ConversionConfig.where(tenant: admin.tenant)).not_to exist
   end
 
   it "não consulta totais da propriedade quando há filtro de corretor" do

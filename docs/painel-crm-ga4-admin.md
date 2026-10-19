@@ -1,18 +1,18 @@
 # Painel CRM e GA4 no admin
 
-Implementação local para revisão. Nenhum deploy nem alteração de conta em produção nesta entrega.
+Pacote aprovado para publicação; configuração da leitura somente na Conexão BC.
 
 ## Onde fica
 
-- Dashboard → Leads: o frame de funil existente passa a mostrar **Funil comercial e cobertura** quando a conta já tem envio CRM→GA4 habilitado ou habilita a nova leitura de relatórios.
+- Dashboard → Leads: o frame de funil existente mostra **Funil comercial e cobertura** em todas as contas, independentemente da conexão externa.
 - Integrações → Google → **Analytics**: disponível ao titular com permissão de gerenciar integrações, sem tenant, domínio ou propriedade fixos no código. Abrir a aba não cria configuração nem faz uma chamada ao Google.
-- Contas sem ativação continuam com o funil anterior. A Salute não recebe configuração, credencial, ativação ou deploy. A aba administrativa é uma capacidade reutilizável; não é uma ativação automática.
+- Todas as contas recebem o mesmo painel e menu. Conta sem integração continua sem chamadas ao GA4; abrir o painel não cria configuração. A Salute recebe o código, sem configuração/credencial/ativação de integração.
 
 ## Reutilização e atualização
 
 A mesma rota e o mesmo frame assíncrono do dashboard mantêm período, corretor, modalidade, escopo de visibilidade, exclusão de contatos internos e status operacionais inválidos. A consulta nova é `Dashboard::CrmFunnelQuery`, escopada pela conta e pelo conjunto de leads autorizado recebido do dashboard.
 
-A composição usa `ax_operational_panel`, `ax_field_grid`, `ax_status_list`, `ax_inline_notice`, `ax-table` e os campos e ações de formulário compartilhados. Não há CSS novo nem alteração de temas públicos. O controller Stimulus compartilhado `ax-frame-refresh` recarrega somente o frame a cada 60 segundos, pausa em aba oculta, não sobrepõe um carregamento em curso e remove timer/listener ao desconectar.
+Preservam-se também os gargalos por perdas/reaberturas e os links de investigação de leads quentes/mornos existentes. A composição usa `ax_operational_panel`, `ax_field_grid`, `ax_status_list`, `ax_inline_notice`, `ax-table` e os campos e ações de formulário compartilhados. Não há CSS novo nem alteração de temas públicos. O controller Stimulus compartilhado `ax-frame-refresh` recarrega somente o frame a cada 60 segundos, pausa em aba oculta, não sobrepõe um carregamento em curso e remove timer/listener ao desconectar.
 
 CRM é lido novamente enquanto o painel está aberto. O GA4 é consultado sob demanda com cache por conta, versão da configuração e datas por até 15 minutos; não há coleta em segundo plano quando ninguém abre o painel. Falha preserva a última leitura boa por até um dia, com status de desatualizada e data original. Sem resultado válido anterior, exibe indisponibilidade, nunca zero fictício. O processamento do Google pode ter atraso adicional.
 

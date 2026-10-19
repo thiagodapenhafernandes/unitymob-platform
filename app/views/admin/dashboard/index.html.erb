@@ -274,7 +274,7 @@
     <% end %>
   </div>
 
-  <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel", dashboard_filter_params), data: (@crm_ga4_config ? { controller: "ax-frame-refresh" } : {}) do %>
+  <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel", dashboard_filter_params), data: { controller: "ax-frame-refresh" } do %>
     <%= render "admin/dashboard/sections/loading_panel", title: "Conversão comercial", eyebrow: "Funil", rows: 4 %>
   <% end %>
   <% end %>
