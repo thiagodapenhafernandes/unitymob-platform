@@ -102,7 +102,7 @@ sem autorização para essas ações; preferir testes isolados e consultas de le
 - SSH: `root@webhooks.unitymob.com.br` (IP observado: `159.223.105.26`).
 - Diretório: `/opt/unitymob-whatsapp-gateway`.
 - Serviço Compose: `whatsapp-gateway`; container: `unitymob-whatsapp-gateway`.
-- Porta local: `127.0.0.1:4010`; proxy Apache; endpoint `/up` público.
+- Porta local: `127.0.0.1:4010`; proxy Nginx; endpoint `/up` público.
 - Fonte: `gateway/`; instruções adicionais em `gateway/README.md`.
 
 A partir da raiz, após publicar o commit em `origin/master`, gerar um pacote

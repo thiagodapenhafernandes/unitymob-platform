@@ -35,8 +35,13 @@ Este subapp roda separado do CRM principal no servidor `root@webhooks.unitymob.c
 - path: `/opt/unitymob-whatsapp-gateway`
 - runtime: Docker Compose
 - porta local: `127.0.0.1:4010`
-- proxy publico: Apache `webhooks.unitymob.com.br` -> `http://127.0.0.1:4010`
+- proxy publico: Nginx `webhooks.unitymob.com.br` -> `http://127.0.0.1:4010`
 - banco: PostgreSQL local `unitymob_whatsapp_gateway_production`
+
+Proteção contra saturação, diagnóstico, patch do proxy e rollback:
+[runbook operacional](ops/README.md). O espelho opcional de desenvolvimento
+recebe somente após a entrega oficial e pausa por 60 segundos após falhar;
+cópias puladas durante a pausa ou outra tentativa em curso não são reenviadas.
 
 Atualizacao manual segura:
 

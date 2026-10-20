@@ -91,7 +91,10 @@ RSpec.describe Gateway::App do
         "X-Unitymob-Gateway-Mirror" => "dev",
         "X-Unitymob-Gateway-Signature" => Gateway::InternalSignature.sign(payload, secret: "dev-secret")
       }
-    ).to_return(status: 200, body: "ok")
+    ).to_return do
+      expect(official).to have_been_requested.once
+      { status: 200, body: "ok" }
+    end
 
     post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
 
@@ -143,12 +146,17 @@ RSpec.describe Gateway::App do
       active: true
     )
     payload = { entry: [{ changes: [{ value: { metadata: { phone_number_id: "692164393979141" }, messages: [{ id: "wamid.message" }] } }] }] }.to_json
-    stub_request(:post, mirror.target_url).to_timeout
-    stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
+    dev = stub_request(:post, mirror.target_url).to_timeout
+    official = stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
 
-    post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+    2.times do
+      post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+      expect(last_response.status).to eq(200)
+    end
 
-    expect(last_response.status).to eq(200)
+    expect(WebhookEvent.count).to eq(2)
+    expect(official).to have_been_requested.twice
+    expect(dev).to have_been_requested.once
     expect(WebhookEvent.last).to have_attributes(status: "forwarded", webhook_route_id: route.id)
     expect(mirror.reload.last_status).to eq("failed")
     expect(mirror.last_error).to include("Net::")
@@ -217,8 +225,11 @@ RSpec.describe Gateway::App do
     payload = {
       entry: [{ id: "214973675033177", changes: [{ field: "leadgen", value: { leadgen_id: "lead-123", page_id: "214973675033177", form_id: "form-456" } }] }]
     }.to_json
-    stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
-    dev = stub_request(:post, "https://dev.unitymob.com.br/webhooks/meta").to_return(status: 200, body: "ok")
+    official = stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
+    dev = stub_request(:post, "https://dev.unitymob.com.br/webhooks/meta").to_return do
+      expect(official).to have_been_requested.once
+      { status: 200, body: "ok" }
+    end
 
     post "/webhooks/meta", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
 
