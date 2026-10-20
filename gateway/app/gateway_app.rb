@@ -52,14 +52,20 @@ module Gateway
 
       payload = parse_json(raw_body)
       event_contexts = WhatsappPayload.extract_event_contexts(payload)
-      events = event_contexts.map { |context| persist_event(context, context[:payload] || payload, context[:payload] ? JSON.generate(context[:payload]) : raw_body) }
+      routes = WebhookRoute.where(provider: "whatsapp", active: true).to_a
+      events = event_contexts.filter_map do |context|
+        route = RouteResolver.whatsapp(phone_number_id: context[:phone_number_id], waba_id: context[:waba_id], routes: routes)
+        next unless route
 
-      alert_unrouted_events(events)
+        persist_event(context, context[:payload] || payload,
+          context[:payload] ? JSON.generate(context[:payload]) : raw_body, route: route)
+      end
+
       events.each { |event| forward_event(event, event.raw_body) }
-      events.each { |event| mirror_event(event, raw_body) }
+      events.each { |event| mirror_event(event, event.raw_body) }
 
       status 200
-      json(ok: true, events: events.map { |event| event_response(event) })
+      json(ok: true, ignored: event_contexts.size - events.size, events: events.map { |event| event_response(event) })
     rescue JSON::ParserError
       status 400
       json(error: "invalid_json")
@@ -375,9 +381,7 @@ module Gateway
       }
     end
 
-    def persist_event(context, payload, raw_body)
-      route = RouteResolver.whatsapp(phone_number_id: context[:phone_number_id], waba_id: context[:waba_id])
-
+    def persist_event(context, payload, raw_body, route:)
       WebhookEvent.create!(
         provider: "whatsapp",
         webhook_route: route,
@@ -387,7 +391,7 @@ module Gateway
         phone_number_id: context[:phone_number_id],
         payload: payload,
         raw_body: raw_body,
-        status: route ? "received" : "unrouted",
+        status: "received",
         received_at: Time.now
       )
     end

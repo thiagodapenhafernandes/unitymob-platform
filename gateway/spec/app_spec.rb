@@ -88,11 +88,11 @@ RSpec.describe Gateway::App do
     official = stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
     dev = stub_request(:post, "https://dev.unitymob.com.br/webhooks/whatsapp").with(
       headers: {
-        "X-Unitymob-Gateway-Mirror" => "dev",
-        "X-Unitymob-Gateway-Signature" => Gateway::InternalSignature.sign(payload, secret: "dev-secret")
+        "X-Unitymob-Gateway-Mirror" => "dev"
       }
-    ).to_return do
+    ).to_return do |request|
       expect(official).to have_been_requested.once
+      expect(request.headers["X-Unitymob-Gateway-Signature"]).to eq(Gateway::InternalSignature.sign(request.body, secret: "dev-secret"))
       { status: 200, body: "ok" }
     end
 
@@ -297,7 +297,7 @@ RSpec.describe Gateway::App do
     expect(WebhookEvent.last.next_retry_at).to be_present
   end
 
-  it "stores unrouted events and still returns 200 to Meta" do
+  it "acknowledges unrouted WhatsApp events without storing or forwarding them" do
     payload = {
       entry: [{ id: "unknown-waba", changes: [{ value: { metadata: { phone_number_id: "unknown-phone" }, messages: [{ id: "wamid.unknown" }] } }] }]
     }.to_json
@@ -305,7 +305,8 @@ RSpec.describe Gateway::App do
     post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
 
     expect(last_response.status).to eq(200)
-    expect(WebhookEvent.last).to have_attributes(status: "unrouted", phone_number_id: "unknown-phone")
+    expect(WebhookEvent.count).to eq(0)
+    expect(JSON.parse(last_response.body)).to include("ignored" => 1, "events" => [])
   end
 
   it "stores unrouted Meta leadgen events and still returns 200 to Meta" do
