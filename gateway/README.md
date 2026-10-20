@@ -10,7 +10,8 @@ Subapp isolado para receber o webhook global do app Meta da Unitymob e rotear ev
 - Resolver a rota por `phone_number_id` e, se necessario, por `waba_id`.
 - Resolver leads da Meta por `page_id` e, se necessario, por `form_id`.
 - Encaminhar o payload bruto para o destino do cliente com assinatura interna.
-- Registrar eventos sem rota como `unrouted` e emitir alerta operacional opcional.
+- WhatsApp: processar somente eventos com rota ativa; reconhecer eventos autenticados sem rota com HTTP 200, sem armazenar ou encaminhar seu conteúdo.
+- Meta Lead Ads: manter eventos sem rota como `unrouted`, com alerta operacional opcional.
 - Manter o CRM fora do papel de webhook global da Meta.
 - Endpoint publico de descoberta de conta do app hibrido mobile (Capacitor): `https://webhooks.unitymob.com.br/discovery/resolve` — dado um e-mail, devolve a URL do servidor fisico do cliente dono daquela conta.
 
@@ -162,6 +163,27 @@ RAILS_ENV=production bundle exec rake mobile:backfill_account_routes
 - `DELETE /internal/account_routes/:email` — desativa a rota (ex.: usuario desativado/removido).
 
 ## Encaminhamento
+
+### Filtro de contas WhatsApp
+
+O cadastro de rotas ativas é a lista de aceitação do WhatsApp. A assinatura
+Meta continua sendo validada antes de qualquer consulta de roteamento.
+Cada requisição carrega as rotas WhatsApp ativas uma vez, prioriza o
+`phone_number_id` e mantém o fallback existente por `waba_id` (necessário para
+eventos de templates sem número). Não há lista fixa de clientes ou cache entre
+requisições: uma rota ativada passa a aceitar eventos na próxima requisição.
+
+Eventos sem rota recebem HTTP 200 com a contagem `ignored` na resposta, sem
+criar `WebhookEvent`, emitir alertas ou chamar o espelho de desenvolvimento.
+Não responder 4xx para esses eventos evita incentivar novas tentativas da Meta.
+Em lotes mistos, somente os eventos aceitos são persistidos, entregues e
+espelhados, com payload isolado por evento. Falhas de assinatura continuam
+recebendo 401; falhas na entrega oficial continuam no mecanismo de retry.
+
+O histórico anterior não é apagado. Novos eventos ignorados não ficam disponíveis
+para recuperação posterior. O filtro reduz escrita e I/O, mas ainda precisa
+receber, autenticar e interpretar o webhook; não altera inscrições ou entregas
+de outros apps na Meta. Meta Lead Ads, ZAP e TikTok não usam esse filtro.
 
 O gateway envia para o `target_url` cadastrado:
 

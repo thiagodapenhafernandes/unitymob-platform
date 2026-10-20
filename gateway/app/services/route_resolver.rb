@@ -8,15 +8,16 @@ module Gateway
       whatsapp(phone_number_id:, waba_id:)
     end
 
-    def whatsapp(phone_number_id:, waba_id:)
+    def whatsapp(phone_number_id:, waba_id:, routes: nil)
+      routes ||= WebhookRoute.where(provider: "whatsapp", active: true).to_a
       if phone_number_id.to_s.strip != ""
-        route = WebhookRoute.find_by(provider: "whatsapp", phone_number_id: phone_number_id.to_s, active: true)
+        route = routes.find { |candidate| candidate.phone_number_id.to_s == phone_number_id.to_s }
         return route if route
       end
 
       return if waba_id.to_s.strip == ""
 
-      WebhookRoute.find_by(provider: "whatsapp", waba_id: waba_id.to_s, active: true)
+      routes.find { |candidate| candidate.waba_id.to_s == waba_id.to_s }
     end
 
     def meta(page_id:, form_id: nil)
