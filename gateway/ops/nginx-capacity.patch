@@ -1,0 +1,14 @@
+--- a/etc/nginx/nginx.conf
++++ b/etc/nginx/nginx.conf
+@@ -2,0 +3 @@
++worker_rlimit_nofile 8192;
+@@ -8 +9 @@
+-	worker_connections 768;
++	worker_connections 4096;
+@@ -17,0 +19 @@
++	keepalive_timeout 15s;
+--- a/etc/nginx/conf.d/unitymob-no-query-log.conf
++++ b/etc/nginx/conf.d/unitymob-no-query-log.conf
+@@ -1 +1 @@
+-log_format unitymob_no_query '$remote_addr - $remote_user [$time_local] "$request_method $uri $server_protocol" $status $body_bytes_sent';
++log_format unitymob_no_query '$remote_addr - $remote_user [$time_local] "$request_method $uri $server_protocol" $status $body_bytes_sent rt=$request_time urt=$upstream_response_time us=$upstream_status';

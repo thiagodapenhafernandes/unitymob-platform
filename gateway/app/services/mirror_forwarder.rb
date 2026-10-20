@@ -6,6 +6,7 @@ require "uri"
 module Gateway
   class MirrorForwarder
     TIMEOUT_SECONDS = 3
+    RETRY_COOLDOWN_SECONDS = 60
 
     def self.call(event:, raw_body:)
       return unless ENV.fetch("GATEWAY_DEV_MIRROR_ENABLED", "true") == "true"
@@ -22,7 +23,15 @@ module Gateway
     end
 
     def call
-      mirror.update!(last_attempted_at: Time.now, last_status: "attempting", last_error: nil)
+      now = Time.now
+      # A single probe per cooldown keeps a broken dev target off the webhook hot path.
+      claimed = WebhookMirror.where(id: mirror.id, active: true)
+        .where("last_status IS NULL OR last_status NOT IN (?) OR last_attempted_at IS NULL OR last_attempted_at <= ?",
+          %w[attempting failed], now - RETRY_COOLDOWN_SECONDS)
+        .update_all(last_attempted_at: now, last_status: "attempting", last_error: nil, updated_at: now)
+      return if claimed.zero?
+
+      mirror.reload
       response = perform_request
       if response.is_a?(Net::HTTPSuccess)
         mirror.update!(last_status: "forwarded", last_succeeded_at: Time.now, last_error: nil)
