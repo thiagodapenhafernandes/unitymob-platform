@@ -78,6 +78,19 @@ RSpec.describe Storage::WarmPublicVariantsJob, type: :job do
     expect(described_class::SETS).not_to include({ resize_to_fill: [1400, 820], format: :webp })
   end
 
+  it "não aquece nenhuma variante de um original com falha de integridade antiga" do
+    property = create(:habitation, tenant: tenant)
+    attach_photo(property)
+    blob = property.photos.first.blob
+    blob.update!(metadata: blob.metadata.merge(
+      Storage::PublicCdnImageUrl::TRANSFORM_FAILURE_METADATA_KEY => {
+        "outra-variante" => { "error" => "ActiveStorage::IntegrityError" }
+      }
+    ))
+
+    expect { described_class.perform_now }.not_to have_enqueued_job(Storage::TransformVariantJob)
+  end
+
   it "ignora fotos de imóveis inativos" do
     property = create(:habitation, tenant: tenant, status: "Inativo", exibir_no_site_flag: false)
     attach_photo(property)

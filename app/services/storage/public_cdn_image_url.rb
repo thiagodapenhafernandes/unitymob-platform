@@ -73,6 +73,14 @@ module Storage
       "storage/public_cdn_image_url/variant_exists/#{original_blob_id}/#{variant_blob_id}"
     end
 
+    def self.integrity_failed?(blob)
+      metadata = blob.metadata.to_h
+      metadata["public_integrity_failure"].present? ||
+        metadata.fetch(TRANSFORM_FAILURE_METADATA_KEY, {}).to_h.values.any? do |failure|
+          failure["error"] == "ActiveStorage::IntegrityError"
+        end
+    end
+
     def self.mark_transform_failed(blob:, transformations:, error:)
       digest = transform_digest(transformations)
 
@@ -81,6 +89,10 @@ module Storage
         failures = metadata.fetch(TRANSFORM_FAILURE_METADATA_KEY, {}).to_h
         failures[digest] = { "error" => error.class.name, "recorded_at" => Time.current.iso8601 }
         metadata[TRANSFORM_FAILURE_METADATA_KEY] = failures.to_a.last(10).to_h
+        if error.is_a?(ActiveStorage::IntegrityError)
+          # A falha é do original e vale para todas as transformações, sem expirar.
+          metadata["public_integrity_failure"] = failures[digest]
+        end
         blob.update!(metadata: metadata)
       end
     end
@@ -175,8 +187,6 @@ module Storage
       return if blob.blank?
       return unless variant_requested?
       return unless blob.respond_to?(:variable?) && blob.variable?
-      return if transform_failed?(blob)
-
       variant = blob.variant(**variant_transformations)
       if variant_processed?(variant) && variant_blob_exists?(variant)
         variant_blob = variant.image.blob
@@ -186,6 +196,8 @@ module Storage
         end
         return representation_path(variant)
       end
+
+      return if transform_failed?(blob)
 
       enqueue_variant_processing(blob)
       nil
@@ -302,6 +314,8 @@ module Storage
     end
 
     def transform_failed?(blob)
+      return true if self.class.integrity_failed?(blob)
+
       failures = blob.metadata.to_h.fetch(self.class::TRANSFORM_FAILURE_METADATA_KEY, {}).to_h
       failure = failures[self.class.transform_digest(variant_transformations)]
       return false if failure.blank?

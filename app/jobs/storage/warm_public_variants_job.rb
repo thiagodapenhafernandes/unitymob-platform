@@ -54,6 +54,7 @@ module Storage
       candidate_blobs.each do |blob|
         break if enqueued >= MAX_ENQUEUE_PER_RUN
         next unless blob.variable?
+        next if Storage::PublicCdnImageUrl.integrity_failed?(blob)
         SETS.each do |transformations|
           break if enqueued >= MAX_ENQUEUE_PER_RUN
 

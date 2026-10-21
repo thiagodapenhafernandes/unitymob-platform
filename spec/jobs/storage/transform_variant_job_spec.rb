@@ -1,6 +1,18 @@
 require "rails_helper"
 
 RSpec.describe Storage::TransformVariantJob do
+  before do
+    allow(Storage::PublicCdnImageUrl).to receive(:integrity_failed?).and_return(false)
+  end
+
+  it "não processa jobs já enfileirados de um original com integridade inválida" do
+    blob = instance_double(ActiveStorage::Blob)
+    allow(Storage::PublicCdnImageUrl).to receive(:integrity_failed?).with(blob).and_return(true)
+    expect(blob).not_to receive(:variant)
+
+    expect(described_class.new.perform(blob, { "resize_to_fill" => [640, 480] })).to be_nil
+  end
+
   it "processa a variante solicitada" do
     blob = instance_double(ActiveStorage::Blob, id: 123)
     variant = instance_double(ActiveStorage::VariantWithRecord)

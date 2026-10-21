@@ -4,6 +4,7 @@ module Storage
 
     discard_on ActiveJob::DeserializationError
     discard_on ActiveStorage::FileNotFoundError
+    discard_on ActiveStorage::IntegrityError
 
     def perform(habitation_id, attachment_id, tenant_id:, transformations:)
       tenant = Tenant.find_by(id: tenant_id)
@@ -14,6 +15,7 @@ module Storage
 
       attachment = habitation.photos.attachments.includes(:blob).find_by(id: attachment_id)
       return unless attachment&.blob&.image?
+      return if Storage::PublicCdnImageUrl.integrity_failed?(attachment.blob)
 
       Current.set(tenant: tenant) do
         Storage::PublicPropertyPhoto.publish_attachment!(attachment)
@@ -31,6 +33,9 @@ module Storage
       return unless variant_image&.attached?
 
       Storage::PublicPropertyPhoto.publish_blob!(variant_image.blob, raise_errors: true)
+    rescue ActiveStorage::IntegrityError => error
+      Storage::PublicCdnImageUrl.mark_transform_failed(blob: blob, transformations: transformations, error: error)
+      raise
     end
   end
 end
