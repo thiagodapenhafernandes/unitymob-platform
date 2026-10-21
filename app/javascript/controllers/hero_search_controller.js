@@ -16,7 +16,7 @@ export default class extends Controller {
     "transaction", "tab", "priceSelect", "filtersPanel", "aiPanel", "aiText", "aiSubmit", "mic", "error",
     "voiceToggle", "status", "action", "wave", "timer"
   ]
-  static values = { aiUrl: String, voice: Boolean, salePriceOptions: Array, rentPriceOptions: Array }
+  static values = { aiUrl: String, voice: Boolean, salePriceOptions: Array, dailyPriceOptions: Array, rentPriceOptions: Array }
 
   connect() {
     this.recording = false
@@ -53,7 +53,7 @@ export default class extends Controller {
   updatePriceOptions(value) {
     if (!this.hasPriceSelectTarget) return
 
-    const options = value === "aluguel" ? this.rentPriceOptionsValue : this.salePriceOptionsValue
+    const options = value === "diaria" ? this.dailyPriceOptionsValue : (value === "aluguel" ? this.rentPriceOptionsValue : this.salePriceOptionsValue)
     if (!options.length) return
 
     const select = this.priceSelectTarget

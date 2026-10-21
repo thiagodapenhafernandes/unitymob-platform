@@ -3878,6 +3878,7 @@ CREATE TABLE public.home_settings (
     hero_search_align character varying DEFAULT 'center'::character varying NOT NULL,
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
+    daily_rental_search_enabled boolean DEFAULT false NOT NULL,
     CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
     CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
 );
@@ -20849,6 +20850,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261021200000'),
 ('20261021190000'),
 ('20261021181000'),
 ('20261021180000'),

@@ -157,3 +157,13 @@ Opção A (2026-09-24, HTML único com hooks `ps-*`), contrato v2, fases 1 a 6 e
 o port do luxury do `unitymob-crm` estão no histórico do git deste arquivo. Os
 hooks `ps-*` restantes (ex.: `ps-hero` em `home/_hero`) são legado e não fazem
 parte da API.
+
+### Finalidade Diária na busca
+
+`HomeSetting#daily_rental_search_enabled` habilita a opção **Diária** por conta
+(em Configurações da Home), desativada por padrão. `public_transaction_options`
+é a fonte compartilhada das finalidades nos layouts Clássico, Barra, Cartão e
+no filtro detalhado de todos os temas. A busca `transaction_type=diaria` usa a
+regra de locação diária (status Diária ou Aluguel com modalidade locacao_diaria),
+o preço de locação e as URLs `/imoveis/diaria/...`. A chave controla a oferta da
+opção nos filtros; não retira imóveis diários do catálogo público existente.

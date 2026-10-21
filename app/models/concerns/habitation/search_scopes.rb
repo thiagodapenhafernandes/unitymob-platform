@@ -158,6 +158,7 @@ module Habitation::SearchScopes
     
     # Scopes por tipo de transação (baseado em preço)
     scope :for_sale, -> { where("valor_venda_cents > 0") }
+    scope :for_daily_rental, -> { where(status: "Diária").or(where(status: "Aluguel", intake_modalidade: "locacao_diaria")) }
     scope :for_rent, -> { where("valor_locacao_cents > 0") }
 
     # Imóveis do corretor: vínculo direto ou captador nas atribuições
@@ -806,7 +807,7 @@ module Habitation::SearchScopes
         case transaction_type.to_s.downcase
         when "venda"
           "NULLIF(habitations.valor_venda_cents, 0)"
-        when "aluguel", "locacao", "locação"
+        when "aluguel", "locacao", "locação", "diaria"
           "NULLIF(habitations.valor_locacao_cents, 0)"
         else
           "COALESCE(NULLIF(habitations.valor_venda_cents, 0), NULLIF(habitations.valor_locacao_cents, 0))"
@@ -830,6 +831,8 @@ module Habitation::SearchScopes
       query = query.for_sale if params[:transaction_type] == 'venda' && !exact_code
       query = query.for_rent if (params[:transaction_type] == 'aluguel' || params[:transaction_type] == 'locacao') && !exact_code
       
+      query = query.for_daily_rental if params[:transaction_type] == "diaria" && !exact_code
+
       # Categoria
       query = query.by_category(params[:category]) if params[:category].present?
       
@@ -891,7 +894,7 @@ module Habitation::SearchScopes
           min_price = (target_value * 0.8).to_i
           max_price = (target_value * 1.2).to_i
           
-          if params[:transaction_type] == 'aluguel'
+          if params[:transaction_type].in?(%w[aluguel diaria])
             query = query.where("valor_locacao_cents BETWEEN ? AND ?", min_price * 100, max_price * 100)
           else
             query = query.where("valor_venda_cents BETWEEN ? AND ?", min_price * 100, max_price * 100)
@@ -913,7 +916,7 @@ module Habitation::SearchScopes
           elsif max_cents < Float::INFINITY
             query = query.where("valor_venda_cents <= ?", max_cents)
           end
-        elsif params[:transaction_type] == 'aluguel'
+        elsif params[:transaction_type].in?(%w[aluguel diaria])
           # No site, o filtro de locação considera apenas o aluguel base.
           # Taxas como condomínio, IPTU e valor_total_aluguel_cents não entram nesta faixa.
           if min_cents > 0 && max_cents < Float::INFINITY

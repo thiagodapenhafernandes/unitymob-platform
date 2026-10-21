@@ -289,3 +289,7 @@
 .public-theme-hero-bar--default .public-theme-combobox__input:focus,
 .public-theme-hero-bar--default .public-theme-combobox__input:focus-visible { border: 0 !important; outline: none !important; box-shadow: none !important; }
 .public-theme-hero-bar--default .public-theme-combobox__trigger:focus-visible { outline: 2px solid var(--color-primary, #022b3a); outline-offset: -2px; border-radius: 999px; }
+
+// Estrutura comum a todos os temas: as finalidades opcionais cabem no mobile.
+.public-theme-hero-bar__tabs { flex-wrap: wrap; }
+.public-theme-search__tabs-box { max-width: 100%; flex-wrap: wrap; justify-content: center; }

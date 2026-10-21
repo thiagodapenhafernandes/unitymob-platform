@@ -96,6 +96,8 @@
             </div>
 
             <div class="hps-layout__options">
+              <%= ax_switch_field(form: f, method: :daily_rental_search_enabled, label: "Habilitar Diária nas buscas", class_name: "ax-switch--card",
+                                  description: "Mostra a finalidade Diária na busca da home e no filtro detalhado, em todos os temas desta conta. Desativada por padrão.") %>
               <% ai_ready = Ai::PropertySearch::PublicQuery.available?(tenant: current_tenant) %>
               <fieldset class="ax-guided-fieldset">
                 <legend>Busca por voz e descrição com IA <span class="ax-badge ax-badge--amber">Novo</span></legend>

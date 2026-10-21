@@ -42,6 +42,7 @@ class Admin::HomeSettingsController < Admin::BaseController
       :hero_layout,
       :hero_search_align,
       :hero_ai_search_enabled,
+      :daily_rental_search_enabled,
       :hero_ai_suggestions,
       :overlay_opacity,
       :overlay_color,

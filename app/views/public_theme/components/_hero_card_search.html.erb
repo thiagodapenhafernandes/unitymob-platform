@@ -20,13 +20,14 @@
      data-hero-search-ai-url-value="<%= public_ai_search_path %>"
      data-hero-search-voice-value="<%= voice %>"
      data-hero-search-sale-price-options-value="<%= json_escape(public_price_range_options("venda").to_json) %>"
+     data-hero-search-daily-price-options-value="<%= json_escape(public_price_range_options("diaria").to_json) %>"
      data-hero-search-rent-price-options-value="<%= json_escape(public_price_range_options("aluguel").to_json) %>">
   <div class="public-theme-hero-card__tabs" role="group" aria-label="Finalidade">
     <% if ai %>
       <button type="button" class="public-theme-hero-card__tab public-theme-hero-voice__toggle" data-hero-search-target="voiceToggle" data-action="click->hero-search#toggleVoice"
               aria-pressed="false" aria-label="<%= voice ? "Buscar por voz" : "Descrever o imóvel que procuro" %>"><i class="bi bi-<%= voice ? "mic" : "stars" %>" aria-hidden="true"></i> <%= voice ? "Voz" : "Descrever" %></button>
     <% end %>
-    <% [["Comprar", "venda"], ["Alugar", "aluguel"]].each_with_index do |(label, value), index| %>
+    <% public_transaction_options.each_with_index do |(label, value), index| %>
       <button type="button" class="public-theme-hero-card__tab" data-hero-search-target="tab" data-value="<%= value %>"
               data-action="click->hero-search#transaction" aria-pressed="<%= index.zero? %>"><%= label %></button>
     <% end %>

@@ -4,7 +4,8 @@ export default class extends Controller {
   static targets = ["tab", "input", "priceSelect", "advancedPanel", "advancedLabel", "advancedIcon"]
   static values = {
     salePriceOptions: Array,
-    rentPriceOptions: Array
+    rentPriceOptions: Array,
+    dailyPriceOptions: Array
   }
 
   connect() {
@@ -42,7 +43,7 @@ export default class extends Controller {
     if (!this.hasPriceSelectTarget) return
 
     const currentValue = this.priceSelectTarget.value
-    const options = activeValue === "aluguel" ? this.rentPriceOptionsValue : this.salePriceOptionsValue
+    const options = activeValue === "diaria" ? this.dailyPriceOptionsValue : (activeValue === "aluguel" ? this.rentPriceOptionsValue : this.salePriceOptionsValue)
     const values = options.map((option) => option[1])
 
     this.priceSelectTarget.innerHTML = ""

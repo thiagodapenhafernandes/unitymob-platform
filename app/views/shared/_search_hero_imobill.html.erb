@@ -21,6 +21,7 @@
      data-controller="search-tabs<%= " hero-search" if voice_ai %>"
      <%= tag.attributes(data: { hero_search_ai_url_value: public_ai_search_path, hero_search_voice_value: voice_mic }) if voice_ai %>
      data-search-tabs-sale-price-options-value="<%= json_escape(public_price_range_options("venda").to_json) %>"
+     data-search-tabs-daily-price-options-value="<%= json_escape(public_price_range_options("diaria").to_json) %>"
      data-search-tabs-rent-price-options-value="<%= json_escape(public_price_range_options("aluguel").to_json) %>">
 
   <!-- Tabs (Comprar / Alugar) - Outside and Centered -->
@@ -34,22 +35,13 @@
                 aria-pressed="false"
                 aria-label="<%= voice_mic ? "Buscar por voz" : "Descrever o imóvel que procuro" %>"><i class="bi bi-<%= voice_mic ? "mic" : "stars" %>" aria-hidden="true"></i> <%= voice_mic ? "Voz" : "Descrever" %></button>
       <% end %>
-      <button type="button"
-              class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold text-blue-three bg-hero-button shadow-sm transition-all active-tab"
-              data-search-tabs-target="tab"
-              data-action="click->search-tabs#switch"
-              data-value="venda"
-              aria-pressed="<%= params[:transaction_type].blank? || params[:transaction_type].to_s == "venda" %>">
-        Comprar
-      </button>
-      <button type="button"
-              class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold text-gray-600 hover:text-blue-three transition-all"
-              data-search-tabs-target="tab"
-              data-action="click->search-tabs#switch"
-              data-value="aluguel"
-              aria-pressed="<%= params[:transaction_type].to_s == "aluguel" %>">
-        Alugar
-      </button>
+      <% public_transaction_options.each do |label, value| %>
+        <% selected = (params[:transaction_type].presence || "venda") == value %>
+        <button type="button"
+                class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold transition-all <%= selected ? 'text-blue-three bg-hero-button shadow-sm active-tab' : 'text-gray-600 hover:text-blue-three' %>"
+                data-search-tabs-target="tab" data-action="click->search-tabs#switch"
+                data-value="<%= value %>" aria-pressed="<%= selected %>"><%= label %></button>
+      <% end %>
     </div>
   </div>
 
