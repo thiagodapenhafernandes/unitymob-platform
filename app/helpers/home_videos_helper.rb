@@ -28,7 +28,7 @@ module HomeVideosHelper
     cents = sale.positive? ? sale : rent
     return "Preço sob consulta" unless cents.positive?
 
-    suffix = sale.positive? ? "" : "/mês"
+    suffix = sale.positive? ? "" : public_rental_price_suffix(property)
     "#{number_to_currency(cents / 100.0, unit: "R$", separator: ",", delimiter: ".", precision: 0)}#{suffix}"
   end
 

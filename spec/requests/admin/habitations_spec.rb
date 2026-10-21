@@ -1203,36 +1203,36 @@ RSpec.describe "Admin::Habitations", type: :request do
   it "gera link público de seleção em massa e inclui imóveis comerciais fora do site" do
     first_property = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Venda", exibir_no_site_flag: false)
     second_property = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Aluguel", exibir_no_site_flag: false)
-    blocked_daily = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Diária", exibir_no_site_flag: true)
+    daily_property = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Diária", exibir_no_site_flag: true)
     other_tenant = Tenant.create!(name: "Outro tenant #{SecureRandom.hex(3)}", slug: "outro-tenant-#{SecureRandom.hex(3)}")
     other_property = create(:habitation, tenant: other_tenant, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Venda", exibir_no_site_flag: false)
 
     expect {
       post share_selection_admin_habitations_path, params: {
-        selected_ids: [first_property.id, second_property.id, blocked_daily.id, other_property.id]
+        selected_ids: [first_property.id, second_property.id, daily_property.id, other_property.id]
       }, headers: { "Accept" => "application/json" }
     }.to change(AiPropertyShareCollection, :count).by(1)
 
     expect(response).to have_http_status(:ok)
     collection = AiPropertyShareCollection.order(:created_at).last
     expect(collection).to have_attributes(tenant_id: admin.tenant_id, admin_user_id: admin.id)
-    expect(collection.habitations).to contain_exactly(first_property, second_property)
+    expect(collection.habitations).to contain_exactly(first_property, second_property, daily_property)
     expect(response.parsed_body["url"]).to eq(ai_property_share_collection_url(collection.token))
     expect(response.parsed_body["message"]).to eq("Link da seleção copiado. Agora você pode compartilhar.")
   end
 
   it "não cria seleção em massa quando há menos de dois imóveis compartilháveis" do
     sale_property = create(:habitation, codigo: "SHARE-ONE-#{SecureRandom.hex(4)}", status: "Venda")
-    daily_property = create(:habitation, codigo: "SHARE-ONE-#{SecureRandom.hex(4)}", status: "Diária")
+    inactive_property = create(:habitation, codigo: "SHARE-ONE-#{SecureRandom.hex(4)}", status: "Suspenso", motivo_suspensao: "Fora de pauta")
 
     expect {
       post share_selection_admin_habitations_path, params: {
-        selected_ids: [sale_property.id, daily_property.id]
+        selected_ids: [sale_property.id, inactive_property.id]
       }, headers: { "Accept" => "application/json" }
     }.not_to change(AiPropertyShareCollection, :count)
 
     expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.parsed_body["error"]).to eq("Selecione ao menos dois imóveis com status Venda ou Aluguel.")
+    expect(response.parsed_body["error"]).to eq("Selecione ao menos dois imóveis com status Venda, Aluguel ou Diária.")
   end
 
   it "renderiza o modal de divulgação em lote sem estilos inline" do

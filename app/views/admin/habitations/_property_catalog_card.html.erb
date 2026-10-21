@@ -45,7 +45,7 @@
   price_label = if imovel.valor_venda_cents.to_i.positive?
                   number_to_currency(imovel.valor_venda_cents / 100.0)
                 elsif imovel.valor_locacao_cents.to_i.positive?
-                  "#{number_to_currency(imovel.valor_locacao_cents / 100.0)}/mes"
+                  "#{number_to_currency(imovel.valor_locacao_cents / 100.0)}#{public_rental_price_suffix(imovel)}"
                 else
                   "Sob consulta"
                 end

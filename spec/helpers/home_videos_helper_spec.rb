@@ -1,6 +1,7 @@
 require "rails_helper"
 
 RSpec.describe HomeVideosHelper, type: :helper do
+  helper HabitationsHelper
   describe "#home_video_payload" do
     it "normaliza YouTube para embed" do
       payload = helper.home_video_payload("https://www.youtube.com/watch?v=abc123")
@@ -57,6 +58,7 @@ RSpec.describe HomeVideosHelper, type: :helper do
     it "formata venda e locação com um espaço só depois do R$" do
       expect(helper.home_video_price_label(Habitation.new(valor_venda_cents: 1_950_000_000))).to eq("R$ 19.500.000")
       expect(helper.home_video_price_label(Habitation.new(valor_venda_cents: 0, valor_locacao_cents: 850_000))).to eq("R$ 8.500/mês")
+      expect(helper.home_video_price_label(Habitation.new(status: "Diária", valor_venda_cents: 0, valor_locacao_cents: 300_000))).to eq("R$ 3.000/dia")
       expect(helper.home_video_price_label(Habitation.new(valor_venda_cents: 0, valor_locacao_cents: 0))).to eq("Preço sob consulta")
     end
   end
