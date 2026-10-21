@@ -267,10 +267,7 @@ class MetaLeadProcessingJob < ApplicationJob
     tenant.distribution_rules.where(auto_add_forms: true, source_meta: true).find_each do |rule|
       next unless Array(rule.meta_page_ids).map(&:to_s).include?(page_id.to_s)
 
-      current_forms = Array(rule.meta_forms).map(&:to_s)
-      next if current_forms.include?(form_id.to_s)
-
-      rule.update!(meta_forms: current_forms + [form_id.to_s])
+      rule.add_auto_meta_forms!([form_id])
     end
   end
 

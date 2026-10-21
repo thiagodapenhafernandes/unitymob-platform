@@ -226,6 +226,7 @@
         <% end %>
         </section>
 
+        <% unless @habitation.daily_rental? %>
         <div class="public-habitations-show__mobile-price">
           <%= render "price_card",
               habitation: @habitation,
@@ -236,6 +237,8 @@
               has_rent_discount: has_rent_discount %>
           <%= render "public_theme/components/financing_card", habitation: @habitation, has_sale_price: has_sale_price %>
         </div>
+
+        <% end %>
 
         <% feature_items = [] %>
         <% feature_items << { label: "Área", value: "#{number_with_precision(area_text, precision: 0)} m²", icon: "bi-arrows-fullscreen", tone: "blue" } if area_text.to_f.positive? %>
@@ -298,7 +301,7 @@
       </main>
 
       <aside class="public-habitations-show__aside space-y-6">
-        <div class="public-habitations-show__desktop-price">
+        <div class="public-habitations-show__desktop-price<%= ' public-habitations-show__desktop-price--daily' if @habitation.daily_rental? %>">
           <%= render "price_card",
               habitation: @habitation,
               title: title,
@@ -308,6 +311,11 @@
               has_rent_discount: has_rent_discount %>
           <%= render "public_theme/components/financing_card", habitation: @habitation, has_sale_price: has_sale_price %>
         </div>
+
+        <% if @habitation.daily_rental? %>
+          <%= render "public_theme/components/property_availability", habitation: @habitation, variant: variant %>
+          <%= render "habitations/price_card_ctas", habitation: @habitation, title: title %>
+        <% end %>
 
         <% if @shared_broker.present? %>
           <%= render "habitations/shared_broker_card",

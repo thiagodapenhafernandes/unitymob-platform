@@ -84,8 +84,13 @@ module Admin::DistributionRulesHelper
 
   def distribution_rule_meta_forms_summary(rule)
     selected_count = Array(rule.meta_forms).compact_blank.size
+    if rule.auto_add_forms?
+      excluded_count = Array(rule.excluded_meta_form_ids).compact_blank.size
+      return "Todos os forms das páginas selecionadas entram automaticamente, exceto #{excluded_count} formulário#{'s' if excluded_count != 1} excluído#{'s' if excluded_count != 1}" if excluded_count.positive?
+
+      return "Todos os forms das páginas selecionadas entram automaticamente"
+    end
     return "Nenhum formulário selecionado" if selected_count.zero?
-    return "Todos os forms das páginas selecionadas entram automaticamente" if rule.auto_add_forms?
 
     "#{selected_count} formulário#{'s' if selected_count != 1} selecionado#{'s' if selected_count != 1}"
   end

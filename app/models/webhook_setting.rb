@@ -1,6 +1,30 @@
 class WebhookSetting < ApplicationRecord
   include PublicSite::BumpsPageVersion
   include TenantScoped
+  include EncryptionAvailability
+  encrypts :webhook_secret
+  has_many :google_stage_conversion_events, dependent: :nullify
+  validates :tenant_id, uniqueness: { conditions: -> { where(google_conversions_enabled: true) } }, if: :google_conversions_enabled?
+  validate :valid_google_destination
+  before_validation :normalize_google_qualification_source
+
+  def google_destination_url
+    whatsapp_webhook_url.presence || webhook_url
+  end
+
+  def normalize_google_qualification_source
+    return unless google_conversions_enabled? && tenant&.lead_pipeline_stages&.where(active: true, google_event: "qualify_lead")&.exists?
+
+    self.subscribed_events = Array(subscribed_events) - ["qualified_lead"]
+  end
+
+  def valid_google_destination
+    return unless google_conversions_enabled?
+
+    errors.add(:base, "Configure as chaves de criptografia para ativar conversões Google.") unless encryption_ready?
+    errors.add(:webhook_url, "deve usar HTTPS para conversões Google") unless google_destination_url.to_s.start_with?("https://")
+  end
+
   LEAD_CAPTURE_CACHE_KEY = "public_site:lead_capture_enabled".freeze
   FORM_DELIVERY_SCOPES = {
     "all" => "Todos os formulários",
@@ -127,7 +151,7 @@ class WebhookSetting < ApplicationRecord
 
   def valid_subscribed_events
     errors.add(:subscribed_events, "selecione pelo menos um evento válido") if
-      Array(subscribed_events).empty? || (Array(subscribed_events) - EVENTS.keys).any?
+      (Array(subscribed_events).empty? && !google_conversions_enabled?) || (Array(subscribed_events) - EVENTS.keys).any?
   end
 
   def public_forms_belong_to_tenant

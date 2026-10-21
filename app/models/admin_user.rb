@@ -116,6 +116,7 @@ class AdminUser < ApplicationRecord
   validate :rentals_manager_tenant_consistency, if: -> { has_attribute?(:rentals_manager_id) }
   validate :horizontal_profile_consistency
   validate :legacy_admin_role_consistency
+  validate :membership_dates_valid
   validate :tenant_must_keep_an_active_owner
 
   before_validation :clear_account_context_for_system_admin
@@ -519,6 +520,16 @@ class AdminUser < ApplicationRecord
   end
 
   private
+
+  def membership_dates_valid
+    %i[source_created_on source_departed_on].each do |field|
+      errors.add(field, :invalid) if self[field].nil? && read_attribute_before_type_cast(field).present?
+    end
+    return unless will_save_change_to_source_created_on? || will_save_change_to_source_departed_on?
+    return unless source_created_on && source_departed_on && source_departed_on < source_created_on
+
+    errors.add(:source_departed_on, :before_entry_date)
+  end
 
   # Recursos podem ter mais de um nível de ancestralidade (por exemplo,
   # relatório -> aba -> dashboard). Todos os ancestrais precisam estar

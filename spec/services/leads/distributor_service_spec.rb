@@ -1,6 +1,21 @@
 require 'rails_helper'
 
 RSpec.describe Leads::DistributorService do
+  it "aplica exceções só no modo automático, inclusive se todos os forms forem excluídos" do
+    integration = create(:user_meta_integration, selected_page_ids: ["exceptions-page"])
+    page = create(:meta_facebook_page, user_meta_integration: integration, page_id: "exceptions-page")
+    rule = create(:distribution_rule, tenant: integration.tenant, source_meta: true, auto_add_forms: true,
+      meta_page_ids: [page.page_id], excluded_meta_form_ids: ["excluded"], meta_forms: ["excluded"])
+    lead = build(:lead, tenant: integration.tenant, origin: "Facebook Lead Ads",
+      other_information: {"meta_page_id" => page.page_id, "meta_form_id" => "excluded"})
+    expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(false)
+    lead.other_information["meta_form_id"] = "new-form"
+    expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(true)
+    rule.update!(auto_add_forms: false, meta_forms: ["excluded"])
+    lead.other_information["meta_form_id"] = "excluded"
+    expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(true)
+  end
+
   it "não casa uma regra antiga com página Meta desmarcada, mesmo ainda ativa" do
     integration = create(:user_meta_integration, selected_page_ids: ["selected"])
     page = create(:meta_facebook_page, user_meta_integration: integration, page_id: "selected")

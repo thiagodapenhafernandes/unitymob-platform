@@ -32,7 +32,7 @@
       edit_url: edit_admin_habitation_path(development.id)
     }
   end
-  intake_waiting_admin_review = habitation.broker_intake? && habitation.intake_submitted_for_admin_review?
+  intake_site_publication_locked = habitation.intake_site_publication_locked?
   can_manage_internal_documents = can_manage_internal_documents?
   can_edit_protected_habitation_fields = can_edit_protected_habitation_fields?
   tab_titles = {
@@ -270,7 +270,7 @@
            habitation: habitation,
            cadastro_reference_at: cadastro_reference_at,
            updated_reference_at: updated_reference_at,
-           intake_waiting_admin_review: intake_waiting_admin_review,
+           intake_site_publication_locked: intake_site_publication_locked,
            cadastro_type_labels: cadastro_type_labels,
            inferred_cadastro_type: inferred_cadastro_type,
            cadastro_tipo_by_type: cadastro_tipo_by_type,
@@ -294,7 +294,7 @@
            can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 <%= render "admin/habitations/form_tabs/publicacao",
            f: f,
-           intake_waiting_admin_review: intake_waiting_admin_review,
+           intake_site_publication_locked: intake_site_publication_locked,
            can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 
 <%= render "admin/habitations/form_tabs/media", f: f, habitation: habitation %>

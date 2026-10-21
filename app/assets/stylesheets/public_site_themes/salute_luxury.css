@@ -5734,3 +5734,15 @@ body.no-scroll { overflow: hidden; }
 .public-theme-content-callout--salute-luxury { border-color: #ded5c8; border-radius: 8px; background: #faf8f4; }
 .public-theme-content-callout--salute-luxury .public-theme-content-callout__heading { font-family: var(--sl-font-heading, Georgia, serif); font-weight: 400; }
 .public-theme-block-faq--salute-luxury .public-theme-block-faq__filters button { border-color: #ded5c8; }
+
+.public-theme-availability-calendar--salute-luxury {
+  --availability-accent: var(--gold-deep, #ae8a3c);
+  color: var(--navy-800, #172033);
+  background: var(--paper, #fbfaf7);
+  border-color: var(--line, #ded8cb);
+}
+
+@media (max-width: 1024px) {
+  .sl-detail .public-theme-property-contact-box--daily .public-habitations-show__price-card,
+  .sl-detail .public-theme-property-contact-box--daily .public-theme-property-contact-box__actions { display: block; }
+}

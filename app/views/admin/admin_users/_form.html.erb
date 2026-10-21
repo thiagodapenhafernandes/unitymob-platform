@@ -30,6 +30,16 @@
             <%= ax_text_field(form: f, method: :biography, type: :textarea, label: "Biografia / observações", class_name: "ax-span-12", rows: 4, placeholder: "Breve descrição sobre o usuário...") %>
           <% end %>
 
+          <%= ax_field_group(title: "Vínculo com a imobiliária") do %>
+            <%= ax_field_grid do %>
+              <%= ax_date_field(form: f, method: :source_created_on, label: "Data de entrada", class_name: "ax-span-6") %>
+              <%= ax_date_field(form: f, method: :source_departed_on, label: "Data de saída", class_name: "ax-span-6") %>
+            <% end %>
+            <%= ax_inline_notice(tone: :info, icon: "calendar-event", compact: true) do %>
+              Datas históricas, incluindo as importadas do Vista. Para encerrar o acesso e definir o destino da carteira, use a ação Inativar.
+            <% end %>
+          <% end %>
+
           <% if admin_user.respond_to?(:mirror?) && admin_user.mirror? %>
             <%= ax_inline_notice(tone: :info, icon: "person-lock", compact: true) do %>
               Usuário externo (espelho): e-mail e senha pertencem à conta de origem — <strong><%= admin_user.notification_email %></strong>.

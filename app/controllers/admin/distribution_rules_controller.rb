@@ -195,8 +195,10 @@ class Admin::DistributionRulesController < Admin::BaseController
     pages = tenant_meta_pages
     valid_pages = (page_ids - pages.pluck(:page_id)).empty?
     pages = pages.where(page_id: page_ids) if page_ids.any?
+    excluded_ids = Array(@distribution_rule.excluded_meta_form_ids).compact_blank.map(&:to_s)
+    valid_exclusions = (excluded_ids - MetaLeadForm.where(meta_facebook_page_id: tenant_meta_pages.select(:id)).pluck(:form_id)).empty?
     valid_forms = (form_ids - MetaLeadForm.where(meta_facebook_page_id: pages.select(:id)).pluck(:form_id)).empty?
-    return true if valid_pages && valid_forms
+    return true if valid_pages && valid_forms && valid_exclusions
 
     @distribution_rule.errors.add(:base, "Selecione somente páginas e formulários vinculados a esta conta na integração Meta.")
     false
@@ -346,6 +348,7 @@ class Admin::DistributionRulesController < Admin::BaseController
       linkedin_campaign_ids: [],
       linkedin_form_ids: [],
       meta_forms: [],
+      excluded_meta_form_ids: [],
       meta_page_ids: [],
       webhook_tags: [],
       neighborhoods: [],
@@ -358,7 +361,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     ).tap do |perms|
       # Selects multiplos enviam um "" inicial (hidden field do Rails). Limpar para
       # não poluir os arrays JSONB (que viram chips vazios fantasmas ao reabrir).
-      %i[contingency_triggers tiktok_account_ids tiktok_form_ids linkedin_campaign_ids linkedin_form_ids meta_forms meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
+      %i[contingency_triggers tiktok_account_ids tiktok_form_ids linkedin_campaign_ids linkedin_form_ids meta_forms excluded_meta_form_ids meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
         perms[key] = Array(perms[key]).compact_blank if perms[key].is_a?(Array)
       end
 

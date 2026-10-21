@@ -20,6 +20,22 @@ RSpec.describe Portal::EligibilityScope do
   end
 
   describe "#eligible_scope" do
+    it "limita o Zap a Venda e Aluguel mesmo com sinalizadores legados ligados" do
+      tenant = Tenant.create!(name: "Filtro Zap", slug: "zap-status-#{SecureRandom.hex(4)}")
+      integration = PortalIntegration.create!(tenant: tenant, portal: "zapimoveis", enabled: true,
+        allowed_statuses: %w[Venda Aluguel], allowed_business_types: %w[venda aluguel], require_exibir_no_site: true)
+      properties = ["Venda", "Aluguel", "Lançamento", "Suspenso", "Venda e Aluguel"].map do |status|
+        property = create(:habitation, tenant: tenant, titulo_anuncio: "Imóvel com fotos",
+          valor_venda_cents: 100_000_00, valor_locacao_cents: 2_000_00)
+        # Simula sinalizadores legados para testar o filtro sem depender do callback de despublicação.
+        property.update_columns(status: status, publicar_zapimoveis: true, exibir_no_site_flag: true)
+        property
+      end
+
+      expect(described_class.new(integration).eligible_scope.pluck(:id)).to match_array(properties.first(2).map(&:id))
+      expect(integration.reload.allowed_statuses).to eq(%w[Venda Aluguel])
+    end
+
     it "parte de tenant.habitations, nunca do Habitation global" do
       habitations_relation = Habitation.all
       tenant = instance_double(Tenant, habitations: habitations_relation)

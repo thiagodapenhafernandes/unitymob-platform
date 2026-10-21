@@ -46,7 +46,7 @@
         <% selected_pipeline_stages.each do |stage| %>
           <%= render "admin/leads/status_board_row", **row_options,
                 id: stage.id, name: stage.name, description: stage.description,
-                stage_type: stage.stage_type, meta_conversion_event: stage.meta_conversion_event,
+                stage_type: stage.stage_type, meta_conversion_event: stage.meta_conversion_event, google_event: stage.google_event,
                 color: stage.display_color, position: stage.position, active: stage.active?,
                 policy: stage.policy_or_default, transitions: stage.transitions.ordered, automations: stage.automations.ordered %>
         <% end %>

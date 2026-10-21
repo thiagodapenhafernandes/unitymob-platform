@@ -11662,6 +11662,23 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   opacity: 1;
 }
 
+/* Reserva o botão de remoção mesmo quando o texto da tag é truncado. */
+.ax-app .ts-wrapper.multi.plugin-remove_button .ts-control > div.item {
+  position: relative;
+  display: block;
+  padding-right: 28px !important;
+}
+
+.ax-app .ts-wrapper.multi.plugin-remove_button .ts-control > div.item .remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  justify-content: center;
+  width: 23px;
+  margin-left: 0;
+}
+
 .ax-app .ts-wrapper.multi .ts-control > input {
   flex: 1 0 72px !important;
   min-width: 72px !important;

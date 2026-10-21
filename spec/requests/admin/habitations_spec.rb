@@ -5879,4 +5879,24 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(payload.fetch("duplicate")).to eq(false)
     expect(payload.fetch("matches")).to be_empty
   end
+  %w[submitted_for_admin_review admin_approved internal returned_to_broker].each do |intake_status|
+    it "impede publicação administrativa direta da captação #{intake_status}" do
+      intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin,
+        intake_status: intake_status, titulo_anuncio: "Captação pendente do corretor")
+      get edit_admin_habitation_path(intake)
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('input[name="habitation[exibir_no_site_flag]"][type="checkbox"]')["disabled"]).to be_present
+      expect(document.css('select[name="habitation[intake_status]"] option').map { |option| option["value"] }).not_to include("published")
+
+      patch admin_habitation_path(intake), params: { habitation: {
+        titulo_anuncio: "Captação revisada", exibir_no_site_flag: "1", intake_status: "published"
+      } }
+      expect(response).to have_http_status(:redirect)
+      expect(intake.reload.intake_status).to eq(intake_status)
+      expect(intake.exibir_no_site_flag).to be(false)
+      expect(intake.broker_released_at).to be_nil
+    end
+  end
+
 end

@@ -124,13 +124,15 @@ class Admin::WebhookSettingsController < Admin::BaseController
   end
 
   def webhook_params
-    params.require(:webhook_setting).permit(
+    attrs = params.require(:webhook_setting).permit(
       :webhook_url, :whatsapp_webhook_url, :enabled, :lead_capture_enabled,
-      :description, :form_delivery_scope,
+      :description, :form_delivery_scope, :google_conversions_enabled, :webhook_secret,
       subscribed_events: [],
       form_categories: [],
       public_form_ids: []
     )
+    attrs.delete(:webhook_secret) if attrs[:webhook_secret].blank?
+    attrs
   end
 
   def inbound_webhook_token_params

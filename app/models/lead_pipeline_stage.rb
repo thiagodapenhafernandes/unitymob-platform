@@ -31,6 +31,10 @@ class LeadPipelineStage < ApplicationRecord
     "Donate" => "Doação",
     "PageView" => "Visualização de página"
   }.freeze
+  GOOGLE_EVENTS = { "none" => "Nenhum", "qualify_lead" => "Lead qualificado", "visit" => "Visita realizada", "proposal" => "Proposta enviada", "closed" => "Fechamento" }.freeze
+  validates :google_event, inclusion: { in: GOOGLE_EVENTS.keys }
+  after_save :disable_google_qualification_duplicate
+
   HEX_COLOR = /\A#\h{6}\z/
   DEFAULT_COLORS = %w[#2f80a0 #365f8f #8a63d2 #d97706 #08875d #e0402f #667085].freeze
 
@@ -116,6 +120,14 @@ class LeadPipelineStage < ApplicationRecord
   end
 
   private
+
+  def disable_google_qualification_duplicate
+    return unless active? && google_event == "qualify_lead"
+
+    tenant.webhook_settings.where(google_conversions_enabled: true).find_each do |setting|
+      setting.update!(subscribed_events: setting.subscribed_events - ["qualified_lead"]) if setting.delivers_event?("qualified_lead")
+    end
+  end
 
   def assign_position
     return if position.present? || lead_pipeline.blank?

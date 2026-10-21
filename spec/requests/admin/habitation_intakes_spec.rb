@@ -51,6 +51,76 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     sign_in admin
   end
 
+  describe "remoção de captações" do
+    def operational_event_for(property, user)
+      session = OperationalUserSession.create!(tenant: user.tenant, admin_user: user,
+        token: SecureRandom.hex(16), started_at: Time.current, last_seen_at: Time.current)
+      OperationalUserEvent.create!(tenant: user.tenant, admin_user: user, operational_user_session: session,
+        habitation: property, name: "property_opened", occurred_at: Time.current, metadata: { "context" => "preservar" })
+    end
+
+    it "remove o rascunho preservando eventos operacionais, conversões SEO e auditoria" do
+      intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin)
+      operational = operational_event_for(intake, admin)
+      seo = SeoConversionEvent.create!(habitation: intake, event_type: "property_card_click",
+        occurred_at: Time.current, source_path: "/imovel/rascunho", metadata: { "origin" => "site" })
+      other_tenant = Tenant.create!(name: "Outra conta", slug: "intake-delete-#{SecureRandom.hex(4)}")
+      other_user = create(:admin_user, tenant: other_tenant)
+      other = create(:habitation, :broker_intake, tenant: other_tenant, admin_user: other_user)
+      other_event = operational_event_for(other, other_user)
+
+      expect { delete admin_captacao_path(intake) }.to change(Habitation, :count).by(-1)
+
+      expect(response).to redirect_to(admin_captacoes_path)
+      expect(flash[:notice]).to eq("Captação removida.")
+      expect(operational.reload).to have_attributes(habitation_id: nil, metadata: { "context" => "preservar" })
+      expect(seo.reload).to have_attributes(habitation_id: nil, source_path: "/imovel/rascunho", metadata: { "origin" => "site" })
+      expect(other_event.reload.habitation_id).to eq(other.id)
+      expect(Habitation.exists?(other.id)).to be(true)
+      expect(HabitationAuditLog.where(habitation_id: intake.id, action: "deleted", source: "captacao").count).to eq(1)
+    end
+
+    it "não altera imóvel nem histórico quando outra referência bloqueia a exclusão" do
+      intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin)
+      seo = SeoConversionEvent.create!(habitation: intake, event_type: "property_card_click", occurred_at: Time.current)
+      other_tenant = Tenant.create!(name: "Outra conta", slug: "intake-delete-blocked-#{SecureRandom.hex(4)}")
+      other_user = create(:admin_user, tenant: other_tenant)
+      other = create(:habitation, tenant: other_tenant)
+      legacy_event = operational_event_for(other, other_user)
+      legacy_event.update_columns(habitation_id: intake.id)
+
+      expect { delete admin_captacao_path(intake) }.not_to change(Habitation, :count)
+
+      expect(response).to redirect_to(admin_captacoes_path)
+      expect(flash[:alert]).to include("Nenhuma alteração foi salva")
+      expect(seo.reload.habitation_id).to eq(intake.id)
+      expect(legacy_event.reload.habitation_id).to eq(intake.id)
+      expect(HabitationAuditLog.where(habitation_id: intake.id, action: "deleted")).not_to exist
+    end
+
+    it "mantém a proteção de captação publicada e seus vínculos" do
+      intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin, intake_status: "published")
+      event = operational_event_for(intake, admin)
+
+      expect { delete admin_captacao_path(intake) }.not_to change(Habitation, :count)
+
+      expect(flash[:alert]).to include("não podem ser removidas")
+      expect(event.reload.habitation_id).to eq(intake.id)
+    end
+
+    it "não permite ao corretor remover rascunho de outro corretor" do
+      owner = create(:admin_user, tenant: admin.tenant)
+      intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: owner)
+      broker = create(:admin_user, tenant: admin.tenant, profile: default_agent_profile)
+      sign_in broker
+
+      expect { delete admin_captacao_path(intake) }.not_to change(Habitation, :count)
+
+      expect(response).to redirect_to(admin_captacoes_path)
+      expect(flash[:alert]).to eq("Você não tem acesso a esta captação.")
+    end
+  end
+
   it "exibe listagem e detalhe de captação sem corretor, preservando os atribuídos" do
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_status: "internal")
     create(:habitation, :broker_intake, admin_user: admin)
@@ -782,7 +852,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(document.css('select[name$="[ocupacao]"] option').map { |option| option["value"] })
       .to include("Desocupado", "Inquilino", "Proprietário")
     expect(document.css('select[name$="[situacao_imovel]"] option').map { |option| option["value"] })
-      .to include("Novo", "Usado", "Em construção")
+      .to include(*Habitation::SITUATIONS)
 
     patch admin_captacao_path(intake), params: {
       current_step: "caracteristicas", direction: "forward",
@@ -2398,6 +2468,15 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
     expect(intake.reload.registration_profile).to eq("empreendimento")
     expect(intake.codigo_empreendimento).to be_blank
+  end
+
+  it "preserva a situação legada selecionada e oferece o vocabulário do administrativo" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, situacao: "Em construção", intake_step: "caracteristicas")
+    get edit_admin_captacao_path(intake, step: "caracteristicas")
+    expect(response).to have_http_status(:ok)
+    select = Nokogiri::HTML(response.body).at_css('select[name$="[situacao_imovel]"]')
+    expect(select.css("option").map { |option| option["value"] }).to include(*Habitation::SITUATIONS)
+    expect(select.at_css('option[selected]')["value"]).to eq("Em construção")
   end
 
 end

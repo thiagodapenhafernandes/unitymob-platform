@@ -171,9 +171,15 @@ module Admin
       if @habitation.intake_published?
         redirect_to admin_captacoes_path, alert: "Captações já liberadas para site não podem ser removidas por aqui."
       else
-        @habitation.destroy
+        Habitation.transaction do
+          Habitations::DestroyReferences.call(habitation: @habitation)
+          @habitation.destroy!
+        end
         redirect_to admin_captacoes_path, notice: "Captação removida."
       end
+    rescue ActiveRecord::InvalidForeignKey, ActiveRecord::RecordNotDestroyed => error
+      Rails.logger.error("[captacao_destroy] failed id=#{@habitation&.id} error=#{error.class}")
+      redirect_to admin_captacoes_path, alert: "Não foi possível remover a captação porque ainda existem vínculos internos. Nenhuma alteração foi salva."
     end
 
     def touch_manual_habitation_update!(habitation)

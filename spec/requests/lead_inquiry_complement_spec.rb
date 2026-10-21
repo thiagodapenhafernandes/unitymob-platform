@@ -27,7 +27,7 @@ RSpec.describe "Lead inquiry complement", type: :request do
 
     expect do
       post leads_path, params: {
-        lead: { name: "Marilene", phone: "4799991111", lead_type: "whatsapp_modal",
+        lead: { name: "Marilene", phone: "47999991111", lead_type: "whatsapp_modal",
                 origin: "Site", property_id: second_property.id, page_url: "http://localhost/imovel-b" }
       }, as: :json
     end.not_to change(Lead, :count)
@@ -55,7 +55,7 @@ RSpec.describe "Lead inquiry complement", type: :request do
 
     expect do
       post leads_path, params: {
-        lead: { name: "Marilene", phone: "4799992222", lead_type: "whatsapp_modal",
+        lead: { name: "Marilene", phone: "47999992222", lead_type: "whatsapp_modal",
                 origin: "Site", property_id: second_property.id, page_url: "http://localhost/imovel-b" }
       }, as: :json
     end.not_to change(Lead, :count)

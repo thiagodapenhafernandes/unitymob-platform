@@ -6,7 +6,7 @@
 <% address_parts = [@habitation.endereco, @habitation.public_neighborhood, @habitation.cidade].compact_blank %>
 <% address_text = address_parts.join(" - ") %>
 <% area_text = @habitation.public_area_m2 %>
-<% has_sale_price = @habitation.valor_venda_cents.to_i.positive? %>
+<% has_sale_price = !@habitation.daily_rental? && @habitation.valor_venda_cents.to_i.positive? %>
 <% has_rent_price = @habitation.valor_locacao_cents.to_i.positive? %>
 <% has_discount = @habitation.sale_discount? %>
 <% has_rent_discount = @habitation.rent_discount? %>

@@ -15,7 +15,7 @@ module Admin
         ensure_initial_stage!(pipeline)
       end
 
-      redirect_to admin_lead_pipeline_leads_path(pipeline, view: view_mode), notice: "Funil criado."
+      redirect_to admin_lead_pipeline_leads_path(pipeline, view: view_mode), notice: ["Funil criado.", pipeline.google_event_warning].compact.join(" ")
     rescue ActiveRecord::RecordInvalid => e
       redirect_to admin_leads_path(view: view_mode), alert: e.record.errors.full_messages.to_sentence
     end
@@ -58,7 +58,7 @@ module Admin
       rows.filter_map do |row|
         next unless row.respond_to?(:to_h)
 
-        permitted = ActionController::Parameters.new(row.to_h).permit(:name, :description, :stage_type, :meta_conversion_event)
+        permitted = ActionController::Parameters.new(row.to_h).permit(:name, :description, :stage_type, :meta_conversion_event, :google_event)
         name = permitted[:name].to_s.strip
         next if name.blank?
 
@@ -66,6 +66,7 @@ module Admin
           name: name,
           description: permitted[:description].to_s.strip,
           stage_type: permitted[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open",
+          google_event: permitted[:google_event].presence || "none",
           meta_conversion_event: permitted[:meta_conversion_event].presence_in(LeadPipelineStage::META_CONVERSION_EVENTS.keys)
         }
       end
@@ -114,6 +115,7 @@ module Admin
           description: stage[:description],
           stage_type: stage[:stage_type],
           meta_conversion_event: stage[:meta_conversion_event],
+          google_event: stage[:google_event] || "none",
           position: index
         )
       end

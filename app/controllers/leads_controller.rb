@@ -13,6 +13,12 @@ class LeadsController < ApplicationController
 
   def create
     permitted = lead_params
+    phone = Phones::PublicWhatsapp.new(permitted[:phone])
+    if phone.error
+      return render json: { success: false, errors: [phone.error], field_errors: { phone: phone.error } }, status: :unprocessable_entity
+    end
+    @phone_e164 = phone.e164
+    permitted[:phone] = @phone_e164
     habitation = public_tenant.habitations.find_by(id: permitted[:property_id]) if permitted[:property_id].present?
     permitted[:property_id] = nil if permitted[:property_id].present? && habitation.blank?
 
@@ -21,7 +27,7 @@ class LeadsController < ApplicationController
     apply_share_attribution(@lead)
     Leads::Attribution.apply!(@lead, raw: attribution_params, request: request)
     @lead.attribution_data = @lead.attribution_data.to_h.merge(
-      "business_type" => lead_business_type(habitation), "placement" => webhook_placement
+      "business_type" => lead_business_type(habitation), "placement" => webhook_placement, "phone_e164" => @phone_e164
     ).compact
     normalize_site_origin(@lead)
 
@@ -90,12 +96,14 @@ class LeadsController < ApplicationController
     contact_setting = ContactSetting.instance(tenant: public_tenant)
     response = {
       success: true,
+      phone_e164: @phone_e164,
       message: contact_setting.property_lead_success_message_for(business_type, lead: @lead, habitation:)
     }
     if created
       response[:analytics_event] = {
         event: "generate_lead",
         event_id: SecureRandom.uuid,
+        phone_e164: @phone_e164,
         business_type: Leads::Attribution.business_type(business_type),
         property_code: habitation&.codigo.to_s,
         form_id: "whatsapp_modal"
@@ -119,6 +127,7 @@ class LeadsController < ApplicationController
     WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
       complemented_inquiry: true,
       placement: webhook_placement,
+      phone_e164: @phone_e164,
       property_code: habitation&.codigo,
       property_title: habitation&.display_title,
       property_url: habitation ? habitation_url(habitation) : nil,
@@ -144,6 +153,7 @@ class LeadsController < ApplicationController
 
     attribution = @lead.attribution_data.to_h
     WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
+      phone_e164: @phone_e164,
       placement: webhook_placement,
       property_code: habitation&.codigo,
       property_title: habitation&.display_title,

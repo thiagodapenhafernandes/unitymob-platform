@@ -248,6 +248,7 @@ Rails.application.routes.draw do
     end
     resource :impersonation, only: [:destroy]
     resources :habitations do
+      resources :availability_blocks, only: [:index, :create, :destroy], controller: "habitation_availability_blocks"
       resource :media, only: [:show, :update], controller: "habitation_media" do
         get :modal
         post :upload
@@ -704,6 +705,7 @@ Rails.application.routes.draw do
       constraints: { seo_slug: /frente-mar|quadra-mar|lancamentos|prontos-para-morar|centro|barra-sul|praia-brava/ }
   resources :habitations, only: [:index, :show], path: 'imoveis' do
     member do
+      get :availability
       post :schedule_visit
       post :share_link
     end

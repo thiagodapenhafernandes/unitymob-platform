@@ -826,3 +826,5 @@ body.ax-app .lead-status-row__multiselect-wrapper.multi .ts-control > div.item {
   .lead-status-row__editor-actions { flex-wrap: wrap; }
   .lead-status-board-modal .ax-quick-modal__footer { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 }
+
+.lead-stage-grid .lead-google-event-field { grid-column: 1 / -1; }

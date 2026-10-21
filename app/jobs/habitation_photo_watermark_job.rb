@@ -1,5 +1,7 @@
 class HabitationPhotoWatermarkJob < ApplicationJob
   queue_as :media
+  # Concluir uploads antes das variantes (-10) e do aquecimento (-5), sem mais workers.
+  queue_with_priority(-20)
 
   ORIGINAL_BLOB_PURGE_DELAY = 15.minutes
   MAX_ATTEMPTS = 3

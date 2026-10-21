@@ -171,47 +171,12 @@ module Dwv
       destroyed = 0
       tenant.habitations.where(imovel_dwv: "Sim", codigo_dwv: removed_ids).find_each do |habitation|
         Habitation.transaction do
-          destroy_destroy_blocking_child_records(habitation.id)
-          nullify_destroy_blocking_optional_references(habitation.id)
+          Habitations::DestroyReferences.call(habitation: habitation)
           habitation.destroy!
         end
         destroyed += 1
       end
       destroyed
-    end
-
-    def destroy_destroy_blocking_child_records(habitation_id)
-      [
-        AiPropertyShareItem,
-        HabitationPhotoShare,
-        LeadPropertyInterest
-      ].each do |model|
-        model.where(habitation_id: habitation_id).delete_all
-      end
-    end
-
-    def nullify_destroy_blocking_optional_references(habitation_id)
-      now = Time.current
-
-      [
-        [AiPropertySearchHistory, :selected_habitation_id],
-        [AiPropertyShareAuditEvent, :habitation_id],
-        [Appointment, :habitation_id],
-        [ClientInteraction, :habitation_id],
-        [ClientPropertyInterest, :habitation_id],
-        [CrmAppointment, :habitation_id],
-        [OperationalUserEvent, :habitation_id],
-        [PortalIntegrationEvent, :habitation_id],
-        [PortalListingState, :habitation_id],
-        [Proposal, :habitation_id],
-        [PublicNavigationEvent, :habitation_id],
-        [SeoConversionEvent, :habitation_id],
-        [VistaFileAsset, :habitation_id]
-      ].each do |model, column|
-        attrs = { column => nil }
-        attrs[:updated_at] = now if model.column_names.include?("updated_at")
-        model.where(column => habitation_id).update_all(attrs)
-      end
     end
 
     def active_ids_missing_locally(active_ids)

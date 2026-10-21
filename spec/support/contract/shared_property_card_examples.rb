@@ -44,4 +44,11 @@ RSpec.shared_examples "contrato do card público" do
     expect(rendered).not_to include("public-theme-property-card__opportunity")
     expect(rendered).to include("9.900.000")
   end
+  it "mostra a diária por dia sem usar um preço de venda remanescente" do
+    property = create(:habitation, status: "Diária", valor_locacao_cents: 300_000, valor_venda_cents: 90_000_000)
+    render(card_partial, property: property, variant: card_variant)
+    expect(rendered).to include("/dia", "3.000")
+    expect(rendered).not_to include("/mês", "900.000")
+  end
+
 end

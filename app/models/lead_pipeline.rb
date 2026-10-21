@@ -54,6 +54,12 @@ class LeadPipeline < ApplicationRecord
     stages.active.ordered.first || stages.ordered.first
   end
 
+  def google_event_warning
+    return unless stages.where.not(google_event: "none").group(:google_event).having("COUNT(*) > 1").exists?
+
+    "Só o primeiro envio de cada lead conta para o Google."
+  end
+
   private
 
   def assign_position

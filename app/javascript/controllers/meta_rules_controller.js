@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import TomSelect from "tom-select"
 
 export default class extends Controller {
-  static targets = ["pageSelect", "formSelect", "autoSync", "formCountLabel"]
+  static targets = ["pageSelect", "formSelect", "autoSync", "formCountLabel", "exclusionSelect"]
   static values = {
     structure: Object, // { page_id: { forms: [{id: 1, name: "Name"}] } }
     syncUrl: String,
@@ -72,11 +72,43 @@ export default class extends Controller {
       }
     })
 
+    this.refreshExclusionOptions(selectedPages)
     this.formSelectInstance.refreshOptions(false)
     this.formSelectInstance.refreshItems()
     if (this.autoSyncEnabled()) {
       this.selectAllForms()
     }
+    this.syncAutoSummary()
+  }
+
+  excludedFormIds() {
+    if (!this.hasExclusionSelectTarget) return []
+    const select = this.exclusionSelectTarget
+    return select.tomselect ? Array.from(select.tomselect.items) : Array.from(select.selectedOptions, option => option.value).filter(Boolean)
+  }
+
+  refreshExclusionOptions(pageIds) {
+    if (!this.hasExclusionSelectTarget) return
+    const select = this.exclusionSelectTarget
+    const instance = select.tomselect || new TomSelect(select, {
+      dropdownParent: "body", plugins: ["remove_button"], maxOptions: null,
+      create: false, onChange: () => this.updateExclusions()
+    })
+    const selected = this.excludedFormIds()
+    const retained = selected.map(id => instance.options[id]).filter(Boolean)
+    instance.clear(true)
+    instance.clearOptions()
+    instance.addOptions(retained)
+    pageIds.forEach(id => {
+      const page = this.structureValue[id]
+      page?.forms.forEach(form => instance.addOption({ value: form.id, text: `${form.name} (${page.name})` }))
+    })
+    instance.setValue(selected, true)
+    instance.refreshOptions(false)
+  }
+
+  updateExclusions() {
+    if (this.autoSyncEnabled()) this.selectAllForms()
     this.syncAutoSummary()
   }
 
@@ -146,7 +178,9 @@ export default class extends Controller {
   selectAllForms() {
     if (!this.formSelectInstance) return
 
-    const allOptions = Object.keys(this.formSelectInstance.options)
+    const exclusions = new Set(this.excludedFormIds())
+    const allOptions = Object.keys(this.formSelectInstance.options).filter(id => !exclusions.has(id))
+    this.formSelectInstance.clear(true)
     this.formSelectInstance.addItems(allOptions)
   }
 
@@ -167,9 +201,9 @@ export default class extends Controller {
         summary.className = "meta-auto-summary ax-badge ax-badge--blue"
         control.prepend(summary)
       }
-      summary.textContent = "Todos os forms da Meta selecionados automaticamente"
+      summary.textContent = this.excludedFormIds().length ? "Forms da Meta selecionados automaticamente, exceto as exclusões" : "Todos os forms da Meta selecionados automaticamente"
       if (this.hasFormCountLabelTarget) {
-        this.formCountLabelTarget.innerHTML = '<strong>Todos os forms da Meta</strong> selecionados automaticamente'
+        this.formCountLabelTarget.textContent = summary.textContent
       }
     } else {
       summary?.remove()
@@ -186,8 +220,9 @@ export default class extends Controller {
     const allOptions = Object.keys(this.formSelectInstance.options)
     if (allOptions.length === 0) return false
 
+    const exclusions = new Set(this.excludedFormIds())
     const selected = new Set(this.formSelectInstance.items)
-    return allOptions.every((option) => selected.has(option))
+    return allOptions.every((option) => exclusions.has(option) || selected.has(option))
   }
 
   autoSyncEnabled() {

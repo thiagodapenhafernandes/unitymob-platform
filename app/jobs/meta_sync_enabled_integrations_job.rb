@@ -49,11 +49,7 @@ class MetaSyncEnabledIntegrationsJob < ApplicationJob
   end
 
   def add_forms_to_rule(rule, form_ids)
-    current_forms = Array(rule.meta_forms).compact_blank.map(&:to_s)
-    missing_forms = form_ids - current_forms
-    return if missing_forms.empty?
-
-    rule.update!(meta_forms: current_forms + missing_forms)
+    rule.add_auto_meta_forms!(form_ids)
   end
 
   def ensure_observed_form_records(observed_pairs, tenant_id)

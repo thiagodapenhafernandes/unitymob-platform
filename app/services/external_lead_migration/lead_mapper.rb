@@ -76,6 +76,19 @@ module ExternalLeadMigration
         other_information: other_information(tags:, customer:, product:, seller:)
       }.compact
 
+      unless historical
+        business_type = business_type_for(product:) || pipeline&.kind
+        owner = integration.c2s_assignment?(business_type:) ? integration.eligible_seller(seller, business_type:) : nil
+        attrs[:admin_user] = owner
+        attrs[:distribution_rule] = owner && integration.distribution_rule&.active? ? integration.distribution_rule : nil
+        attrs[:other_information]["c2s_assignment_decided"] = true
+        attrs[:other_information]["c2s_business_type"] = business_type
+        if owner.blank?
+          attrs[:lead_pipeline_stage] = nil
+          attrs[:status] = Lead.default_status(tenant: integration.tenant, pipeline: pipeline)
+        end
+      end
+
       created_at = parse_time(@attributes["created_at"])
       attrs[:created_at] = created_at if historical && created_at
       attrs

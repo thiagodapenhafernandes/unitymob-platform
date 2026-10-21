@@ -50,13 +50,15 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label for="phone" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">WhatsApp *</label>
+              <label for="lead_phone" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">WhatsApp *</label>
               <input type="tel" name="phone" id="lead_phone" required
                      class="block w-full rounded-lg border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-                     placeholder="(00) 00000-0000"
+                     placeholder="(47) 99123-4567 ou +351 912 345 678"
                      autocomplete="tel"
-                     data-controller="phone-input"
+                     aria-describedby="lead_phone_error"
+                     data-action="input->lead-capture#clearPhoneError"
                      data-lead-capture-target="phone">
+              <p id="lead_phone_error" class="text-sm text-red-600 mt-1" role="alert" data-lead-capture-target="phoneError" hidden></p>
             </div>
             <div>
               <label for="email" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">E-mail</label>

@@ -1,6 +1,6 @@
 <%= ax_form_section(title: "Identificação e sinalizadores", eyebrow: "Exibição", icon: "toggles") do %>
   <div class="ax-toggle-group">
-    <%= ax_toggle_chip(f, :exibir_no_site_flag, label: "Site", disabled: intake_waiting_admin_review) %>
+    <%= ax_toggle_chip(f, :exibir_no_site_flag, label: "Site", disabled: intake_site_publication_locked) %>
     <%= ax_toggle_chip(f, :destaque_web_flag, label: "Destaque") %>
     <%= ax_toggle_chip(f, :festival_flag, label: "Super destaque") %>
     <%= ax_toggle_chip(f, :lancamento_flag, label: "Lançamento") %>

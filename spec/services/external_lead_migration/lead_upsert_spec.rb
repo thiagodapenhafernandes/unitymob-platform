@@ -76,6 +76,154 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
 
   before { Current.tenant = tenant }
 
+  describe "atribuição inicial por modalidade" do
+    let(:queue_broker) { create(:admin_user, tenant:) }
+
+    before do
+      create(:distribution_rule_agent, tenant:, distribution_rule: rule, admin_user: queue_broker)
+      allow(Leads::NotificationDispatcher).to receive(:deliver)
+      allow(Leads::NotificationDispatcher).to receive(:notify_direct_assignment)
+    end
+
+    def receive_for(negotiation)
+      incoming = payload.deep_dup
+      incoming["attributes"]["product"]["real_estate_detail"] = { "negotiation_name" => negotiation }
+      described_class.call(integration:, payload: incoming).lead.reload
+    end
+
+    it "decide Venda e Locação independentemente" do
+      integration.update!(sale_assignment_mode: "unitymob", rental_assignment_mode: "c2s")
+      lead = receive_for("Venda")
+      expect(lead.admin_user).to eq(queue_broker)
+      expect(lead.distribution_rule).to eq(rule)
+      expect(lead.activities.where(kind: "assigned_directly")).to be_empty
+    end
+
+    it "entrega Locação diretamente ao corretor C2S sem consumir a fila" do
+      integration.update!(sale_assignment_mode: "unitymob", rental_assignment_mode: "c2s")
+      expect(rule).not_to receive(:rotate_queue!)
+      lead = receive_for("Locação")
+      expect(lead.admin_user).to eq(broker)
+      expect(lead.activities.where(kind: "assigned_directly").count).to eq(1)
+      expect(lead.activities.where(kind: "assigned")).to be_empty
+    end
+
+    it "também permite Venda no C2S e Locação na fila" do
+      integration.update!(sale_assignment_mode: "c2s", rental_assignment_mode: "unitymob")
+      expect(receive_for("Locação").admin_user).to eq(queue_broker)
+    end
+
+    it "seleciona a fila de Locação sem cair em uma regra anterior de Venda" do
+      integration.update!(sale_assignment_mode: "c2s", rental_assignment_mode: "unitymob")
+      rule.update!(business_type: :venda)
+      rental_rule = create(:distribution_rule, tenant:, business_type: :locacao, source_site: false,
+        source_webhook: true, webhook_tags: [ExternalLeadIntegration::WEBHOOK_TAG])
+      rental_broker = create(:admin_user, tenant:)
+      create(:distribution_rule_agent, tenant:, distribution_rule: rental_rule, admin_user: rental_broker)
+
+      expect(receive_for("Locação")).to have_attributes(admin_user_id: rental_broker.id, distribution_rule_id: rental_rule.id)
+    end
+
+    it "preserva uma atribuição direta quando o vendedor muda nas sincronizações" do
+      lead = receive_for("Venda")
+      assignments = lead.lead_audit_logs.where("changed_fields @> ARRAY['admin_user_id']::text[]").count
+      integration.update!(seller_mappings: { "seller-1" => queue_broker.id })
+      2.times { receive_for("Venda") }
+      expect(lead.reload.admin_user_id).to eq(broker.id)
+      expect(lead.activities.where(kind: "assigned_directly").count).to eq(1)
+      expect(lead.lead_audit_logs.where("changed_fields @> ARRAY['admin_user_id']::text[]").count).to eq(assignments)
+    end
+
+    it "usa a fila quando as modalidades divergem e a consulta não informa o tipo" do
+      integration.update!(sale_assignment_mode: "c2s", rental_assignment_mode: "unitymob")
+      expect(receive_for(nil).admin_user).to eq(queue_broker)
+    end
+
+    it "usa a fila para um vendedor sem vínculo" do
+      broker.update!(email: "outro@example.test")
+      integration.update!(seller_mappings: {})
+      expect(receive_for("Venda").admin_user).to eq(queue_broker)
+    end
+
+    it "usa a fila para um corretor inativo" do
+      broker.update!(active: false)
+      expect(receive_for("Venda").admin_user).to eq(queue_broker)
+    end
+
+    it "usa a fila para um corretor de outra modalidade" do
+      broker.update!(acting_type: :rentals)
+      expect(receive_for("Venda").admin_user).to eq(queue_broker)
+    end
+
+    it "não usa vínculo de outro tenant" do
+      other = Tenant.create!(name: "Outra conta", slug: "c2s-assignment-#{SecureRandom.hex(4)}")
+      outsider = create(:admin_user, tenant: other)
+      integration.update!(seller_mappings: { "seller-1" => outsider.id })
+      broker.update!(active: false)
+      expect(receive_for("Venda").admin_user).to eq(queue_broker)
+    end
+
+    it "não atribui ao proprietário da conta" do
+      owner = create(:admin_user, :admin, tenant:)
+      integration.update!(seller_mappings: { "seller-1" => owner.id })
+      expect(receive_for("Venda").admin_user).to eq(queue_broker)
+    end
+
+    it "preserva histórico sem distribuir, mesmo com as duas modalidades na fila" do
+      integration.update!(sale_assignment_mode: "unitymob", rental_assignment_mode: "unitymob")
+      lead = described_class.call(integration:, payload:, historical: true).lead
+      expect(lead.admin_user).to eq(broker)
+      expect(lead.activities.where(kind: %w[assigned_directly distributed])).to be_empty
+    end
+
+    it "mantém para triagem quando não existe fila ativa, sem fingir entrega" do
+      rule.update!(active: false)
+      integration.update!(sale_assignment_mode: "unitymob")
+      lead = receive_for("Venda")
+      expect(lead.admin_user_id).to be_nil
+      expect(lead.distribution_rule_id).to be_nil
+      expect(lead.status).to eq(Lead.default_status(tenant:, pipeline: lead.lead_pipeline))
+      expect(lead.activities.where(kind: "distribution_failed")).to exist
+    end
+
+    it "preserva a decisão local após troca de vendedor no C2S e redistribuição por prazo" do
+      integration.update!(sale_assignment_mode: "unitymob")
+      lead = receive_for("Venda")
+      lead.update!(admin_user: broker, status: "Em Atendimento")
+      assignments = lead.lead_audit_logs.where("changed_fields @> ARRAY['admin_user_id']::text[]").count
+      integration.update!(seller_mappings: { "seller-1" => queue_broker.id }, sale_assignment_mode: "c2s")
+      2.times { receive_for("Venda") }
+      expect(lead.reload).to have_attributes(admin_user_id: broker.id, status: "Em Atendimento")
+      expect(lead.lead_audit_logs.where("changed_fields @> ARRAY['admin_user_id']::text[]").count).to eq(assignments)
+    end
+
+    it "reabre cadastro arquivado direto no responsável final, sem salvar uma remoção intermediária" do
+      old_broker = create(:admin_user, tenant:)
+      original = create(:lead, tenant:, phone: "47999990000", email: "maria@example.test",
+        admin_user: old_broker, status: "Descartado", archived_at: 1.day.ago, skip_automatic_routing: true)
+      lead = receive_for("Venda")
+      expect(lead.id).to eq(original.id)
+      expect(lead).to have_attributes(admin_user_id: broker.id, archived_at: nil)
+      changes = lead.lead_audit_logs.where(action: "assigned").pluck(:changeset)
+      expect(changes.map { |change| change["admin_user_id"] }).to eq([{ "before" => old_broker.id, "after" => broker.id }])
+      receive_for("Venda")
+      expect(lead.activities.where(kind: "assigned_directly").count).to eq(1)
+    end
+
+    it "ignora regra de apoio desativada e usa uma fila ativa na reentrada" do
+      old_broker = create(:admin_user, tenant:)
+      original = create(:lead, tenant:, phone: "47999990000", email: "maria@example.test",
+        admin_user: old_broker, status: "Descartado", archived_at: 1.day.ago, skip_automatic_routing: true)
+      inactive = create(:distribution_rule, tenant:, active: false)
+      integration.update!(distribution_rule: inactive, sale_assignment_mode: "unitymob")
+      lead = receive_for("Venda")
+      expect(lead.id).to eq(original.id)
+      expect(lead).to have_attributes(admin_user_id: queue_broker.id, distribution_rule_id: rule.id, archived_at: nil)
+      changes = lead.lead_audit_logs.where(action: "assigned").pluck(:changeset)
+      expect(changes.map { |change| change["admin_user_id"] }).to eq([{ "before" => old_broker.id, "after" => queue_broker.id }])
+    end
+  end
+
   it "concilia OLX direto com C2S e preserva responsável, origem e status nos reenvios" do
     incoming = payload.deep_dup
     incoming["attributes"]["lead_source"] = { "name" => "Grupo Zap" }
@@ -363,8 +511,8 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(tenant.leads.where(external_lead_id: event["id"]).count).to eq(1)
     expect(lead.tasks.reload.pluck(:id)).to eq([task.id])
     expect(lead.appointments.reload.pluck(:id)).to eq([appointment.id])
-    expect(task.reload).to have_attributes(admin_user: new_broker, title: "Retorno alterado", due_at: Time.zone.parse("2026-09-29T09:00:00-03:00"), status: "concluida")
-    expect(appointment.reload).to have_attributes(admin_user: new_broker, title: "Visita alterada", starts_at: Time.zone.parse("2026-09-30T10:00:00-03:00"), status: "cancelado")
+    expect(task.reload).to have_attributes(admin_user: broker, title: "Retorno alterado", due_at: Time.zone.parse("2026-09-29T09:00:00-03:00"), status: "concluida")
+    expect(appointment.reload).to have_attributes(admin_user: broker, title: "Visita alterada", starts_at: Time.zone.parse("2026-09-30T10:00:00-03:00"), status: "cancelado")
     expect(lead.activities.find_by!(kind: "external_appointment").metadata.dig("raw", "schedulated_action_date")).to eq("2026-09-30T10:00:00-03:00")
   end
 

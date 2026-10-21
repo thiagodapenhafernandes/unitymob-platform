@@ -19,7 +19,7 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(response.body).to include("Importar histórico")
     expect(response.body).to include("Etapas de Lead usadas na migração")
     expect(response.body).to include("Regra de apoio")
-    expect(response.body).not_to include("C2S")
+    expect(response.body).to include("Corretor informado pelo C2S")
     document = Nokogiri::HTML(response.body)
     expect(document.css("button.lead-migration-command").size).to eq(2)
     expect(document.at_css("input#external_lead_integration_webhook_listening_enabled")).to be_present
@@ -100,6 +100,28 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
 
     expect(response).to redirect_to(admin_external_lead_integration_path)
     expect(integration.reload.accept_lead_without_phone).to be(true)
+  end
+
+  it "exibe e salva atribuições independentes para Venda e Locação" do
+    integration = create(:external_lead_integration, tenant: admin.tenant)
+    get admin_external_lead_integration_path
+    expect(response.body).to include("Atribuição de Venda", "Atribuição de Locação")
+
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: { enabled: "1", sale_assignment_mode: "unitymob", rental_assignment_mode: "c2s" }
+    }
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(integration.reload).to have_attributes(sale_assignment_mode: "unitymob", rental_assignment_mode: "c2s")
+  end
+
+  it "rejeita modo de atribuição inválido sem alterar a configuração ou desconectar a integração" do
+    integration = create(:external_lead_integration, tenant: admin.tenant, status: "connected")
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: { enabled: "1", sale_assignment_mode: "invalido", rental_assignment_mode: "unitymob" }
+    }
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(integration.reload).to have_attributes(sale_assignment_mode: "c2s", rental_assignment_mode: "c2s", status: "connected")
+    expect(flash[:alert]).to include("Falha ao salvar")
   end
 
   it "habilita escuta de novos leads ao salvar com checkbox marcado" do
@@ -234,13 +256,13 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(integration.last_error_message).to eq("HTTP 422")
   end
 
-  it "exibe o interruptor de envio sem expor o fornecedor" do
+  it "exibe o interruptor de envio e a escolha do corretor C2S" do
     get admin_external_lead_integration_path
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Enviar leads novos à conta externa")
     expect(response.body).to include("Endpoint de envio")
-    expect(response.body).not_to include("C2S")
+    expect(response.body).to include("Corretor informado pelo C2S")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css("input#external_lead_integration_export_enabled")).to be_present
   end

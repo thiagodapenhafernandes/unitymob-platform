@@ -54,6 +54,8 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
     else
       redirect_to admin_external_lead_integration_path, notice: "Configuração da integração salva."
     end
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_to admin_external_lead_integration_path, alert: "Falha ao salvar integração de leads: #{e.message}"
   rescue => e
     @integration.mark_failed!(e.message) if @integration&.persisted?
     redirect_to admin_external_lead_integration_path, alert: "Falha ao salvar integração de leads: #{e.message}"
@@ -124,6 +126,8 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       :access_token,
       :webhook_listening_enabled,
       :accept_lead_without_phone,
+      :sale_assignment_mode,
+      :rental_assignment_mode,
       :export_enabled,
       :export_endpoint,
       operational_stage_mappings: [:key, :stage_id],

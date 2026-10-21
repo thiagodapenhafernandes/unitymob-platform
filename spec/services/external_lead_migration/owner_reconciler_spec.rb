@@ -36,6 +36,16 @@ RSpec.describe ExternalLeadMigration::OwnerReconciler do
     expect(result).to have_attributes(scanned: 1, assigned: 0, skipped_non_operational: 1)
   end
 
+  it "não sobrescreve a decisão operacional de deixar um lead na fila" do
+    lead = create_c2s_lead(status: Lead.status_value(:novo))
+    lead.update!(other_information: lead.other_information.merge("c2s_assignment_decided" => true))
+
+    result = described_class.call(integration:, execute: true)
+
+    expect(result.assigned).to eq(0)
+    expect(lead.reload.admin_user_id).to be_nil
+  end
+
   def create_c2s_lead(status:)
     create(
       :lead,

@@ -59,6 +59,17 @@ RSpec.describe Storage::PublicImageVariants do
     described_class.publish(blob, described_class::HERO.last)
   end
 
+  it "não publica derivadas do original pendente de marca, inclusive jobs já enfileirados" do
+    habitation = create(:habitation, tenant: tenant)
+    habitation.watermark_photos.attach(
+      io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")),
+      filename: "pendente.png", content_type: "image/png"
+    )
+    blob = habitation.watermark_photos.blobs.first
+    expect(Storage::PublicPropertyPhoto).not_to receive(:publish_blob!)
+    described_class.publish(blob, described_class::CARD.first)
+  end
+
   it "respeita a configuração da conta que proíbe fotos públicas" do
     blob = attach_image(setting, :hero_background_desktop)
     allow(Storage::PublicPropertyPhoto).to receive(:public_photos_enabled?).with(tenant: tenant).and_return(false)

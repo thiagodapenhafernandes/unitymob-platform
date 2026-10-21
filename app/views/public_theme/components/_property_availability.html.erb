@@ -1,0 +1,8 @@
+<% if habitation.daily_rental? %>
+  <section id="rental-availability" class="public-theme-property-availability public-theme-property-availability--<%= variant %>" aria-label="Disponibilidade do imóvel">
+    <h3 class="public-theme-property-availability__title">Disponibilidade da locação diária</h3>
+    <%= turbo_frame_tag dom_id(habitation, :availability), src: availability_habitation_path(habitation), loading: :lazy do %>
+      <%= link_to "Consultar disponibilidade", availability_habitation_path(habitation) %>
+    <% end %>
+  </section>
+<% end %>

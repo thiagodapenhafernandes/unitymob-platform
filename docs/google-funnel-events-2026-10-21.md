@@ -1,0 +1,15 @@
+# Eventos Google por etapa — preparação local
+
+Implementação compartilhada por todas as contas, sem ativação automática. Etapas existentes e novas começam em `Nenhum`. Na configuração de webhook, selecionar explicitamente o destino GTM/STAPE da conta; somente um destino Google por conta, HTTPS e chaves Active Record Encryption obrigatórios. O segredo opcional é criptografado e enviado em `X-Webhook-Secret`; campo vazio mantém o segredo existente.
+
+Mapeamentos: `qualify_lead` → qualificado; `visit` → `working_lead`/visita; `proposal` → `working_lead`/proposta; `closed` → `close_convert_lead`/fechamento. Mapeamentos repetidos mostram aviso após salvar. Mapear uma etapa de qualificação desmarca a qualificação por avaliação no destino Google; os eventos de entrada e demais destinos permanecem com suas seleções originais. Desfazer o mapeamento não reativa inscrições automaticamente.
+
+O botão Fechado abre um formulário compartilhado entre desktop e mobile com **Comissão real do fechamento (opcional)**. Valor em reais, formato brasileiro, armazenado em centavos, não negativo e auditado. Não usa preço do imóvel ou comissão estimada. O valor precisa ser informado antes do primeiro evento de fechamento: sem comissão, o evento omite `value` e `currency`; com comissão, envia número e BRL. Editar depois não modifica nem reenvia o evento já registrado.
+
+Outbox com unicidade de lead/tipo e snapshot criptografado de payload e destino. Identidade usa o e-mail original do audit de criação; ausência de e-mail original ou modalidade válida registra evento ignorado com motivo. Modalidade venda/aluguel fica fixada no primeiro registro válido. Nome/telefone são opcionais. Horário da transição em America/Sao_Paulo, IDs e payload permanecem estáveis nas tentativas. Importações que suprimem roteamento não geram conversões históricas.
+
+Job assíncrono com uma tentativa inicial e até três repetições (1, 5 e 30 minutos), aceitando somente HTTP 2xx. Registra status/classe do erro, sem corpo de resposta nem identidade nos logs. Não segue redirecionamentos e reaproveita a política contra destinos privados. Desativação ou troca do destino interrompe o envio pendente. Recuperação a cada cinco minutos reenfileira pendências; jobs concorrentes são serializados pelo registro. Uma interrupção depois do aceite remoto pode repetir a chamada: o receptor precisa deduplicar os IDs estáveis, pois não existe transação distribuída entre banco e HTTP.
+
+Fora de produção, o transporte força `diagnostic: true`. Testes isolam HTTP; nenhum evento real, replay, configuração de conta, alteração em produção ou deploy foi executado. As duas migrations precisam ser aplicadas no futuro deploy. Aceitação pelo GTM/STAPE e Google Ads depende de validação externa posterior; não foi demonstrada por estes testes.
+
+Validação local: 104 exemplos Rails e 3 testes JavaScript sem falhas; Zeitwerk e build CSS aprovados. Migration da comissão revertida e reaplicada somente no banco de testes. A suíte completa e a aceitação externa não foram executadas.

@@ -22,6 +22,21 @@ module Leads
     end
 
     def redistribute(rule = nil)
+      if @inquiry.external_lead_integration_id.present? && @inquiry.admin_user.present?
+        assignment_rule = @inquiry.distribution_rule || find_matching_rule || DistributionRule.new(tenant: tenant)
+        sticky_user = StickyAssignment.corretor_for(@inquiry, assignment_rule, candidates: assignment_rule.candidates_filtered_by_checkin)
+        if operational? && @lead.admin_user&.active? &&
+            (sticky_user&.id == @lead.admin_user_id || InquiryComplement.keeps_owner?(@lead, @inquiry))
+          return :kept
+        end
+
+        prepare_reentry!
+        @lead.assign_attributes(admin_user: @inquiry.admin_user, distribution_rule: @inquiry.distribution_rule,
+          lead_pipeline: @inquiry.lead_pipeline, lead_pipeline_stage: @inquiry.lead_pipeline_stage, status: @inquiry.status)
+        @lead.save!
+        LeadActivity.log!(lead: @lead, kind: "assigned_directly", metadata: { admin_user_id: @lead.admin_user_id, reason: "c2s" })
+        return :direct
+      end
       rule ||= find_matching_rule
       return distribute_to(rule) if rule&.active?
 
@@ -81,7 +96,7 @@ module Leads
       prepare_reentry!
       @lead.distribution_rule = rule
       @lead.distribution_cycle_started_at ||= Time.current
-      @lead.save! if @lead.changed?
+      @lead.save! if @lead.changed? && (!@inquiry || rule.contingency_enabled? || rule.represamento_active? || candidates.empty?)
 
       if rule.represamento_active? && inside_holding_hours?(rule)
         return rule if ContingencyService.try_forward!(@lead, rule: rule, reason: "outside_hours")
@@ -378,6 +393,9 @@ module Leads
         end
         return false unless @meta_form_available
       end
+      return false if rule.meta_form_excluded?(info["meta_form_id"])
+      # No modo automático, a página e as exceções definem o escopo, inclusive para forms novos.
+      form_ids = [] if rule.auto_add_forms?
       return true if page_ids.empty? && form_ids.empty?
 
       page_ok = page_ids.empty? || page_ids.include?(info["meta_page_id"].to_s)
@@ -475,6 +493,11 @@ module Leads
 
     def matches_business_type?(rule)
       return true if rule.ambos_business_type?
+      if routing_lead.external_lead_integration_id.present?
+        business_type = routing_lead.other_information["c2s_business_type"]
+        return rule.venda_business_type? if business_type == "sale"
+        return rule.locacao_business_type? if business_type == "rental"
+      end
       lead_content = normalized_business_type_content
       is_explicit_rental = lead_content.match?(/\b(aluguel|alugar|locacao|locar|rent|rental)\b/)
       is_explicit_sale = lead_content.match?(/\b(venda|vender|comprar|compra|sale)\b/)

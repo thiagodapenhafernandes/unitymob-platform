@@ -129,6 +129,8 @@ module Vista
 
         user = tenant.admin_users.find_by(vista_id: vista_id) || tenant.admin_users.find_or_initialize_by(email: attrs[:email])
         user.tenant = tenant
+        # Exportações parciais/sem data não apagam o histórico já cadastrado.
+        %i[source_created_on source_departed_on].each { |field| attrs.delete(field) if attrs[field].blank? }
         user.assign_attributes(attrs)
         user.password = DEFAULT_PASSWORD if user.encrypted_password.blank?
         user.save!

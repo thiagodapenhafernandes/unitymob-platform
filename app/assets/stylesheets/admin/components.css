@@ -1,6 +1,7 @@
 /*
  *= require admin/components/message_preview
  *= require admin/components/view_toggle
+ *= require components/availability_calendar
  *= require admin/components/mobile_detail_header
  *= require admin/components/user_menu
  *= require admin/components/touch_form

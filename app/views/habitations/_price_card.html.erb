@@ -28,7 +28,7 @@
     <p class="public-habitations-show__price mt-2 text-4xl font-extrabold text-blue-three">
       <%= number_to_currency(habitation.valor_locacao_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
     </p>
-    <p class="text-sm font-semibold text-gray-500">/mês</p>
+    <p class="text-sm font-semibold text-gray-500"><%= public_rental_price_suffix(habitation) %></p>
     <% if has_rent_discount %>
       <% rent_discount_percent = ((habitation.valor_locacao_anterior_cents - habitation.valor_locacao_cents).to_f / habitation.valor_locacao_anterior_cents * 100).round(1) %>
       <p class="mt-2 text-sm font-bold text-golden-one">Locação com preço reduzido · <%= rent_discount_percent %>% de desconto</p>
@@ -137,7 +137,7 @@
   <% end %>
 
   <%# Ações de contato: o luxury (split_ctas) as renderiza em cartão próprio. %>
-  <% if local_assigns.fetch(:show_ctas, true) %>
+  <% if local_assigns.fetch(:show_ctas, true) && !habitation.daily_rental? %>
     <%= render "habitations/price_card_ctas", habitation: habitation, title: title %>
   <% end %>
 

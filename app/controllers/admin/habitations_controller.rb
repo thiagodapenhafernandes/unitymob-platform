@@ -787,12 +787,12 @@ class Admin::HabitationsController < Admin::BaseController
     Habitation.transaction do
       @habitation.skip_auto_audit = true
       record_habitation_destroyed(@habitation)
-      release_habitation_destroy_references(@habitation)
+      Habitations::DestroyReferences.call(habitation: @habitation)
       @habitation.destroy!
     end
 
     redirect_to admin_habitations_path, notice: "Imóvel excluído com sucesso."
-  rescue ActiveRecord::InvalidForeignKey => error
+  rescue ActiveRecord::InvalidForeignKey, ActiveRecord::RecordNotDestroyed => error
     Rails.logger.error("[habitation_destroy] failed id=#{@habitation&.id} error=#{error.class}: #{error.message}")
     redirect_to edit_admin_habitation_path(@habitation), alert: "Não foi possível excluir o imóvel porque ainda existem vínculos internos. O erro foi registrado para correção."
   end
@@ -2482,8 +2482,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def keep_admin_review_intake_hidden
-    return unless @habitation.broker_intake?
-    return if @habitation.intake_internal? || @habitation.intake_published?
+    return unless @habitation.intake_site_publication_locked?
 
     @habitation.exibir_no_site_flag = false
   end
@@ -2584,7 +2583,7 @@ class Admin::HabitationsController < Admin::BaseController
     habitation.intake_origin ||= Habitation::INTAKE_ORIGIN_BROKER
     habitation.intake_status ||= "draft"
     habitation.admin_user ||= current_admin_user
-    habitation.exibir_no_site_flag = false unless habitation.intake_internal? || habitation.intake_published?
+    habitation.exibir_no_site_flag = false if habitation.intake_site_publication_locked?
   end
 
   def mark_intake_as_admin_approved(habitation)
@@ -2842,6 +2841,9 @@ class Admin::HabitationsController < Admin::BaseController
     end
 
     permitted.delete(:intake_status) unless @habitation&.broker_intake? && can_manage_intake_status?(@habitation)
+    if @habitation&.intake_site_publication_locked? && permitted[:intake_status] == "published"
+      permitted.delete(:intake_status)
+    end
     permitted.delete(:foto_classificacao) unless can_manage_habitation_signal_flags?
 
     permitted
@@ -2935,47 +2937,6 @@ class Admin::HabitationsController < Admin::BaseController
       source: habitation_audit_source(habitation),
       before_snapshot: Habitations::AuditChangeRecorder.snapshot_for(habitation)
     ).record_destroy!
-  end
-
-  def release_habitation_destroy_references(habitation)
-    destroy_habitation_child_records(habitation)
-    nullify_habitation_history_references(habitation)
-  end
-
-  def destroy_habitation_child_records(habitation)
-    [
-      AiPropertyShareItem,
-      HabitationPhotoShare,
-      LeadPropertyInterest
-    ].each do |model|
-      model.where(habitation_id: habitation.id).destroy_all
-    end
-  end
-
-  def nullify_habitation_history_references(habitation)
-    [
-      [AiPropertySearchHistory, :selected_habitation_id],
-      [AiPropertyShareAuditEvent, :habitation_id],
-      [Appointment, :habitation_id],
-      [ClientInteraction, :habitation_id],
-      [ClientPropertyInterest, :habitation_id],
-      [CrmAppointment, :habitation_id],
-      [OperationalUserEvent, :habitation_id],
-      [PortalIntegrationEvent, :habitation_id],
-      [PortalListingState, :habitation_id],
-      [Proposal, :habitation_id],
-      [PublicNavigationEvent, :habitation_id],
-      [SeoConversionEvent, :habitation_id],
-      [VistaFileAsset, :habitation_id]
-    ].each do |model, column|
-      nullify_habitation_reference(model, column, habitation.id)
-    end
-  end
-
-  def nullify_habitation_reference(model, column, habitation_id)
-    attributes = { column => nil }
-    attributes[:updated_at] = Time.current if model.column_names.include?("updated_at")
-    model.where(column => habitation_id).update_all(attributes)
   end
 
   def record_habitation_attachment_removed(habitation, association:, attachment_payload:)

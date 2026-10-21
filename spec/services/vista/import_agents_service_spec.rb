@@ -108,4 +108,20 @@ RSpec.describe Vista::ImportAgentsService do
     expect(user.profile).to eq(internal_management_profile)
     expect(user.horizontal_profile).to eq(administrative_profile)
   end
+
+  it "preserva as datas do dump ao sincronizar status e dados pela API" do
+    tenant = Tenant.default
+    user = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "agent"), vista_id: "DATA-701", source_created_on: "2018-03-20", source_departed_on: "2024-06-15", vista_payload: { "DATA" => "2018-03-20" })
+    Current.tenant = tenant
+    result = described_class.new.send(:process_user, {
+      "Codigo" => "DATA-701", "Nomecompleto" => "Nome no Vista", "E-mail" => user.email,
+      "Inativo" => "Sim", "Corretor" => "Sim", "Atuaçãoemvenda" => "Sim"
+    })
+    expect(result).to eq(:updated)
+    expect(user.reload).not_to be_active
+    expect(user.source_created_on).to eq(Date.new(2018, 3, 20))
+    expect(user.source_departed_on).to eq(Date.new(2024, 6, 15))
+    expect(user.vista_payload["DATA"]).to eq("2018-03-20")
+  end
+
 end

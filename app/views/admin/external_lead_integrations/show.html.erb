@@ -80,7 +80,15 @@
           <% end %>
 
           <%= ax_inline_notice(tone: :info, icon: "diagram-3", compact: true) do %>
-            O histórico entra sem redistribuir leads antigos. Com a escuta habilitada, novos eventos passam pelo fluxo normal usando a regra de apoio <strong><%= ExternalLeadIntegration::SUPPORT_RULE_NAME %></strong>.
+            O histórico entra sem redistribuir leads antigos. Para novas consultas, escolha quem define a atribuição em cada modalidade. Se o corretor do C2S não estiver vinculado ou elegível, a fila da Unitymob será usada como contingência. Sincronizações posteriores preservam o responsável local e as redistribuições por prazo continuam seguindo as regras da Unitymob.
+          <% end %>
+
+          <%= ax_field_grid do %>
+            <%= ax_select_field(form: f, method: :sale_assignment_mode, label: "Atribuição de Venda", choices: ExternalLeadIntegration::ASSIGNMENT_MODES.to_a) %>
+            <%= ax_select_field(form: f, method: :rental_assignment_mode, label: "Atribuição de Locação", choices: ExternalLeadIntegration::ASSIGNMENT_MODES.to_a) %>
+          <% end %>
+          <%= ax_inline_notice(tone: :info, compact: true) do %>
+            Consultas sem modalidade definida ou com venda e locação usam a fila quando as duas escolhas forem diferentes. A fila respeita as regras ativas de origem, modalidade e elegibilidade; sem destino disponível, a consulta permanece para triagem.
           <% end %>
 
           <%= ax_field_grid do %>

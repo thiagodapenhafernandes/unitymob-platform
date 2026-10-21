@@ -6,6 +6,7 @@ class ExternalLeadIntegration < ApplicationRecord
   SUPPORT_RULE_NAME = "Migração de leads - distribuição espelhada".freeze
   WEBHOOK_TAG = "external_lead_migration".freeze
   LEAD_ORIGIN = "Migração externa".freeze
+  ASSIGNMENT_MODES = { "Corretor informado pelo C2S" => "c2s", "Fila de distribuição da Unitymob" => "unitymob" }.freeze
   LEGACY_TRASH_LOCAL_EMAIL = "lixeira@conexaobc.com.br".freeze
   LEGACY_TRASH_SELLER_EMAILS = %w[lixeira_cbc2025@c2sglobal.com].freeze
   LEGACY_TRASH_SELLER_NAMES = ["lixeira conexao bc"].freeze
@@ -18,11 +19,30 @@ class ExternalLeadIntegration < ApplicationRecord
 
   validates :status, inclusion: { in: STATUSES }
   validates :sync_status, inclusion: { in: SYNC_STATUSES }
+  validates :sale_assignment_mode, :rental_assignment_mode, inclusion: { in: ASSIGNMENT_MODES.values }
   validates :tenant_id, uniqueness: true
   validates :webhook_token, presence: true, uniqueness: true
   validates :export_endpoint, format: { with: %r{\A/}, message: "deve começar com /" }, allow_blank: true
 
   scope :enabled, -> { where(enabled: true, status: "connected") }
+
+  def c2s_assignment?(business_type:)
+    modes = case business_type
+    when "sale" then [sale_assignment_mode]
+    when "rental" then [rental_assignment_mode]
+    else [sale_assignment_mode, rental_assignment_mode]
+    end
+    modes.all?("c2s")
+  end
+
+  def eligible_seller(seller, business_type:)
+    user = local_user_for_seller(seller)
+    return unless !user&.super_admin? && DistributionRule.new(tenant: tenant).eligible_distribution_agent?(user)
+    return if business_type == "sale" && user.rentals?
+    return if business_type == "rental" && user.sales?
+
+    user
+  end
 
   def stage_mapping_for(key)
     operational_mappings.to_h.dig("stages", key.to_s).to_h

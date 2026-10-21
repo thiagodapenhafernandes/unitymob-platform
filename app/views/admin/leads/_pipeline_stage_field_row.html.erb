@@ -43,6 +43,7 @@
         <option value="<%= value %>" <%= "selected" if meta_conversion_event == value %>><%= label %> (<%= value %>)</option>
       <% end %>
     </select>
+    <%= render "admin/leads/google_event_field", name: "stages[#{stage_index}][google_event]", field_id: "lead_pipeline_stage_#{stage_index}_google_event", selected: local_assigns[:google_event], class_name: "lead-google-event-field" %>
   </div>
   <button type="button"
           class="ax-icon-btn lead-status-row__remove"

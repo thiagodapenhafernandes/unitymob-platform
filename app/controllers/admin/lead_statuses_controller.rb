@@ -50,7 +50,7 @@ module Admin
       rows = params.permit(
         :lead_pipeline_id,
         statuses: [
-          :id, :name, :description, :stage_type, :meta_conversion_event, :color, :active, :replacement_stage_id, :_destroy,
+          :id, :name, :description, :stage_type, :meta_conversion_event, :google_event, :color, :active, :replacement_stage_id, :_destroy,
           automations: [
             :id, :trigger, :after_amount, :after_unit, :auto_advance_to_stage_id, :action_type, :active, :_destroy,
             action_config: {}
@@ -75,7 +75,7 @@ module Admin
         end
       end
 
-      flash[:notice] = "Etapas do funil atualizadas."
+      flash[:notice] = ["Etapas do funil atualizadas.", selected_pipeline.google_event_warning].compact.join(" ")
       render json: { ok: true }
     rescue ActiveRecord::RecordInvalid => e
       message = e.record&.errors&.full_messages&.to_sentence
@@ -121,7 +121,7 @@ module Admin
           transfer_leads_before_destroy!(stage, row[:replacement_stage_id])
           stage.destroy!
         else
-          stage.update!(name: name, description: description, stage_type: stage_type, meta_conversion_event: meta_conversion_event, color: color, active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true, position: index)
+          stage.update!(name: name, description: description, stage_type: stage_type, meta_conversion_event: meta_conversion_event, google_event: row.key?(:google_event) ? row[:google_event].presence || "none" : stage.google_event, color: color, active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true, position: index)
           sync_policy!(stage, row[:policy])
           sync_transitions!(stage, row[:next_stage_ids])
           sync_automations!(stage, row[:automations])
@@ -133,6 +133,7 @@ module Admin
           description: description,
           stage_type: stage_type,
           meta_conversion_event: meta_conversion_event,
+          google_event: row[:google_event].presence || "none",
           color: color,
           active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true,
           position: index

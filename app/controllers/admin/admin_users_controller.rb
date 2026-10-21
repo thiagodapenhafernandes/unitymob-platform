@@ -422,7 +422,7 @@ module Admin
     private
 
     def admin_user_params
-      permitted = [:email, :password, :password_confirmation, :name, :creci, :phone, :secondary_phone, :biography, :birth_date, :city, :avatar, :acting_type, :active, :display_on_site, :field_agent_enabled, :default_store_id]
+      permitted = [:email, :password, :password_confirmation, :name, :creci, :phone, :secondary_phone, :biography, :birth_date, :source_created_on, :source_departed_on, :city, :avatar, :acting_type, :active, :display_on_site, :field_agent_enabled, :default_store_id]
       permitted.concat([:profile_id, :horizontal_profile_id, :access_profile_id, :manager_id, :rentals_manager_id]) if current_admin_user&.can?(:manage, :corretores)
       permitted.concat([:require_ip_allowlist, :require_trusted_device]) if can_manage_login_security_for?(@admin_user)
       attrs = params.require(:admin_user).permit(*permitted)

@@ -10,6 +10,28 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "salva exceções por regra, preserva ao desligar e rejeita formulários de outra conta" do
+    integration = create(:user_meta_integration, admin_user: admin, tenant: admin.tenant, selected_page_ids: ["exceptions-page"])
+    page = create(:meta_facebook_page, user_meta_integration: integration, page_id: "exceptions-page")
+    excluded = create(:meta_lead_form, meta_facebook_page: page)
+    included = create(:meta_lead_form, meta_facebook_page: page)
+    rule = create(:distribution_rule, tenant: admin.tenant, source_meta: true, meta_page_ids: [page.page_id])
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {auto_add_forms: "1", excluded_meta_form_ids: ["", excluded.form_id]}}
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(rule.reload.meta_forms).to eq([included.form_id])
+    expect(rule.excluded_meta_form_ids).to eq([excluded.form_id])
+    get edit_admin_distribution_rule_path(rule)
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css("select[name='distribution_rule[excluded_meta_form_ids][]'] option[selected]")["value"]).to eq(excluded.form_id)
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {auto_add_forms: "0", meta_forms: [excluded.form_id]}}
+    expect(rule.reload.excluded_meta_form_ids).to eq([excluded.form_id])
+    expect(rule.meta_forms).to eq([excluded.form_id])
+    foreign = create(:meta_lead_form)
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {excluded_meta_form_ids: [foreign.form_id]}}
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(rule.reload.excluded_meta_form_ids).to eq([excluded.form_id])
+  end
+
   it "exclui páginas não selecionadas mesmo ativas e rejeita vínculos por requisição direta" do
     integration = create(:user_meta_integration, admin_user: admin, tenant: admin.tenant, selected_page_ids: ["allowed"])
     allowed = create(:meta_facebook_page, user_meta_integration: integration, page_id: "allowed", name: "Página permitida")

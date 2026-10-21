@@ -95,3 +95,5 @@ gem "rotp", "~> 6.3"
 gem "rqrcode", "~> 2.2"
 
 gem "dartsass-rails", "~> 0.5.1"
+
+gem "phonelib", "~> 0.10"

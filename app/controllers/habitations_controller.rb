@@ -216,6 +216,20 @@ class HabitationsController < ApplicationController
     render json: []
   end
   
+  def availability
+    habitation = find_public_habitation(params[:id])
+    return head :not_found unless habitation&.publicly_viewable? && habitation.daily_rental?
+
+    month = helpers.rental_availability_month(params[:month])
+    blocks = habitation.availability_blocks.where(tenant: public_tenant).overlapping(month, month.end_of_month).to_a
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    render "habitations/availability", layout: turbo_frame_request? ? false : "application", locals: {
+      habitation: habitation, month: month, blocks: blocks,
+      calendar_path: availability_habitation_path(habitation), variant: helpers.theme_variant
+    }
+  end
+
   # GET /imoveis/:id
   def show
     unless @habitation

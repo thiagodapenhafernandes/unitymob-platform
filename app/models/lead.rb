@@ -1,4 +1,23 @@
 class Lead < ApplicationRecord
+  validates :closing_commission_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 999_999_999_999 }, allow_nil: true
+  validate { errors.add(:closing_commission, "informe um valor válido") if @invalid_closing_commission }
+
+  def closing_commission
+    closing_commission_cents && format("%.2f", BigDecimal(closing_commission_cents.to_s) / 100).tr(".", ",")
+  end
+
+  def closing_commission=(value)
+    @invalid_closing_commission = false
+    return self.closing_commission_cents = nil if value.blank?
+
+    text = value.to_s.strip
+    unless text.match?(/\A(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?\z/)
+      @invalid_closing_commission = true
+      return
+    end
+    self.closing_commission_cents = (BigDecimal(text.delete(".").tr(",", ".")) * 100).to_i
+  end
+
   include TenantScoped
   include PhoneNormalizable
 
@@ -187,6 +206,9 @@ class Lead < ApplicationRecord
   after_update :sync_open_activity_owners!, if: :saved_change_to_admin_user_id?
   after_update :record_audit_update
   after_update :record_ga4_conversion, unless: :skip_automatic_routing?
+  after_update :record_google_stage_conversion, unless: :skip_automatic_routing?
+  before_create :snapshot_google_business_type
+  has_many :google_stage_conversion_events, dependent: :destroy
   after_destroy :record_audit_destroy
   after_create_commit :enqueue_meta_enrichment
   after_create_commit :enqueue_c2s_export
@@ -202,6 +224,19 @@ class Lead < ApplicationRecord
   before_validation :record_data_processing_policy, on: :create
   before_save :sync_closed_at
   normalize_phone_fields :phone, :client_phone, :agent_phone
+
+  def phone_e164
+    canonical = attribution_data.to_h["phone_e164"].to_s
+    canonical if canonical.match?(/\A\+[1-9]\d{7,14}\z/) && phone.to_s.delete_prefix("+") == canonical.delete_prefix("+")
+  end
+
+  # O DDI validado no formulário público não pode virar DDD em validações posteriores.
+  def normalize_configured_phone_fields
+    canonical = phone_e164
+    super
+    self.phone = canonical.delete_prefix("+") if canonical
+  end
+  private :normalize_configured_phone_fields
 
   scope :novo, -> { where(status: status_value(:novo)) }
   scope :em_atendimento, -> { where(status: status_value(:em_atendimento)) }
@@ -764,6 +799,14 @@ class Lead < ApplicationRecord
 
   def dispatch_outbound_webhook_changes
     Leads::OutboundWebhook.dispatch_changes(self)
+  end
+
+  def snapshot_google_business_type
+    self.google_business_type = GoogleConversions::Recorder.business_type(attribution_data.to_h["business_type"])
+  end
+
+  def record_google_stage_conversion
+    GoogleConversions::Recorder.lead_updated(self)
   end
 
   def record_ga4_conversion

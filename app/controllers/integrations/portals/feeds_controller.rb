@@ -2,7 +2,8 @@ module Integrations
   module Portals
     class FeedsController < ApplicationController
       FEED_CACHE_VERSIONS = {
-        "chaves_xml" => "chaves_xml_v2"
+        "chaves_xml" => "chaves_xml_v2",
+        "open_navent_xml" => "open_navent_xml_v1"
       }.freeze
 
       skip_before_action :load_layout_settings
@@ -92,6 +93,9 @@ module Integrations
 
       def render_feed(habitations)
         case @integration.feed_strategy
+        when "open_navent_xml"
+          serializer = Portal::OpenNaventXmlSerializer.new(habitations: habitations, integration: @integration)
+          stream_xml(serializer)
         when "olx_xml"
           serializer = Portal::OlxXmlSerializer.new(habitations: habitations, integration: @integration)
           stream_xml(serializer)

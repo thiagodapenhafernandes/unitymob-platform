@@ -50,6 +50,9 @@ RSpec.describe MetaSyncEnabledIntegrationsJob, type: :job do
     described_class.perform_now
 
     expect(rule.reload.meta_forms).to include("form-observed")
+    rule.update!(excluded_meta_form_ids: ["form-observed"])
+    described_class.perform_now
+    expect(rule.reload.meta_forms).not_to include("form-observed")
     integration.update!(selected_page_ids: [])
     rule.update!(meta_forms: [])
     described_class.perform_now

@@ -30,3 +30,6 @@ pin "intl-tel-input", to: "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/+
 pin "lib/navigation_loader", to: "lib/navigation_loader.js", preload: "application"
 pin "lib/lead_attribution", to: "lib/lead_attribution.js"
 pin "lib/phone_input_styles", to: "lib/phone_input_styles.js", preload: false
+
+pin "libphonenumber-max", to: "libphonenumber-max.js", preload: false
+pin "lib/public_whatsapp", to: "lib/public_whatsapp.js", preload: false

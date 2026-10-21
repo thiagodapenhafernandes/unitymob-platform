@@ -228,6 +228,7 @@
             include_blank: "Evento Meta: nenhum", choices: LeadPipelineStage::META_CONVERSION_EVENTS.map { |value, label| ["#{label} (#{value})", value] },
             hint: "Enviado ao entrar nesta etapa, para leads do Meta Ads com conversões ativas.",
             data: { lead_status_field: "meta_conversion_event", controller: "ax-tooltip", ax_tooltip_text_value: "Evento enviado à Meta quando o lead entra nesta etapa (só leads do Meta Ads, com conversões ativas). Em branco, não envia." }) %>
+      <%= render "admin/leads/google_event_field", name: nil, field_id: "#{field_prefix}-google", selected: local_assigns[:google_event], data: { lead_status_field: "google_event" } %>
       <p class="ax-field__hint">Os eventos informam à Meta o avanço do lead para medir conversões e apoiar a otimização dos anúncios. Eles não sincronizam as colunas da Central de Leads.</p>
       <%= ax_button("Entenda os eventos da Meta", documentation_admin_lead_statuses_path(anchor: "evento-meta"), variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener noreferrer", aria: { label: "Entenda os eventos da Meta (abre em nova aba)" }) %>
     <% end %>

@@ -1,6 +1,11 @@
 <!-- Tab: Comercial -->
 <div class="tab-pane fade" id="comercial" role="tabpanel" aria-labelledby="comercial-tab" data-controller="habitation-brokers">
   <div class="ax-form-workspace ax-commercial-workspace">
+    <% if habitation.persisted? && habitation.daily_rental? %>
+      <%= ax_operational_panel(title: "Locação diária") do %>
+        <%= link_to "Calendário de disponibilidade", admin_habitation_availability_blocks_path(habitation.id), class: "ax-btn ax-btn--secondary" %>
+      <% end %>
+    <% end %>
     <div class="ax-commercial-columns">
       <div class="ax-commercial-column ax-commercial-column--main">
         <%= render "admin/habitations/form_tabs/comercial/condicoes", f: f %>

@@ -1,0 +1,26 @@
+<%= turbo_frame_tag dom_id(habitation, :availability) do %>
+  <section class="public-theme-availability-calendar public-theme-availability-calendar--<%= variant %>" aria-label="Disponibilidade da locação diária">
+    <nav class="public-theme-availability-calendar__navigation" aria-label="Meses do calendário">
+      <%= link_to "Mês anterior", "#{calendar_path}?#{ {month: (month << 1).strftime('%Y-%m')}.to_query }", rel: "prev", data: { turbo_frame: local_assigns[:navigation_frame] } %>
+      <strong><%= l(month, format: "%B de %Y").capitalize %></strong>
+      <%= link_to "Próximo mês", "#{calendar_path}?#{ {month: (month >> 1).strftime('%Y-%m')}.to_query }", rel: "next", data: { turbo_frame: local_assigns[:navigation_frame] } %>
+    </nav>
+    <table class="public-theme-availability-calendar__table">
+      <caption>Disponibilidade em <%= l(month, format: "%B de %Y") %></caption>
+      <thead><tr><% I18n.t("date.abbr_day_names").each do |name| %><th scope="col"><%= name %></th><% end %></tr></thead>
+      <tbody>
+        <% rental_availability_days(month, blocks).each do |week| %>
+          <tr><% week.each do |day, blocked| %>
+            <td class="public-theme-availability-calendar__day<%= ' public-theme-availability-calendar__day--blocked' if blocked %>" <%= 'aria-current=date' if day == Date.current %>>
+              <% if day.month == month.month %>
+                <time datetime="<%= day.iso8601 %>"><%= day.day %></time>
+                <span class="public-theme-availability-calendar__state"><%= blocked ? "Indisponível" : "Disponível" %></span>
+              <% end %>
+            </td>
+          <% end %></tr>
+        <% end %>
+      </tbody>
+    </table>
+    <p class="public-theme-availability-calendar__hint">Dias riscados estão indisponíveis. Datas inicial e final inclusivas. Confirme a disponibilidade com a equipe.</p>
+  </section>
+<% end %>

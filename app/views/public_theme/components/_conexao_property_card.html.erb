@@ -172,7 +172,7 @@
     <!-- Price with Discount Indicator -->
     <%
       # Determinar se é venda ou aluguel baseado no status
-      is_rental = property.status&.include?('Aluguel')
+      is_rental = property.daily_rental? || property.status&.include?('Aluguel')
       is_sale = property.status&.include?('Venda')
 
       # Escolher o preço correto
@@ -197,7 +197,7 @@
         <!-- Preço Atual Destacado -->
         <div class="flex items-center justify-between">
           <p class="text-xl font-bold text-gray-800">
-            Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
+            Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %><%= public_rental_price_suffix(property) if property.daily_rental? %>
           </p>
           <button type="button"
                   class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
@@ -224,7 +224,7 @@
         <!-- Preço Normal -->
         <div class="flex items-center justify-between">
           <p class="text-lg font-bold text-gray-800">
-            <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
+            <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %><%= public_rental_price_suffix(property) if property.daily_rental? %>
           </p>
           <button type="button"
                   class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"

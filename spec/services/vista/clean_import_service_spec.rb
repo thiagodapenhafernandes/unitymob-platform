@@ -76,4 +76,46 @@ RSpec.describe Vista::CleanImportService do
     expect(service.send(:profile_for_agent, row)).to eq(internal_management_profile)
     expect(service.send(:horizontal_profile_for_agent, row)).to eq(administrative_profile)
   end
+
+  describe "histórico de entrada e saída dos corretores" do
+    let(:tenant) { Tenant.default }
+    let(:batch) { build_batch }
+    let(:user) { create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "agent"), vista_id: "701", source_created_on: "2018-03-20", source_departed_on: "2024-06-15") }
+
+    def import_agent_row(dates)
+      user
+      batch.vista_raw_records.create!(table_name: "CADEMP", row_index: 1, payload: {
+        "CODIGO_D" => "701", "NOME_COMPLETO" => "Corretor Vista", "CORRETOR" => "Sim"
+      }.merge(dates))
+      Current.tenant = tenant
+      service = described_class.new(batch: batch, dry_run: false)
+      service.send(:import_admin_users)
+      expect(service.instance_variable_get(:@errors)).to be_empty
+      user.reload
+    end
+
+    [{}, { "DATA" => "", "DATA_SAIDA" => "0000-00-00" }, { "DATA" => "inválida", "DATA_SAIDA" => "2024-02-31" }].each do |dates|
+      it "preserva as datas cadastradas quando a exportação não traz datas válidas: #{dates.inspect}" do
+        result = import_agent_row(dates)
+        expect(result.source_created_on).to eq(Date.new(2018, 3, 20))
+        expect(result.source_departed_on).to eq(Date.new(2024, 6, 15))
+      end
+    end
+
+    it "não altera datas de outra conta com o mesmo código Vista" do
+      other = Tenant.create!(name: "Outra conta datas Vista", slug: "outra-datas-vista-#{SecureRandom.hex(3)}")
+      foreign = create(:admin_user, tenant: other, profile: other.profiles.find_by!(key: "agent"), vista_id: "701", source_created_on: "2010-01-01", source_departed_on: "2015-02-01")
+      import_agent_row("DATA" => "2019-04-25", "DATA_SAIDA" => "2025-06-16")
+      expect(foreign.reload.source_created_on).to eq(Date.new(2010, 1, 1))
+      expect(foreign.source_departed_on).to eq(Date.new(2015, 2, 1))
+    end
+
+    it "mantém o mapeamento DATA / DATA_SAIDA e o payload bruto do Vista" do
+      result = import_agent_row("DATA" => "2019-04-25", "DATA_SAIDA" => "2025-06-16")
+      expect(result.source_created_on).to eq(Date.new(2019, 4, 25))
+      expect(result.source_departed_on).to eq(Date.new(2025, 6, 16))
+      expect(result.vista_payload["DATA"]).to eq("2019-04-25")
+    end
+  end
+
 end
