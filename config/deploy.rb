@@ -137,7 +137,7 @@ task :deploy do
     invoke :"deploy:link_shared_paths"
     invoke :"bundle:install"
     command %{echo "-----> Migrating database (PG_STATEMENT_TIMEOUT=10min)"}
-    command %{RAILS_ENV=#{fetch(:rails_env)} PG_STATEMENT_TIMEOUT=10min bundle exec rails db:migrate}
+    command %{RAILS_ENV=#{fetch(:rails_env)} PG_STATEMENT_TIMEOUT=10min bundle exec rails db:migrate || exit 1}
     command %{echo "-----> Clearing Rails tmp cache before assets precompile"}
     command %{bundle exec rails tmp:cache:clear}
     invoke :"rails:assets_precompile"
