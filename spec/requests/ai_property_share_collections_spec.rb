@@ -14,7 +14,8 @@ RSpec.describe "AI property share collections", type: :request do
     PropertySetting.instance(tenant: broker.tenant).update!(ai_property_search_enabled: true)
   end
 
-  it "cria seleção tenant-scoped e registra auditoria" do
+  it "cria seleção tenant-scoped com diária e registra auditoria" do
+    first_property.update!(status: "Diária", valor_venda_cents: nil, valor_locacao_cents: 300_000)
     sign_in broker
     post field_property_share_collections_path, params: { habitation_ids: [first_property.id, second_property.id] }, headers: json_headers
 

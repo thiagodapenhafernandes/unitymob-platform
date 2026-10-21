@@ -775,7 +775,7 @@ class Admin::LeadsController < Admin::BaseController
       chips_html: render_property_interest_chips(share: true)
     }
   rescue Ai::PropertyShareCollectionCreator::TooFewShareableRecords
-    render json: { error: "Selecione ao menos um imóvel com status Venda ou Aluguel." }, status: :unprocessable_entity
+    render json: { error: "Selecione ao menos um imóvel com status Venda, Aluguel ou Diária." }, status: :unprocessable_entity
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Nenhum imóvel selecionado pode ser compartilhado." }, status: :unprocessable_entity
   end

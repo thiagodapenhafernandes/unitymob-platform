@@ -488,22 +488,39 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.headers["Cache-Control"]).to include("no-store")
     end
 
-    it "does not create a tracked share link for a property outside sale or rent status" do
+    it "shares a daily rental without publishing its private URL" do
       admin = create(:admin_user)
-      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-DAY", slug: "share-day", status: "Diária")
+      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "DAILY-SHARE", status: "Diária", valor_venda_cents: nil, valor_locacao_cents: 300_000)
+      sign_in admin
+      csrf_token = csrf_token_from(habitation_path(habitation))
+
+      post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      shared_url = response.parsed_body.fetch("url")
+      sign_out admin
+      get URI.parse(shared_url).request_uri
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("/dia")
+      expect(habitation.reload.exibir_no_site_flag).to be(false)
+    end
+
+    it "does not create a tracked share link for a suspended property" do
+      admin = create(:admin_user)
+      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-DAY", slug: "share-day", status: "Suspenso", motivo_suspensao: "Fora de pauta")
       sign_in admin
       csrf_token = csrf_token_from(habitation_path(habitation))
 
       post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(response.parsed_body.fetch("error")).to include("Venda ou Aluguel")
+      expect(response.parsed_body.fetch("error")).to include("Venda, Aluguel ou Diária")
       expect(HabitationShareLink.where(habitation: habitation)).not_to exist
     end
 
-    it "does not allow an existing share token to expose a property outside sale or rent status" do
+    it "does not allow an existing share token to expose a suspended property" do
       admin = create(:admin_user)
-      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-DAY-TOKEN", slug: "share-day-token", status: "Diária")
+      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-DAY-TOKEN", slug: "share-day-token", status: "Suspenso", motivo_suspensao: "Fora de pauta")
       share_link = HabitationShareLink.create!(habitation: habitation, admin_user: admin)
 
       get habitation_path(habitation, share_token: share_link.token)

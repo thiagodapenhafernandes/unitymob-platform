@@ -325,7 +325,7 @@ class HabitationsController < ApplicationController
       )
       return render json: {
         success: false,
-        error: "Este imóvel só pode ser compartilhado quando estiver com status Venda ou Aluguel."
+        error: "Este imóvel só pode ser compartilhado quando estiver com status Venda, Aluguel ou Diária."
       }, status: :unprocessable_entity
     end
 

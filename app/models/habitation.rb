@@ -1418,7 +1418,7 @@ class Habitation < ApplicationRecord
     if valor_venda_cents.to_i > 0
       ActiveSupport::NumberHelper.number_to_currency(valor_venda_cents / 100.0, precision: 0)
     elsif valor_locacao_cents.to_i > 0
-      "#{ActiveSupport::NumberHelper.number_to_currency(valor_locacao_cents / 100.0, precision: 0)}/mês"
+      "#{ActiveSupport::NumberHelper.number_to_currency(valor_locacao_cents / 100.0, precision: 0)}#{daily_rental? ? "/dia" : "/mês"}"
     else
       "Sob Consulta"
     end
@@ -2436,10 +2436,9 @@ class Habitation < ApplicationRecord
 
   def shareable_commercial_status?
     normalized = self.class.normalize_status(status)
-    return true if normalized.in?(%w[Venda Aluguel])
+    return true if normalized.in?(["Venda", "Aluguel", "Diária"])
 
     raw_status = I18n.transliterate(status.to_s).downcase.squish
-    return false if raw_status.match?(/\b(diaria|temporada)\b/)
     return false if raw_status.match?(Regexp.new(INACTIVE_COMMERCIAL_STATUS_REGEX))
 
     raw_status.match?(/\b(venda|aluguel|locacao)\b/) ||

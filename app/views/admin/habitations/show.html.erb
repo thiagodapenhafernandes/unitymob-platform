@@ -136,7 +136,7 @@
                     elsif has_rent_discount && discount_label.present?
                       "Locação com preço reduzido · #{discount_label}% de desconto"
                     end
-  main_price = sale_price || (rent_price.present? ? "#{rent_price}/mês" : nil) || total_rent_price || "Sob consulta"
+  main_price = sale_price || (rent_price.present? ? "#{rent_price}#{public_rental_price_suffix(@habitation)}" : nil) || total_rent_price || "Sob consulta"
   price_context = if sale_price.present?
                     "Venda"
                   elsif rent_price.present?
@@ -522,7 +522,7 @@
               <small class="ax-property-show-price__discount"><i class="bi bi-arrow-down-right"></i><%= reduction_label %></small>
             <% end %>
             <% if sale_price.present? && rent_price.present? %>
-              <small>Locação: <%= rent_price %>/mês</small>
+              <small>Locação: <%= rent_price %><%= public_rental_price_suffix(@habitation) %></small>
             <% elsif sale_price.present? && total_rent_price.present? %>
               <small>Pacote locação: <%= total_rent_price %></small>
             <% end %>

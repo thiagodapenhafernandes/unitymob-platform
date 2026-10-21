@@ -454,7 +454,7 @@ class Admin::HabitationsController < Admin::BaseController
       message: "Link da seleção copiado. Agora você pode compartilhar."
     }
   rescue Ai::PropertyShareCollectionCreator::TooFewShareableRecords
-    render json: { error: "Selecione ao menos dois imóveis com status Venda ou Aluguel." }, status: :unprocessable_entity
+    render json: { error: "Selecione ao menos dois imóveis com status Venda, Aluguel ou Diária." }, status: :unprocessable_entity
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Nenhum imóvel selecionado pode ser compartilhado." }, status: :unprocessable_entity
   end

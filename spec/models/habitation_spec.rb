@@ -393,14 +393,14 @@ RSpec.describe Habitation, type: :model do
       expect(sale_rent).to be_shareable_commercial_status
     end
 
-    it "blocks daily, seasonal and inactive statuses even when prices are present" do
+    it "accepts daily and seasonal rentals while blocking inactive statuses" do
       daily = build(:habitation, status: "Diária", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
       seasonal = build(:habitation, status: "Temporada", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)
       pending = build(:habitation, status: "Pendente", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
       sold = build(:habitation, status: "Vendido terceiros", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
 
-      expect(daily).not_to be_shareable_commercial_status
-      expect(seasonal).not_to be_shareable_commercial_status
+      expect(daily).to be_shareable_commercial_status
+      expect(seasonal).to be_shareable_commercial_status
       expect(pending).not_to be_shareable_commercial_status
       expect(sold).not_to be_shareable_commercial_status
     end
@@ -917,9 +917,10 @@ RSpec.describe Habitation, type: :model do
   end
   describe "locação por diária" do
     it "não soma taxas mensais ao valor diário ao salvar ou apresentar" do
-      property = create(:habitation, status: "Diária", valor_locacao_cents: 300_000,
+      property = create(:habitation, status: "Diária", valor_locacao_cents: 300_000, valor_venda_cents: nil,
         valor_condominio_cents: 50_000, valor_iptu_cents: 10_000)
       expect(property).to be_daily_rental
+      expect(property.preco_principal).to eq("R$ 3.000/dia")
       expect(property.displayable_rent_total_cents).to be_nil
       expect(property.valor_total_aluguel_cents).to be_nil
       expect(property).not_to be_taxes_included_indicator
