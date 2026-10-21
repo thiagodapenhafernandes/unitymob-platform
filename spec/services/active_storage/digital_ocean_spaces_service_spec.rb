@@ -22,6 +22,23 @@ RSpec.describe ActiveStorage::Service::DigitalOceanSpacesService do
     expect(request[:params]).to include(bucket: "bucket-test", key: "photos/file.jpg", content_type: "image/jpeg")
   end
 
+  it "rejeita bytes divergentes antes de sobrescrever um objeto no Spaces" do
+    expect {
+      service.upload("photos/existing.jpg", StringIO.new("changed"), checksum: Digest::MD5.base64digest("original"))
+    }.to raise_error(ActiveStorage::IntegrityError)
+
+    expect(service.client.client.api_requests).to be_empty
+  end
+
+  it "envia todos os bytes depois de validar o checksum em blocos" do
+    body = "a" * (5.megabytes + 1)
+    io = StringIO.new(body)
+    service.upload("photos/file.jpg", io, checksum: Digest::MD5.base64digest(body))
+
+    request = service.client.client.api_requests.last
+    expect(request[:params][:body].read).to eq(body)
+  end
+
   it "nao exige Content-MD5 no upload direto" do
     headers = service.headers_for_direct_upload(
       "photos/file.jpg",

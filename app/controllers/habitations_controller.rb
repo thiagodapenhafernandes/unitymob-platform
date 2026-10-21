@@ -358,7 +358,7 @@ class HabitationsController < ApplicationController
       Storage::PublicPropertyPhoto.publish_blob!(variant_image.blob, raise_errors: true)
       variant_url = Storage::PublicPropertyPhoto.public_url_for_blob(variant_image.blob, tenant: habitation.tenant)
       return { ready: true, url: variant_url } if social_image_url_accessible?(variant_url)
-    else
+    elsif !Storage::PublicCdnImageUrl.integrity_failed?(attachment.blob)
       Storage::PrepareSocialImageJob.perform_later(
         habitation.id,
         attachment.id,

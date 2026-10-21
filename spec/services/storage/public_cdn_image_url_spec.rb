@@ -246,7 +246,7 @@ RSpec.describe Storage::PublicCdnImageUrl do
       content_type: "image/jpeg"
     )
     transformations = { resize_to_fill: [640, 480] }
-    digest = described_class.transform_digest(transformations)
+    digest = described_class.transform_digest(resize_to_limit: [100, 100])
     blob.update!(metadata: blob.metadata.merge(
       described_class::TRANSFORM_FAILURE_METADATA_KEY => {
         digest => { "error" => "ActiveStorage::IntegrityError" }
@@ -259,6 +259,23 @@ RSpec.describe Storage::PublicCdnImageUrl do
 
     expect(described_class.resolve(blob, **transformations)).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
     expect(Storage::TransformVariantJob).not_to have_received(:perform_later)
+  end
+
+  it "preserva variantes já disponíveis mesmo com falha de integridade do original" do
+    blob = instance_double(ActiveStorage::Blob,
+      metadata: { "public_integrity_failure" => { "error" => "ActiveStorage::IntegrityError" } },
+      variable?: true)
+    variant_blob = instance_double(ActiveStorage::Blob, metadata: { "public_web_image" => true })
+    variant = double(image: double(blob: variant_blob))
+    allow(blob).to receive(:variant).and_return(variant)
+    resolver = described_class.new(blob, resize_to_fill: [640, 480])
+    allow(resolver).to receive(:variant_processed?).with(variant).and_return(true)
+    allow(resolver).to receive(:variant_blob_exists?).with(variant).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_photos_enabled?).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(variant_blob).and_return("https://cdn.saluteimoveis.com.br/variant.webp")
+    expect(Storage::TransformVariantJob).not_to receive(:perform_later)
+
+    expect(resolver.send(:variant_url_for, blob)).to eq("https://cdn.saluteimoveis.com.br/variant.webp")
   end
 
   it "persiste a quarentena no metadata compartilhado do blob" do
@@ -279,6 +296,9 @@ RSpec.describe Storage::PublicCdnImageUrl do
     failure = blob.reload.metadata.dig(described_class::TRANSFORM_FAILURE_METADATA_KEY, digest)
     expect(failure).to include("error" => "ActiveStorage::IntegrityError")
     expect(failure.fetch("recorded_at")).to be_present
+    expect(blob.metadata["public_integrity_failure"]).to eq(failure)
+    blob.update!(metadata: blob.metadata.except(described_class::TRANSFORM_FAILURE_METADATA_KEY))
+    expect(described_class.integrity_failed?(blob)).to be(true)
   end
 
   it "gera path relativo pelo proxy para representation sem exigir host default" do

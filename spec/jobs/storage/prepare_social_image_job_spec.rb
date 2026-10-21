@@ -1,6 +1,31 @@
 require "rails_helper"
 
 RSpec.describe Storage::PrepareSocialImageJob, type: :job do
+  before do
+    allow(Storage::PublicCdnImageUrl).to receive(:integrity_failed?).and_return(false)
+  end
+
+  it "registra a falha de integridade para bloquear novas tentativas sociais" do
+    blob = instance_double(ActiveStorage::Blob)
+    error = ActiveStorage::IntegrityError.new
+    allow(blob).to receive(:variant).and_raise(error)
+    transformations = { resize_to_limit: [1200, 1200] }
+    expect(Storage::PublicCdnImageUrl).to receive(:mark_transform_failed).with(blob: blob, transformations: transformations, error: error)
+
+    expect { described_class.new.send(:publish_variant!, blob, transformations) }.to raise_error(ActiveStorage::IntegrityError)
+  end
+
+  it "ignora jobs sociais já enfileirados para originais em quarentena" do
+    habitation = create(:habitation)
+    habitation.photos.attach(io: StringIO.new("photo"), filename: "photo.jpg", content_type: "image/jpeg")
+    attachment = habitation.photos.first
+    allow(Storage::PublicCdnImageUrl).to receive(:integrity_failed?).and_return(true)
+    expect(Storage::PublicPropertyPhoto).not_to receive(:publish_attachment!)
+
+    described_class.perform_now(habitation.id, attachment.id,
+      tenant_id: habitation.tenant_id, transformations: { resize_to_limit: [1200, 1200] })
+  end
+
   it "uses the isolated media queue" do
     expect(described_class.new.queue_name).to eq("media")
   end

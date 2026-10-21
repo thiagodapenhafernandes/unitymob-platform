@@ -3,7 +3,25 @@ require "rails_helper"
 RSpec.describe HabitationsController, type: :controller do
   include ActiveJob::TestHelper
 
+  before do
+    allow(Storage::PublicCdnImageUrl).to receive(:integrity_failed?).and_return(false)
+  end
+
   describe "#ensure_social_photo_public!" do
+    it "não reenfileira imagem social de um original em quarentena" do
+      habitation = create(:habitation)
+      habitation.photos.attach(io: StringIO.new("photo"), filename: "photo.jpg", content_type: "image/jpeg")
+      attachment = habitation.photos.first
+      allow(habitation).to receive(:primary_image_source).and_return({ attachment: attachment })
+      allow(Storage::PublicCdnImageUrl).to receive(:integrity_failed?).and_return(true)
+      allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!)
+      allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).and_return("https://cdn.example.com/photo.jpg")
+      allow(controller).to receive(:social_image_url_accessible?).and_return(true)
+
+      expect { controller.send(:ensure_social_photo_public!, habitation) }
+        .not_to have_enqueued_job(Storage::PrepareSocialImageJob)
+    end
+
     it "keeps link generation synchronous while preparing a missing variant on media" do
       habitation = instance_double(Habitation, id: 11, tenant_id: 7)
       attachment = instance_double(ActiveStorage::Attachment, id: 13)

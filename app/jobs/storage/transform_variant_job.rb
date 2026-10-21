@@ -7,6 +7,8 @@ module Storage
     discard_on ActiveStorage::IntegrityError
 
     def perform(blob, transformations)
+      return if Storage::PublicCdnImageUrl.integrity_failed?(blob)
+
       Storage::ActiveStorageRegistry.register_if_available! if defined?(Storage::ActiveStorageRegistry)
       options = transformations.deep_symbolize_keys
       variant = blob.variant(**options).processed

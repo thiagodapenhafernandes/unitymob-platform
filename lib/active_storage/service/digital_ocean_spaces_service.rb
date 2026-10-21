@@ -26,6 +26,16 @@ module ActiveStorage
     private
 
     def upload_with_single_part(key, io, checksum: nil, content_type: nil, content_disposition: nil, custom_metadata: {})
+      if checksum
+        digest = OpenSSL::Digest::MD5.new
+        io.rewind
+        while (chunk = io.read(5.megabytes))
+          digest.update(chunk)
+        end
+        io.rewind
+        raise ActiveStorage::IntegrityError unless digest.base64digest == checksum
+      end
+
       object_for(key).put(body: io, content_type: content_type, content_disposition: content_disposition, metadata: custom_metadata, **upload_options)
     rescue Aws::S3::Errors::BadDigest
       raise ActiveStorage::IntegrityError
