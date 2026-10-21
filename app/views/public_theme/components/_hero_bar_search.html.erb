@@ -18,6 +18,7 @@
      data-controller="hero-search"
      <%= tag.attributes(data: { hero_search_ai_url_value: public_ai_search_path, hero_search_voice_value: voice_mic }) if voice_ai %>
      data-hero-search-sale-price-options-value="<%= json_escape(public_price_range_options("venda").to_json) %>"
+     data-hero-search-daily-price-options-value="<%= json_escape(public_price_range_options("diaria").to_json) %>"
      data-hero-search-rent-price-options-value="<%= json_escape(public_price_range_options("aluguel").to_json) %>">
   <%= form_with url: form_url, method: :get, local: true, class: "public-theme-hero-bar__form", role: "search", autocomplete: "off",
                 data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do %>
@@ -29,7 +30,7 @@
         <button type="button" class="public-theme-hero-bar__tab public-theme-hero-voice__toggle" data-hero-search-target="voiceToggle" data-action="click->hero-search#toggleVoice"
                 aria-pressed="false" aria-label="<%= voice_mic ? "Buscar por voz" : "Descrever o imóvel que procuro" %>"><i class="bi bi-<%= voice_mic ? "mic" : "stars" %>" aria-hidden="true"></i> <%= voice_mic ? "Voz" : "Descrever" %></button>
       <% end %>
-      <% [["Comprar", "venda"], ["Alugar", "aluguel"]].each_with_index do |(label, value), index| %>
+      <% public_transaction_options.each_with_index do |(label, value), index| %>
         <button type="button" class="public-theme-hero-bar__tab" data-hero-search-target="tab" data-value="<%= value %>"
                 data-action="click->hero-search#transaction" aria-pressed="<%= index.zero? %>"><%= label %></button>
       <% end %>

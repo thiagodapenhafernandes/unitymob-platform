@@ -14,6 +14,22 @@ RSpec.describe "Admin::HomeSettings layout do hero", type: :request do
 
   def html = Nokogiri::HTML(response.body)
 
+  it "oferece e salva a chave Diária somente para a conta atual" do
+    other = Tenant.create!(name: "Outra conta", slug: "daily-admin-#{SecureRandom.hex(3)}")
+    get edit_admin_home_setting_path
+    checkbox = html.at_css("input[type='checkbox'][name='home_setting[daily_rental_search_enabled]']")
+    expect(checkbox).to be_present
+    expect(checkbox["checked"]).to be_nil
+
+    patch admin_home_setting_path, params: { home_setting: { daily_rental_search_enabled: "1" } }
+    expect(response).to redirect_to(edit_admin_home_setting_path)
+    expect(HomeSetting.instance(tenant:).reload.daily_rental_search_enabled?).to be(true)
+    expect(HomeSetting.instance(tenant: other).daily_rental_search_enabled?).to be(false)
+
+    patch admin_home_setting_path, params: { home_setting: { daily_rental_search_enabled: "0" } }
+    expect(HomeSetting.instance(tenant:).reload.daily_rental_search_enabled?).to be(false)
+  end
+
   it "oferece os três layouts (Clássico marcado), a posição e a busca por IA com os campos dependentes" do
     get edit_admin_home_setting_path
 

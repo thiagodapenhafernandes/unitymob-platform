@@ -9,7 +9,7 @@ const HERO_COMPACT_DOCK_SCROLL = 8
 const HERO_COMPACT_FADE_MS = 220
 
 export default class extends Controller {
-  static targets = ["header", "transactionInput", "transactionButton"]
+  static targets = ["header", "transactionInput", "transactionButton", "priceField", "priceTemplate"]
 
   static values = { heroCompact: Boolean }
 
@@ -61,6 +61,11 @@ export default class extends Controller {
 
     if (this.hasTransactionInputTarget) {
       this.transactionInputTarget.value = button.dataset.transactionType || "venda"
+    }
+
+    const template = this.priceTemplateTargets.find((target) => target.dataset.transactionType === button.dataset.transactionType)
+    if (this.hasPriceFieldTarget && template) {
+      this.priceFieldTarget.replaceChildren(template.content.cloneNode(true))
     }
   }
 

@@ -8,7 +8,8 @@ module PublicSearch
       "aluguel" => "aluguel",
       "alugar" => "aluguel",
       "locacao" => "aluguel",
-      "locação" => "aluguel"
+      "locação" => "aluguel",
+      "diaria" => "diaria"
     }.freeze
 
     CHARACTERISTICS = {

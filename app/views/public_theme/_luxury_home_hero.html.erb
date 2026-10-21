@@ -34,10 +34,7 @@
             action: "click->salute-luxury-theme#setTransaction",
             default_value: "venda",
             voice_toggle: (voice_ai ? { icon: (voice_mic ? "mic" : "stars"), label: (voice_mic ? "Voz" : "Descrever"), aria_label: (voice_mic ? "Buscar por voz" : "Descrever o imóvel que procuro") } : nil),
-            options: [
-              { label: "Comprar", value: "venda" },
-              { label: "Alugar", value: "aluguel" }
-            ] %>
+            options: public_transaction_options.map { |label, value| { label: label, value: value } } %>
       <%= render "public_theme/components/search_form",
             url: habitations_path,
             variant: "salute-luxury",

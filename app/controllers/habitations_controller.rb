@@ -63,7 +63,7 @@ class HabitationsController < ApplicationController
     @discounted_results_present = discounted_results_present?
     
     # Definir meta tags para SEO
-    @listing_heading = [category_label, { "venda" => "à venda", "aluguel" => "para alugar", "locacao" => "para alugar" }[params[:transaction_type]], "em", selected_locations.presence&.to_sentence || location_label].compact.join(" ")
+    @listing_heading = [category_label, { "venda" => "à venda", "aluguel" => "para alugar", "locacao" => "para alugar", "diaria" => "para locação diária" }[params[:transaction_type]], "em", selected_locations.presence&.to_sentence || location_label].compact.join(" ")
     @page_title = build_index_title
     @page_description = build_index_description
     @page_keywords = build_index_keywords
@@ -815,6 +815,7 @@ class HabitationsController < ApplicationController
     transaction_term = case params[:transaction_type]
                        when 'venda' then 'à Venda'
                        when 'aluguel', 'locacao' then 'para Alugar'
+                       when 'diaria' then 'para locação diária'
                        else ''
                        end
 

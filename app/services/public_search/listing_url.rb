@@ -12,7 +12,8 @@ module PublicSearch
   class ListingUrl
     PATH_TRANSACTIONS = {
       "venda" => "venda",
-      "aluguel" => "aluguel"
+      "aluguel" => "aluguel",
+      "diaria" => "diaria"
     }.freeze
 
     BLANK_SEGMENTS = %w[todos todas all qualquer].freeze

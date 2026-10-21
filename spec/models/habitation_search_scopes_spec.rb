@@ -1,6 +1,21 @@
 require "rails_helper"
 
 RSpec.describe Habitation::SearchScopes, type: :model do
+  describe "busca por diária" do
+    it "usa o preço de locação nos limites, no valor aproximado e na ordenação" do
+      tenant = Tenant.default
+      cheap = create(:habitation, tenant:, status: "Diária", valor_locacao_cents: 30_000, valor_venda_cents: 90_000_000)
+      expensive = create(:habitation, tenant:, status: "Aluguel", intake_modalidade: "locacao_diaria", valor_locacao_cents: 60_000, valor_venda_cents: 80_000_000)
+      monthly = create(:habitation, tenant:, status: "Aluguel", valor_locacao_cents: 30_000)
+      base = tenant.habitations.active
+      expect(Habitation.advanced_search({ transaction_type: "diaria", min_price: 250, max_price: 450 }, base_scope: base)).to contain_exactly(cheap)
+      expect(Habitation.advanced_search({ transaction_type: "diaria", target_price: 300 }, base_scope: base)).to contain_exactly(cheap)
+      expect(Habitation.advanced_search({ transaction_type: "diaria", sort: "price_asc" }, base_scope: base)).to eq([cheap, expensive])
+      expect(Habitation.advanced_search({ transaction_type: "aluguel" }, base_scope: base)).to include(monthly)
+      expect(Habitation.advanced_search({ transaction_type: "venda" }, base_scope: base)).to include(cheap, expensive)
+    end
+  end
+
   describe ".public_property_types" do
     it "includes fixed public type options even without published records" do
       expect(Habitation.public_property_types).to include("Diferenciado", "Garden")

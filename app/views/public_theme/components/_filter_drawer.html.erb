@@ -23,7 +23,7 @@
   end
   city_options = location_options.reject { |option| option[:type] == "neighborhood" }
   neighborhood_options = location_options.select { |option| option[:type] == "neighborhood" }
-  transaction_type = drawer_transaction_type.to_s == "aluguel" ? "aluguel" : "venda"
+  transaction_type = public_transaction_options.map(&:last).include?(drawer_transaction_type.to_s) ? drawer_transaction_type.to_s : "venda"
   selected_characteristics = Array(drawer_selected_characteristics).map(&:to_s)
 
   # Mesmas listas do drawer padrão (vindas do shell): o luxury só muda o estilo.
@@ -98,8 +98,9 @@
 
         <div class="public-theme-filter-drawer__field">
           <div class="public-theme-filter-drawer__segment" data-seg="transaction" data-segmented="transaction" role="group" aria-label="Finalidade">
-            <button type="button" class="public-theme-filter-drawer__segment-option" aria-pressed="<%= transaction_type == "venda" %>" data-value="venda" data-action="click->filter-drawer#setSegment">Comprar</button>
-            <button type="button" class="public-theme-filter-drawer__segment-option" aria-pressed="<%= transaction_type == "aluguel" %>" data-value="aluguel" data-action="click->filter-drawer#setSegment">Alugar</button>
+            <% public_transaction_options.each do |label, value| %>
+              <button type="button" class="public-theme-filter-drawer__segment-option" aria-pressed="<%= transaction_type == value %>" data-value="<%= value %>" data-action="click->filter-drawer#setSegment"><%= label %></button>
+            <% end %>
           </div>
         </div>
 
@@ -159,13 +160,15 @@
           <%
             sale_bounds = public_price_slider_bounds("venda")
             rental_bounds = public_price_slider_bounds("aluguel")
-            price_bounds = transaction_type == "aluguel" ? rental_bounds : sale_bounds
+            daily_bounds = public_price_slider_bounds("diaria")
+            price_bounds = public_price_slider_bounds(transaction_type)
           %>
-          <%# Limites pelo estoque da conta (PublicSite::PriceRanges); o controller troca venda/aluguel. %>
+          <%# Venda e aluguel usam o estoque da conta; diária usa limites por dia. %>
           <div class="public-theme-filter-drawer__range-track" data-range="valor"
                data-action="pointerdown->filter-drawer#selectRangeValue"
                data-min="<%= price_bounds[:min] %>" data-max="<%= price_bounds[:max] %>" data-step="<%= price_bounds[:step] %>"
                data-sale-min="<%= sale_bounds[:min] %>" data-sale-max="<%= sale_bounds[:max] %>" data-sale-step="<%= sale_bounds[:step] %>"
+               data-daily-min="<%= daily_bounds[:min] %>" data-daily-max="<%= daily_bounds[:max] %>" data-daily-step="<%= daily_bounds[:step] %>"
                data-rental-min="<%= rental_bounds[:min] %>" data-rental-max="<%= rental_bounds[:max] %>" data-rental-step="<%= rental_bounds[:step] %>" data-money="1">
             <div class="public-theme-filter-drawer__range-fill" data-range-fill></div>
             <input type="range" class="public-theme-filter-drawer__range-lo" min="<%= price_bounds[:min] %>" max="<%= price_bounds[:max] %>" step="<%= price_bounds[:step] %>" value="<%= params[:min_price].presence || price_bounds[:min] %>" aria-label="Valor mínimo" data-range-lo data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">

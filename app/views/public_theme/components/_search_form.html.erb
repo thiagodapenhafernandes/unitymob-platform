@@ -58,22 +58,14 @@
 
   <div class="public-theme-search__field sl-field field">
     <label id="sl-lbl-valor">Valores</label>
-    <div class="public-theme-combobox" data-controller="combobox">
-      <%= hidden_field_tag :price_range, "" %>
-      <div class="public-theme-combobox__trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-labelledby="sl-lbl-valor">
-        <div class="public-theme-combobox__field">
-          <span class="public-theme-combobox__tags"></span>
-          <input class="public-theme-combobox__input" type="text" placeholder="Todos os valores" aria-label="Faixa de valor" aria-autocomplete="list">
-        </div>
-        <i class="public-theme-combobox__caret bi bi-chevron-down" aria-hidden="true"></i>
-      </div>
-      <div class="public-theme-combobox__panel" role="listbox" aria-label="Faixas de valor">
-        <% price_options.drop(1).each do |label, value| %>
-          <div class="public-theme-combobox__option" role="option" data-value="<%= value %>" data-search="<%= label.to_s.parameterize(separator: " ") %>"><span class="public-theme-combobox__label"><%= label %></span></div>
-        <% end %>
-        <div class="public-theme-combobox__empty" hidden>Nenhuma faixa encontrada</div>
-      </div>
+    <div data-salute-luxury-theme-target="priceField">
+      <%= render "public_theme/components/combobox_field", name: "price_range", id: "sl-price-range", label: "Faixa de valor", placeholder: "Todos os valores", options: price_options.drop(1), single: true %>
     </div>
+    <% public_transaction_options.each do |_label, transaction| %>
+      <template data-salute-luxury-theme-target="priceTemplate" data-transaction-type="<%= transaction %>">
+        <%= render "public_theme/components/combobox_field", name: "price_range", id: "sl-price-range", label: "Faixa de valor", placeholder: "Todos os valores", options: public_price_range_options(transaction).drop(1), single: true %>
+      </template>
+    <% end %>
   </div>
 
   <button class="public-theme-search__submit sl-search__go go" type="submit">

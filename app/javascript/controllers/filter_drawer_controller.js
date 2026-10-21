@@ -166,7 +166,7 @@ export default class extends Controller {
     const track = this.formTarget.querySelector('.public-theme-filter-drawer__range-track[data-range="valor"]')
     if (!track) return
 
-    const prefix = this.isRentalTransaction(transaction) ? "rental" : "sale"
+    const prefix = transaction === "diaria" ? "daily" : (this.isRentalTransaction(transaction) ? "rental" : "sale")
     const min = Number(track.dataset[`${prefix}Min`] || track.dataset.min)
     const max = Number(track.dataset[`${prefix}Max`] || track.dataset.max)
     const step = Number(track.dataset[`${prefix}Step`] || track.dataset.step)
@@ -194,7 +194,7 @@ export default class extends Controller {
   }
 
   isRentalTransaction(transaction) {
-    return ["aluguel", "locacao", "locação", "alugar"].includes((transaction || "").toLowerCase())
+    return ["aluguel", "locacao", "locação", "alugar", "diaria"].includes((transaction || "").toLowerCase())
   }
 
   drawRangeTrack(track) {

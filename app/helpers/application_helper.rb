@@ -1,8 +1,18 @@
 module ApplicationHelper
+  def public_transaction_options
+    options = [["Comprar", "venda"], ["Alugar", "aluguel"]]
+    setting = @home_setting || HomeSetting.instance(tenant: public_tenant)
+    options << ["Diária", "diaria"] if setting.daily_rental_search_enabled?
+    options
+  end
+
   # Faixas da busca pública (hero e listagem): personalizadas pela conta no
   # Perfil público; senão calculadas pelo estoque (PublicSite::PriceRanges);
   # senão as faixas padrão abaixo.
   def public_price_range_options(transaction_type = nil)
+    if transaction_type.to_s == "diaria"
+      return [["Todos os Valores", ""], ["Até R$ 500", "0-500"], ["R$ 500 a R$ 1.000", "500-1000"], ["Acima de R$ 1.000", "1000-0"]]
+    end
     rental = public_rental_transaction?(transaction_type)
     profile = PublicSiteProfile.current(tenant: public_tenant)
     if profile.custom_price_ranges?
@@ -38,6 +48,8 @@ module ApplicationHelper
 
   # Limites do slider de valor do drawer, pelo estoque da conta (com padrão).
   def public_price_slider_bounds(transaction_type)
+    return { min: 0, max: 10_000, step: 50 } if transaction_type.to_s == "diaria"
+
     rental = public_rental_transaction?(transaction_type)
     defaults = rental ? { min: 5_000, max: 50_000, step: 1_000 } : { min: 1_000_000, max: 50_000_000, step: 100_000 }
     stats = PublicSite::PriceRanges.for(public_tenant)[rental ? "aluguel" : "venda"]
@@ -45,7 +57,7 @@ module ApplicationHelper
   end
 
   def public_rental_transaction?(transaction_type)
-    transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar])
+    transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar diaria])
   end
 
   def public_pwa_icon_path(size: 512)

@@ -698,7 +698,7 @@ Rails.application.routes.draw do
   get "imoveis/:friendly_transaction(/:friendly_categories)(/:friendly_locations)(/:friendly_characteristics)",
       to: "habitations#index",
       as: :friendly_habitations,
-      constraints: { friendly_transaction: /venda|comprar|aluguel|alugar|locacao|locação/ }
+      constraints: { friendly_transaction: /venda|comprar|aluguel|alugar|locacao|locação|diaria/ }
   get "imoveis/:seo_slug",
       to: "habitations#index",
       as: :strategic_habitations,
