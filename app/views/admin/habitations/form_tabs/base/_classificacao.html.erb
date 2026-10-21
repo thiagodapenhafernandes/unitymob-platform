@@ -68,7 +68,7 @@
               form: f,
               method: :intake_status,
               label: "Status da captação",
-              choices: Habitation::INTAKE_STATUSES.map { |value, label| [label, value] },
+              choices: Habitation::INTAKE_STATUSES.filter_map { |value, label| [label, value] unless value == "published" && habitation.intake_site_publication_locked? },
               html_options: {
                 disabled: !can_manage_intake_status?(habitation),
                 data: { controller: "tom-select", placeholder: "Selecione..." }

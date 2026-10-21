@@ -3,7 +3,7 @@ import { LeadAttribution } from "lib/lead_attribution"
 
 export default class extends Controller {
 
-  static targets = ["modal", "propertyId", "leadType", "origin", "shareToken", "name", "phone", "email", "submitButton"]
+  static targets = ["modal", "propertyId", "leadType", "origin", "shareToken", "name", "phone", "email", "submitButton", "phoneError"]
   static values = {
     enabled: Boolean,
     phoneSettings: Object,
@@ -87,7 +87,6 @@ export default class extends Controller {
 
     const name = this.nameTarget.value.trim()
     const phoneWithMask = this.phoneTarget.value
-    const phone = this.normalizePhone(phoneWithMask)
     const email = this.hasEmailTarget ? this.emailTarget.value : ""
 
     // Validation
@@ -97,55 +96,76 @@ export default class extends Controller {
       return
     }
 
-    if (!this.validBrazilianPhone(phone)) {
-      window.axToast({ message: "Por favor, informe um número de WhatsApp válido com DDD.", type: "warning" })
-      this.phoneTarget.focus()
-      return
-    }
-
-    // Submit logic
-    // We send payload to Rails controller via fetch which then handles the Webhook
-    // But to respect the flow, we will first capture on backend then redirect.
-    // If backend fails, we redirect anyway to not block the user.
-
     this.submitting = true
     if (this.hasSubmitButtonTarget) this.submitButtonTarget.disabled = true
 
-    const result = await this.sendLeadData({
-      name,
-      phone,
-      email,
-      property_id: this.propertyIdTarget.value,
-      origin: this.hasOriginTarget ? this.originTarget.value : "",
-      share_token: this.hasShareTokenTarget ? this.shareTokenTarget.value : "",
-      whatsapp_message: this.whatsappMessage,
-      business_type: this.negotiationType,
-      page_url: window.location.href,
-      referrer_url: document.referrer,
-      ...this.trackingParams()
-    })
+    try {
+      const { validatePublicWhatsapp } = await import("lib/public_whatsapp")
+      const validation = validatePublicWhatsapp(phoneWithMask)
+      if (validation.error) {
+        this.showPhoneError(validation.error)
+        return
+      }
+      this.clearPhoneError()
+      const phone = validation.e164
+      const result = await this.sendLeadData({
+        name,
+        phone,
+        email,
+        property_id: this.propertyIdTarget.value,
+        origin: this.hasOriginTarget ? this.originTarget.value : "",
+        share_token: this.hasShareTokenTarget ? this.shareTokenTarget.value : "",
+        whatsapp_message: this.whatsappMessage,
+        business_type: this.negotiationType,
+        page_url: window.location.href,
+        referrer_url: document.referrer,
+        ...this.trackingParams()
+      })
 
-    await this.trackConfirmedLead(result)
+      if (!result?.success) {
+        if (result?.field_errors?.phone) this.showPhoneError(result.field_errors.phone)
+        else window.axToast({ message: result?.errors?.join(" ") || "Não foi possível enviar seu contato. Tente novamente.", type: "warning" })
+        return
+      }
 
-    if (result?.success && !result.whatsapp_url) {
-      this.showSuccessMessage(result.message || "Recebemos seu contato. Um corretor da nossa equipe irá falar com você em breve.")
+      await this.trackConfirmedLead(result)
+
+      if (result?.success && !result.whatsapp_url) {
+        this.showSuccessMessage(result.message || "Recebemos seu contato. Um corretor da nossa equipe irá falar com você em breve.")
+        this.close()
+        event.target.reset()
+        return
+      }
+
+      const whatsappUrl = result?.whatsapp_url || this.whatsappUrlFor(this.negotiationType, this.whatsappMessage)
+
+      // Redirect to WhatsApp
+      window.location.href = whatsappUrl
+
+      // Close modal
       this.close()
+
+      // Optional: Reset form
       event.target.reset()
+    } catch (_) {
+      window.axToast({ message: "Não foi possível validar e enviar seu contato. Tente novamente.", type: "warning" })
+    } finally {
       this.submitting = false
       if (this.hasSubmitButtonTarget) this.submitButtonTarget.disabled = false
-      return
     }
+  }
 
-    const whatsappUrl = result?.whatsapp_url || this.whatsappUrlFor(this.negotiationType, this.whatsappMessage)
+  showPhoneError(message) {
+    this.phoneTarget.setAttribute("aria-invalid", "true")
+    this.phoneErrorTarget.textContent = message
+    this.phoneErrorTarget.hidden = false
+    this.phoneTarget.focus()
+  }
 
-    // Redirect to WhatsApp
-    window.location.href = whatsappUrl
-
-    // Close modal
-    this.close()
-
-    // Optional: Reset form
-    event.target.reset()
+  clearPhoneError() {
+    this.phoneTarget.removeAttribute("aria-invalid")
+    this.phoneErrorTarget.textContent = ""
+    this.phoneErrorTarget.hidden = true
   }
 
   async trackConfirmedLead(result) {
@@ -160,6 +180,7 @@ export default class extends Controller {
       try {
         const tracked = window.UnitymobTracking.track("generate_lead", {
           event_id: confirmed.event_id,
+          phone_e164: confirmed.phone_e164,
           business_type: confirmed.business_type,
           property_code: confirmed.property_code,
           form_id: confirmed.form_id,
@@ -172,40 +193,12 @@ export default class extends Controller {
     })
   }
 
-  normalizePhone(value) {
-    let digits = value.toString().replace(/\D/g, "")
-
-    if (digits.length === 8 && this.brazilianMobileSubscriberWithoutNinthDigit(digits)) {
-      digits = `9${digits}`
-    } else if (digits.length === 10) {
-      const ddd = digits.slice(0, 2)
-      const subscriber = digits.slice(2)
-      if (this.brazilianMobileSubscriberWithoutNinthDigit(subscriber)) digits = `${ddd}9${subscriber}`
-    } else if (digits.length === 12 && digits.startsWith("55")) {
-      const ddd = digits.slice(2, 4)
-      const subscriber = digits.slice(4)
-      if (this.brazilianMobileSubscriberWithoutNinthDigit(subscriber)) digits = `55${ddd}9${subscriber}`
-    }
-
-    if ([10, 11].includes(digits.length)) return `55${digits}`
-
-    return digits
-  }
-
-  validBrazilianPhone(digits) {
-    return digits.startsWith("55") && [12, 13].includes(digits.length)
-  }
-
   showSuccessMessage(message) {
     if (typeof window.axToast === "function") {
       window.axToast({ message, type: "success" })
     } else {
       window.alert(message)
     }
-  }
-
-  brazilianMobileSubscriberWithoutNinthDigit(digits) {
-    return digits.length === 8 && ["6", "7", "8", "9"].includes(digits[0])
   }
 
   async sendLeadData(data) {
@@ -218,14 +211,9 @@ export default class extends Controller {
         'X-CSRF-Token': csrfToken
       },
       body: JSON.stringify({ lead: { ...data, lead_type: 'whatsapp_modal' } })
-    }).then(response => {
-      if (response.ok) {
-        console.log("Lead captured successfully")
-        return response.json()
-      } else {
-        console.warn("Failed to capture lead on backend")
-        return null
-      }
+    }).then(async response => {
+      const result = await response.json()
+      return response.ok || response.status === 422 ? result : null
     }).catch(error => {
       console.error("Error capturing lead:", error)
       return null

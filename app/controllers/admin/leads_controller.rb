@@ -833,7 +833,8 @@ class Admin::LeadsController < Admin::BaseController
     check_permission!(:manage, :comercial)
 
     previous_status = @lead.status
-    if @lead.update(status: Lead.status_value("Concluido", tenant: current_tenant))
+    attributes = params.fetch(:lead, ActionController::Parameters.new).permit(:closing_commission).to_h
+    if @lead.update(attributes.merge(status: Lead.status_value("Concluido", tenant: current_tenant)))
       LeadActivity.log!(lead: @lead, kind: "deal_closed", metadata: { from: previous_status, by: current_admin_user&.name })
       redirect_to admin_lead_path(@lead), notice: "Negócio marcado como fechado."
     else

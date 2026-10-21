@@ -34,6 +34,41 @@ RSpec.describe "Leads", type: :request do
     )
   end
 
+  describe "validação pública do WhatsApp" do
+    JSON.parse(File.read(Rails.root.join("spec/fixtures/phones/public_whatsapp.json"))).fetch("invalid").each do |phone|
+      it "recusa #{phone.inspect} antes do intake e das conversões, mesmo com E.164 forjado" do
+        expect(Leads::Intake).not_to receive(:receive!)
+        expect(WebhookService).not_to receive(:send_form_data)
+        expect(Seo::ConversionTracker).not_to receive(:record!)
+        expect {
+          post leads_path, params: { lead: { name: "Contato Teste", phone: phone, phone_e164: "+5547991234567" } }, as: :json
+        }.not_to change(Lead, :count)
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body.dig("field_errors", "phone")).to be_present
+        expect(response.parsed_body["analytics_event"]).to be_nil
+      end
+    end
+
+    ["+351912345678", "+16502530000", "+447911123456", "+5491123456789"].each do |phone|
+      it "persiste #{phone} sem reinterpretar DDI, inclusive ao salvar e complementar" do
+        expect(WebhookService).to receive(:send_form_data).with("whatsapp_lead", hash_including(phone_e164: phone), request: anything).at_least(:once)
+        payload = { lead: { name: "Cliente Internacional", phone: phone, lead_type: "whatsapp_modal" } }
+        expect { post leads_path, params: payload, as: :json }.to change(Lead, :count).by(1)
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["phone_e164"]).to eq(phone)
+        expect(response.parsed_body.dig("analytics_event", "phone_e164")).to eq(phone)
+        expect(response.parsed_body.dig("analytics_event", "event")).to eq("generate_lead")
+        lead = Lead.order(:id).last
+        expect(lead.phone).to eq(phone.delete_prefix("+"))
+        lead.reload.update!(name: "Nome atualizado")
+        expect(lead.reload.phone).to eq(phone.delete_prefix("+"))
+        expect { post leads_path, params: payload, as: :json }.not_to change(Lead, :count)
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["analytics_event"]).to be_nil
+      end
+    end
+  end
+
   describe "GET /leads/whatsapp_url" do
     it "returns routing metadata for the property negotiation type" do
       habitation = create(:habitation, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 4_500_00)
@@ -152,7 +187,7 @@ RSpec.describe "Leads", type: :request do
         post leads_path, params: {
           lead: {
             name: "Cliente Teste",
-            phone: "(47) 99999-9999",
+            phone: "(47) 99123-4567",
             email: "",
             property_id: habitation.id,
             lead_type: "whatsapp_modal",
@@ -192,7 +227,8 @@ RSpec.describe "Leads", type: :request do
       }.to change(Lead, :count).by(1)
 
       expect(response).to have_http_status(:ok)
-      expect(WebhookService).to have_received(:send_form_data).once
+      expect(response.parsed_body["analytics_event"]).to be_nil
+      expect(WebhookService).to have_received(:send_form_data).with("whatsapp_lead", hash_including(complemented_inquiry: true), request: anything).once
       expect(Lead.order(:created_at).last.phone).to eq("5547988880000")
     end
 

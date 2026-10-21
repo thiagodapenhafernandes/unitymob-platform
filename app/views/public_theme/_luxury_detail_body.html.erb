@@ -9,7 +9,7 @@
   title = local_assigns[:title].presence || hab.display_title
   address_text = local_assigns[:address_text].presence || [hab.endereco, hab.public_neighborhood, hab.cidade].compact_blank.join(" - ")
   area_text = local_assigns.key?(:area_text) ? local_assigns[:area_text] : hab.public_area_m2
-  has_sale_price = local_assigns.key?(:has_sale_price) ? local_assigns[:has_sale_price] : hab.valor_venda_cents.to_i.positive?
+  has_sale_price = local_assigns.key?(:has_sale_price) ? local_assigns[:has_sale_price] : (!hab.daily_rental? && hab.valor_venda_cents.to_i.positive?)
   # Simulador de financiamento: recurso da conta, só para imóvel à venda com preço.
   show_financing = has_sale_price && public_financing_enabled?
   has_rent_price = local_assigns.key?(:has_rent_price) ? local_assigns[:has_rent_price] : hab.valor_locacao_cents.to_i.positive?
@@ -106,6 +106,7 @@
   </div>
 
   <%# Valores logo abaixo das fotos, só no mobile (o cartão do aside some ali). %>
+  <% unless hab.daily_rental? %>
   <div class="sl-detail__mobile-price sl-container">
     <%= render "habitations/price_card",
           habitation: hab,
@@ -117,6 +118,8 @@
           has_rent_discount: has_rent_discount %>
     <%= render "public_theme/components/financing_card", habitation: hab, has_sale_price: has_sale_price %>
   </div>
+
+  <% end %>
 
   <div class="sl-detail__layout sl-container">
     <main class="sl-detail__main">
@@ -156,7 +159,7 @@
             shared_broker: @shared_broker,
             split_ctas: true,
             show_info: false,
-            class_name: ("sl-detail__contact-box--empty-on-mobile" if @shared_broker.blank?),
+            class_name: ("sl-detail__contact-box--empty-on-mobile" if @shared_broker.blank? && !hab.daily_rental?),
             share_token: @lead_share_token,
             variant: "salute-luxury" %>
 

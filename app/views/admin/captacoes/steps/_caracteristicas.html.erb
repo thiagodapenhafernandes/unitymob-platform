@@ -6,7 +6,7 @@
   warehouse_type = @captacao.selected_warehouse_type
   warehouse_type_options = (Habitation::CategoryDetails::WAREHOUSE_TYPE_OPTIONS + [warehouse_type]).compact_blank.uniq
   ocupacao_choices = [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]]
-  situacao_choices = [["Novo", "Novo"], ["Usado", "Usado"], ["Em construção", "Em construção"]]
+  situacao_choices = (Habitation::SITUATIONS + [@captacao.situacao_imovel]).compact_blank.uniq
   topografia_choices = [["Plano", "plano"], ["Aclive", "aclive"], ["Declive", "declive"], ["Irregular", "irregular"]]
 %>
 

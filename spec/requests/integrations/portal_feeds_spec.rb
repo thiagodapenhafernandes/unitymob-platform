@@ -174,6 +174,25 @@ RSpec.describe "Portal feeds", type: :request do
     expect(response.body).to be_empty
   end
 
+  it "identifies Imovelweb XML on HEAD just as it does on GET" do
+    integration = create_integration(portal: "imovelweb")
+    path = integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token, format: :xml)
+
+    head path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.media_type).to eq("application/xml")
+    expect(response.body).to be_empty
+    head_etag = response.headers.fetch("ETag")
+
+    get path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.media_type).to eq("application/xml")
+    expect(response.headers.fetch("ETag")).to eq(head_etag)
+    expect { Nokogiri::XML(response.body) { |config| config.strict } }.not_to raise_error
+  end
+
   it "streams XML without changing the generated document" do
     integration = create_integration
 
@@ -219,4 +238,43 @@ RSpec.describe "Portal feeds", type: :request do
     expect(response.body).not_to include("<OpenNavent>")
     expect(response.body).not_to include("<Carga>")
   end
+  it "serves the recovered Vista layout only for the primary Imovelweb integration and owning tenant" do
+    tenant = Tenant.create!(name: "Navent owner", slug: "navent-owner")
+    other = Tenant.create!(name: "Navent external", slug: "navent-external")
+    integration = create_integration(portal: "imovelweb", tenant: tenant)
+    integration.update!(account_id: "OWN-ACCOUNT")
+    [tenant, other].each do |account|
+      create(:habitation, tenant: account, codigo: "NATIVE-#{account.id}", titulo_anuncio: "Apartamento no Centro", publicar_imovelweb: true,
+        status: "Aluguel", valor_locacao_cents: 100_000, pictures: [{ "url" => "https://cdn.test/photo.jpg" }])
+    end
+
+    create(:habitation, tenant: tenant, codigo: "8478-SUSPENSO", titulo_anuncio: "Fora de pauta",
+      publicar_imovelweb: true, status: "Suspenso", exibir_no_site_flag: false,
+      motivo_suspensao: "Vendido por terceiros")
+
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token, format: :xml)
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::XML(response.body) { |c| c.strict }
+    expect(doc.root.name).to eq("OpenNavent")
+    expect(doc.xpath("//codigoAnuncio").map(&:text)).to eq(["NATIVE-#{tenant.id}"])
+    expect(doc.at_xpath("//codigoImobiliaria").text).to eq("OWN-ACCOUNT")
+    expect(PortalIntegration.new(portal: "imovelweb_2").feed_strategy).to eq("olx_xml")
+    expect(PortalIntegration.new(portal: "casamineira").feed_strategy).to eq("olx_xml")
+    expect(integration.requires_account_id?).to be(true)
+  end
+
+  it "invalidates the previous Imovelweb format cache" do
+    integration = create_integration(portal: "imovelweb")
+    stub_const("Integrations::Portals::FeedsController::FEED_CACHE_VERSIONS", {})
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token)
+    old_etag = response.headers.fetch("ETag")
+    stub_const("Integrations::Portals::FeedsController::FEED_CACHE_VERSIONS", { "open_navent_xml" => "open_navent_xml_v1" })
+
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token), headers: { "If-None-Match" => old_etag }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("<OpenNavent>")
+  end
+
 end

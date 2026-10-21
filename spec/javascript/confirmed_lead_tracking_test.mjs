@@ -17,7 +17,7 @@ function setup(track) {
 }
 
 const success = { success: true, analytics_event: {
-  event: 'generate_lead', event_id: 'opaque-event', business_type: 'venda',
+  event: 'generate_lead', event_id: 'opaque-event', phone_e164: '+5547991234567', business_type: 'venda',
   property_code: 'AP123', form_id: 'whatsapp_modal', email: 'private@example.test'
 } }
 
@@ -30,6 +30,7 @@ test('encaminha somente dados permitidos e aguarda callback antes de continuar',
   assert.equal(args[1].page_url, 'https://example.test/imovel')
   assert.equal(args[1].property_code, 'AP123')
   assert.equal(args[1].email, undefined)
+  assert.equal(args[1].phone_e164, '+5547991234567')
   args[2].onComplete()
   await pending
   assert.equal(finished, true)

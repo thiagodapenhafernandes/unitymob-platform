@@ -118,12 +118,7 @@
             trigger_badge: proposals.size %>
     <% end %>
 
-    <%= form_with url: close_deal_admin_lead_path(lead), method: :post, id: close_deal_form_id, class: "tw-hidden", data: { turbo: false } do %><% end %>
-    <%= ax_confirm_submit(form_id: close_deal_form_id, message: "Marcar este lead como negócio fechado?", confirm_label: "Fechar negócio") do %>
-      <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--success" data-action="click->ax-confirm-submit#request">
-        <i class="bi bi-check-circle"></i><span>Fechado</span>
-      </button>
-    <% end %>
+    <%= render "admin/leads/close_deal_modal", lead: lead, modal_id: close_deal_form_id %>
     <%= render "admin/leads/archive_modal", lead: lead, archive_reason_options: local_assigns.fetch(:archive_reason_options), modal_id: "archiveLead#{namespace}" %>
   </div>
 <% end %>

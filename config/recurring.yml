@@ -10,6 +10,10 @@
 #     schedule: at 5am every day
 
 development:
+  google_stage_conversion_recovery:
+    class: GoogleStageConversionRecoveryJob
+    queue: default
+    schedule: every 5 minutes
   ga4_conversion_recovery:
     class: Ga4ConversionRecoveryJob
     queue: default
@@ -58,6 +62,10 @@ development:
     schedule: every 5 minutes
 
 production:
+  google_stage_conversion_recovery:
+    class: GoogleStageConversionRecoveryJob
+    queue: default
+    schedule: every 5 minutes
   ga4_conversion_recovery:
     class: Ga4ConversionRecoveryJob
     queue: default

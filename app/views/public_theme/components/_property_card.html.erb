@@ -27,12 +27,12 @@
 
   sale_price = property.valor_venda_cents.to_i
   rent_price = property.valor_locacao_cents.to_i
-  sale_mode = sale_price.positive?
+  sale_mode = !property.daily_rental? && sale_price.positive?
   current_price = sale_mode ? sale_price : rent_price
   previous_price = sale_mode ? property.valor_venda_anterior_cents.to_i : property.valor_locacao_anterior_cents.to_i
   reduced_price = current_price.positive? && previous_price > current_price
   discount_percentage = reduced_price ? (((previous_price - current_price).to_f / previous_price) * 100).round : nil
-  price_suffix = !sale_mode && current_price.positive? ? "/mês" : ""
+  price_suffix = !sale_mode && current_price.positive? ? public_rental_price_suffix(property) : ""
   current_price_label = current_price.positive? ? "#{number_to_currency(current_price / 100.0, precision: 0)}#{price_suffix}" : "Sob consulta"
   previous_price_label = reduced_price ? "#{number_to_currency(previous_price / 100.0, precision: 0)}#{price_suffix}" : nil
   card_tracking_data = {

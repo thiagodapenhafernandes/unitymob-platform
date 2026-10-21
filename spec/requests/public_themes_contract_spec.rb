@@ -26,6 +26,23 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
     context "tema #{theme_key} (variante #{variant})" do
       before { tenant.update_columns(public_site_theme: theme_key) }
 
+      it "publica diária na busca e no detalhe com preço por dia e sem total mensal" do
+        property = create(:habitation, tenant: tenant, codigo: "9780-DIARIA", status: "Diária",
+          titulo_anuncio: "Apartamento de temporada", valor_locacao_cents: 300_000, valor_venda_cents: 0,
+          valor_condominio_cents: 50_000, exibir_no_site_flag: true, address_attributes: address)
+        get habitations_path
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("/dia", "9780-DIARIA")
+        get habitation_path(property)
+        expect(response).to have_http_status(:ok)
+        price_card = html.at_css(".public-habitations-show__price-card")
+        expect(price_card.text).to include("/dia", "3.000")
+        expect(price_card.text).not_to include("/mês", "Total mensal", "Taxas inclusas")
+        property.update!(status: "Suspenso", motivo_suspensao: "Fora de pauta")
+        get habitation_path(property)
+        expect(response).to redirect_to(habitations_path)
+      end
+
       it "mantém os assets de reload estáveis entre home, busca e detalhe" do
         property = create(:habitation, tenant:, exibir_no_site_flag: true, address_attributes: address)
         tracked_assets = [root_path, habitations_path, habitation_path(property)].map do |path|

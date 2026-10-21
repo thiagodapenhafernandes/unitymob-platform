@@ -4,7 +4,7 @@ class PortalIntegration < ApplicationRecord
   PORTAL_DEFINITIONS = {
     "zapimoveis" => { title: "ZapImóveis", feed_strategy: "vrsync_xml" },
     "vivareal_vrsync" => { title: "Viva Real", feed_strategy: "vrsync_xml" },
-    "imovelweb" => { title: "Imovelweb", feed_strategy: "olx_xml" },
+    "imovelweb" => { title: "Imovelweb", feed_strategy: "open_navent_xml" },
     "imovelweb_2" => { title: "Imovelweb 2", feed_strategy: "olx_xml" },
     "chavesnamao" => { title: "Chaves na Mão", feed_strategy: "chaves_xml" },
     "casamineira" => { title: "Casa Mineira", feed_strategy: "olx_xml" },
@@ -47,7 +47,7 @@ class PortalIntegration < ApplicationRecord
     },
     "imovelweb" => {
       docs_url: "https://www.imovelweb.com.br",
-      summary: "Feed XML da integração existente do Imovelweb. O recebimento de leads é independente do Grupo OLX.",
+      summary: "Feed XML no padrão OpenNavent do Imovelweb. O recebimento de leads é independente do Grupo OLX.",
       setup_steps: [
         "Solicite Account ID e Publisher ID ao atendimento do Imovelweb.",
         "Configure os IDs no formulário e ative a integração.",
@@ -235,7 +235,7 @@ class PortalIntegration < ApplicationRecord
   end
 
   def requires_account_id?
-    %w[olx_xml olx_json].include?(feed_strategy)
+    %w[olx_xml olx_json open_navent_xml].include?(feed_strategy)
   end
 
   def help

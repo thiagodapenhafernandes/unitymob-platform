@@ -30,7 +30,7 @@ module Leads
     end
 
     def self.phone_variants_for(lead)
-      raw = [lead.client_phone, lead.phone].map { |phone| Phones::Normalizer.call(phone).to_s }.reject(&:blank?)
+      raw = [lead.client_phone, lead.phone_e164 || lead.phone].map { |phone| Phones::Normalizer.call(phone).to_s }.reject(&:blank?)
       raw.flat_map { |digits| [digits, digits.delete_prefix("55")] }.reject(&:blank?).uniq
     end
 

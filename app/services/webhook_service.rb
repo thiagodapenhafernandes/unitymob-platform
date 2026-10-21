@@ -30,7 +30,8 @@ class WebhookService
 
       active_settings = tenant.webhook_settings.active.select do |setting|
         event = WebhookSetting.event_name_for(origin_form, data)
-        setting.delivers_event?(event) &&
+        !(event == "qualified_lead" && setting.google_conversions_enabled?) &&
+          setting.delivers_event?(event) &&
           (%w[lead_stage_changed lead_qualification_changed qualified_lead].include?(event) || setting.delivers_form?(origin_form, public_form: options[:public_form]))
       end
       return false if active_settings.empty?

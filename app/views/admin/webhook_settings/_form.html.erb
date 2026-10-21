@@ -20,6 +20,11 @@
         <% end %>
         <p class="ax-field__hint">Se a URL alternativa estiver preenchida, ela recebe os envios desta configuração no lugar da URL padrão.</p>
       <% end %>
+      <%= ax_studio_group(title: "Conversões Google do funil", subtitle: "Ative somente no destino GTM - STAPE desta conta. Os eventos de entrada continuam separados.") do %>
+        <%= ax_switch_field(form: f, method: :google_conversions_enabled, label: "Receber conversões Google por etapa", description: "Um único destino por conta, usando a URL alternativa quando preenchida.") %>
+        <%= ax_text_field(form: f, method: :webhook_secret, type: :password, label: "Segredo", value: nil, autocomplete: "new-password", placeholder: "Em branco mantém o segredo atual") %>
+        <p class="ax-field__hint">O segredo é enviado em X-Webhook-Secret. Mapear Lead qualificado em uma etapa desmarca Lead marcado como qualificado neste destino para usar uma única origem.</p>
+      <% end %>
       <%= ax_studio_group(title: "Ativação e captura", subtitle: "A captura abre o modal no site. A seleção de eventos abaixo controla o envio externo.") do %>
         <%= ax_field_grid do %>
           <div class="ax-span-6"><%= ax_switch_field(form: f, method: :enabled, label: "Habilitar webhook", id: "webhook_enabled", class_name: "ax-switch--card", description: "Desativado, nenhum evento novo é enviado por esta configuração.") %></div>

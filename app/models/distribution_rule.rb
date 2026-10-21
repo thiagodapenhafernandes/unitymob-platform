@@ -1,6 +1,22 @@
 class DistributionRule < ApplicationRecord
   include TenantScoped
 
+  before_validation :remove_excluded_auto_meta_forms
+
+  def meta_form_excluded?(form_id)
+    auto_add_forms? && Array(excluded_meta_form_ids).map(&:to_s).include?(form_id.to_s)
+  end
+
+  def add_auto_meta_forms!(form_ids)
+    with_lock do
+      return unless auto_add_forms?
+
+      forms = (Array(meta_forms).map(&:to_s) + Array(form_ids).map(&:to_s)).compact_blank.uniq
+      forms -= Array(excluded_meta_form_ids).map(&:to_s)
+      update!(meta_forms: forms) unless forms == meta_forms
+    end
+  end
+
   AUTO_UPDATE_TRIGGERS = %w[sorteio pos_risca fora_horario].freeze
   AUTO_UPDATE_TRIGGER_LABELS = {
     "sorteio" => "Logo após check-in de entrada",
@@ -371,6 +387,11 @@ class DistributionRule < ApplicationRecord
   end
 
   private
+
+  def remove_excluded_auto_meta_forms
+    self.excluded_meta_form_ids = Array(excluded_meta_form_ids).compact_blank.map(&:to_s).uniq
+    self.meta_forms = Array(meta_forms).map(&:to_s) - excluded_meta_form_ids if auto_add_forms?
+  end
 
   def valid_contingency
     if (Array(contingency_triggers) - CONTINGENCY_TRIGGERS.keys).any?

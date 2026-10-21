@@ -49,11 +49,8 @@ test('apenas o gerenciador que abriu o modal compartilhado trata sua exclusão',
   assert.equal(calls, 1);
 });
 
-test('DDD 55 é preservado no cadastro do proprietário e normalizado no site', () => {
+test('DDD 55 é preservado no cadastro do proprietário', () => {
   const owner = controller('habitation_owner_selector');
   assert.equal(owner.brazilianNationalDigits('55999991234'), '55999991234');
   assert.equal(owner.brazilianNationalDigits('5555999991234'), '55999991234');
-  const lead = controller('lead_capture');
-  assert.equal(lead.normalizePhone('(55) 9999-1234'), '5555999991234');
-  assert.equal(lead.normalizePhone('(55) 3333-1234'), '555533331234');
 });

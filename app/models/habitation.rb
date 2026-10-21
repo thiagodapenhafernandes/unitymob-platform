@@ -4,6 +4,7 @@
 #
 class Habitation < ApplicationRecord
   include TenantScoped
+  has_many :availability_blocks, class_name: "HabitationAvailabilityBlock", dependent: :destroy
   include PhoneNormalizable
 
   REVIEW_RETURN_WARNING_THRESHOLD = 3
@@ -292,7 +293,7 @@ class Habitation < ApplicationRecord
     [/\b(?:venda|vende|vender)\b/, "Venda"]
   ].freeze
 
-  PUBLIC_STATUSES = ['Venda', 'Aluguel', 'Venda e Aluguel'].freeze
+  PUBLIC_STATUSES = ['Venda', 'Aluguel', 'Venda e Aluguel', 'Diária'].freeze
   INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido pendente].freeze
   INACTIVE_COMMERCIAL_STATUS_REGEX = "(suspenso|alugado|vendido|pendente)".freeze
   SITE_PUBLICATION_FIELDS = %i[exibir_no_site_flag exibir_no_site_portal_flag].freeze
@@ -702,9 +703,8 @@ class Habitation < ApplicationRecord
   has_many_attached :photos do |attachment|
     Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::CARD)
   end
-  has_many_attached :watermark_photos do |attachment|
-    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::CARD)
-  end
+  # Originais pendentes são privados e serão substituídos; não gerar variantes deles.
+  has_many_attached :watermark_photos
 
   scope :with_local_photos, -> {
     where(<<~SQL.squish)
@@ -1188,6 +1188,10 @@ class Habitation < ApplicationRecord
   def valor_iptu = valor_iptu_cents.to_i.positive? ? valor_iptu_cents / 100.0 : nil
   def saldo_devedor = saldo_devedor_cents.to_i.positive? ? saldo_devedor_cents / 100.0 : nil
 
+  def daily_rental?
+    status == "Diária" || (status == "Aluguel" && intake_modalidade == "locacao_diaria")
+  end
+
   def displayable_condominio_cents
     displayable_tax_cents(valor_condominio_cents)
   end
@@ -1197,11 +1201,15 @@ class Habitation < ApplicationRecord
   end
 
   def taxes_included_indicator?
+    return false if daily_rental?
+
     valor_locacao_cents.to_i.positive? &&
       displayable_condominio_cents.blank? && displayable_iptu_cents.blank?
   end
 
   def displayable_rent_total_cents
+    return nil if daily_rental?
+
     rent_cents = valor_locacao_cents.to_i
     return nil unless rent_cents.positive?
 
@@ -1213,7 +1221,7 @@ class Habitation < ApplicationRecord
 
   def normalize_rent_total_cents
     rent_cents = valor_locacao_cents.to_i
-    unless rent_cents.positive?
+    unless rent_cents.positive? && !daily_rental?
       self.valor_total_aluguel_cents = nil
       return
     end
@@ -1496,6 +1504,10 @@ class Habitation < ApplicationRecord
     intake_status == "internal"
   end
 
+  def intake_site_publication_locked?
+    broker_intake? && !intake_published?
+  end
+
   def intake_published?
     intake_status == "published"
   end
@@ -1554,6 +1566,8 @@ class Habitation < ApplicationRecord
   end
 
   def whatsapp_negotiation_type
+    return "rent" if daily_rental?
+
     has_sale_price = valor_venda_cents.to_i.positive?
     has_rent_price = valor_locacao_cents.to_i.positive?
 
@@ -2410,7 +2424,7 @@ class Habitation < ApplicationRecord
   end
 
   def rental_listing?
-    status.to_s.downcase.match?(/aluguel|loca/) ||
+    daily_rental? || status.to_s.downcase.match?(/aluguel|loca/) ||
       (valor_locacao_cents.to_i.positive? && !valor_venda_cents.to_i.positive?)
   end
 

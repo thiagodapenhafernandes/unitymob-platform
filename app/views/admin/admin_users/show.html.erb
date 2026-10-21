@@ -53,6 +53,8 @@
             <div class="aus__def"><dt>CRECI</dt><dd><%= u.creci.presence || "—" %></dd></div>
             <div class="aus__def"><dt>Cidade</dt><dd><%= u.city.presence || "—" %></dd></div>
             <div class="aus__def"><dt>Nascimento</dt><dd><%= u.birth_date.present? ? l(u.birth_date) : "—" %></dd></div>
+            <div class="aus__def"><dt>Data de entrada</dt><dd><%= u.source_created_on.present? ? l(u.source_created_on) : "—" %></dd></div>
+            <div class="aus__def"><dt>Data de saída</dt><dd><%= u.source_departed_on.present? ? l(u.source_departed_on) : "—" %></dd></div>
             <div class="aus__def"><dt>Vista ID</dt><dd><%= u.vista_id.present? ? u.vista_id : "—" %></dd></div>
           </dl>
           <% if u.biography.present? %>

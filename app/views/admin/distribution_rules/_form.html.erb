@@ -116,6 +116,19 @@
                   </div>
                 </div>
 
+                <%= ax_field_group(title: "Formulários excluídos da distribuição", token: "Exceções",
+                      class_name: "distribution-rule-source-config",
+                      tooltip: "Exceções desta regra: não recebem novos leads enquanto a sincronização estiver ativa.") do %>
+                  <div class="ax-field">
+                    <%= f.select :excluded_meta_form_ids,
+                          options_for_select(@meta_form_options_by_page.values.flatten(1), distribution_rule.excluded_meta_form_ids), {},
+                          { multiple: true, class: "ax-control", data: { controller: "tom-select",
+                            meta_rules_target: "exclusionSelect", action: "change->meta-rules#updateExclusions",
+                            tom_select_create_value: false, placeholder: "Buscar formulários para excluir..." } } %>
+                    <p class="ax-field__hint">Aplicadas apenas com a sincronização ativa. As exceções ficam salvas ao desativá-la e não alteram leads já distribuídos.</p>
+                  </div>
+                <% end %>
+
                 <%= ax_field_group(
                       title: "Sincronização",
                       token: "Meta",

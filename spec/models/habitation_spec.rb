@@ -915,4 +915,26 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.displayable_rent_total_cents).to eq(17_550_00)
     end
   end
+  describe "locação por diária" do
+    it "não soma taxas mensais ao valor diário ao salvar ou apresentar" do
+      property = create(:habitation, status: "Diária", valor_locacao_cents: 300_000,
+        valor_condominio_cents: 50_000, valor_iptu_cents: 10_000)
+      expect(property).to be_daily_rental
+      expect(property.displayable_rent_total_cents).to be_nil
+      expect(property.valor_total_aluguel_cents).to be_nil
+      expect(property).not_to be_taxes_included_indicator
+      property.valor_venda_cents = 90_000_000
+      property.titulo_anuncio = "Apartamento à venda"
+      expect(property.whatsapp_negotiation_type).to eq("rent")
+      expect(property.display_title).to include("para alugar")
+    end
+
+    it "reconhece a modalidade diária antes da normalização do status" do
+      property = build(:habitation, status: "Aluguel", intake_modalidade: "locacao_diaria")
+      expect(property).to be_daily_rental
+      property.status = "Venda"
+      expect(property).not_to be_daily_rental
+    end
+  end
+
 end

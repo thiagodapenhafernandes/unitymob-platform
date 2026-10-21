@@ -1,0 +1,38 @@
+.public-theme-availability-calendar {
+  --availability-accent: var(--color-primary, #1d4ed8);
+  padding: 16px;
+  color: var(--admin-ink, #172033);
+  background: var(--ax-panel-bg, #fff);
+  border: 1px solid var(--ax-border-soft, #dbe1e8);
+  border-radius: 12px;
+}
+.public-theme-availability-calendar__container { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+.public-theme-availability-calendar__navigation { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.public-theme-availability-calendar__navigation a { color: var(--availability-accent); text-decoration: underline; padding: 8px 0; }
+.public-theme-availability-calendar__navigation a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.public-theme-availability-calendar__table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; }
+.public-theme-availability-calendar__table caption { color: inherit; text-align: left; padding-bottom: 12px; }
+.public-theme-availability-calendar__table th { padding: 8px 0; }
+.public-theme-availability-calendar__day { border: 1px solid var(--ax-border-soft, #dbe1e8); height: 64px; vertical-align: middle; padding: 4px 0; }
+.public-theme-availability-calendar__day--blocked { background: var(--ax-panel-soft, #eef0f3); }
+.public-theme-availability-calendar__state { display: block; font-size: 11px; overflow-wrap: anywhere; }
+.public-theme-availability-calendar__day--blocked time { text-decoration: line-through; }
+.public-theme-availability-calendar__hint { margin: 12px 0 0; font-size: 13px; }
+@media (max-width: 480px) {
+  .public-theme-availability-calendar { padding: 10px; }
+  .public-theme-availability-calendar__state { font-size: 10px; }
+}
+.public-theme-availability-calendar { container-type: inline-size; }
+@container (max-width: 480px) {
+  .public-theme-availability-calendar__navigation { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .public-theme-availability-calendar__navigation strong { grid-column: 1 / -1; grid-row: 1; text-align: center; }
+  .public-theme-availability-calendar__navigation a[rel="prev"] { grid-column: 1; grid-row: 2; }
+  .public-theme-availability-calendar__navigation a[rel="next"] { grid-column: 2; grid-row: 2; text-align: right; }
+  .public-theme-availability-calendar__state { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Um único calendário no detalhe, entre os valores e o contato, também no mobile. */
+.public-theme-property-availability { min-width: 0; }
+.public-theme-property-availability__title { margin: 0 0 12px; font-size: 16px; font-weight: 600; color: inherit; }
+.public-theme-property-availability .public-theme-availability-calendar__day { height: 36px; }
+.public-habitations-show .public-habitations-show__desktop-price--daily { display: block; }

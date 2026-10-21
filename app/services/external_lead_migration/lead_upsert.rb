@@ -23,11 +23,15 @@ module ExternalLeadMigration
           action = :updated
           lead.with_lock do
             attrs.delete(:created_at)
+            attrs.except!(:admin_user, :distribution_rule) unless historical
             if lead.other_information["intake_reconciled"]
               attrs = attrs.slice(:external_last_synced_at, :other_information)
               attrs[:other_information] = lead.other_information.merge(attrs[:other_information] || {})
+            elsif lead.other_information["c2s_assignment_decided"]
+              attrs.except!(:admin_user, :distribution_rule, :status, :lead_pipeline, :lead_pipeline_stage)
+              attrs[:other_information] = lead.other_information.merge(attrs[:other_information] || {})
             end
-            lead.skip_automatic_routing = historical || lead.other_information["intake_reconciled"]
+            lead.skip_automatic_routing = true
             lead.update!(attrs)
           end
         else

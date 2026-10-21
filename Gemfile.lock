@@ -377,6 +377,7 @@ GEM
     pg (1.6.2-x86_64-darwin)
     pg (1.6.2-x86_64-linux)
     pg (1.6.2-x86_64-linux-musl)
+    phonelib (0.10.28)
     pp (0.6.3)
       prettyprint
     prawn (2.5.0)
@@ -635,6 +636,7 @@ DEPENDENCIES
   omniauth-facebook
   omniauth-rails_csrf_protection
   pg (~> 1.5)
+  phonelib (~> 0.10)
   prawn
   prawn-table
   pry

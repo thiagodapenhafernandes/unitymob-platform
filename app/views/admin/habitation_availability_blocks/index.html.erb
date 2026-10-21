@@ -1,0 +1,26 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Disponibilidade", subtitle: "Imóvel #{@habitation.codigo}", back_path: edit_admin_habitation_path(@habitation.id), icon: "calendar3" %>
+<% end %>
+<%= ax_workspace_heading(title: "Disponibilidade da locação diária", subtitle: "Imóvel #{@habitation.codigo}", actions: link_to("Voltar ao imóvel", edit_admin_habitation_path(@habitation.id), class: "ax-btn ax-btn--secondary")) %>
+<%= ax_operational_panel(title: "Calendário") do %>
+  <%= render "public_theme/components/availability_calendar", habitation: @habitation, month: @month, blocks: @blocks, calendar_path: admin_habitation_availability_blocks_path(@habitation.id), variant: "default", navigation_frame: "_top" %>
+<% end %>
+<%= ax_operational_panel(title: "Bloquear período") do %>
+  <%= form_with model: @block, url: admin_habitation_availability_blocks_path(@habitation.id), local: true do |form| %>
+    <%= ax_error_summary(@block) %>
+    <%= ax_field_grid do %>
+      <%= ax_date_field(form: form, method: :starts_on, label: "Data inicial", class_name: "ax-span-6", required: true) %>
+      <%= ax_date_field(form: form, method: :ends_on, label: "Data final (inclusive)", class_name: "ax-span-6", required: true) %>
+    <% end %>
+    <%= ax_form_actions do %><%= form.submit "Bloquear período", class: "ax-btn ax-btn--primary" %><% end %>
+  <% end %>
+<% end %>
+<%= ax_operational_panel(title: "Bloqueios do mês") do %>
+  <% if @blocks.empty? %><p>Nenhum período bloqueado neste mês.</p><% end %>
+  <% @blocks.each do |block| %>
+    <div class="ax-form-actions">
+      <span><%= l(block.starts_on) %> a <%= l(block.ends_on) %></span>
+      <%= button_to "Liberar período", admin_habitation_availability_block_path(@habitation.id, block, month: @month.strftime("%Y-%m")), method: :delete, class: "ax-btn ax-btn--secondary", data: { turbo_confirm: "Liberar este período no calendário?" } %>
+    </div>
+  <% end %>
+<% end %>

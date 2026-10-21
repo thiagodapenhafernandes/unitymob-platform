@@ -1,6 +1,10 @@
 module HabitationsHelper
   CATALOG_PROPERTY_IMAGE_PREVIEW_LIMIT = 6
 
+  def public_rental_price_suffix(property)
+    property.daily_rental? ? "/dia" : "/mês"
+  end
+
   def catalog_property_image_urls(property, limit: 8)
     attached_sources = property.card_image_sources(CATALOG_PROPERTY_IMAGE_PREVIEW_LIMIT)
     urls = catalog_image_urls_from(attached_sources, limit:)

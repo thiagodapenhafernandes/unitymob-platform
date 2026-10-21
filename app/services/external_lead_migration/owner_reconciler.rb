@@ -47,6 +47,7 @@ module ExternalLeadMigration
       integration.tenant.leads
         .where(external_lead_integration_id: integration.id, admin_user_id: nil)
         .where("other_information @> ?", { source: SOURCE }.to_json)
+        .where("NOT (other_information @> ?)", { c2s_assignment_decided: true }.to_json)
     end
 
     def reconcile_lead(lead)

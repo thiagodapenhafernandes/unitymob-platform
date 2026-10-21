@@ -27,6 +27,7 @@ module Habitation::SearchScopes
     }
     scope :shareable_commercial_selection, -> {
       where(status: Habitation::PUBLIC_STATUSES)
+        .where.not(status: "Diária")
         .commercially_publishable
     }
     scope :public_filterable_locations, -> {

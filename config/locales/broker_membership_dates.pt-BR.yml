@@ -1,0 +1,12 @@
+pt-BR:
+  activerecord:
+    attributes:
+      admin_user:
+        source_created_on: "Data de entrada"
+        source_departed_on: "Data de saída"
+    errors:
+      models:
+        admin_user:
+          attributes:
+            source_departed_on:
+              before_entry_date: "não pode ser anterior à data de entrada"

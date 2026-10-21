@@ -2543,6 +2543,7 @@ CREATE TABLE public.distribution_rules (
     contingency_unavailable_minutes integer DEFAULT 0 NOT NULL,
     contingency_pool_minutes integer DEFAULT 30 NOT NULL,
     contingency_acceptance_minutes integer DEFAULT 30 NOT NULL,
+    excluded_meta_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0)))
 );
 
@@ -2696,7 +2697,11 @@ CREATE TABLE public.external_lead_integrations (
     exported_count integer DEFAULT 0 NOT NULL,
     export_failed_count integer DEFAULT 0 NOT NULL,
     last_exported_at timestamp(6) without time zone,
-    last_export_error text
+    last_export_error text,
+    sale_assignment_mode character varying DEFAULT 'c2s'::character varying NOT NULL,
+    rental_assignment_mode character varying DEFAULT 'c2s'::character varying NOT NULL,
+    CONSTRAINT external_leads_rental_assignment_mode CHECK (((rental_assignment_mode)::text = ANY ((ARRAY['c2s'::character varying, 'unitymob'::character varying])::text[]))),
+    CONSTRAINT external_leads_sale_assignment_mode CHECK (((sale_assignment_mode)::text = ANY ((ARRAY['c2s'::character varying, 'unitymob'::character varying])::text[])))
 );
 
 
@@ -3364,6 +3369,48 @@ ALTER SEQUENCE public.google_maps_integration_settings_id_seq OWNED BY public.go
 
 
 --
+-- Name: google_stage_conversion_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.google_stage_conversion_events (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    webhook_setting_id bigint,
+    conversion_type character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    skip_reason character varying,
+    payload text NOT NULL,
+    destination_url text NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    next_attempt_at timestamp(6) without time zone,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    attempt_log jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: google_stage_conversion_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.google_stage_conversion_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: google_stage_conversion_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.google_stage_conversion_events_id_seq OWNED BY public.google_stage_conversion_events.id;
+
+
+--
 -- Name: habitation_audit_logs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3400,6 +3447,41 @@ CREATE SEQUENCE public.habitation_audit_logs_id_seq
 --
 
 ALTER SEQUENCE public.habitation_audit_logs_id_seq OWNED BY public.habitation_audit_logs.id;
+
+
+--
+-- Name: habitation_availability_blocks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.habitation_availability_blocks (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    habitation_id bigint NOT NULL,
+    starts_on date NOT NULL,
+    ends_on date NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT habitation_availability_valid_period CHECK ((ends_on >= starts_on))
+);
+
+
+--
+-- Name: habitation_availability_blocks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.habitation_availability_blocks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: habitation_availability_blocks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.habitation_availability_blocks_id_seq OWNED BY public.habitation_availability_blocks.id;
 
 
 --
@@ -4402,7 +4484,9 @@ CREATE TABLE public.lead_pipeline_stages (
     "position" integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    meta_conversion_event character varying
+    meta_conversion_event character varying,
+    google_event character varying DEFAULT 'none'::character varying NOT NULL,
+    CONSTRAINT lead_stages_google_event CHECK (((google_event)::text = ANY ((ARRAY['none'::character varying, 'qualify_lead'::character varying, 'visit'::character varying, 'proposal'::character varying, 'closed'::character varying])::text[])))
 );
 
 
@@ -4634,7 +4718,10 @@ CREATE TABLE public.leads (
     contingency_reason character varying,
     contingency_pending boolean DEFAULT false NOT NULL,
     c2s_export_external_id character varying,
-    c2s_exported_at timestamp(6) without time zone
+    c2s_exported_at timestamp(6) without time zone,
+    google_business_type character varying,
+    closing_commission_cents bigint,
+    CONSTRAINT leads_closing_commission_range CHECK (((closing_commission_cents >= 0) AND (closing_commission_cents <= '999999999999'::bigint)))
 );
 
 
@@ -7708,7 +7795,9 @@ CREATE TABLE public.webhook_settings (
     form_delivery_scope character varying DEFAULT 'all'::character varying NOT NULL,
     form_categories jsonb DEFAULT '[]'::jsonb NOT NULL,
     public_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
-    subscribed_events jsonb DEFAULT '["lead_created", "lead_inquiry", "form_submitted"]'::jsonb NOT NULL
+    subscribed_events jsonb DEFAULT '["lead_created", "lead_inquiry", "form_submitted"]'::jsonb NOT NULL,
+    google_conversions_enabled boolean DEFAULT false NOT NULL,
+    webhook_secret text
 );
 
 
@@ -8706,10 +8795,24 @@ ALTER TABLE ONLY public.google_maps_integration_settings ALTER COLUMN id SET DEF
 
 
 --
+-- Name: google_stage_conversion_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_stage_conversion_events ALTER COLUMN id SET DEFAULT nextval('public.google_stage_conversion_events_id_seq'::regclass);
+
+
+--
 -- Name: habitation_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.habitation_audit_logs ALTER COLUMN id SET DEFAULT nextval('public.habitation_audit_logs_id_seq'::regclass);
+
+
+--
+-- Name: habitation_availability_blocks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_availability_blocks ALTER COLUMN id SET DEFAULT nextval('public.habitation_availability_blocks_id_seq'::regclass);
 
 
 --
@@ -10029,11 +10132,27 @@ ALTER TABLE ONLY public.google_maps_integration_settings
 
 
 --
+-- Name: google_stage_conversion_events google_stage_conversion_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_stage_conversion_events
+    ADD CONSTRAINT google_stage_conversion_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: habitation_audit_logs habitation_audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.habitation_audit_logs
     ADD CONSTRAINT habitation_audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: habitation_availability_blocks habitation_availability_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_availability_blocks
+    ADD CONSTRAINT habitation_availability_blocks_pkey PRIMARY KEY (id);
 
 
 --
@@ -13792,6 +13911,41 @@ CREATE UNIQUE INDEX index_google_maps_integration_settings_on_tenant_id ON publi
 
 
 --
+-- Name: index_google_stage_conversion_events_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_google_stage_conversion_events_on_lead_id ON public.google_stage_conversion_events USING btree (lead_id);
+
+
+--
+-- Name: index_google_stage_conversion_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_google_stage_conversion_events_on_tenant_id ON public.google_stage_conversion_events USING btree (tenant_id);
+
+
+--
+-- Name: index_google_stage_conversion_events_on_webhook_setting_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_google_stage_conversion_events_on_webhook_setting_id ON public.google_stage_conversion_events USING btree (webhook_setting_id);
+
+
+--
+-- Name: index_google_stage_event_identity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_google_stage_event_identity ON public.google_stage_conversion_events USING btree (lead_id, conversion_type);
+
+
+--
+-- Name: index_google_stage_events_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_google_stage_events_pending ON public.google_stage_conversion_events USING btree (status, next_attempt_at);
+
+
+--
 -- Name: index_habitation_audit_logs_on_action; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13845,6 +13999,27 @@ CREATE INDEX index_habitation_audit_logs_on_source ON public.habitation_audit_lo
 --
 
 CREATE INDEX index_habitation_audit_logs_on_tenant_id ON public.habitation_audit_logs USING btree (tenant_id);
+
+
+--
+-- Name: index_habitation_availability_blocks_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitation_availability_blocks_on_habitation_id ON public.habitation_availability_blocks USING btree (habitation_id);
+
+
+--
+-- Name: index_habitation_availability_blocks_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitation_availability_blocks_on_tenant_id ON public.habitation_availability_blocks USING btree (tenant_id);
+
+
+--
+-- Name: index_habitation_availability_periods; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitation_availability_periods ON public.habitation_availability_blocks USING btree (habitation_id, starts_on, ends_on);
 
 
 --
@@ -15336,6 +15511,13 @@ CREATE INDEX index_notification_template_settings_on_tenant_id_and_active ON pub
 --
 
 CREATE INDEX index_notification_template_settings_on_whatsapp_template_id ON public.notification_template_settings USING btree (whatsapp_template_id);
+
+
+--
+-- Name: index_one_google_webhook_per_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_one_google_webhook_per_tenant ON public.webhook_settings USING btree (tenant_id) WHERE (google_conversions_enabled = true);
 
 
 --
@@ -17747,6 +17929,14 @@ ALTER TABLE ONLY public.tiktok_integrations
 
 
 --
+-- Name: habitation_availability_blocks fk_rails_104bca767e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_availability_blocks
+    ADD CONSTRAINT fk_rails_104bca767e FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
 -- Name: presentation_cards fk_rails_1053763516; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17952,6 +18142,14 @@ ALTER TABLE ONLY public.seo_focus_keywords
 
 ALTER TABLE ONLY public.portal_integration_events
     ADD CONSTRAINT fk_rails_23eb6add0b FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
+-- Name: google_stage_conversion_events fk_rails_24ac98969f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_stage_conversion_events
+    ADD CONSTRAINT fk_rails_24ac98969f FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -20267,6 +20465,14 @@ ALTER TABLE ONLY public.location_pings
 
 
 --
+-- Name: google_stage_conversion_events fk_rails_e1d8413ced; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_stage_conversion_events
+    ADD CONSTRAINT fk_rails_e1d8413ced FOREIGN KEY (webhook_setting_id) REFERENCES public.webhook_settings(id) ON DELETE SET NULL;
+
+
+--
 -- Name: client_property_interests fk_rails_e2de1e8832; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20459,6 +20665,14 @@ ALTER TABLE ONLY public.automation_executions
 
 
 --
+-- Name: google_stage_conversion_events fk_rails_efed9bf5e2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_stage_conversion_events
+    ADD CONSTRAINT fk_rails_efed9bf5e2 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: system_health_snapshots fk_rails_f1c457414f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20611,6 +20825,14 @@ ALTER TABLE ONLY public.push_subscriptions
 
 
 --
+-- Name: habitation_availability_blocks fk_rails_fec09001f6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_availability_blocks
+    ADD CONSTRAINT fk_rails_fec09001f6 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_attendances fk_rails_fff8adf61d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20627,6 +20849,11 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261021190000'),
+('20261021181000'),
+('20261021180000'),
+('20261021170000'),
+('20261021150000'),
 ('20261019020000'),
 ('20261019010000'),
 ('20261012180000'),

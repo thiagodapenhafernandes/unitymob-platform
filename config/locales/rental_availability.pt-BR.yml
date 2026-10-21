@@ -1,0 +1,10 @@
+pt-BR:
+  activerecord:
+    models:
+      habitation_availability_block: "Bloqueio de disponibilidade"
+    attributes:
+      habitation_availability_block:
+        starts_on: "Data inicial"
+        ends_on: "Data final"
+        habitation: "Imóvel"
+        tenant: "Conta"
