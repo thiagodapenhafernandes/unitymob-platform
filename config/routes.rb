@@ -439,6 +439,7 @@ Rails.application.routes.draw do
       patch :toggle_active, on: :member
       patch :reorder_agents, on: :member
     end
+    resource :meta_connection, only: [:create, :show]
     resources :meta_integrations, only: [:index] do
       collection do
         post :sync_pages

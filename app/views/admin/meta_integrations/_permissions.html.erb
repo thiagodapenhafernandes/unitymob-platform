@@ -22,6 +22,7 @@
     <div class="ax-integration-actions">
       <%= link_to "Conferir acesso", permissions_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" %>
       <%= button_to "Renovar acesso", admin_user_facebook_omniauth_authorize_path, method: :post, params: {auth_type: "rerequest"}, data: {turbo: false}, class: "ax-btn ax-btn--sm ax-btn--primary" %>
+      <%= render 'admin/meta_integrations/central_connection_button' %>
     </div>
     <details class="ax-integration-help">
       <summary>Como liberar o acesso</summary>

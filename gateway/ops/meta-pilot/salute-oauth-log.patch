@@ -1,0 +1,18 @@
+--- salute.original
++++ salute.candidate
+@@ -45,0 +46,15 @@
++
++  location = /admin/meta_connection {
++    error_log /dev/null crit;
++    if ($salute_scanner_request) { return 404; }
++    if ($salute_block_expensive_bot) { return 429; }
++
++    proxy_pass http://puma_salute;
++    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++    proxy_set_header Host $host;
++    proxy_redirect off;
++    proxy_set_header X-Forwarded-Proto $scheme;
++    proxy_http_version 1.1;
++    proxy_set_header Upgrade $http_upgrade;
++    proxy_set_header Connection $salute_upstream_connection;
++  }

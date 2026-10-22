@@ -12,6 +12,7 @@ require_relative "../config/environment"
 connection = ActiveRecord::Base.connection
 raise "Use an isolated *_test database" unless connection.select_value("SELECT current_database()").end_with?("_test")
 connection.drop_table(:tiktok_oauth_states, if_exists: true)
+connection.drop_table(:meta_oauth_attempts, if_exists: true)
 connection.drop_table(:webhook_events, if_exists: true)
 connection.drop_table(:delivery_destinations, if_exists: true)
 connection.drop_table(:webhook_routes, if_exists: true)
@@ -97,12 +98,15 @@ require_relative "../db/migrate/20261022170000_add_queued_deliveries"
 ActiveRecord::Migration.suppress_messages { AddQueuedDeliveries.new.migrate(:up) }
 require_relative "../db/migrate/20261022180000_remove_redundant_receipt_index"
 ActiveRecord::Migration.suppress_messages { RemoveRedundantReceiptIndex.new.migrate(:up) }
+require_relative '../db/migrate/20261022190000_create_meta_oauth_attempts'
+ActiveRecord::Migration.suppress_messages { CreateMetaOauthAttempts.new.migrate(:up) }
 
 RSpec.configure do |config|
   config.include Rack::Test::Methods
 
   config.before do
     TiktokOauthState.delete_all
+    MetaOauthAttempt.delete_all
     WebhookEvent.delete_all
     DeliveryDestination.delete_all
     WebhookRoute.delete_all
