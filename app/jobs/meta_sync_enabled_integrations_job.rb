@@ -3,13 +3,17 @@ class MetaSyncEnabledIntegrationsJob < ApplicationJob
 
   PROCESSING_TIMEOUT = 30.minutes
 
-  def perform
+  def perform(full_sync = false)
     reconcile_observed_lead_forms
 
     UserMetaIntegration.find_each do |integration|
       next unless syncable?(integration)
 
-      MetaSyncJob.perform_later(integration.id)
+      if full_sync || integration.last_synced_at.nil? || integration.sync_status.in?(%w[partial failed])
+        MetaSyncJob.perform_later(integration.id)
+      else
+        MetaSyncJob.perform_later(integration.id, new_forms_only: true)
+      end
     end
   end
 

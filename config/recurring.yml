@@ -146,6 +146,11 @@ production:
     class: MetaSyncEnabledIntegrationsJob
     queue: sync
     schedule: every 15 minutes
+  meta_forms_full_sync:
+    class: MetaSyncEnabledIntegrationsJob
+    queue: sync
+    args: [true]
+    schedule: every day at 3:10am
   meta_insights_daily_sync:
     class: MetaInsightsSyncAllTenantsJob
     queue: sync

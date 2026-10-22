@@ -59,4 +59,16 @@ RSpec.describe MetaSyncEnabledIntegrationsJob, type: :job do
     expect(rule.reload.meta_forms).to be_empty
     expect(MetaLeadForm.find_by(form_id: "form-observed", meta_facebook_page_id: integration.meta_facebook_pages.first.id)).to be_present
   end
+
+  it "usa busca rápida para conexões saudáveis e atualização completa para reparos e rotina diária" do
+    healthy = create(:user_meta_integration, last_synced_at: 1.hour.ago, sync_status: "completed")
+    pending = create(:user_meta_integration, last_synced_at: 1.hour.ago, sync_status: "partial")
+    allow(MetaSyncJob).to receive(:perform_later)
+
+    described_class.perform_now
+    expect(MetaSyncJob).to have_received(:perform_later).with(healthy.id, new_forms_only: true)
+    expect(MetaSyncJob).to have_received(:perform_later).with(pending.id)
+    described_class.perform_now(true)
+    expect(MetaSyncJob).to have_received(:perform_later).with(healthy.id)
+  end
 end

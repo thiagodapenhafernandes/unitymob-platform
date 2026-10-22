@@ -147,4 +147,66 @@ RSpec.describe MetaSyncJob, type: :job do
     ResetSyncStatusJob.perform_now(integration.id, 1.day.ago.iso8601(6))
     expect(integration.reload.sync_status).to eq("completed")
   end
+
+  context "na busca de novos formulários" do
+    let!(:page) { create(:meta_facebook_page, user_meta_integration: integration, page_id: "11111", access_token: "page-token") }
+    let!(:known_form) { create(:meta_lead_form, meta_facebook_page: page, form_id: "known", name: "Existente") }
+
+    before do
+      integration.update!(selected_page_ids: [page.page_id])
+      allow(service).to receive(:get_page_lead_forms).and_return([
+        { "id" => "known", "name" => "Nome remoto alterado", "status" => "ARCHIVED" },
+        { "id" => "new", "name" => "Novo formulário", "status" => "ACTIVE" }
+      ])
+    end
+
+    it "processa só o novo, sem renovar páginas, Instagram ou inscrições" do
+      timestamp = known_form.updated_at
+      job.perform(integration.id, new_forms_only: true)
+      expect(known_form.reload).to have_attributes(name: "Existente", active: true, updated_at: timestamp)
+      new_form = page.meta_lead_forms.find_by!(form_id: "new")
+      expect(job).to have_received(:register_meta_gateway_route).once.with(page, integration, form: new_form)
+      expect(service).not_to have_received(:get_user_pages)
+      expect(service).not_to have_received(:subscribe_page_to_app)
+      expect(Instagram::Connection).not_to have_received(:discover)
+      expect(integration.reload.sync_status).to eq("completed")
+    end
+
+    it "não repassa em formulários conhecidos quando não há novos" do
+      allow(service).to receive(:get_page_lead_forms).and_return([{ "id" => "known" }])
+      job.perform(integration.id, new_forms_only: true)
+      expect(job).not_to have_received(:register_meta_gateway_route)
+      expect(page.meta_lead_forms.count).to eq(1)
+      expect(integration.reload.sync_status).to eq("completed")
+    end
+
+    it "com 1009 formulários conhecidos registra somente o novo no gateway" do
+      cached = 1008.times.map { |n| { "id" => "cached-#{n}", "name" => "Formulário #{n}", "status" => "ACTIVE" } }
+      MetaLeadForm.insert_all!(cached.map { |data| { meta_facebook_page_id: page.id, form_id: data["id"], name: data["name"], active: true } })
+      allow(service).to receive(:get_page_lead_forms).and_return(cached + [
+        { "id" => "known", "name" => "Existente", "status" => "ACTIVE" },
+        { "id" => "new", "name" => "Novo", "status" => "ACTIVE" }
+      ])
+      job.perform(integration.id, new_forms_only: true)
+      expect(job).to have_received(:register_meta_gateway_route).once
+      expect(page.meta_lead_forms.count).to eq(1010)
+      expect(integration.reload.sync_status).to eq("completed")
+    end
+
+    it "preserva pendências anteriores e não consulta página fora da seleção" do
+      create(:meta_facebook_page, user_meta_integration: integration, page_id: "22222")
+      integration.update!(last_sync_error: "Instagram pendente")
+      job.perform(integration.id, new_forms_only: true)
+      expect(service).to have_received(:get_page_lead_forms).once.with("11111", "page-token")
+      expect(integration.reload.sync_status).to eq("partial")
+      expect(integration.last_sync_error).to include("Instagram pendente")
+    end
+
+    it "mantém a atualização completa disponível para alterações e reparos" do
+      job.perform(integration.id)
+      expect(known_form.reload).to have_attributes(name: "Nome remoto alterado", active: false)
+      expect(service).to have_received(:get_user_pages)
+      expect(service).to have_received(:subscribe_page_to_app)
+    end
+  end
 end
