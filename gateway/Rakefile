@@ -108,6 +108,7 @@ task default: "db:migrate"
 namespace :discovery do
   desc "Remove expired verification challenges and rate windows (schedule hourly)"
   task :cleanup do
+    MetaOauthAttempt.where('expires_at < ?', Time.now.utc).delete_all
     DiscoveryChallenge.where('expires_at < ?', Time.now.utc).delete_all
     DiscoveryLimit.where('expires_at < ?', Time.now.utc).delete_all
     AdminLoginChallenge.where('expires_at < ?', Time.now.utc).delete_all

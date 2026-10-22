@@ -1,0 +1,7 @@
+--- a/etc/nginx/conf.d/00_salute_log_format.conf
++++ b/etc/nginx/conf.d/00_salute_log_format.conf
+@@ -1,2 +1,2 @@
+-log_format salute_timing '$remote_addr - $remote_user [$time_local] "$request" '
+-                         '$status $body_bytes_sent "$http_referer" '
++log_format salute_timing '$remote_addr - $remote_user [$time_local] "$request_method $uri $server_protocol" '
++                         '$status $body_bytes_sent "-" '

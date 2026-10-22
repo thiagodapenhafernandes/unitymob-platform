@@ -14,13 +14,7 @@ module Facebook
     def self.call(integration)
       return { error: "Conexão expirada. Atualize a autorização com o Facebook." } if integration.expired? || integration.access_token.blank?
 
-      graph = Koala::Facebook::API.new(integration.access_token)
-      response = graph.get_connections("me", "permissions")
-      granted = {}
-      while response.present?
-        response.each { |row| granted[row.fetch("permission")] = row.fetch("status") }
-        response = response.respond_to?(:next_page) ? response.next_page : nil
-      end
+      granted = statuses(integration.access_token)
       { checked_at: Time.current, permissions: PERMISSIONS.map do |key, (label, description)|
         status = granted[key]
         status = "granted" if key == "ads_management" && granted["ads_read"] == "granted"
@@ -30,6 +24,21 @@ module Facebook
       { error: error.fb_error_code.to_i == 190 ? "A Meta recusou o token. Atualize a autorização com o Facebook." : "Não foi possível consultar as permissões na Meta. Tente novamente; isso não significa que elas foram recusadas." }
     rescue Faraday::Error, Timeout::Error, SocketError
       { error: "A consulta à Meta está indisponível. Tente novamente em instantes." }
+    end
+
+    def self.statuses(access_token)
+      response = Koala::Facebook::API.new(access_token).get_connections('me', 'permissions')
+      granted = {}
+      while response.present?
+        response.each { |row| granted[row.fetch('permission')] = row.fetch('status') }
+        response = response.respond_to?(:next_page) ? response.next_page : nil
+      end
+      granted
+    end
+
+    def self.token_access(access_token)
+      app_token = [ENV.fetch('FACEBOOK_APP_ID'), ENV.fetch('FACEBOOK_APP_SECRET')].join('|')
+      Koala::Facebook::API.new(app_token).debug_token(access_token).fetch('data')
     end
   end
 end

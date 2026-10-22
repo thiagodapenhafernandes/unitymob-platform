@@ -1,0 +1,2 @@
+class MetaOauthAttempt < ApplicationRecord
+end

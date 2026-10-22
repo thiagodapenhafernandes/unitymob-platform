@@ -83,6 +83,7 @@
       <%= button_to admin_user_facebook_omniauth_authorize_path, method: :post, data: { turbo: false }, class: "ax-btn ax-btn--primary" do %>
         <i class="bi bi-facebook ax-ico" aria-hidden="true"></i> Continuar com o Facebook
       <% end %>
+      <%= render 'admin/meta_integrations/central_connection_button' %>
       <p class="ax-integration-onboarding__hint">Depois de entrar, mostramos suas páginas e o que ainda falta liberar, com o passo a passo.</p>
     <% end) %>
   <% end %>

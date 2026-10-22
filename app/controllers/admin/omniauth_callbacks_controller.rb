@@ -8,18 +8,9 @@ class Admin::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     # A reconexão mantém a seleção local da conta do usuário autenticado.
     integration = UserMetaIntegration.find_or_initialize_by(admin_user: current_admin_user, tenant_id: current_admin_user.tenant_id)
     
-    # Trocar token de curto prazo por longo prazo (opcional, mas recomendado)
-    token_info = Facebook::MetaService.exchange_access_token(auth.credentials.token)
-    
-    integration.update!(
-      access_token: token_info&.fetch("access_token", nil) || auth.credentials.token,
-      facebook_user_id: auth.uid,
-      name: auth.info.name,
-      email: auth.info.email,
-      token_expires_at: token_info&.fetch("expires_in", nil) ? Time.current + token_info["expires_in"].to_i.seconds : nil
-    )
-
-    MetaSyncJob.perform_later(integration.id)
+    Meta::ConnectionCompletion.call(integration: integration, identity: {
+      'access_token' => auth.credentials.token, 'facebook_user_id' => auth.uid, 'name' => auth.info.name, 'email' => auth.info.email
+    })
     redirect_to admin_meta_integrations_path, notice: "Facebook conectado. Estamos preparando os recursos em segundo plano."
   rescue => e
     reason = UserMetaIntegration.sync_failure_reason(e)

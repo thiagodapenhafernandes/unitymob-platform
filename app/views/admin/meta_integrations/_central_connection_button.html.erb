@@ -1,0 +1,3 @@
+<% if Meta::CentralConnectionClient.enabled_for?(current_tenant) && current_admin_user.tenant_id == current_tenant.id %>
+  <%= button_to 'Conectar Ads pelo gateway (piloto)', admin_meta_connection_path, method: :post, data: { turbo: false }, class: 'ax-btn ax-btn--primary' %>
+<% end %>
