@@ -57,6 +57,7 @@ ActiveRecord::Schema.define do
       t.datetime :forwarded_at
       t.timestamps
     end
+    add_index :webhook_events, [:provider, :external_id]
 
     create_table :webhook_mirrors do |t|
       t.string :name, null: false
@@ -94,6 +95,8 @@ require_relative "../db/migrate/20261007160000_add_tiktok_routes"
 ActiveRecord::Migration.suppress_messages { AddTiktokRoutes.new.migrate(:up) }
 require_relative "../db/migrate/20261022170000_add_queued_deliveries"
 ActiveRecord::Migration.suppress_messages { AddQueuedDeliveries.new.migrate(:up) }
+require_relative "../db/migrate/20261022180000_remove_redundant_receipt_index"
+ActiveRecord::Migration.suppress_messages { RemoveRedundantReceiptIndex.new.migrate(:up) }
 
 RSpec.configure do |config|
   config.include Rack::Test::Methods
