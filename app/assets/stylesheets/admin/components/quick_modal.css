@@ -213,6 +213,9 @@
 .ax-quick-modal__header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .ax-quick-modal__back-icon { display: none; }
 @media (max-width: 767px) {
+  .ax-quick-modal--mobile-detail { padding: 0; align-items: stretch; }
+  .ax-quick-modal--mobile-detail .ax-quick-modal__panel { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; }
+  .ax-quick-modal--mobile-detail .ax-quick-modal__body { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   .ax-quick-modal--mobile-detail .ax-quick-modal__header { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; padding: max(8px, env(safe-area-inset-top)) 12px 8px; }
   .ax-quick-modal--mobile-detail .ax-quick-modal__close { grid-column: 1; grid-row: 1; }
   .ax-quick-modal--mobile-detail .ax-quick-modal__close .bi-x-lg { display: none; }

@@ -3,7 +3,7 @@
   <div class="ax-form-workspace ax-commercial-workspace">
     <% if habitation.persisted? && habitation.daily_rental? %>
       <%= ax_operational_panel(title: "Locação diária") do %>
-        <%= link_to "Calendário de disponibilidade", admin_habitation_availability_blocks_path(habitation.id), class: "ax-btn ax-btn--secondary" %>
+        <%= ax_button "Calendário de disponibilidade", icon: "calendar3", data: { ax_modal_open: "#habitationAvailabilityModal" } %>
       <% end %>
     <% end %>
     <div class="ax-commercial-columns">

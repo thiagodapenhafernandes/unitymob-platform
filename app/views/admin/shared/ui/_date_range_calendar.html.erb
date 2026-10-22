@@ -1,0 +1,25 @@
+<div class="ax-date-range__calendar">
+  <nav class="ax-date-range__navigation" aria-label="Meses do calendário">
+    <%= link_to previous_path, class: "ax-icon-btn", data: { admin_navigation_ignore: true }, aria: { label: "Mês anterior" } do %><i class="bi bi-chevron-left" aria-hidden="true"></i><% end %>
+    <strong><%= l(month, format: "%B de %Y").capitalize %></strong>
+    <%= link_to next_path, class: "ax-icon-btn", data: { admin_navigation_ignore: true }, aria: { label: "Próximo mês" } do %><i class="bi bi-chevron-right" aria-hidden="true"></i><% end %>
+  </nav>
+  <table class="ax-date-range__table" aria-label="Selecionar período em <%= l(month, format: '%B de %Y') %>">
+    <thead><tr><% I18n.t("date.abbr_day_names").each do |name| %><th scope="col"><%= name %></th><% end %></tr></thead>
+    <tbody>
+      <% weeks.each do |week| %>
+        <tr><% week.each do |day, blocked| %>
+          <td>
+            <% if day.month == month.month %>
+              <button type="button" class="ax-date-range__day" data-ax-date-range-target="day" data-date="<%= day.iso8601 %>"
+                      data-action="click->ax-date-range#select pointerenter->ax-date-range#preview pointerleave->ax-date-range#clearPreview keydown->ax-date-range#navigate"
+                      aria-label="<%= l(day, format: :long) %><%= ' · Indisponível' if blocked %>" aria-pressed="false"
+                      <%= 'disabled' if blocked %> <%= 'aria-current=date' if day == Date.current %>><%= day.day %></button>
+            <% end %>
+          </td>
+        <% end %></tr>
+      <% end %>
+    </tbody>
+  </table>
+  <div class="ax-date-range__legend"><span>Disponível</span><span class="ax-date-range__legend-selected">Selecionado</span><span class="ax-date-range__legend-blocked">Indisponível</span></div>
+</div>

@@ -1,0 +1,22 @@
+<%= turbo_frame_tag dom_id(@habitation, :availability_modal) do %>
+  <div class="ax-date-range" data-controller="ax-date-range" data-action="turbo:frame-load->ax-date-range#refresh">
+    <% if flash[:notice].present? %><p class="ax-guided-hint" role="status"><%= flash[:notice] %></p><% end %>
+    <%= ax_error_summary(@block) %>
+    <p class="ax-guided-hint">Clique no primeiro e no último dia. As duas datas entram no bloqueio.</p>
+    <%= render "calendar" %>
+    <%= form_with model: @block, url: admin_habitation_availability_blocks_path(@habitation.id), data: { turbo_frame: dom_id(@habitation, :availability_modal) } do |form| %>
+      <%= hidden_field_tag :modal, "1" %>
+      <%= hidden_field_tag :month, @month.strftime("%Y-%m"), data: { ax_date_range_target: "month" } %>
+      <%= ax_field_grid do %>
+        <%= ax_date_field(form: form, method: :starts_on, label: "Data inicial", class_name: "ax-span-6", required: true, data: { ax_date_range_target: "start", action: "change->ax-date-range#change" }) %>
+        <%= ax_date_field(form: form, method: :ends_on, label: "Data final (inclusive)", class_name: "ax-span-6", required: true, data: { ax_date_range_target: "end", action: "change->ax-date-range#change" }) %>
+      <% end %>
+      <p class="ax-date-range__summary" role="status" aria-live="polite" data-ax-date-range-target="summary"></p>
+      <%= ax_form_actions do %>
+        <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-date-range#clear">Limpar seleção</button>
+        <%= form.submit "Bloquear período", class: "ax-btn ax-btn--primary" %>
+      <% end %>
+    <% end %>
+
+  </div>
+<% end %>

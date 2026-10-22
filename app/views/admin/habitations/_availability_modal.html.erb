@@ -1,0 +1,6 @@
+<%= ax_quick_modal(id: "habitationAvailabilityModal", title: "Disponibilidade · Imóvel #{habitation.codigo}", size: :md, mobile_detail: true,
+      header_actions: link_to("Abrir legado", admin_habitation_availability_blocks_path(habitation.id), class: "ax-link", target: "_blank", rel: "noopener")) do %>
+  <%= turbo_frame_tag dom_id(habitation, :availability_modal), src: admin_habitation_availability_blocks_path(habitation.id, modal: "1"), loading: :lazy do %>
+    <p role="status">Carregando disponibilidade…</p>
+  <% end %>
+<% end %>
