@@ -34,7 +34,8 @@ RSpec.describe Meta::ConversionService do
       expect(event["user_data"]["ph"]).to eq(Digest::SHA256.hexdigest("5547999990000"))
       expect(event["user_data"]["fn"]).to eq(Digest::SHA256.hexdigest("maria"))
       expect(event["user_data"].values.join).not_to include("maria", "4799999")
-      expect(event).not_to have_key("custom_data")
+      expect(event["custom_data"]).to eq("event_source" => "crm", "lead_event_source" => "Unitymob")
+      expect(event["user_data"]).not_to have_key("lead_id")
     end
   end
 
@@ -47,7 +48,7 @@ RSpec.describe Meta::ConversionService do
 
     expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
       event = payload["data"].first
-      expect(event["custom_data"]).to eq({ "value" => 850000.0, "currency" => "BRL" })
+      expect(event["custom_data"]).to eq({ "event_source" => "crm", "lead_event_source" => "Unitymob", "value" => 850000.0, "currency" => "BRL" })
       expect(payload["test_event_code"]).to eq("TEST123")
     end
   end
@@ -61,6 +62,34 @@ RSpec.describe Meta::ConversionService do
 
     expect(result).to eq(:skipped)
     expect(graph).not_to have_received(:graph_call)
+  end
+
+  [
+    { "meta_leadgen_id" => "1234567890123456" },
+    { "facebook_attributes" => { "leadgen_id" => "1234567890123456" } },
+    { "external_lead_payload" => { "facebook_attributes" => { "leadgen_id" => "1234567890123456" } } },
+    { "data" => { "facebook_attributes" => { "leadgen_id" => "1234567890123456" } } }
+  ].each do |information|
+    it "envia o identificador original da Meta em #{information.keys.first}, mesmo sem contato" do
+      lead.update_columns(other_information: information, email: nil, phone: nil, client_email: nil, client_phone: nil)
+
+      expect(described_class.new(config).send_event(
+        lead: lead, event_name: "QualifiedLead", event_id: "evt-meta", occurred_at: Time.current
+      )).to eq(:sent)
+
+      expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
+        expect(payload["data"].first["user_data"]["lead_id"]).to eq("1234567890123456")
+      end
+    end
+  end
+
+  it "usa a atribuição Meta como fallback sem confundir o ID interno do CRM" do
+    lead.update_columns(attribution_data: { "facebook" => { "leadgen_id" => "1234567890123456" } })
+    described_class.new(config).send_event(lead: lead, event_name: "Schedule", event_id: "evt-meta", occurred_at: Time.current)
+
+    expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
+      expect(payload["data"].first["user_data"]["lead_id"]).to eq("1234567890123456")
+    end
   end
 
   it "embrulha erro da Meta sem vazar payload" do
