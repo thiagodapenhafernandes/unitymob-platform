@@ -6,3 +6,11 @@ services:
       - .env
     network_mode: host
     restart: unless-stopped
+  webhook-delivery:
+    build: .
+    profiles: [async-delivery]
+    command: [bundle, exec, rake, 'webhooks:work']
+    env_file:
+      - .env
+    network_mode: host
+    restart: unless-stopped

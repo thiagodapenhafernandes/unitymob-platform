@@ -4,6 +4,7 @@ class WebhookEvent < ApplicationRecord
   self.primary_key = "id"
 
   belongs_to :webhook_route, optional: true
+  belongs_to :delivery_destination, optional: true
 
   STATUSES = %w[received forwarded failed unrouted].freeze
 

@@ -56,4 +56,16 @@ RSpec.describe Gateway::EventForwarder do
       "entry" => [{ "id" => "waba-1", "changes" => [{ "value" => { "metadata" => { "phone_number_id" => phone_number_id }, "messages" => [{ "id" => message_id }] } }] }]
     }.to_json
   end
+
+  ["120", (Time.now + 120).httpdate, 'invalid'].each do |retry_after|
+    it "handles Retry-After #{retry_after.inspect} without losing the failure" do
+      route = WebhookRoute.create!(client_key: 'salute', phone_number_id: 'phone-1', target_url: 'https://salute.test/webhooks/whatsapp', forwarding_secret: 'secret')
+      event = WebhookEvent.create!(webhook_route: route, provider: 'whatsapp', event_type: 'message', phone_number_id: 'phone-1', external_id: 'wamid.1', received_at: Time.now)
+      stub_request(:post, route.target_url).to_return(status: 429, headers: { 'Retry-After' => retry_after })
+      now = Time.now
+      described_class.call(event: event, raw_body: single_message_body(phone_number_id: 'phone-1', message_id: 'wamid.1'))
+      expect(event.reload.status).to eq('failed')
+      expect(event.next_retry_at).to be >= now + (retry_after == 'invalid' ? 2 : 115)
+    end
+  end
 end

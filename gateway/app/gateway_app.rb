@@ -61,8 +61,10 @@ module Gateway
           context[:payload] ? JSON.generate(context[:payload]) : raw_body, route: route)
       end
 
-      events.each { |event| forward_event(event, event.raw_body) }
-      events.each { |event| mirror_event(event, event.raw_body) }
+      unless QueuedDelivery.enabled?
+        events.each { |event| forward_event(event, event.raw_body) }
+        events.each { |event| mirror_event(event, event.raw_body) }
+      end
 
       status 200
       json(ok: true, ignored: event_contexts.size - events.size, events: events.map { |event| event_response(event) })
@@ -83,9 +85,11 @@ module Gateway
       event_contexts = MetaLeadPayload.extract_event_contexts(payload)
       events = event_contexts.map { |context| persist_meta_event(context, context[:payload] || payload, context[:payload] ? JSON.generate(context[:payload]) : raw_body) }
 
-      alert_unrouted_events(events)
-      events.each { |event| forward_event(event, event.raw_body) }
-      events.each { |event| mirror_event(event, event.raw_body) }
+      unless QueuedDelivery.enabled?
+        alert_unrouted_events(events)
+        events.each { |event| forward_event(event, event.raw_body) }
+        events.each { |event| mirror_event(event, event.raw_body) }
+      end
 
       status 200
       json(ok: true, events: events.map { |event| event_response(event) })
@@ -382,7 +386,7 @@ module Gateway
     end
 
     def persist_event(context, payload, raw_body, route:)
-      WebhookEvent.create!(
+      persist_receipt(
         provider: "whatsapp",
         webhook_route: route,
         external_id: context[:external_id],
@@ -399,7 +403,7 @@ module Gateway
     def persist_meta_event(context, payload, raw_body)
       route = RouteResolver.meta(page_id: context[:page_id], form_id: context[:form_id])
 
-      WebhookEvent.create!(
+      persist_receipt(
         provider: "meta",
         webhook_route: route,
         external_id: context[:external_id],
@@ -417,6 +421,10 @@ module Gateway
       return unless event.webhook_route
 
       EventForwarder.call(event:, raw_body:)
+    end
+
+    def persist_receipt(**attributes)
+      QueuedDelivery.enabled? ? QueuedDelivery.persist(attributes) : WebhookEvent.create!(attributes)
     end
 
     def mirror_event(event, raw_body)

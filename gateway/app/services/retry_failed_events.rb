@@ -45,6 +45,7 @@ module Gateway
     def retryable_events
       scope = provider ? WebhookEvent.where(provider: provider) : WebhookEvent.all
       scope
+        .where(queued_at: nil)
         .includes(:webhook_route)
         .where("webhook_events.status = 'failed' OR (webhook_events.provider IN ('grupozap', 'tiktok') AND webhook_events.status = 'received' AND webhook_events.received_at <= ?)", now - 60)
         .where("attempts < ?", max_attempts)
