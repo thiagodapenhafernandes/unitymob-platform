@@ -280,7 +280,7 @@ Devise.setup do |config|
   # up on your models and hooks.
   meta_api_version = ENV['META_API_VERSION'] || 'v24.0'
   config.omniauth :facebook, ENV['FACEBOOK_APP_ID'], ENV['FACEBOOK_APP_SECRET'],
-                  scope: 'email,pages_show_list,pages_read_engagement,pages_manage_ads,pages_manage_metadata,ads_management,leads_retrieval,business_management,instagram_basic,instagram_manage_messages',
+                  scope: 'email,pages_show_list,pages_read_engagement,pages_manage_ads,pages_manage_metadata,pages_messaging,ads_management,leads_retrieval,business_management,instagram_basic,instagram_manage_messages',
                   info_fields: 'email,name',
                   callback_url: (ENV['APP_HOST'] + ENV['FACEBOOK_REDIRECT_URI'] if ENV['FACEBOOK_REDIRECT_URI']),
                   client_options: {

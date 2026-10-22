@@ -4,6 +4,7 @@ module Facebook
       "pages_show_list" => ["Páginas", "Localizar as páginas que você administra."],
       "pages_read_engagement" => ["Dados das páginas", "Ler informações das páginas conectadas."],
       "pages_manage_metadata" => ["Webhooks", "Configurar inscrições para receber eventos das páginas."],
+      "pages_messaging" => ["Mensagens da página", "Autorizar a inscrição de mensagens da página usada pelo Instagram Direct."],
       "leads_retrieval" => ["Formulários", "Consultar os cadastros enviados pelos formulários Meta."],
       "instagram_basic" => ["Perfil Instagram", "Identificar o Instagram profissional vinculado à página."],
       "instagram_manage_messages" => ["Direct", "Acessar mensagens do Instagram profissional."],

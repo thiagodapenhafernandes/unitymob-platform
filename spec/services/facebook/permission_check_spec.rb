@@ -13,6 +13,7 @@ RSpec.describe Facebook::PermissionCheck do
     rows = described_class.call(integration)[:permissions].index_by { |row| row[:key] }
     expect(rows["instagram_manage_messages"][:status]).to eq("declined")
     expect(rows["instagram_basic"][:status]).to eq("missing")
+    expect(rows["pages_messaging"][:status]).to eq("missing")
     expect(rows["pages_show_list"][:status]).to eq("granted")
     expect(rows["ads_management"][:status]).to eq("granted")
   end
@@ -28,4 +29,16 @@ RSpec.describe Facebook::PermissionCheck do
     expect(graph).not_to receive(:get_connections)
     expect(described_class.call(integration)[:error]).to include("expirada")
   end
+  it "mostra a concessão ou recusa de mensagens sem confundir com Instagram" do
+    %w[granted declined].each do |status|
+      allow(graph).to receive(:get_connections).with("me", "permissions").and_return([
+        {"permission" => "pages_messaging", "status" => status},
+        {"permission" => "instagram_manage_messages", "status" => "granted"}
+      ])
+      rows = described_class.call(integration)[:permissions].index_by { |row| row[:key] }
+      expect(rows["pages_messaging"][:status]).to eq(status)
+      expect(rows["instagram_manage_messages"][:status]).to eq("granted")
+    end
+  end
+
 end
