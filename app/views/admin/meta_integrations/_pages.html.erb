@@ -1,6 +1,9 @@
 <div id="meta_pages">
   <% pages_actions = capture do %>
-    <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--primary" do %>
+    <%= button_to sync_forms_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--primary" do %>
+      <i class="bi bi-plus-circle ax-ico" aria-hidden="true"></i> Buscar novos formulários
+    <% end %>
+    <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn" do %>
       <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Atualizar páginas
     <% end %>
     <% if respond_to?(:impersonating_admin_user?) && impersonating_admin_user? %>

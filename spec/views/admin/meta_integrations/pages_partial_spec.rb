@@ -9,6 +9,7 @@ RSpec.describe "admin/meta_integrations/_pages.html.erb", type: :view do
     html = Nokogiri::HTML(rendered)
     expect(html.at_css("#meta_pages")).to be_present
     expect(rendered).to include("Atualizar páginas")
+    expect(rendered).to include("Buscar novos formulários", sync_forms_admin_meta_integrations_path)
     expect(rendered).not_to include("Selecionar páginas")
   end
 end

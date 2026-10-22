@@ -83,7 +83,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   def sync_forms
-    trigger_sync(notice: "A sincronização dos formulários foi iniciada.")
+    trigger_sync(notice: "A busca de novos formulários foi iniciada.", new_forms_only: true)
   end
 
   def ad_accounts
@@ -143,7 +143,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   # modelo agência: cada usuário conecta o próprio Facebook e sincroniza as
   # próprias páginas. Responde JSON para o botão "Sincronizar agora" das
   # regras de distribuição dar feedback honesto.
-  def trigger_sync(notice:)
+  def trigger_sync(notice:, new_forms_only: false)
     integration = @integration
 
     if integration.nil?
@@ -155,8 +155,13 @@ class Admin::MetaIntegrationsController < Admin::BaseController
       return
     end
 
-    integration.update!(sync_status: "processing", sync_progress: 0, sync_message: "Aguardando início da sincronização…", last_sync_error: nil)
-    MetaSyncJob.perform_later(integration.id)
+    integration.update!(sync_status: "processing", sync_progress: 0, sync_message: "Aguardando início da sincronização…",
+      last_sync_error: new_forms_only ? integration.last_sync_error : nil)
+    if new_forms_only
+      MetaSyncJob.perform_later(integration.id, new_forms_only: true)
+    else
+      MetaSyncJob.perform_later(integration.id)
+    end
     respond_to do |format|
       format.json { render json: { ok: true, message: notice } }
       format.html { redirect_to admin_meta_integrations_path, notice: notice }

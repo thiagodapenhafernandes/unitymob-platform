@@ -22,6 +22,15 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     sign_in admin
   end
 
+  it "busca só formulários novos na ação de formulários e preserva a atualização completa" do
+    integration
+    expect { post sync_forms_admin_meta_integrations_path, as: :json }
+      .to have_enqueued_job(MetaSyncJob).with(integration.id, new_forms_only: true)
+    expect(response).to have_http_status(:ok)
+    expect { post sync_pages_admin_meta_integrations_path, as: :json }
+      .to have_enqueued_job(MetaSyncJob).with(integration.id)
+  end
+
   it "exibe a seção de resultados dos anúncios com modal explicativo" do
     page
     get admin_meta_integrations_path
