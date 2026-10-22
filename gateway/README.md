@@ -2,6 +2,60 @@
 
 Subapp isolado para receber o webhook global do app Meta da Unitymob e rotear eventos para os sistemas dos clientes.
 
+## Entrega assíncrona Meta/WhatsApp (opt-in; não ativada automaticamente)
+
+`GATEWAY_ASYNC_DELIVERY_ENABLED=true` faz os endpoints Meta/WhatsApp persistirem
+antes de responder 200, sem chamadas de rede no recebimento. Um worker separado
+(`webhooks:work`, profile Compose `async-delivery`) usa o próprio banco do gateway,
+com dois consumidores, exclusão mútua e intervalo mínimo de 300 ms por host,
+compartilhado entre provedores. TikTok, Grupo OLX, discovery, URLs, assinaturas,
+segredos e seleção de rotas permanecem nos contratos atuais.
+
+Eventos novos recebem identidade única; reentregas não criam outra entrega.
+WhatsApp distingue transições sent/delivered/read e alterações de template.
+Recibos históricos correspondentes não são inscritos na fila nova. Nenhum
+backfill, replay ou limpeza de duplicatas históricas faz parte da migration.
+Os retries antigos ignoram a fila nova, evitando concorrência entre mecanismos.
+
+Falhas novas têm até 10 tentativas, espera exponencial e jitter. HTTP 429 pausa
+o destino por pelo menos 60 segundos, respeitando `Retry-After` maior, inclusive
+HTTP-date. Depois do limite, o registro permanece `failed` e finalizado para
+revisão manual. Não prometer exactly-once: queda após aceite pelo CRM e antes do
+commit pode exigir nova entrega; a idempotência do consumidor continua necessária.
+
+### Publicação futura, após aprovação do pacote
+
+1. Guardar revisão/configuração, inventariar fila e rotas. Preservar `.env` e
+   arquivos de runtime existentes. Não executar `webhooks:retry_failed` genérico.
+2. Construir as imagens novas, sem substituir os processos. Executar a migration
+   `20261022170000` com a imagem nova **antes** de subir web/worker. Exemplo:
+   `docker compose run --rm --no-deps whatsapp-gateway bundle exec rake db:migrate`.
+   A migration é aditiva, sem backfill, com índices da tabela de eventos criados
+   concorrentemente; a FK nova é NOT VALID para evitar varredura bloqueante do
+   histórico. Não remover colunas/índices no rollback de aplicação.
+3. Somente na Salute, publicar o Rails e configurar
+   `AUTHENTICATED_GATEWAY_WEBHOOK_LIMIT=1200`. Não trocar o forwarding secret.
+   A assinatura HMAC é validada sobre o corpo cru antes de separar a cota. Header
+   inválido continua na cota pública. Meta/WhatsApp têm cotas independentes;
+   instalações sem essa variável mantêm o limite anterior. Não implantar Rails
+   na Conexão por inferência deste pacote.
+4. Configurar o flag do gateway e iniciar primeiro o worker:
+   `docker compose --profile async-delivery up -d webhook-delivery`.
+   Verificar processo, logs e acesso ao banco. O web antigo ainda mantém seu
+   ambiente até ser recriado; não modificar a tabela de eventos históricos.
+5. Só então recriar o serviço web com o flag habilitado. Validar `/up`,
+   `webhooks:queue_status`, idade da fila, logs, falhas finais, latência e entrega
+   natural em cada CRM; 200/forwarded não substitui confirmação de ingestão.
+6. Alertar worker parado/reiniciando, fila envelhecendo e falhas finais. `/up`
+   sozinho continua sendo apenas saúde HTTP. Comparar rotas e callbacks com o
+   baseline, sem reconectar contas nem reenviar o histórico.
+
+Rollback deve preservar os recibos pendentes: manter o receptor novo e reparar
+ou reverter o worker compativelmente, ou drenar a fila antes de voltar ao modo
+síncrono. Não desligar a fila e voltar cegamente ao web antigo com pendências:
+reentregas poderiam passar pelos dois mecanismos. Nenhum comando deste roteiro
+foi executado em produção durante a implementação local.
+
 ## Objetivo
 
 - Endpoint publico WhatsApp: `https://webhooks.unitymob.com.br/webhooks/whatsapp`

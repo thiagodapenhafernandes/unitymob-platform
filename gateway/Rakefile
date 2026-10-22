@@ -40,6 +40,28 @@ namespace :db do
 end
 
 namespace :webhooks do
+  desc "Inspect the new delivery queue without sending events"
+  task :queue_status do
+    pending = WebhookEvent.where(queue_finished_at: nil).where.not(queued_at: nil)
+    puts "pending=#{pending.count} oldest=#{pending.minimum(:queued_at)&.iso8601} " \
+      "finished_failed=#{WebhookEvent.where(status: 'failed').where.not(queue_finished_at: nil).count}"
+  end
+  desc "Deliver only newly queued receipts; never enroll historical events"
+  task :work do
+    abort 'GATEWAY_ASYNC_DELIVERY_ENABLED must be true' unless Gateway::QueuedDelivery.enabled?
+    stopping = false
+    %w[TERM INT].each { |signal| Signal.trap(signal) { stopping = true } }
+    # Two independent destinations can progress when one CRM is slow.
+    workers = Array.new(2) do
+      Thread.new do
+        until stopping
+          ActiveRecord::Base.connection_pool.with_connection { Gateway::DeliveryWorker.tick }
+          sleep 0.1 unless stopping
+        end
+      end.tap { |worker| worker.abort_on_exception = true }
+    end
+    workers.each(&:value)
+  end
   desc "List recent webhook events. Filters: STATUS, PROVIDER, PAGE_ID, FORM_ID, PHONE_NUMBER_ID, LIMIT"
   task :events do
     limit = [[ENV.fetch("LIMIT", 50).to_i, 1].max, 200].min

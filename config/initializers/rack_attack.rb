@@ -228,7 +228,28 @@ class Rack::Attack
   # retries). Serve só para conter flood anônimo no endpoint público.
   throttle("webhooks/meta_whatsapp", limit: 300, period: 1.minute) do |req|
     if req.post? && (req.path == "/webhooks/meta" || req.path == WHATSAPP_WEBHOOK_PATH)
-      req.ip
+      unless Rack::Attack.authenticated_gateway_webhook?(req)
+        ENV['AUTHENTICATED_GATEWAY_WEBHOOK_LIMIT'].to_i.positive? ? [req.path, req.ip].join(':') : req.ip
+      end
+    end
+  end
+
+  # Opt-in per installation; signed deliveries retain a bounded, separate quota.
+  throttle("webhooks/authenticated_gateway", limit: ->(_req) { [ENV['AUTHENTICATED_GATEWAY_WEBHOOK_LIMIT'].to_i, 1].max }, period: 1.minute) do |req|
+    "#{req.path}:#{req.ip}" if Rack::Attack.authenticated_gateway_webhook?(req)
+  end
+
+  def self.authenticated_gateway_webhook?(req)
+    return false unless ENV['AUTHENTICATED_GATEWAY_WEBHOOK_LIMIT'].to_i.positive? && req.post? &&
+      ["/webhooks/meta", WHATSAPP_WEBHOOK_PATH].include?(req.path)
+    return req.env['unitymob.gateway_signature_valid'] if req.env.key?('unitymob.gateway_signature_valid')
+
+    begin
+      body = req.body.read
+      req.env['unitymob.gateway_signature_valid'] = Webhooks::GatewaySignature.valid?(
+        body: body, signature: req.get_header('HTTP_X_UNITYMOB_GATEWAY_SIGNATURE'))
+    ensure
+      req.body.rewind
     end
   end
 

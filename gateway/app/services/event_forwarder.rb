@@ -2,6 +2,7 @@
 
 require "net/http"
 require "uri"
+require "time"
 
 module Gateway
   class EventForwarder
@@ -26,7 +27,7 @@ module Gateway
       if response.is_a?(Net::HTTPSuccess)
         event.update!(status: "forwarded", forwarded_at: Time.now, last_error: nil, next_retry_at: nil)
       else
-        mark_failed!("HTTP #{response.code}: #{response.body.to_s[0, 500]}")
+        mark_failed!("HTTP #{response.code}: #{response.body.to_s[0, 500]}", retry_after: response['Retry-After'])
       end
 
       response
@@ -82,11 +83,20 @@ module Gateway
         WebhookRoute.where(provider: "whatsapp", phone_number_id: event.phone_number_id.to_s, active: true).none?
     end
 
-    def mark_failed!(message)
+    def mark_failed!(message, retry_after: nil)
+      delay = message.start_with?('HTTP 429:') ? [60, backoff_seconds].max : backoff_seconds
+      begin
+        if retry_after.present?
+          seconds = retry_after.match?(/\A\d+\z/) ? retry_after.to_i : Time.httpdate(retry_after) - Time.now
+          delay = [delay, seconds].max
+        end
+      rescue ArgumentError
+        # A malformed header must not discard an otherwise valid delivery failure.
+      end
       event.update!(
         status: "failed",
         last_error: message,
-        next_retry_at: Time.now + backoff_seconds
+        next_retry_at: Time.now + delay + rand
       )
     end
 

@@ -36,16 +36,7 @@ module Webhooks
     end
 
     def valid_gateway_signature?(raw_body)
-      secret = ENV["WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET"].presence
-      return false if secret.blank?
-
-      signature = request.headers[GATEWAY_SIGNATURE_HEADER].to_s.delete_prefix("sha256=")
-      return false if signature.blank?
-
-      expected = OpenSSL::HMAC.hexdigest("SHA256", secret, raw_body.to_s)
-      ActiveSupport::SecurityUtils.secure_compare(signature, expected)
-    rescue ArgumentError
-      false
+      Webhooks::GatewaySignature.valid?(body: raw_body.to_s, signature: request.headers[GATEWAY_SIGNATURE_HEADER])
     end
 
     # Secret do App Meta: config do Admin do Sistema vence, senão ENV
