@@ -39,3 +39,9 @@
 
 <%= render 'form', habitation: @habitation %>
 <%= render 'audit_history_modal', habitation: @habitation %>
+
+<% if @habitation.daily_rental? %>
+  <% content_for :admin_modals do %>
+    <%= render "availability_modal", habitation: @habitation %>
+  <% end %>
+<% end %>

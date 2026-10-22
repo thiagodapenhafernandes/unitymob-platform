@@ -352,6 +352,9 @@
       <%= yield %>
     </main>
 
+    <%# Modais remotos ficam fora do stacking context do workspace e dos formulários. %>
+    <%= yield :admin_modals %>
+
     <div id="adminNavigationPreloader"
          class="ax-admin-preloader"
          data-turbo-permanent
