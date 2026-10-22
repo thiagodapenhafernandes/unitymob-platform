@@ -1,7 +1,7 @@
 module Meta
   # Envia um evento de funil ao Dataset da conta via Conversions API.
   # user_data segue a spec da Meta (normalizado + SHA256); o matching é por
-  # e-mail/telefone — sem nenhum dos dois o evento é descartado, pois a Meta
+  # ID original do lead ou e-mail/telefone — sem identificador o evento é descartado, pois a Meta
   # não conseguiria atribuir. Nunca registra PII em claro nos logs.
   class ConversionService
     class ConversionError < StandardError; end
@@ -15,7 +15,7 @@ module Meta
     # estável evita duplicar nos que já receberam.
     def send_event(lead:, event_name:, event_id:, occurred_at:, value: nil)
       user_data = build_user_data(lead)
-      if user_data["em"].blank? && user_data["ph"].blank?
+      if user_data.values_at("em", "ph", "lead_id").all?(&:blank?)
         Rails.logger.info("[Meta::ConversionService] lead_id=#{lead.id} event=#{event_name} skipped_sem_match")
         return :skipped
       end
@@ -56,7 +56,14 @@ module Meta
       email = lead.display_email.to_s.strip.downcase
       phone = Phones::Normalizer.call(lead.display_phone).to_s.gsub(/\D/, "")
       first_name, *rest = lead.display_name.to_s.split
+      info = lead.other_information.to_h
+      lead_id = [info["meta_leadgen_id"],
+                 info.dig("facebook_attributes", "leadgen_id"),
+                 info.dig("external_lead_payload", "facebook_attributes", "leadgen_id"),
+                 info.dig("data", "facebook_attributes", "leadgen_id"),
+                 lead.attribution_data.to_h.dig("facebook", "leadgen_id")].find(&:present?)
       {
+        "lead_id" => lead_id.presence&.to_s,
         "em" => sha256(email),
         "ph" => sha256(phone),
         "fn" => sha256(first_name&.downcase),
@@ -65,9 +72,9 @@ module Meta
     end
 
     def build_custom_data(event_name, value)
-      return nil unless event_name == "Purchase" && value.to_f.positive?
-
-      { "value" => value.to_f.round(2), "currency" => "BRL" }
+      data = { "event_source" => "crm", "lead_event_source" => "Unitymob" }
+      data.merge!("value" => value.to_f.round(2), "currency" => "BRL") if event_name == "Purchase" && value.to_f.positive?
+      data
     end
 
     def sha256(value)
