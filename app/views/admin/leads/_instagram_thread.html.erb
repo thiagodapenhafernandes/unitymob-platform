@@ -1,6 +1,7 @@
 <% window_open = Instagram::Reply.window_open?(lead) %>
 <div class="ax-card tw-mb-3" id="lead-instagram-thread"
      data-controller="ax-live-thread"
+     data-ax-live-thread-read-url-value="<%= read_direct_admin_in_app_notifications_path(lead_id: lead.id) %>"
      data-ax-live-thread-channel-value="LeadConversationChannel"
      data-ax-live-thread-params-value="<%= { lead_id: lead.id, tenant_id: lead.tenant_id }.to_json %>"
      data-action="turbo:submit-start->ax-live-thread#submitting turbo:submit-end->ax-live-thread#submitted turbo:frame-load->ax-live-thread#frameLoaded">

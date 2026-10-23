@@ -4,6 +4,7 @@
 <% unread = InAppNotification.unread_count_for(current_admin_user) %>
 <div class="ax-notifications"
      data-controller="<%= "ax-dropdown " unless toasts_only %>in-app-notifications"
+     data-in-app-notifications-summary-url-value="<%= summary_admin_in_app_notifications_path %>"
      data-in-app-notifications-unread-value="<%= unread %>"
      data-in-app-notifications-read-url-value="<%= read_admin_in_app_notification_path(0) %>"
      data-in-app-notifications-read-all-url-value="<%= read_all_admin_in_app_notifications_path %>">

@@ -7,6 +7,7 @@ module Whatsapp
       end
 
       def message_created(message)
+        InAppNotification.invalidate_title!(message.tenant_id)
         conversation = message.whatsapp_conversation
         broadcast_to_workspaces(
           conversation,
@@ -32,6 +33,7 @@ module Whatsapp
       end
 
       def queue_refreshed(conversation)
+        InAppNotification.invalidate_title!(conversation.tenant_id)
         broadcast_to_workspaces(
           conversation,
           status_cursor: status_cursor_for(conversation),

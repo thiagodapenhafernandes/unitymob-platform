@@ -13,6 +13,21 @@ class InAppNotification < ApplicationRecord
 
   def self.unread_count_for(admin_user) = unread.where(admin_user_id: admin_user.id).count
 
+  def self.title_count_for(user, tenant)
+    notices = unread.where(admin_user_id: user.id, tenant_id: tenant.id)
+    direct = notices.where(kind: "instagram_message")
+    visible_leads = Lead.accessible_to_admin(user, tenant: tenant).select("leads.id::text")
+    direct_count = user.can?(:view, :leads) ? direct.where("metadata ->> 'lead_id' IN (?)", visible_leads).count : 0
+    whatsapp = user.can?(:view, :whatsapp_inbox) ? tenant.whatsapp_conversations.visible_to(user).unread.sum(:unread_count) : 0
+    notices.where.not(kind: "instagram_message").count + direct_count + whatsapp
+  end
+
+  def self.invalidate_title!(tenant_id)
+    ActionCable.server.broadcast("unread_title:#{tenant_id}", event: "unread_changed")
+  rescue StandardError => error
+    Rails.logger.warn("[Unread title] broadcast unavailable class=#{error.class}")
+  end
+
   def self.notify!(admin_user:, kind:, title:, body: nil, url: nil, metadata: {})
     return if admin_user.blank?
 
