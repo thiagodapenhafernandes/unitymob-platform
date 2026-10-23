@@ -33,7 +33,7 @@ RSpec.describe 'Instagram Direct sem recarregar o lead', type: :request do
     get instagram_thread_admin_lead_path(lead)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('<turbo-frame', '&lt;script&gt;')
-    expect(response.body).not_to include('<textarea', '<script>', '<html')
+    expect(response.body).not_to include('<textarea', '<script>', '<html', ' src=')
   end
 
   it 'recusa outra conta no GET e no envio' do

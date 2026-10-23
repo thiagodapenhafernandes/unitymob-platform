@@ -551,7 +551,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def instagram_thread
-    render partial: "admin/leads/instagram_messages_frame", locals: { lead: @lead }
+    render partial: "admin/leads/instagram_messages_frame", locals: { lead: @lead, source: nil }
   end
 
   def reply_instagram
