@@ -385,6 +385,8 @@ Rails.application.routes.draw do
     resources :in_app_notifications, path: "notificacoes/internas", only: [] do
       post :read, on: :member
       post :read_all, on: :collection
+      get :summary, on: :collection
+      post :read_direct, on: :collection
     end
 
     # === Atendimento WhatsApp (inbox) ===

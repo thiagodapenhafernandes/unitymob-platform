@@ -1,6 +1,6 @@
 <% messages = lead.instagram_messages.includes(:sent_by_admin_user).chronological.to_a %>
 <% window_open = Instagram::Reply.window_open?(lead) %>
-    <div class="lead-ig-thread__head" data-thread-reply-open="<%= window_open %>">
+    <div class="lead-ig-thread__head" data-thread-reply-open="<%= window_open %>" data-thread-read-cursor="<%= messages.map(&:id).max.to_i %>">
       <i class="bi bi-instagram"></i>
       <strong>Instagram Direct</strong>
       <span class="lead-ig-thread__window lead-ig-thread__window--<%= window_open ? "open" : "closed" %>">

@@ -4,9 +4,15 @@ import consumer from "channels/consumer"
 // Sino + toast em tempo real. O servidor envia { id, title, body, url, unread_count }.
 export default class extends Controller {
   static targets = ["badge", "list", "empty", "toasts", "soundToggle"]
-  static values = { unread: Number, readUrl: String, readAllUrl: String }
+  static values = { unread: Number, readUrl: String, readAllUrl: String, summaryUrl: String }
 
   connect() {
+    this.disconnected = false
+    this.baseTitle = document.title.replace(/^\(\d+\) /, "")
+    this.refreshTitle = this.refreshTitle.bind(this)
+    window.addEventListener("focus", this.refreshTitle)
+    this.refreshTitle()
+
     this.unlockAudio = () => this.audio()?.resume?.()
     document.addEventListener("pointerdown", this.unlockAudio, { once: true })
     document.addEventListener("keydown", this.unlockAudio, { once: true })
@@ -17,18 +23,38 @@ export default class extends Controller {
     if (this.toastHost) document.body.append(this.toastHost)
     this.subscription = consumer.subscriptions.create(
       { channel: "InAppNotificationsChannel" },
-      { received: (data) => this.received(data) }
+      { connected: () => this.refreshTitle(), received: (data) => this.received(data) }
     )
   }
 
   disconnect() {
+    this.disconnected = true
+    window.removeEventListener("focus", this.refreshTitle)
+
     consumer.subscriptions.remove(this.subscription)
     this.toastHost?.remove()
     document.removeEventListener("pointerdown", this.unlockAudio)
     document.removeEventListener("keydown", this.unlockAudio)
   }
 
+  async refreshTitle() {
+    if (!this.hasSummaryUrlValue) return
+    const request = this.titleRequest = (this.titleRequest || 0) + 1
+    try {
+      const response = await fetch(this.summaryUrlValue, { headers: { Accept: "application/json" }, credentials: "same-origin" })
+      if (!response.ok) return
+      const { total, unread_count } = await response.json()
+      if (this.disconnected || request !== this.titleRequest) return
+      this.renderBadge(unread_count)
+      const count = Math.max(0, Number(total) || 0)
+      document.title = `${count ? `(${count}) ` : ""}${this.baseTitle}`
+    } catch (_error) { /* Sem rede: mantém a última contagem confirmada. */ }
+  }
+
   received(data) {
+    this.refreshTitle()
+    if (data.event === "unread_changed") return
+
     if (data.event === "whatsapp_message") return this.messageArrived(data)
     if (data.event === "read") return this.markRead(data)
     if (data.event === "attendance_changed") return window.dispatchEvent(new CustomEvent("wa:attendance-changed", { detail: data }))
