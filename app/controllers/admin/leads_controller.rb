@@ -122,8 +122,8 @@ class Admin::LeadsController < Admin::BaseController
   requires_permission :edit, :leads, only: [:update, :reply_instagram, :share_properties, :suggest_properties, :reconcile_inquiry]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
-  before_action :authorize_lead_access!, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
+  before_action :set_lead, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :instagram_thread]
+  before_action :authorize_lead_access!, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :instagram_thread]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -550,11 +550,21 @@ class Admin::LeadsController < Admin::BaseController
     end
   end
 
+  def instagram_thread
+    render partial: "admin/leads/instagram_messages_frame", locals: { lead: @lead }
+  end
+
   def reply_instagram
     Instagram::Reply.call(lead: @lead, body: params[:body], admin_user: current_admin_user)
-    redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), notice: "Resposta enviada no Instagram."
+    respond_to do |format|
+      format.turbo_stream { render_instagram_reply }
+      format.html { redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), notice: "Resposta enviada no Instagram." }
+    end
   rescue Instagram::Reply::Error => error
-    redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), alert: error.message
+    respond_to do |format|
+      format.turbo_stream { render_instagram_reply(error: error.message) }
+      format.html { redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), alert: error.message }
+    end
   end
 
   def log_contact
@@ -2030,6 +2040,13 @@ class Admin::LeadsController < Admin::BaseController
     end
   end
 
+  def render_instagram_reply(error: nil)
+    render turbo_stream: [
+      turbo_stream.update("lead_instagram_messages_#{@lead.id}", partial: "admin/leads/instagram_messages", locals: { lead: @lead }),
+      turbo_stream.update("lead_instagram_status_#{@lead.id}", error.to_s)
+    ], status: error ? :unprocessable_entity : :ok
+  end
+
   def set_lead
     @lead = current_tenant.leads.find(params[:id])
   end
@@ -2378,6 +2395,7 @@ class Admin::LeadsController < Admin::BaseController
 
     respond_to do |format|
       format.html { redirect_to admin_leads_path, alert: "Você não tem acesso a este lead." }
+      format.turbo_stream { head :forbidden }
       format.json do
         render(
           json: {
@@ -3160,10 +3178,7 @@ class Admin::LeadsController < Admin::BaseController
   def accessible_lead_scope_for_current_user
     return Lead.none unless current_admin_user
 
-    owner_ids = accessible_owner_ids(:leads)
-    return current_tenant.leads if owner_ids.nil?
-
-    current_tenant.leads.where(admin_user_id: owner_ids)
+    Lead.accessible_to_admin(current_admin_user, tenant: current_tenant)
   end
 
   # Recorte adicional por acting_type — preservado por cima do escopo de equipe.
