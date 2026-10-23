@@ -29,6 +29,7 @@ export default class extends Controller {
     wrapper.innerHTML = html.trim()
     const next = wrapper.firstElementChild
     if (!next) return
+    if (next.dataset.administrativeInbox === "false") return current?.remove()
 
     if (current) {
       if (current.classList.contains("is-active")) next.classList.add("is-active")

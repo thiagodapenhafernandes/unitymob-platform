@@ -104,6 +104,7 @@ module Whatsapp
       def serialize_conversation(conversation)
         {
           id: conversation.id,
+          administrative_inbox: conversation.administrative_inbox?,
           html: Admin::WhatsappInboxController.render(
             partial: "admin/whatsapp_inbox/conversation_item",
             formats: [:html],

@@ -11,7 +11,7 @@ module ExternalLeadMigration
       return if tenant.blank?
 
       lead = tenant.leads.find_by(id: lead_id)
-      return if lead.blank? || lead.c2s_exported_at.present?
+      return if lead.blank? || lead.whatsapp_service_contact? || lead.c2s_exported_at.present?
 
       integration = tenant.external_lead_integration
       return unless integration&.export_active?

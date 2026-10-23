@@ -15,6 +15,12 @@ class WhatsappAttendance < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
 
   scope :open_now, -> { where(status: "open") }
+  scope :administrative, -> {
+    left_joins(admin_user: :profile).where(distribution_rule_id: nil).where(
+      "admin_users.horizontal_profile_id IS NOT NULL OR profiles.axis = ? OR profiles.key = ?",
+      Profile::AXES[:horizontal], "tenant_owner"
+    )
+  }
 
   CLOSE_REASONS = {
     "finished" => "Finalizado",

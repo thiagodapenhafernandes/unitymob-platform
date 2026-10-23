@@ -122,7 +122,12 @@
           w.dataLayer = w.dataLayer || [];
           <% unless tracking_setting.stape_enabled? %>w.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });<% end %>
           <% if tracking_setting.stape_enabled? %>
-            <%= render "layouts/stape_loader", tracking_setting: tracking_setting %>
+            function loadStape() {
+              if (!consentAccepted()) return;
+              <%= render "layouts/stape_loader", tracking_setting: tracking_setting %>
+            }
+            fetch(<%= raw stape_cookie_path.to_json %>, { credentials: "same-origin", cache: "no-store" })
+              .then(loadStape, loadStape);
           <% else %>
             loadScript("https://www.googletagmanager.com/gtm.js?id=<%= j gtm_container_id %>");
           <% end %>
@@ -161,6 +166,13 @@
       loadTracking();
       d.addEventListener("click", trackPublicClick, true);
       w.addEventListener("unitymob:lgpd-consent-accepted", loadTracking);
+      <% if tracking_setting.stape_enabled? %>
+        function clearStapeCookie() {
+          fetch(<%= raw stape_cookie_path.to_json %>, { credentials: "same-origin", cache: "no-store", keepalive: true }).catch(function() {});
+        }
+        w.addEventListener("unitymob:lgpd-consent-rejected", clearStapeCookie);
+        if (!consentAccepted() && d.cookie.split(";").some(function(cookie) { return cookie.trim().indexOf("si_uid=") === 0; })) clearStapeCookie();
+      <% end %>
     })(window, document);
   </script>
 <% end %>

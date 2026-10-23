@@ -64,6 +64,39 @@ RSpec.describe "Tracking tags", type: :request do
     expect(response.body).to include('negotiation_type: target.dataset.negotiationType || "general"')
   end
 
+  it "aguarda o cookie mestre antes do loader e respeita recusa, revogação e falha de rede" do
+    Setting.set(TrackingIntegrationSetting::GTM_ENABLED_KEY, "true")
+    { stape_enabled: "true", stape_domain: "https://gtm.saluteimoveis.com.br",
+      stape_loader_domain: "https://load.gtm.saluteimoveis.com.br", stape_identifier: "3ceniiuiwsxi",
+      stape_configuration: "dxfrp44=ABC123" }.each { |field, value| Setting.set("tracking.#{field}", value) }
+    get root_path
+    source = Nokogiri::HTML(response.body).css("script").find { |script| script.text.include?('var COOKIE_KEY = "unitymob_lgpd_consent"') }.text
+    check = <<~JS
+      const vm = require('node:vm'), assert = require('node:assert/strict');
+      async function scenario({accepted = true, fail = false, withdraw = false} = {}) {
+        let resolve, reject, requests = 0, cookie = '';
+        const loaded = [], w = {location: {href: 'https://example.test'}, addEventListener() {}, UnitymobLgpdConsent: {accepted: () => accepted}};
+        const d = {get cookie() {return cookie}, querySelector() {return null}, createElement() {return {}},
+          head: {appendChild(script) {loaded.push(script.src)}}, addEventListener() {}};
+        vm.runInNewContext(#{source.to_json}, {window:w, document:d, navigator:{userAgent:'Version/17.0 Safari/605.1'}, console,
+          fetch() {requests++; return new Promise((ok, error) => {resolve = ok; reject = error})}});
+        assert.equal(requests, accepted ? 1 : 0);
+        assert.equal(loaded.length, 0);
+        if (!accepted) return;
+        if (withdraw) accepted = false;
+        if (fail) reject(new Error('offline'));
+        else {cookie = 'si_uid=stable-id'; resolve({ok:true})}
+        await Promise.resolve(); await Promise.resolve();
+        assert.equal(loaded.length, withdraw ? 0 : 1);
+        if (!withdraw) assert.equal(loaded[0].includes('bi=stable-id'), !fail);
+      }
+      (async () => {await scenario({accepted:false}); await scenario(); await scenario({withdraw:true}); await scenario({fail:true})})()
+        .catch(error => {console.error(error); process.exitCode = 1});
+    JS
+    _, error, status = Open3.capture3("node", "-e", check)
+    expect(status.success?).to be(true), error
+  end
+
   it "respeita recusa e mantém callback do GTM fora do payload da Meta" do
     Setting.set(TrackingIntegrationSetting::GTM_ENABLED_KEY, "true")
     Setting.set(TrackingIntegrationSetting::GTM_CONTAINER_ID_KEY, "GTM-ABC123")

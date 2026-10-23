@@ -324,12 +324,12 @@ class Admin::WhatsappInboxController < Admin::BaseController
     @focus_mode = params[:workspace] == "focus"
     @integration = WhatsappBusinessIntegration.current(current_tenant)
     @queue_filter = queue_filter
-    @conversation_base_scope = conversation_scope
+    @conversation_base_scope = conversation_scope.administrative_inbox
     @conversations = apply_queue_filter(@conversation_base_scope).recent.limit(queue_limit)
     @templates = current_tenant.whatsapp_templates.approved.ordered
     @conversation_count = @conversation_base_scope.count
     @unread_conversation_count = @conversation_base_scope.unread.count
-    @unlinked_conversation_count = @conversation_base_scope.where(lead_id: nil).count
+    @unlinked_conversation_count = @conversation_base_scope.without_commercial_lead.count
     @pending_reply_conversation_count = @conversation_base_scope.pending_reply_since.count
     @pending_reply_conversation_ids = @conversation_base_scope.pending_reply_since.where(id: @conversations.map(&:id)).pluck(:id)
     @total_unread = @conversation_base_scope.unread.sum(:unread_count)
@@ -370,7 +370,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
     when "unread"
       scope.unread
     when "unlinked"
-      scope.where(lead_id: nil)
+      scope.without_commercial_lead
     when "pending_reply"
       scope.pending_reply_since
     else
@@ -390,7 +390,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def conversation_scope
-    base = current_tenant.whatsapp_conversations.with_attached_contact_avatar.includes(:assigned_admin_user, { attendances: :admin_user }, lead: { lead_labelings: :lead_label })
+    base = current_tenant.whatsapp_conversations.with_attached_contact_avatar.includes(:assigned_admin_user, { attendances: { admin_user: :profile } }, lead: { lead_labelings: :lead_label })
     ids = visible_owner_ids(:whatsapp_inbox)
     return base if ids.nil?
 

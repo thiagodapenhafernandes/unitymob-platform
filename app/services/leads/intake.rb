@@ -91,6 +91,14 @@ module Leads
             previous_assignment = existing.attributes.slice("admin_user_id", "status", "lead_pipeline_stage_id", "distribution_rule_id",
               "archived_at", "archive_reason_id", "archive_note")
             existing.skip_automatic_routing = true
+            if existing.whatsapp_service_contact? && !inquiry.whatsapp_service_contact?
+              existing.assign_attributes(inquiry.attributes.slice(
+                "origin", "lead_type", "source_url", "property_id", "product",
+                "attribution_channel", "attribution_source", "attribution_data",
+                "lead_pipeline_id", "lead_pipeline_stage_id", "status"
+              ).compact)
+            end
+            existing.other_information = existing.other_information.except("whatsapp_service_contact") unless inquiry.whatsapp_service_contact?
             route = distribution_rule.present? || !inquiry.skip_automatic_routing?
             routing = if route && RoutingService.assign_shared_inquiry!(existing, inquiry)
               :direct

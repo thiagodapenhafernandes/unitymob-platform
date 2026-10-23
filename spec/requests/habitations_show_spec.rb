@@ -5,6 +5,7 @@ RSpec.describe "Habitation details", type: :request do
 
   before do
     host! "localhost"
+    allow_any_instance_of(HabitationsController).to receive(:social_image_url_accessible?).and_return(true)
   end
 
   def public_photo_url(filename)
@@ -331,8 +332,8 @@ RSpec.describe "Habitation details", type: :request do
       post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body.fetch("url")).to include("share_token=")
-      expect(response.parsed_body.fetch("url")).to include("preview=")
+      expect(response.parsed_body.fetch("url")).to include("/i/")
+      expect(URI.parse(response.parsed_body.fetch("url")).query).to be_nil
     end
 
     it "creates a tracked share link for rental statuses imported with locação variants" do
@@ -352,7 +353,7 @@ RSpec.describe "Habitation details", type: :request do
       post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body.fetch("url")).to include("share_token=")
+      expect(response.parsed_body.fetch("url")).to include("/i/")
     end
 
     it "uses explicit id lookup for tracked share links when another property has the same numeric code" do
@@ -382,9 +383,9 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       shared_url = response.parsed_body.fetch("url")
-      expect(shared_url).to include("/imoveis/#{target.id}")
-      expect(shared_url).to include("lookup=id")
-      token = Rack::Utils.parse_query(URI.parse(shared_url).query).fetch("share_token")
+      expect(shared_url).to include("/i/")
+      expect(URI.parse(shared_url).query).to be_nil
+      token = URI.parse(shared_url).path.split("/")[2]
 
       sign_out admin
       get habitation_path(target.id, lookup: "id", share_token: token)
@@ -419,8 +420,8 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       shared_url = response.parsed_body.fetch("url")
-      expect(shared_url).to include("/imoveis/#{target.id}")
-      expect(shared_url).to include("lookup=id")
+      expect(shared_url).to include("/i/")
+      expect(URI.parse(shared_url).query).to be_nil
     end
 
     it "creates a tracked share link for priced sale properties with operational status" do
@@ -440,7 +441,7 @@ RSpec.describe "Habitation details", type: :request do
       post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body.fetch("url")).to include("share_token=")
+      expect(response.parsed_body.fetch("url")).to include("/i/")
     end
 
     it "does not create a tracked share link while the local property photo is not public yet" do
@@ -476,7 +477,7 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       shared_url = response.parsed_body.fetch("url")
-      token = Rack::Utils.parse_query(URI.parse(shared_url).query).fetch("share_token")
+      token = URI.parse(shared_url).path.split("/")[2]
 
       sign_out admin
       get habitation_path(habitation)

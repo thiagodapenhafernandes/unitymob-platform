@@ -212,6 +212,8 @@ class Lead < ApplicationRecord
   after_destroy :record_audit_destroy
   after_create_commit :enqueue_meta_enrichment
   after_create_commit :enqueue_c2s_export
+  after_update_commit :enqueue_c2s_export, if: :promoted_whatsapp_contact?
+  after_update_commit :dispatch_automation_created, if: -> { promoted_whatsapp_contact? && external_lead_integration_id.blank? }
   after_create_commit :route_lead, unless: :skip_automatic_routing?
   after_create_commit :dispatch_automation_created, unless: :skip_automatic_routing?
   after_update_commit :dispatch_automation_stage_changed, unless: :skip_automatic_routing?
@@ -253,6 +255,22 @@ class Lead < ApplicationRecord
   }
   scope :holding, -> { represado }
   scope :by_origin, ->(origin) { where(origin: origin) if origin.present? }
+  scope :commercial, -> { where("COALESCE(leads.other_information ->> 'whatsapp_service_contact', 'false') <> 'true'") }
+
+  def whatsapp_service_contact?
+    other_information.to_h["whatsapp_service_contact"] == true
+  end
+
+  def promote_whatsapp_contact!(**attributes)
+    return if attributes.empty? && !whatsapp_service_contact?
+
+    attributes[:other_information] = other_information.except("whatsapp_service_contact") if whatsapp_service_contact?
+    update!(attributes)
+  end
+
+  def promoted_whatsapp_contact?
+    saved_change_to_other_information? && other_information_before_last_save.to_h["whatsapp_service_contact"] == true && !whatsapp_service_contact?
+  end
   scope :unverified_inquiries, -> { where("(leads.other_information ->> 'unverified_inquiry') = 'true'") }
   scope :with_any_tags, ->(values) {
     normalized = normalize_tags_value(values)
@@ -311,7 +329,7 @@ class Lead < ApplicationRecord
   attr_writer :skip_automatic_routing
 
   def skip_automatic_routing?
-    @skip_automatic_routing == true
+    @skip_automatic_routing == true || whatsapp_service_contact?
   end
 
   # Preenchido quando a consulta complementa um lead existente (o registro
@@ -755,7 +773,7 @@ class Lead < ApplicationRecord
   end
 
   def enqueue_c2s_export
-    return if destroyed? || tenant.blank?
+    return if destroyed? || tenant.blank? || whatsapp_service_contact?
     return unless tenant.external_lead_integration&.export_active?
     return if external_lead_integration_id.present? || external_lead_id.present?
 

@@ -245,11 +245,14 @@ module Whatsapp
     end
 
     def open_attendance(flow, action)
-      lead = ensure_lead
-      AttendanceManager.open!(conversation: conversation, lead: lead, flow: flow, action: action) if lead
+      owner = conversation.tenant.admin_users.active.find_by(id: action["target_user_id"]) if action["action"] == "send_to_user"
+      commercial = action["action"] == "distribute_lead" || DistributionRule.new(tenant: conversation.tenant).eligible_distribution_agent?(owner)
+      lead = commercial ? ensure_lead : conversation.lead
+      AttendanceManager.open!(conversation: conversation, lead: lead, flow: flow, action: action)
     end
 
     def ensure_lead
+      return if Leads::InternalContactMatcher.call(tenant: conversation.tenant, phone: conversation.contact_phone)
       return conversation.lead if conversation.lead
 
       lead = Leads::Intake.create!(tenant: conversation.tenant,

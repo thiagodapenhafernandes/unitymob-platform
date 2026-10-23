@@ -474,6 +474,11 @@ export default class extends Controller {
 
     const list = document.querySelector("[data-wa-queue-list]")
     const current = document.querySelector(`.wa-inbox-conversation[data-conversation-id="${queue.id}"]`)
+    if (queue.administrative_inbox === false) {
+      current?.remove()
+      this.refreshInboxCounters()
+      return
+    }
     if (current) {
       const wasActive = current.classList.contains("is-active")
       const wrapper = document.createElement("div")

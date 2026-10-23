@@ -75,7 +75,7 @@ module Seo
     end
 
     def habitation_show?
-      controller.controller_name == "habitations" && controller.action_name == "show" && controller.instance_variable_get(:@habitation).present?
+      controller.controller_name == "habitations" && controller.action_name.in?(%w[show shared]) && controller.instance_variable_get(:@habitation).present?
     end
 
     def property_listing_identity

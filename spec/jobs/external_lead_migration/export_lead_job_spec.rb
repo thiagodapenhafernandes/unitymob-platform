@@ -10,6 +10,19 @@ RSpec.describe ExternalLeadMigration::ExportLeadJob do
     allow(ExternalLeadMigration::Client).to receive(:new).with(token: integration.access_token).and_return(client)
   end
 
+  it "não exporta contato administrativo, mas agenda a exportação ao virar lead comercial" do
+    allow(client).to receive(:create_lead)
+    contact = nil
+    expect {
+      contact = create(:lead, tenant: tenant, origin: "whatsapp", skip_automatic_routing: true,
+        other_information: { "whatsapp_service_contact" => true })
+    }.not_to have_enqueued_job(described_class)
+
+    described_class.perform_now(contact.id, tenant_id: tenant.id)
+    expect(client).not_to have_received(:create_lead)
+    expect { contact.promote_whatsapp_contact! }.to have_enqueued_job(described_class).with(contact.id, tenant_id: tenant.id)
+  end
+
   it "envia lead novo, marca como exportado e registra atividade" do
     lead = create(:lead, tenant:, origin: "Site")
     allow(client).to receive(:create_lead).and_return({ "id" => "c2s-123" })

@@ -74,10 +74,16 @@ export default class extends Controller {
   async whatsapp(event) {
     event.preventDefault()
     event.stopPropagation()
+    const nativeApp = window.Capacitor?.isNativePlatform?.() === true
+    // Reserva a aba durante o clique; a geração assíncrona do link pode perder a ativação do usuário.
+    const popup = nativeApp ? null : window.open("", "_blank")
+    if (popup) popup.opener = null
     const url = await this.ensureSharedUrl()
-    if (!url) return
+    if (!url) { popup?.close(); return }
     const text = encodeURIComponent(`${this.propertyTitleValue || "Confira este imóvel"} ${url}`)
-    window.open(`https://wa.me/?text=${text}`, "_blank")
+    const whatsappUrl = `https://wa.me/?text=${text}`
+    if (popup) popup.location.replace(whatsappUrl)
+    else window.location.assign(whatsappUrl)
   }
 
   async email(event) {
@@ -113,7 +119,7 @@ export default class extends Controller {
     if (!this.generateUrlValue) {
       return this.fallbackUrlValue || null
     }
-    if (this.sharedUrl && this.sharedUrl.includes("share_token=")) return this.sharedUrl
+    if (this.sharedUrl) return this.sharedUrl
 
     const csrfToken = document.querySelector("[name='csrf-token']")?.content
     try {

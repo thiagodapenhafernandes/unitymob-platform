@@ -104,10 +104,16 @@ foreground service). Fica como próximo passo.
 
 ## Plataforma Android
 
-Ainda não adicionada neste checkout — o ambiente usado não tinha Android
-SDK/emulador disponível pra build e verificação real. `npx cap add android`
-adiciona o projeto; precisa validar em Android Studio antes de considerar
-pronto (não faça isso sem poder testar de verdade).
+O `WhatsappLinksPlugin` encaminha `wa.me`, `api.whatsapp.com`,
+`web.whatsapp.com` e `whatsapp://` para fora do WebView. Se não houver aplicativo
+para o esquema WhatsApp, tenta o endereço HTTPS; sem handler, orienta usar
+Copiar link. Os demais destinos continuam seguindo o comportamento do Capacitor.
+Validar a regra e sua compilação com `cd android && ./gradlew testDebugUnitTest`.
+O funcionamento no aparelho exige instalar um build com esse plugin; deploy
+Rails sozinho não atualiza o código nativo.
+
+O projeto está em `mobile/android`. O build local não substitui a validação
+de abertura do WhatsApp em um aparelho com e sem o aplicativo instalado.
 
 ## Sons por tipo de notificação
 

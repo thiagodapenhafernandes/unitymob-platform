@@ -717,7 +717,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def exclude_internal_contact_leads(scope)
-    internal_contact_scope.exclude(scope)
+    internal_contact_scope.exclude(scope.commercial)
   end
 
   def internal_contact_scope

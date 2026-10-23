@@ -95,13 +95,16 @@ class DistributionRule < ApplicationRecord
   end
 
   def eligible_admin_users_scope
-    tenant.admin_users.active.where.not(profile_id: nil)
+    tenant.admin_users.active.joins(:profile).where(horizontal_profile_id: nil)
+      .where(profiles: { axis: Profile::AXES[:vertical] })
+      .where("profiles.key IS NULL OR profiles.key <> ?", "tenant_owner")
   end
 
   def eligible_distribution_agent?(admin_user)
     admin_user.present? &&
       admin_user.tenant_id == tenant_id &&
       admin_user.active? &&
+      admin_user.horizontal_profile_id.blank? &&
       admin_user.profile&.vertical? &&
       !admin_user.profile&.tenant_owner?
   end
@@ -112,7 +115,7 @@ class DistributionRule < ApplicationRecord
       candidates
         .joins(admin_user: :profile)
         .where(tenant_id: tenant_id)
-        .where(admin_users: { tenant_id: tenant_id, active: true, super_admin: false })
+        .where(admin_users: { tenant_id: tenant_id, active: true, super_admin: false, horizontal_profile_id: nil })
         .where(profiles: { tenant_id: tenant_id, axis: Profile::AXES[:vertical] })
         .where("profiles.key IS NULL OR profiles.key <> ?", "tenant_owner")
     else
