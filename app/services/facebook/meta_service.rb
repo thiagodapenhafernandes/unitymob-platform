@@ -104,6 +104,19 @@ module Facebook
       @graph.get_object(ad_id, fields: "id,name,account_id,campaign{id,name},adset{id,name}")
     end
 
+    def ad_attribution(ad_id, account_ids:)
+      return unless ad_id.to_s.match?(/\A[0-9]{5,30}\z/)
+
+      ad = ad_details(ad_id.to_s)
+      return unless ad.is_a?(Hash) && ad["id"].to_s == ad_id.to_s && account_ids.include?(ad["account_id"].to_s)
+
+      campaign = ad["campaign"].is_a?(Hash) ? ad["campaign"] : {}
+      adset = ad["adset"].is_a?(Hash) ? ad["adset"] : {}
+      { "meta_ad_account_id" => ad["account_id"].to_s, "meta_ad_id" => ad_id.to_s,
+        "meta_ad_name" => ad["name"], "meta_campaign_id" => campaign["id"], "meta_campaign_name" => campaign["name"],
+        "meta_adset_id" => adset["id"], "meta_adset_name" => adset["name"] }.compact
+    end
+
     def campaign_details(campaign_id)
       @graph.get_object(campaign_id, fields: "id,name,account_id")
     end

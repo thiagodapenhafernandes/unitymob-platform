@@ -41,12 +41,8 @@ class MetaLeadEnrichmentJob < ApplicationJob
     service = Facebook::MetaService.new(integration.access_token)
     data = {}
     if ad_id
-      ad = service.ad_details(ad_id)
-      return unless integration.ad_account_ids.include?(ad["account_id"].to_s) && ad["id"].to_s == ad_id
-      data["meta_ad_account_id"] = ad["account_id"].to_s
-      data.merge!("meta_ad_id" => ad_id, "meta_ad_name" => ad["name"],
-        "meta_campaign_id" => ad.dig("campaign", "id"), "meta_campaign_name" => ad.dig("campaign", "name"),
-        "meta_adset_id" => ad.dig("adset", "id"), "meta_adset_name" => ad.dig("adset", "name"))
+      data = service.ad_attribution(ad_id, account_ids: integration.ad_account_ids)
+      return unless data
     elsif campaign_id
       campaign = service.campaign_details(campaign_id)
       return unless integration.ad_account_ids.include?(campaign["account_id"].to_s) && campaign["id"].to_s == campaign_id

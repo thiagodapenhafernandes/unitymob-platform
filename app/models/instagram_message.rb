@@ -3,6 +3,7 @@ class InstagramMessage < ApplicationRecord
   belongs_to :sent_by_admin_user, class_name: "AdminUser", optional: true
 
   after_create_commit :notify_conversation
+  after_create_commit :enqueue_ad_enrichment
 
   validates :message_id, :occurred_at, presence: true
   validates :direction, inclusion: { in: %w[inbound outbound] }
@@ -15,6 +16,15 @@ class InstagramMessage < ApplicationRecord
 
   def outbound? = direction == "outbound"
   private
+
+  def enqueue_ad_enrichment
+    referral = context.to_h["referral"]
+    return unless inbound? && context.to_h["meta_facebook_page_id"].present? && referral.is_a?(Hash) && referral["ad_id"].present?
+
+    Instagram::AdEnrichmentJob.perform_later(lead.tenant_id, lead.id, id)
+  rescue StandardError => error
+    Rails.logger.warn("[Instagram ad enrichment] enqueue unavailable class=#{error.class}")
+  end
 
   def notify_unread
     user = lead.admin_user

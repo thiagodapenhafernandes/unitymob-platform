@@ -7,6 +7,19 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
   end
 
   let(:tenant) { Tenant.default }
+
+  it "mostra os nomes da campanha Direct inicial sem trocar a origem nem inventar enriquecimento para entradas legadas" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Instagram Direct", other_information: {
+      "instagram_entry" => { "message_id" => "first", "referral" => { "ad_id" => "987654" },
+        "ad_attribution" => { "meta_campaign_name" => "Campanha A", "meta_adset_name" => "Conjunto A", "meta_ad_name" => "Anúncio A" } }
+    })
+    data = origin(lead)
+    expect(data).to include(brand: "instagram", label: "Instagram", subtype: "Direct")
+    expect(data[:complements]).to include("Campanha: Campanha A", "Conjunto: Conjunto A", "Anúncio: Anúncio A")
+    lead.other_information["instagram_entry"].delete("ad_attribution")
+    expect(origin(lead)[:complements]).to include("Anúncio ID: 987654")
+    expect(lead.origin).to eq("Instagram Direct")
+  end
   def origin(lead, **options)
     helper.lead_origin_column(lead, tenant: tenant, **options)
   end
