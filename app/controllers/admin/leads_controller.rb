@@ -3167,9 +3167,10 @@ class Admin::LeadsController < Admin::BaseController
     return Lead.none unless current_admin_user
 
     owner_ids = visible_owner_ids(:leads)
-    return current_tenant.leads if owner_ids.nil? # escopo "all"/admin dentro do Tenant
+    base = Leads::InternalContactScope.new(tenant: current_tenant).exclude(current_tenant.leads.commercial)
+    return base if owner_ids.nil? # escopo "all"/admin dentro do Tenant
 
-    scope = current_tenant.leads.where(admin_user_id: owner_ids)
+    scope = base.where(admin_user_id: owner_ids)
     # Ao ver a equipe, mantém o recorte por tipo de atuação (venda/locação) do gestor.
     scope = filter_leads_by_acting_type(scope) if include_team?(:leads)
     scope

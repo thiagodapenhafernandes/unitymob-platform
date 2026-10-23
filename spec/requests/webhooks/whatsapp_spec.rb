@@ -85,6 +85,8 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       expect(conv.unread_count).to eq(1)
       expect(conv.lead).to be_present
       expect(conv.lead.origin).to eq("whatsapp")
+      expect(conv.lead).to be_whatsapp_service_contact
+      expect(Lead.commercial).not_to include(conv.lead)
       expect(Lead.count).to be > leads_before
       expect(conv.messages.last.body).to include("ap 302")
       expect(conv.lead.activities.where(kind: "whatsapp_in").count).to eq(1)

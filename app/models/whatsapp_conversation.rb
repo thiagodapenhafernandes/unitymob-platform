@@ -19,6 +19,21 @@ class WhatsappConversation < ApplicationRecord
   validate :phone_or_bsuid_present
 
   scope :open, -> { where(status: "open") }
+  scope :without_commercial_lead, -> {
+    where(lead_id: nil).or(where(lead_id: Lead.where("other_information ->> 'whatsapp_service_contact' = 'true'").select(:id)))
+  }
+  scope :administrative_inbox, -> {
+    without_commercial_lead.or(where(id: WhatsappAttendance.open_now.administrative.select(:whatsapp_conversation_id)))
+  }
+
+  def administrative_inbox?
+    return true if lead.nil? || lead.whatsapp_service_contact?
+
+    attendance = attendances.find(&:open?)
+    owner = attendance&.admin_user
+    attendance.present? && attendance.distribution_rule_id.nil? && owner.present? &&
+      !DistributionRule.new(tenant_id: tenant_id).eligible_distribution_agent?(owner)
+  end
   # Mesma regra de visibilidade do inbox (dono da conversa ou do lead dentro do escopo do usuário; equipe inclui a subárvore).
   scope :visible_to, ->(user) {
     if user.owns_all?(:whatsapp_inbox)
@@ -65,7 +80,8 @@ class WhatsappConversation < ApplicationRecord
   # Contatos internos (número de um usuário da conta) não ficam vinculados a lead na conversa;
   # o atendimento aberto ainda carrega o lead, e é ele que alimenta o painel de contexto.
   def context_lead
-    lead || open_attendance&.lead
+    candidate = lead || open_attendance&.lead
+    candidate unless candidate&.whatsapp_service_contact?
   end
 
   # Quem ouve o som de mensagem nova: o dono do atendimento aberto; sem atendimento, o responsável de sempre.

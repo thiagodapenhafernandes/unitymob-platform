@@ -25,7 +25,7 @@ module ExternalLeadMigration
       seller = hash_at("seller")
       tags = tags_from(@attributes["tags"])
       status = mapped_status(tenant: integration.tenant)
-      owner = integration.local_user_for_seller(seller)
+      owner = integration.eligible_seller(seller, business_type: business_type_for(product:))
       if owner.blank? && status == Lead.status_value(:em_atendimento, tenant: integration.tenant)
         status = Lead.default_status(tenant: integration.tenant, pipeline: pipeline_for(tenant: integration.tenant, product:))
       end

@@ -102,6 +102,8 @@ module Leads
 
     def merge_information(target)
       merged = @lead.other_information.to_h.merge(target.other_information.to_h)
+      # Uma mensagem de atendimento não reclassifica um cliente comercial existente.
+      merged.delete("whatsapp_service_contact") unless target.whatsapp_service_contact? && @lead.whatsapp_service_contact?
       target.other_information = merged if merged != target.other_information.to_h
     end
 

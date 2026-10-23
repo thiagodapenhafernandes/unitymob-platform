@@ -53,7 +53,7 @@ module ExternalLeadMigration
     def reconcile_lead(lead)
       return skip_non_operational! if operational_only && !operational_lead?(lead)
 
-      user = integration.local_user_for_seller(seller_from(lead))
+      user = integration.eligible_seller(seller_from(lead), business_type: lead.other_information["c2s_business_type"])
       return unmapped! if user.blank?
 
       lead.update!(admin_user: user) if execute

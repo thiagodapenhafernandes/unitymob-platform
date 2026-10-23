@@ -6,6 +6,35 @@ Reentrega do mesmo evento e nova consulta do mesmo contato são situações dist
 
 A persistência de Lead mantém callbacks de auditoria, roteamento, exportação, automação e webhook. Flags como `skip_automatic_routing` são parte do contrato do consumidor e não foram removidas. Escritas por SQL direto/insert_all podem pular callbacks; não assumir cobertura desses caminhos.
 
+## Atendimento administrativo e contato comercial
+
+Um primeiro contato sem intenção comercial, recebido pelo WhatsApp, fica marcado
+em `other_information.whatsapp_service_contact`. Ele mantém mensagens e auditoria,
+mas não entra no comercial, dashboard, exportação C2S ou automações comerciais.
+Uma mensagem posterior não reclassifica um lead comercial já existente.
+
+Uma consulta de site/portal/C2S ou um encaminhamento para corretor remove a marca
+usando o mesmo cadastro. A promoção libera os efeitos comerciais; a exportação
+continua dependendo da configuração da conta. Telefones de usuários internos
+continuam excluídos pelo matcher e pelo escopo compartilhado.
+
+O atendimento administrativo tem seu dono em `WhatsappAttendance` e na conversa;
+não altera corretor, tarefas ou status do lead associado. A fila administrativa
+mostra contatos sem lead comercial e atendimentos administrativos abertos. O
+corretor mantém acesso à conversa pelo lead, sujeito às permissões existentes.
+O mesmo recorte vale para atualizações em tempo real. Nenhuma limpeza ou
+reatribuição histórica é executada automaticamente por essa mudança.
+
+## Compartilhamento de imóveis
+
+Novos links administrativos usam `/i/:token/:version`, reutilizando
+`HabitationShareLink`, sua expiração, atribuição e isolamento por conta. Links
+antigos com `share_token` continuam válidos. O endereço curto não retira o
+controle de acesso: quem o recebe pode visualizar o imóvel permitido pelo link.
+O canonical permanece no endereço do imóvel; links privados não entram no
+inventário SEO nem no cache público. Antes de gerar um novo link, a imagem
+precisa estar disponível publicamente, inclusive quando importada por URL.
+
 A validação de novos leads registra a política Unitymob em `other_information.unitymob_data_processing_policy`; o cadastro manual pode escolher a base. Ver [política](../../integrations-legal-bases.md). O registro não comprova consentimento do titular nem substitui oposição/retirada.
 
 `Leads::OutboundWebhook` seleciona eventos/destinos; `WebhookService` prepara o payload antes de enfileirar; o job entrega o mesmo payload durante retries, mantendo event_id. Templates personalizados de automação conservam contrato próprio. Ver [envelope e eventos](../../outbound-lead-webhook.md).

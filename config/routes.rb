@@ -750,6 +750,7 @@ Rails.application.routes.draw do
   get "healthz" => "health#check", as: :health_check
   
   # Public Leads creation
+  get "tracking/stape-cookie", to: "stape_cookies#show", as: :stape_cookie
   resources :leads, only: [:create] do
     collection do
       get :whatsapp_url
@@ -777,6 +778,7 @@ Rails.application.routes.draw do
   get "s/:token", to: "secure_links#show", as: :secure_link
 
   # Galeria pública de fotos selecionadas do imóvel (compartilhamento por WhatsApp).
+  get "i/:token(/:version)", to: "habitations#shared", as: :shared_habitation
   get "fotos/:token", to: "habitation_photo_shares#show", as: :habitation_photo_share
 
   # Mission Control for Jobs — restrito a Admin do Sistema logado.

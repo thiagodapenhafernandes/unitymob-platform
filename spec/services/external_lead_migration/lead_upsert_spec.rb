@@ -76,6 +76,14 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
 
   before { Current.tenant = tenant }
 
+  it "não atribui importação histórica a um usuário administrativo mapeado" do
+    administrative = create(:admin_user, :admin, tenant: tenant)
+    integration.update!(seller_mappings: { "seller-1" => administrative.id })
+    imported = described_class.call(integration: integration, payload: payload, historical: true).lead
+    expect(imported.admin_user).to be_nil
+    expect(imported.agent_name).to eq("Corretor Externo")
+  end
+
   describe "atribuição inicial por modalidade" do
     let(:queue_broker) { create(:admin_user, tenant:) }
 

@@ -174,6 +174,8 @@ module Whatsapp
       end
 
       def assign(lead, rule, owner)
+        # Atendimento administrativo tem dono próprio; não toma o cliente do corretor.
+        return true unless rule || DistributionRule.new(tenant: owner.tenant).eligible_distribution_agent?(owner)
         return unless lead
 
         if rule
@@ -181,7 +183,7 @@ module Whatsapp
 
           rule.mark_agent_served!(owner.id)
         else
-          lead.update!(admin_user: owner, status: :em_atendimento)
+          lead.promote_whatsapp_contact!(admin_user: owner, status: :em_atendimento)
           lead.activities.create(kind: "distributed", metadata: { admin_user_id: owner.id, admin_user_name: owner.name, direct_attendance: true, source: "whatsapp_response_flow" })
         end
         true

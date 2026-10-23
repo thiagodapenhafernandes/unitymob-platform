@@ -46,4 +46,14 @@ RSpec.describe DistributionRuleAgent, type: :model do
       user.save!(validate: false)
     }.to raise_error(ActiveRecord::StatementInvalid)
   end
+
+  it "exclui função administrativa horizontal mesmo quando ela tem uma âncora vertical" do
+    tenant, profile = create_tenant_with_agent_profile("tenant-fila-administrativo")
+    horizontal = Profile.create!(tenant: tenant, name: "Financeiro", axis: "horizontal", vertical_profile: profile)
+    user = create(:admin_user, tenant: tenant, horizontal_profile: horizontal)
+    rule = create(:distribution_rule, tenant: tenant)
+    expect(rule.eligible_distribution_agent?(user)).to be(false)
+    expect(rule.eligible_admin_users_scope).not_to include(user)
+    expect(described_class.new(distribution_rule: rule, admin_user: user, weight: 1)).not_to be_valid
+  end
 end

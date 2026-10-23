@@ -227,7 +227,7 @@ module Leads
     # Atribui o lead ao corretor, registra a atividade, agenda o pocket e dispara
     # as notificações da distribuição normal.
     def finalize_assignment(rule, admin_user_id:, admin_user_name:)
-      @lead.update!(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
+      @lead.promote_whatsapp_contact!(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
       rule.mark_agent_served!(admin_user_id)
 
       metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
@@ -246,7 +246,7 @@ module Leads
     end
 
     def finalize_sticky_assignment(rule, admin_user_id:, admin_user_name:)
-      @lead.update!(admin_user_id: admin_user_id, status: :em_atendimento, distribution_rule_id: rule.id)
+      @lead.promote_whatsapp_contact!(admin_user_id: admin_user_id, status: :em_atendimento, distribution_rule_id: rule.id)
 
       metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
       metadata[:sticky] = true

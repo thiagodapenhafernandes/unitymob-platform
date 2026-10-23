@@ -94,7 +94,7 @@ module Seo
       path = @controller.request.path.to_s
       query = @controller.request.query_parameters
 
-      path.start_with?(SeoSetting::SHARED_LINK_PATH_PREFIX) ||
+      path.start_with?(SeoSetting::SHARED_LINK_PATH_PREFIX, SeoSetting::PROPERTY_SHARE_PATH_PREFIX) ||
         query.key?(SeoSetting::SHARE_TOKEN_PARAM)
     end
 

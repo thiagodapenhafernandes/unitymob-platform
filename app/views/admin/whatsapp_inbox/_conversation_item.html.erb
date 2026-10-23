@@ -21,7 +21,8 @@
         conversation_focus_href: admin_whatsapp_conversation_path(conv, workspace: "focus"),
         unread: conv.unread_count.to_i.positive?,
         pending_reply: pending_reply,
-        lead: conv.lead.present?,
+        lead: conv.lead.present? && !conv.lead.whatsapp_service_contact?,
+        administrative_inbox: conv.administrative_inbox?,
         search: [conv.contact_phone, conv.display_name, conv.lead&.name, conv.last_message_preview].compact.join(" ").downcase
       } do %>
   <div class="wa-inbox-conversation__card">

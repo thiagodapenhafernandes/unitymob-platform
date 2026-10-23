@@ -557,7 +557,8 @@ module Whatsapp
         phone: phone,
         business_scoped_user_id: bsuid,
         origin: "whatsapp",
-        other_information: { "whatsapp_entry" => {
+        skip_automatic_routing: true,
+        other_information: { "whatsapp_service_contact" => true, "whatsapp_entry" => {
           "message_id" => entry_message["id"], "occurred_at" => message_time(entry_message).iso8601,
           "referral" => referral_data(entry_message)
         } },

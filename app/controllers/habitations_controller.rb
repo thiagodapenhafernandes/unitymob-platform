@@ -231,6 +231,20 @@ class HabitationsController < ApplicationController
   end
 
   # GET /imoveis/:id
+  def shared
+    link = HabitationShareLink.active.joins(:habitation)
+      .where(habitations: { tenant_id: public_tenant.id }).find_by(token: params[:token])
+    return render plain: "Link de compartilhamento inválido ou expirado.", status: :gone unless link
+
+    params[:id] = link.habitation_id
+    params[:lookup] = "id"
+    params[:share_token] = link.token
+    no_store
+    response.headers["Referrer-Policy"] = "same-origin"
+    set_habitation
+    show unless performed?
+  end
+
   def show
     unless @habitation
       redirect_to habitations_path, alert: 'Imóvel não encontrado ou indisponível no momento.'
@@ -313,7 +327,7 @@ class HabitationsController < ApplicationController
     end
     
     respond_to do |format|
-      format.html
+      format.html { render :show }
       format.json { render json: @habitation.card_data }
     end
   end
@@ -342,10 +356,11 @@ class HabitationsController < ApplicationController
       admin_user: current_admin_user
     )
     link.touch
+    Rails.cache.delete(share_image_cache_key(@habitation))
 
     render json: {
       success: true,
-      url: habitation_url(@habitation.id, lookup: "id", share_token: link.token, preview: link.updated_at.to_i),
+      url: shared_habitation_url(token: link.token, version: link.updated_at.to_i),
       expires_at: link.expires_at.iso8601
     }
   rescue StandardError => e
@@ -392,11 +407,9 @@ class HabitationsController < ApplicationController
 
   def social_image_ready_from_source(source)
     url = Storage::PublicCdnImageUrl.resolve(source)
-    return { ready: true, url: nil } if url.blank?
+    return { ready: false, url: nil } if url.blank?
 
-    # URLs de payload já passam pelo allowlist do resolver; não fazemos probe
-    # aqui para não bloquear compartilhamento de fotos importadas já públicas.
-    { ready: true, url: url }
+    { ready: social_image_url_accessible?(absolute_social_image_url(url)), url: url }
   end
 
   def social_image_url_accessible?(url, attempts: SOCIAL_IMAGE_PROBE_ATTEMPTS)
@@ -1028,12 +1041,16 @@ class HabitationsController < ApplicationController
   # resolução de variantes a cada hit do detalhe.
   def share_image_metadata_for(habitation)
     Rails.cache.fetch(
-      ["social_image_v1", habitation.id, habitation.updated_at.to_i,
-       Digest::MD5.hexdigest(habitation.pictures.to_s)].join("/"),
+      share_image_cache_key(habitation),
       expires_in: 12.hours
     ) do
       uncached_share_image_metadata_for(habitation)
     end
+  end
+
+  def share_image_cache_key(habitation)
+    ["social_image_v2", habitation.cache_key_with_version,
+      Digest::MD5.hexdigest(habitation.pictures.to_s)].join("/")
   end
 
   def uncached_share_image_metadata_for(habitation)

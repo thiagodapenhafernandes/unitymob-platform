@@ -9,6 +9,7 @@ class SeoSetting < ApplicationRecord
   include TenantScoped
   AI_STATUSES = %w[pending generating generated failed skipped].freeze
   SHARED_LINK_PATH_PREFIX = "/selecoes/".freeze
+  PROPERTY_SHARE_PATH_PREFIX = "/i/".freeze
   SHARE_TOKEN_PARAM = "share_token".freeze
   SHARED_LINK_PAGE_TYPES = %w[
     ai_property_share_collections_show
@@ -47,6 +48,8 @@ class SeoSetting < ApplicationRecord
       <<~SQL.squish,
         COALESCE(canonical_path, '') LIKE :shared_path
         OR COALESCE(canonical_url, '') LIKE :shared_url
+        OR COALESCE(canonical_path, '') LIKE :property_share_path
+        OR COALESCE(canonical_url, '') LIKE :property_share_url
         OR COALESCE(canonical_path, '') LIKE :share_token
         OR COALESCE(canonical_url, '') LIKE :share_token
         OR COALESCE(canonical_key, '') LIKE :shared_key
@@ -54,6 +57,8 @@ class SeoSetting < ApplicationRecord
       SQL
       shared_path: "#{SHARED_LINK_PATH_PREFIX}%",
       shared_url: "%#{SHARED_LINK_PATH_PREFIX}%",
+      property_share_path: "#{PROPERTY_SHARE_PATH_PREFIX}%",
+      property_share_url: "%#{PROPERTY_SHARE_PATH_PREFIX}%",
       share_token: "%#{SHARE_TOKEN_PARAM}=%",
       shared_key: "ai_property_share_collections_%",
       shared_page_types: SHARED_LINK_PAGE_TYPES
