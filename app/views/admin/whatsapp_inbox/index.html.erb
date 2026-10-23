@@ -104,25 +104,25 @@
         <div class="wa-inbox-list-filters">
           <%= link_to queue_filter_path.call("all"),
                   class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'all'}",
-                  data: { filter: "all", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
+                  data: { filter: "all", wa_queue_target: "filterButton", turbo: false } do %>
             <span>Todas</span>
             <small data-wa-inbox-filter-count="all"><%= @conversation_count %></small>
           <% end %>
           <%= link_to queue_filter_path.call("unread"),
                   class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'unread'}",
-                  data: { filter: "unread", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
+                  data: { filter: "unread", wa_queue_target: "filterButton", turbo: false } do %>
             <span>Não lidas</span>
             <small data-wa-inbox-filter-count="unread"><%= @unread_conversation_count %></small>
           <% end %>
           <%= link_to queue_filter_path.call("pending_reply"),
                   class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'pending_reply'}",
-                  data: { filter: "pending_reply", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
+                  data: { filter: "pending_reply", wa_queue_target: "filterButton", turbo: false } do %>
             <span>Aguardando resposta</span>
             <small data-wa-inbox-filter-count="pending_reply"><%= @pending_reply_conversation_count %></small>
           <% end %>
           <%= link_to queue_filter_path.call("unlinked"),
                   class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'unlinked'}",
-                  data: { filter: "unlinked", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
+                  data: { filter: "unlinked", wa_queue_target: "filterButton", turbo: false } do %>
             <span>Sem lead</span>
             <small data-wa-inbox-filter-count="unlinked"><%= @unlinked_conversation_count %></small>
           <% end %>

@@ -52,6 +52,24 @@ RSpec.describe "Separação do atendimento WhatsApp e do comercial", type: :requ
     expect(response.body).to include(customer.name)
   end
 
+  it "renova a fila permanente ao filtrar sem confundir atendimento administrativo com contato sem lead" do
+    service = conversation_for(service_contact)
+    service.update!(unread_count: 2)
+    unlinked = tenant.whatsapp_conversations.create!(contact_phone: "5547999998763", contact_name: "Fornecedor sem lead")
+    commercial = conversation_for(customer)
+    commercial.attendances.create!(tenant: tenant, lead: customer, admin_user: admin, status: "open", opened_at: Time.current)
+
+    { "all" => [service.id, unlinked.id, commercial.id], "unlinked" => [service.id, unlinked.id], "unread" => [service.id] }.each do |filter, ids|
+      get admin_whatsapp_conversations_path(filter: filter)
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.css("#wa-inbox-queue [data-conversation-id]").map { |item| item["data-conversation-id"].to_i }).to match_array(ids)
+      expect(document.at_css(".wa-inbox-list-filter.is-active")["data-filter"]).to eq(filter)
+      expect(document.css(".wa-inbox-list-filter").size).to eq(4)
+      expect(document.css(".wa-inbox-list-filter").all? { |link| link["data-turbo"] == "false" }).to be(true)
+    end
+  end
+
   it "encaminha atendimento ao administrativo sem alterar o corretor, status ou tarefas do cliente" do
     conversation = conversation_for(customer)
     previous = customer.attributes.slice("admin_user_id", "status", "distribution_rule_id")
