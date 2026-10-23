@@ -31,9 +31,9 @@ class InAppNotification < ApplicationRecord
     user = conversation.tenant.admin_users.active.find_by(id: conversation.alert_recipient_id)
     return unless user&.can?(:view, :whatsapp_inbox)
 
-    notify!(admin_user: user, kind: "whatsapp_message", title: "Nova mensagem no WhatsApp",
+    notify!(admin_user: user, kind: "whatsapp_message", title: "Nova mensagem no WhatsApp", body: message.preview.to_s.truncate(160),
       url: Rails.application.routes.url_helpers.admin_whatsapp_conversation_path(conversation),
-      metadata: { conversation_id: conversation.id, whatsapp_message_id: message.id })
+      metadata: { conversation_id: conversation.id, whatsapp_message_id: message.id, sender_name: conversation.display_name })
   rescue StandardError => error
     Rails.logger.warn("[WhatsApp unread] notification unavailable class=#{error.class}")
   end

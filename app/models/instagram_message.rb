@@ -26,9 +26,9 @@ class InstagramMessage < ApplicationRecord
     return unless user&.active? && user.tenant_id == lead.tenant_id && user.can?(:view, :leads)
     return unless Lead.accessible_to_admin(user, tenant: lead.tenant).exists?(id: lead.id)
 
-    InAppNotification.notify!(admin_user: user, kind: "instagram_message", title: "Nova mensagem no Instagram",
+    InAppNotification.notify!(admin_user: user, kind: "instagram_message", title: "Nova mensagem no Instagram", body: body.presence&.truncate(160),
       url: Rails.application.routes.url_helpers.admin_lead_path(lead, anchor: "lead-instagram-thread"),
-      metadata: { lead_id: lead.id, instagram_message_id: id })
+      metadata: { lead_id: lead.id, instagram_message_id: id, sender_name: lead.display_name })
   rescue StandardError => error
     Rails.logger.warn("[Instagram unread] notification unavailable class=#{error.class}")
   end

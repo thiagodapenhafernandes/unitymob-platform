@@ -5,7 +5,7 @@ class Admin::InAppNotificationsController < Admin::BaseController
     items = scope.limit(31).to_a
     render json: { total: unread_count, unread_count: unread_count,
       next_cursor: (items[29].id if items.length > 30),
-      html: render_to_string(partial: "admin/shared/notification_item", collection: items.first(30), as: :notification, formats: [:html]) }
+      html: render_to_string(partial: "admin/shared/notification_list", locals: { notifications: items.first(30) }, formats: [:html]) }
   end
 
   def read_direct
