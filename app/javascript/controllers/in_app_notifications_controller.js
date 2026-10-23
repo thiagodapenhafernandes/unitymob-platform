@@ -240,7 +240,7 @@ export default class extends Controller {
   open(event) {
     const link = event.currentTarget
     link.classList.remove("is-unread")
-    this.post(this.readUrlValue.replace(/0$/, link.dataset.notificationId))
+    this.post(this.readUrlValue.replace(/\/0(?=\/|$)/, `/${link.dataset.notificationId}`))
     if (link.classList.contains("ax-notifications__toast")) link.remove()
   }
 
