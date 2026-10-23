@@ -27,6 +27,7 @@ RSpec.describe 'Contador de não lidos da aba', type: :request do
     InAppNotification.notify!(admin_user: other, kind: 'notice', title: 'Outra conta')
     get summary_admin_in_app_notifications_path
     expect(response.parsed_body).to include('total' => 3, 'unread_count' => 3)
+    expect(response.parsed_body['html']).to include('bi-whatsapp', 'WhatsApp', 'bi-bell', 'Sistema', 'Privado')
     post read_direct_admin_in_app_notifications_path, params: { lead_id: lead.id, cursor: message.id }
     expect(response).to have_http_status(:no_content)
     get summary_admin_in_app_notifications_path
@@ -45,8 +46,27 @@ RSpec.describe 'Contador de não lidos da aba', type: :request do
     lead.instagram_messages.create!(message_id: 'owner-only', occurred_at: Time.current)
     expect(InAppNotification.where(admin_user: observer, kind: 'instagram_message')).to be_empty
     get summary_admin_in_app_notifications_path
-    expect(response.parsed_body['html']).to include('Nova mensagem no Instagram')
+    expect(response.parsed_body['html']).to include('Instagram Direct', lead.display_name, 'bi-instagram')
     expect(response.parsed_body['total']).to eq(response.parsed_body['unread_count'])
+  end
+
+  it 'renderiza remetente e preview escapados, inclusive em avisos legados' do
+    message = lead.instagram_messages.create!(message_id: 'preview-safe', body: '<script>privado</script>', occurred_at: Time.current)
+    notice = InAppNotification.find_by!(admin_user: admin, kind: 'instagram_message')
+    notice.update_columns(body: nil, metadata: { lead_id: lead.id, instagram_message_id: message.id })
+    get summary_admin_in_app_notifications_path
+    html = response.parsed_body['html']
+    expect(html).to include('bi-instagram', 'Instagram Direct', lead.display_name, '&lt;script&gt;privado&lt;/script&gt;', 'Não lida')
+    expect(html).not_to include('<script>')
+  end
+
+  it 'não recupera preview de mensagem referenciada de outra conta' do
+    foreign = create(:lead, tenant: Tenant.create!(name: 'Outra conta', slug: "preview-other-#{SecureRandom.hex(5)}"))
+    message = foreign.instagram_messages.create!(message_id: 'foreign-preview', body: 'SEGREDO OUTRA CONTA', occurred_at: Time.current)
+    InAppNotification.create!(admin_user: admin, tenant: admin.tenant, kind: 'instagram_message', title: 'Mensagem',
+      metadata: { lead_id: lead.id, instagram_message_id: message.id })
+    get summary_admin_in_app_notifications_path
+    expect(response.parsed_body['html']).not_to include('SEGREDO OUTRA CONTA')
   end
 
   it 'pagina notificações sem incluir itens de outro usuário' do

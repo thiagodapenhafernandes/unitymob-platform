@@ -3,7 +3,7 @@ import consumer from "channels/consumer"
 
 // Sino + toast em tempo real. O servidor envia { id, title, body, url, unread_count }.
 export default class extends Controller {
-  static targets = ["badge", "list", "empty", "toasts", "soundToggle", "more"]
+  static targets = ["badge", "list", "empty", "toasts", "soundToggle", "more", "count"]
   static values = { unread: Number, readUrl: String, readAllUrl: String, summaryUrl: String }
 
   connect() {
@@ -83,7 +83,6 @@ export default class extends Controller {
 
     if (data.kind !== "whatsapp_message") this.playSound()
     this.renderBadge(data.unread_count)
-    this.prepend(data)
     this.toast(data)
   }
 
@@ -187,18 +186,13 @@ export default class extends Controller {
   }
 
   renderBadge(count) {
+    if (this.hasCountTarget) {
+      this.countTarget.hidden = !count
+      this.countTarget.textContent = `${count} ${count === 1 ? "nova" : "novas"}`
+    }
     if (!this.hasBadgeTarget) return
     this.badgeTarget.hidden = !count
     this.badgeTarget.textContent = count > 99 ? "99+" : count
-  }
-
-  prepend(data) {
-    if (!this.hasListTarget) return
-    const item = this.buildLink(data, "ax-menu__item ax-notifications__item is-unread")
-    item.dataset.notificationId = data.id
-    item.dataset.action = "click->in-app-notifications#open"
-    this.listTarget.prepend(item)
-    if (this.hasEmptyTarget) this.emptyTarget.hidden = true
   }
 
   toast(data) {

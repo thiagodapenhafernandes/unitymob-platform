@@ -1,8 +1,15 @@
-<a href="<%= notification.url.presence || "#" %>"
-   class="ax-menu__item ax-notifications__item <%= "is-unread" if notification.read_at.nil? %>"
+<% origin = notification_origin(notification.kind) %>
+<% preview = local_assigns.fetch(:preview) { { sender: notification.metadata.to_h['sender_name'].presence || notification.title, body: notification.body.to_s.truncate(160) } } %>
+<a href="<%= notification.url.presence || '#' %>"
+   class="ax-menu__item ax-notifications__item <%= 'is-unread' if notification.read_at.nil? %>"
    data-notification-id="<%= notification.id %>"
    data-action="click->in-app-notifications#open">
-  <span class="ax-notifications__item-title"><%= notification.title %></span>
-  <% if notification.body.present? %><span class="ax-notifications__item-body"><%= notification.body %></span><% end %>
-  <time class="ax-notifications__item-time" datetime="<%= notification.created_at.iso8601 %>"><%= l(notification.created_at, format: :short) %></time>
+  <span class="ax-notifications__origin ax-notifications__origin--<%= origin[:tone] %>" aria-hidden="true"><i class="bi <%= origin[:icon] %>"></i></span>
+  <span class="ax-notifications__content">
+    <span class="ax-notifications__item-source"><%= origin[:label] %></span>
+    <span class="ax-notifications__item-title"><%= preview[:sender] %></span>
+    <% if preview[:body].present? %><span class="ax-notifications__item-body"><%= preview[:body] %></span><% end %>
+    <time class="ax-notifications__item-time" datetime="<%= notification.created_at.iso8601 %>"><%= l(notification.created_at, format: :short) %></time>
+  </span>
+  <% if notification.read_at.nil? %><span class="ax-notifications__unread-dot" role="img" aria-label="Não lida"></span><% end %>
 </a>

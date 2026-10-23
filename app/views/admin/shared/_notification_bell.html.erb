@@ -16,15 +16,14 @@
     <div class="ax-menu ax-menu--end ax-notifications__panel" data-ax-dropdown-target="menu" hidden>
       <div class="ax-notifications__head">
         <strong>Notificações</strong>
+        <span class="ax-notifications__count" data-in-app-notifications-target="count" <%= "hidden" if unread.zero? %>><%= unread %> <%= unread == 1 ? "nova" : "novas" %></span>
         <button type="button" class="ax-notifications__sound" data-in-app-notifications-target="soundToggle" data-action="in-app-notifications#toggleSound" aria-pressed="true" title="Som ligado (clique para silenciar)">
           <i class="bi bi-volume-up" aria-hidden="true"></i>
         </button>
         <button type="button" class="ax-notifications__read-all" data-action="in-app-notifications#readAll">Marcar todas como lidas</button>
       </div>
       <div data-in-app-notifications-target="list">
-        <% notifications.each do |notification| %>
-          <%= render "admin/shared/notification_item", notification: notification %>
-        <% end %>
+        <%= render "admin/shared/notification_list", notifications: notifications %>
       </div>
       <button type="button" class="ax-menu__item" data-in-app-notifications-target="more" data-action="in-app-notifications#more" hidden>Carregar mais notificações</button>
       <p class="ax-notifications__empty" data-in-app-notifications-target="empty" <%= "hidden" if notifications.any? %>>Nenhuma notificação por aqui.</p>

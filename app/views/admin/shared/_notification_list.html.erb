@@ -1,0 +1,4 @@
+<% previews = notification_message_previews(notifications, current_tenant) %>
+<% notifications.each do |notification| %>
+  <%= render 'admin/shared/notification_item', notification: notification, preview: previews.fetch(notification.id) %>
+<% end %>
