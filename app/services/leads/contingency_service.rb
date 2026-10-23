@@ -140,7 +140,7 @@ module Leads
           next unless user.tenant_owner? || user.can?(:manage, :distribution_rules)
           NotificationDispatcher.push_to(user, title: "Lead aguardando contingência",
             body: "A regra de destino não pode receber agora. Revise a disponibilidade dos responsáveis.",
-            url: "/admin/leads/#{@lead.id}")
+            url: "/admin/leads/#{@lead.id}", lead: @lead, event: "lead_contingency")
         end
       end
       false

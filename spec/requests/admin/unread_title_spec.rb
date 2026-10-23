@@ -4,7 +4,10 @@ RSpec.describe 'Contador de não lidos da aba', type: :request do
   include Devise::Test::IntegrationHelpers
   let(:admin) { create(:admin_user, :admin) }
   let(:lead) { create(:lead, tenant: admin.tenant, admin_user: admin) }
-  before { host! 'localhost'; sign_in admin }
+  before do
+    allow_any_instance_of(Lead).to receive(:route_lead)
+    host! 'localhost'; sign_in admin
+  end
 
   it 'envia invalidação pelo contrato posicional do Action Cable' do
     payloads = []

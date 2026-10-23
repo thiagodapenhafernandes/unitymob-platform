@@ -42,7 +42,7 @@ module Leads
       push_to(lead.admin_user,
               title: "Novo lead: #{lead.display_name}",
               body:  push_body_for(lead, secure: false),
-              url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution")
+              url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution", lead: lead, event: "lead_new")
     end
 
     # Reatribuição manual do corretor pelo admin.
@@ -52,7 +52,7 @@ module Leads
       push_to(new_corretor,
               title: "Lead atribuído a você: #{lead.display_name}",
               body:  push_body_for(lead, secure: false),
-              url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution")
+              url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution", lead: lead, event: "lead_assigned")
     end
 
     # Nova consulta da mesma pessoa dentro do tempo de atendimento: agregada
@@ -66,7 +66,7 @@ module Leads
       push_to(owner,
               title: "Novo interesse de #{lead.display_name}",
               body: "#{property_label} — #{lead.origin} (#{I18n.l(Time.current, format: :short)})",
-              url: "/admin/leads/#{lead.id}/attend", notification_context: "distribution")
+              url: "/admin/leads/#{lead.id}/attend", notification_context: "distribution", lead: lead, event: "lead_interest")
     end
 
     # Avisa o corretor que perdeu o lead por não atender no prazo (pocket).
@@ -76,12 +76,20 @@ module Leads
       push_to(previous_corretor,
               title: "Você perdeu o lead #{lead.display_name}",
               body:  "Não atendido no prazo — foi redistribuído para outro corretor.",
-              url:   "/admin/leads")
+              url:   "/admin/leads", event: "lead_lost_turn")
     end
 
-    def self.push_to(corretor, title:, body:, url:, notification_context: "general")
+    def self.push_to(corretor, title:, body:, url:, notification_context: "general", lead: nil, event: nil)
       return unless corretor&.active?
       return unless corretor.notification_delivery_allowed?
+
+      if lead && event
+        InAppNotification.notify_lead!(lead, corretor, event: event, title: title, body: body)
+      elsif event == "lead_lost_turn"
+        # O antigo dono pode ter perdido acesso: não carregue nome nem link do lead no sino.
+        InAppNotification.notify!(admin_user: corretor, kind: "lead_notice", title: "Prazo de atendimento expirado",
+          body: body, url: "/admin/leads", metadata: { event: event })
+      end
 
       # high: com urgency normal o Android em Doze (aparelho parado) segura a
       # entrega — exatamente o "push parou de chegar" com o celular na mesa.
@@ -149,6 +157,11 @@ module Leads
     end
 
     def deliver_channels
+      # O pool mantém seu fluxo de aceite e mascaramento; só avisamos o dono já definido.
+      unless pool_push?
+        event = @sticky ? "lead_returned" : (redistribution? ? "lead_redistributed" : "lead_new")
+        InAppNotification.notify_lead!(@lead, @corretor, event: event, title: push_title)
+      end
       begin
         deliver_push if @rule.notify_push
       rescue => e

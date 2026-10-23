@@ -6,7 +6,7 @@
    data-action="click->in-app-notifications#open">
   <span class="ax-notifications__origin ax-notifications__origin--<%= origin[:tone] %>" aria-hidden="true"><i class="bi <%= origin[:icon] %>"></i></span>
   <span class="ax-notifications__content">
-    <span class="ax-notifications__item-source"><%= origin[:label] %></span>
+    <span class="ax-notifications__item-source"><%= origin[:label] %> · <%= notification_event_label(notification) %></span>
     <span class="ax-notifications__item-title"><%= preview[:sender] %></span>
     <% if preview[:body].present? %><span class="ax-notifications__item-body"><%= preview[:body] %></span><% end %>
     <time class="ax-notifications__item-time" datetime="<%= notification.created_at.iso8601 %>"><%= l(notification.created_at, format: :short) %></time>

@@ -28,7 +28,7 @@ module Whatsapp
         )
         conversation.update_column(:assigned_admin_user_id, owner.id)
         LeadActivity.log!(lead: lead, kind: "whatsapp_attendance_opened", metadata: { attendance_id: attendance.id, button_text: attendance.button_text, admin_user_id: owner.id, admin_user_name: owner.name })
-        notify(owner, conversation, "Novo atendimento", "#{attendance.button_text} · #{conversation.display_name}")
+        notify(owner, conversation, "Novo atendimento", "#{attendance.button_text} · #{conversation.display_name}", event: "attendance_opened")
         broadcast_change(conversation)
         schedule_acceptance(attendance)
         attendance
@@ -72,8 +72,8 @@ module Whatsapp
         LeadActivity.log!(lead: conversation.lead, kind: "whatsapp_attendance_transferred", metadata: {
           attendance_id: attendance.id, reason: reason, by: by&.name, from_admin_user_name: previous&.name, admin_user_id: new_owner.id, admin_user_name: new_owner.name
         }.compact)
-        notify(new_owner, conversation, "Atendimento transferido para você", "#{attendance.button_text} · #{conversation.display_name}#{" (por #{by.name})" if by}")
-        notify(previous, conversation, "Atendimento transferido", "#{conversation.display_name} passou para #{new_owner.name}") if previous && previous.id != new_owner.id && previous.id != by&.id
+        notify(new_owner, conversation, "Atendimento transferido para você", "#{attendance.button_text} · #{conversation.display_name}#{" (por #{by.name})" if by}", event: "attendance_transferred")
+        notify(previous, conversation, "Atendimento transferido", "#{conversation.display_name} passou para #{new_owner.name}", event: "attendance_transferred") if previous && previous.id != new_owner.id && previous.id != by&.id
         broadcast_change(conversation, previous, by)
         # Quem perdeu o atendimento perde a visibilidade: corta o cable para o
         # thread aberto parar de receber o conteúdo.
@@ -121,7 +121,7 @@ module Whatsapp
       def request_switch!(attendance, flow:, button_key:, button_text:)
         conversation = attendance.whatsapp_conversation
         attendance.update!(pending_switch: { "flow_id" => flow.id, "button_key" => button_key, "button_text" => button_text })
-        notify(attendance.admin_user, conversation, "Cliente quer trocar de assunto", "#{conversation.display_name} pediu: #{button_text}")
+        notify(attendance.admin_user, conversation, "Cliente quer trocar de assunto", "#{conversation.display_name} pediu: #{button_text}", event: "attendance_switch_requested")
         send_interactive(
           conversation,
           "Você já tem um atendimento em andamento sobre “#{attendance.button_text}”. Deseja encerrá-lo e iniciar um novo sobre “#{button_text}”?",
@@ -208,9 +208,9 @@ module Whatsapp
 
         conversation = attendance.whatsapp_conversation
         case reason
-        when "switched_by_customer" then notify(owner, conversation, "Atendimento encerrado", "#{conversation.display_name} iniciou outro assunto")
-        when "window_expired" then notify(owner, conversation, "Atendimento encerrado", "#{conversation.display_name}: a janela de 24h do WhatsApp fechou")
-        when "finished" then notify(owner, conversation, "Atendimento finalizado por #{by.name}", conversation.display_name) if by && by.id != owner.id
+        when "switched_by_customer" then notify(owner, conversation, "Atendimento encerrado", "#{conversation.display_name} iniciou outro assunto", event: "attendance_closed")
+        when "window_expired" then notify(owner, conversation, "Atendimento encerrado", "#{conversation.display_name}: a janela de 24h do WhatsApp fechou", event: "attendance_closed")
+        when "finished" then notify(owner, conversation, "Atendimento finalizado por #{by.name}", conversation.display_name, event: "attendance_closed") if by && by.id != owner.id
         end
       end
 
@@ -239,10 +239,10 @@ module Whatsapp
         ([conversation.open_attendance&.admin_user] + extra_users + managers).compact.uniq
       end
 
-      def notify(user, conversation, title, body)
+      def notify(user, conversation, title, body, event:)
         InAppNotification.notify!(admin_user: user, kind: "whatsapp_attendance", title: title, body: body,
                                   url: Rails.application.routes.url_helpers.admin_whatsapp_conversation_path(conversation),
-                                  metadata: { conversation_id: conversation.id })
+                                  metadata: { conversation_id: conversation.id, event: event })
       end
 
       def send_interactive(conversation, body, buttons)

@@ -3,7 +3,30 @@ module Admin::NotificationsHelper
     case kind.to_s
     when /\Ainstagram/ then { label: 'Instagram Direct', icon: 'bi-instagram', tone: 'instagram' }
     when /\Awhatsapp/ then { label: 'WhatsApp', icon: 'bi-whatsapp', tone: 'whatsapp' }
+    when 'lead_event', 'lead_notice' then { label: 'Leads', icon: 'bi-person-plus', tone: 'system' }
     else { label: 'Sistema', icon: 'bi-bell', tone: 'system' }
+    end
+  end
+
+  def notification_event_label(notification)
+    case notification.metadata.to_h['event'].presence || notification.kind
+    when 'lead_new' then 'Novo lead'
+    when 'lead_assigned' then 'Lead atribuído'
+    when 'lead_redistributed' then 'Lead redistribuído'
+    when 'lead_returned' then 'Lead retornou'
+    when 'lead_interest' then 'Novo interesse'
+    when 'lead_lost_turn' then 'Prazo de atendimento expirado'
+    when 'lead_contingency' then 'Aguardando contingência'
+    when 'message_reply' then 'Nova resposta'
+    when 'instagram_message', 'whatsapp_message' then 'Nova mensagem'
+    when 'attendance_opened' then 'Novo atendimento'
+    when 'attendance_transferred' then 'Atendimento transferido'
+    when 'attendance_switch_requested' then 'Troca de assunto solicitada'
+    when 'attendance_closed' then 'Atendimento encerrado'
+    when 'whatsapp_attendance' then notification.title
+    when 'whatsapp_task' then 'Nova tarefa'
+    when 'portfolio_reassigned' then 'Carteira recebida'
+    else 'Aviso'
     end
   end
 
