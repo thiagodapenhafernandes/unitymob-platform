@@ -8,6 +8,7 @@ export default class extends Controller {
     this.media = window.matchMedia(this.mediaValue)
     this.loadWhenMatching = () => {
       if (this.media.matches && !this.element.hasAttribute("src")) {
+        this.element.setAttribute("loading", "eager")
         this.element.setAttribute("src", this.srcValue)
       }
     }

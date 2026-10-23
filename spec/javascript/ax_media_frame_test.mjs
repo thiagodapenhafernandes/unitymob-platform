@@ -14,17 +14,18 @@ function frame(matches) {
   const requests = []
   controller.mediaValue = "(max-width: 767.98px)"
   controller.srcValue = "/admin/leads/pwa_section?origin=site&mobile_tab=all"
-  controller.element = { hasAttribute: key => attributes.has(key), setAttribute: (key, value) => { attributes.set(key, value); requests.push(value) } }
-  return { controller, media, requests, listeners }
+  controller.element = { hasAttribute: key => attributes.has(key), setAttribute: (key, value) => { attributes.set(key, value); if (key === "src") requests.push(value) } }
+  return { controller, media, requests, listeners, attributes }
 }
 
 test("desktop não inicia a seção mobile; redimensionamento carrega uma vez com os filtros", () => {
-  const { controller, media, requests, listeners } = frame(false)
+  const { controller, media, requests, listeners, attributes } = frame(false)
   controller.connect()
   assert.equal(requests.length, 0)
   media.matches = true
   for (const listener of listeners) listener()
   assert.deepEqual(requests, [controller.srcValue])
+  assert.equal(attributes.get("loading"), "eager")
   media.matches = false
   for (const listener of listeners) listener()
   media.matches = true
@@ -35,9 +36,10 @@ test("desktop não inicia a seção mobile; redimensionamento carrega uma vez co
 })
 
 test("mobile carrega ao conectar e reconectar não duplica a requisição", () => {
-  const { controller, requests } = frame(true)
+  const { controller, requests, attributes } = frame(true)
   controller.connect()
   assert.deepEqual(requests, [controller.srcValue])
+  assert.equal(attributes.get("loading"), "eager")
   controller.disconnect()
   controller.connect()
   assert.equal(requests.length, 1)
