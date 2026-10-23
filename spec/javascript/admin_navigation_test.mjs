@@ -115,6 +115,8 @@ test("ignora âncora na mesma página, cliques marcados e forms de frame", async
   assert.equal(overlay.hidden, true)
   fire("turbo:submit-start", { target: { dataset: { turboFrame: "modal" }, closest: () => null } })
   assert.equal(overlay.hidden, true)
+  fire("turbo:submit-start", { target: { dataset: { adminNavigationIgnore: "true" }, closest: () => null } })
+  assert.equal(overlay.hidden, true)
   fire("turbo:submit-start", { target: { dataset: {}, closest: () => null } })
   assert.equal(overlay.hidden, false)
 })

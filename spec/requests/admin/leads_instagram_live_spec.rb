@@ -10,6 +10,13 @@ RSpec.describe 'Instagram Direct sem recarregar o lead', type: :request do
     lead.instagram_messages.create!(message_id: 'incoming', body: 'Mensagem recebida', occurred_at: 1.hour.ago)
   end
 
+  it 'o formulário de resposta dispensa o indicador global de navegação' do
+    get admin_lead_path(lead)
+    expect(response).to have_http_status(:ok)
+    form = Nokogiri::HTML(response.body).at_css('form.lead-ig-thread__form')
+    expect(form['data-admin-navigation-ignore']).to eq('true')
+  end
+
   it 'envia por Turbo e atualiza somente mensagens/status, sem substituir o composer' do
     allow(Instagram::Reply).to receive(:call) do
       lead.instagram_messages.create!(message_id: 'outgoing', body: 'Resposta', direction: 'outbound', occurred_at: Time.current, sent_by_admin_user: admin)

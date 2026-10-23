@@ -8,7 +8,7 @@
     <%= render "admin/leads/instagram_messages_frame", lead: lead %>
     <div id="lead_instagram_status_<%= lead.id %>" role="alert" aria-live="polite"></div>
     <% if can?(:edit, :leads) %>
-      <%= form_with url: reply_instagram_admin_lead_path(lead), method: :post, class: "lead-ig-thread__form" do |f| %>
+      <%= form_with url: reply_instagram_admin_lead_path(lead), method: :post, class: "lead-ig-thread__form", data: { admin_navigation_ignore: true } do |f| %>
         <%= f.text_area :body, rows: 2, maxlength: 1000, placeholder: "Responder no Instagram…", class: "ax-control", aria: { label: "Responder no Instagram" }, disabled: !window_open, data: { ax_live_thread_target: "input" } %>
         <%= f.submit "Enviar", class: "ax-btn ax-btn--sm ax-btn--primary", disabled: !window_open, data: { ax_live_thread_target: "submit" } %>
       <% end %>
