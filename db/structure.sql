@@ -11532,6 +11532,13 @@ CREATE INDEX idx_leads_unverified_inquiries ON public.leads USING btree (tenant_
 
 
 --
+-- Name: idx_leads_whatsapp_service_contacts; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_whatsapp_service_contacts ON public.leads USING btree (tenant_id, id) WHERE ((other_information ->> 'whatsapp_service_contact'::text) = 'true'::text);
+
+
+--
 -- Name: idx_meta_forms_on_page_and_form_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -20850,6 +20857,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261023150000'),
 ('20261021200000'),
 ('20261021190000'),
 ('20261021181000'),

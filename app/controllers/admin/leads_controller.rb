@@ -142,14 +142,6 @@ class Admin::LeadsController < Admin::BaseController
     lead_scope = lead_scope_for_tab(common_scope, @desktop_lead_tab)
     list_scope = lead_scope_for_tab(list_filtered_scope, @desktop_lead_tab)
 
-    stats_scope = list_scope.reorder(nil)
-    @total_leads = stats_scope.count
-    @new_leads = stats_scope.where(status: status_filter_values_for(Lead.status_value(:novo, tenant: current_tenant))).count
-    @in_service_leads = stats_scope.where(status: Lead.status_value("Em Atendimento", tenant: current_tenant)).count
-    @unassigned_leads = stats_scope.where(admin_user_id: nil).count
-    @status_counts = stats_scope.group(:status).count
-    @origin_counts = lead_scope_for_current_user.reorder(nil).where.not(origin: [nil, ""]).group(:origin).count
-
     lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
     list_scope = list_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
 
@@ -189,7 +181,8 @@ class Admin::LeadsController < Admin::BaseController
       @kanban_leads = []
     end
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
-    @leads = list_scope.paginate(page: params[:page], per_page: LEAD_LIST_PAGE_SIZE)
+    @leads = list_scope.paginate(page: params[:page], per_page: LEAD_LIST_PAGE_SIZE,
+                                 total_entries: @desktop_tab_counts.fetch(@desktop_lead_tab))
     load_pwa_leads_light_context
     property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
@@ -2826,7 +2819,13 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def lead_tab_counts_for(base_scope, only: %w[todo visits future favorites verify all])
-    only.index_with { |tab| lead_scope_for_tab(base_scope, tab).reorder(nil).count }
+    @lead_tab_counts ||= {}
+    scope_sql = base_scope.to_sql
+    only.index_with do |tab|
+      @lead_tab_counts.fetch([scope_sql, tab]) do |key|
+        @lead_tab_counts[key] = lead_scope_for_tab(base_scope, tab).reorder(nil).count
+      end
+    end
   end
 
   def lead_scope_for_tab(base_scope, tab)

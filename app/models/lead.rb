@@ -255,7 +255,12 @@ class Lead < ApplicationRecord
   }
   scope :holding, -> { represado }
   scope :by_origin, ->(origin) { where(origin: origin) if origin.present? }
-  scope :commercial, -> { where("COALESCE(leads.other_information ->> 'whatsapp_service_contact', 'false') <> 'true'") }
+  scope :commercial, -> {
+    # A subconsulta usa o índice parcial dos poucos contatos administrativos, sem ler o JSON de toda a lista.
+    service_contacts = except(:select, :order, :limit, :offset)
+      .where("(leads.other_information ->> 'whatsapp_service_contact') = 'true'").select(:id)
+    where.not(id: service_contacts)
+  }
 
   def whatsapp_service_contact?
     other_information.to_h["whatsapp_service_contact"] == true
