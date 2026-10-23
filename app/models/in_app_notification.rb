@@ -23,7 +23,7 @@ class InAppNotification < ApplicationRecord
   end
 
   def self.invalidate_title!(tenant_id)
-    ActionCable.server.broadcast("unread_title:#{tenant_id}", event: "unread_changed")
+    ActionCable.server.broadcast("unread_title:#{tenant_id}", { event: "unread_changed" })
   rescue StandardError => error
     Rails.logger.warn("[Unread title] broadcast unavailable class=#{error.class}")
   end
