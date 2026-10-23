@@ -33,6 +33,9 @@ RSpec.describe "Retorno dos leads da lista paginada", type: :request do
     get detail_url
     expect(response).to have_http_status(:ok)
     expect(Nokogiri::HTML(response.body).css("a").any? { |a| a["href"] == return_path }).to be(true)
+    back_links = Nokogiri::HTML(response.body).css("a").select { |a| a.text.strip == "Voltar" }
+    expect(back_links.size).to be >= 2
+    expect(back_links.all? { |a| a["href"] == return_path }).to be(true)
     get [uri.path, uri.query].compact.join("?")
     expect(response.media_type).to eq("text/html")
     expect(Nokogiri::HTML(response.body).at_css("#lead_#{leads[20].id}")).to be_present
@@ -45,6 +48,7 @@ RSpec.describe "Retorno dos leads da lista paginada", type: :request do
     expected = admin_leads_path(filters.merge("page" => 3, "anchor" => "lead_#{lead.id}"))
     get admin_lead_path(lead, return_to: old_path)
     expect(Nokogiri::HTML(response.body).css("a").any? { |a| a["href"] == expected }).to be(true)
+    expect(Nokogiri::HTML(response.body).css("a").select { |a| a.text.strip == "Voltar" }.all? { |a| a["href"] == expected }).to be(true)
 
     get list_page_admin_leads_path(filters.merge("offset" => 20))
     expect(response).to redirect_to(admin_leads_path(filters.merge("page" => 3)))

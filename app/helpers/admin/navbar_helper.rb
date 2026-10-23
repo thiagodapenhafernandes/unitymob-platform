@@ -91,7 +91,7 @@ module Admin::NavbarHelper
                 if action_name == "show"
                   view_mode = current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "kanban"
                   [
-                    admin_contextbar_link("Voltar", admin_leads_path(view: view_mode), icon: "arrow-left", if: can?(:view, :leads))
+                    admin_contextbar_link("Voltar", @return_to_path.presence || admin_leads_path(view: view_mode), icon: "arrow-left", if: can?(:view, :leads))
                   ]
                 elsif action_name.in?(%w[new create])
                   [

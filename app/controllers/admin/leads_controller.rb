@@ -403,6 +403,7 @@ class Admin::LeadsController < Admin::BaseController
   def show
     @page_title = "Lead: #{@lead.name}"
     @return_to_path = safe_return_path(params[:return_to])
+    params[:return_to] = @return_to_path if @return_to_path.present?
     @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
 
