@@ -87,6 +87,14 @@ Validação: 12 testes passaram, incluindo URLs efetivas do cliente OAuth e requ
 
 ## Instagram Direct — implementação de recebimento
 
+### Enriquecimento local de anúncios do Direct (23/10/2026)
+
+Novas mensagens recebidas com `referral.ad_id` registram a página interna que recebeu o evento e agendam `Instagram::AdEnrichmentJob` após o commit. O job reutiliza a leitura e validação de anúncios de `Facebook::MetaService#ad_attribution`, compartilhada com o enriquecimento Meta já existente. Usa somente a integração dessa página, ativa e selecionada no mesmo tenant, com token válido e conta de anúncios selecionada; não escolhe outra conexão como fallback.
+
+Os IDs e nomes confirmados do anúncio, conjunto e campanha ficam em `instagram_messages.context.ad_attribution`. A referência inicial em `other_information.instagram_entry` recebe o mesmo complemento somente se corresponder àquela mensagem e anúncio e ainda não estiver enriquecida. Campanhas posteriores ficam na nova mensagem: não substituem origem, atribuição, nomes anteriores, responsável, status, nome ou contatos do cliente. A coluna de origem existente mostra os nomes da primeira entrada Direct; mantém o ID como fallback quando não houver nomes.
+
+Não há migration, backfill, consulta retroativa nem busca de dados pessoais neste complemento. Mensagens históricas sem a proveniência da página não são enfileiradas ou enriquecidas por esse fluxo. Falha da API permite retry sem perder a mensagem; falha ao agendar o enriquecimento não interrompe o recebimento. Validação local usa respostas Meta simuladas; funcionamento externo depende de autorização para leitura do anúncio e acesso à conta selecionada. Sem deploy nesta etapa.
+
 Implementados descoberta do Instagram profissional na sincronização de páginas e por botão, ativação explícita por página e processamento assíncrono das mensagens. A configuração fica dentro de cada página em Integrações Meta. A ativação registra rota pelo Instagram ID quando há gateway, preserva as inscrições atuais da página ao adicionar `messages` e consulta novamente a Meta para confirmar a inscrição. A configuração do objeto Instagram/callback no App Dashboard e a autorização do usuário continuam necessárias. A ausência de evento recebido não é apresentada como prova de funcionamento.
 
 O gateway agora extrai eventos do objeto `instagram` e encaminha um corpo separado por mensagem/perfil, assinado com a credencial de encaminhamento existente. Formulários `leadgen` mantêm seu contrato. O CRM valida a assinatura antes de agendar o job; falha ao agendar Direct retorna 503 para reentrega. É necessário publicar o gateway separadamente quando esse modo estiver em uso.

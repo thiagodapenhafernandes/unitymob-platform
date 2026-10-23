@@ -25,6 +25,7 @@ class InstagramDirectJob < ApplicationJob
         context = {}
         referral = message["referral"] || event["referral"]
         context["referral"] = referral.slice("ref", "source", "type", "ad_id").select { |_, value| value.is_a?(String) }.transform_values { |value| value.first(2000) } if referral.is_a?(Hash)
+        context["meta_facebook_page_id"] = page.id if context.dig("referral", "ad_id").present?
         story = message.dig("reply_to", "story")
         context["story_id"] = story["id"] if story.is_a?(Hash)
         timestamp = Float(event["timestamp"], exception: false)

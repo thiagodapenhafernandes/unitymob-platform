@@ -4,7 +4,7 @@ RSpec.describe MetaLeadEnrichmentJob, type: :job do
   let(:integration) { create(:user_meta_integration, ad_account_id: "123456") }
   let(:tenant) { integration.tenant }
   let(:lead) { create(:lead, tenant: tenant, attribution_channel: "meta_ads", attribution_data: {"ad_id" => "987654"}, other_information: {"keep" => "original"}) }
-  let(:service) { instance_double(Facebook::MetaService) }
+  let(:service) { Facebook::MetaService.new(integration.access_token) }
 
   before do
     allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
@@ -70,8 +70,9 @@ RSpec.describe MetaLeadEnrichmentJob, type: :job do
 
   it "não grava anúncio de outra conta" do
     allow(service).to receive(:ad_details).and_return({"id" => "987654", "account_id" => "999999"})
+    original_info = lead.other_information.deep_dup
     described_class.perform_now(tenant.id, lead.id)
-    expect(lead.reload.other_information).to eq("keep" => "original")
+    expect(lead.reload.other_information).to eq(original_info)
   end
 
   it "não procura lead fora do tenant" do

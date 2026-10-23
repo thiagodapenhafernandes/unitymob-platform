@@ -115,9 +115,13 @@ module Admin::LeadOriginHelper
     context = []
     instagram_entry = info["instagram_entry"].is_a?(Hash) ? info["instagram_entry"] : {}
     if subtype == "Direct"
+      ad_attribution = instagram_entry["ad_attribution"].is_a?(Hash) ? instagram_entry["ad_attribution"] : {}
+      campaign ||= ad_attribution["meta_campaign_name"].presence
+      ad ||= ad_attribution["meta_ad_name"].presence
+      context << "Conjunto: #{ad_attribution['meta_adset_name']}" if ad_attribution["meta_adset_name"].present?
       context << "Resposta a story" if instagram_entry["story_id"].present?
       instagram_ad = hash_dig(instagram_entry, "referral", "ad_id")
-      context << "Anúncio ID: #{instagram_ad}" if instagram_ad.is_a?(String) && instagram_ad.match?(/\A[0-9]+\z/)
+      context << "Anúncio ID: #{instagram_ad}" if ad.blank? && instagram_ad.is_a?(String) && instagram_ad.match?(/\A[0-9]+\z/)
     end
     context << "Campanha: #{campaign}" if campaign
     context << "Anúncio: #{ad}" if ad
