@@ -6,7 +6,7 @@
 <% interest_properties = lead_table_interest_properties(leads, tenant: current_tenant) %>
 <% leads.each do |lead| %>
   <%
-    lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
+    lead_return_to_path = "#{local_assigns[:return_to_path].presence || request.fullpath}#lead_#{lead.id}"
     property = @properties_by_id[lead.property_id] || interest_properties[lead.id]
     display_name = lead.display_name.presence || lead.name
     phone_href = Phones::Normalizer.tel_href(lead.display_phone)

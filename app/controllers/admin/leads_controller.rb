@@ -318,6 +318,8 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def list_page
+    return redirect_to(lead_list_page_return_path) if request.format.html?
+
     assign_lead_filter_state
 
     desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
@@ -334,7 +336,7 @@ class Admin::LeadsController < Admin::BaseController
 
     property_ids = leads.filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
-    html = leads.any? ? render_to_string(partial: "admin/leads/table_rows", formats: [:html], locals: { leads: leads }) : ""
+    html = leads.any? ? render_to_string(partial: "admin/leads/table_rows", formats: [:html], locals: { leads: leads, return_to_path: lead_list_page_return_path }) : ""
     next_offset = offset + leads.size
 
     render json: {
@@ -2342,7 +2344,20 @@ class Admin::LeadsController < Admin::BaseController
     return nil unless path.start_with?("/")
     return nil if path.start_with?("//")
 
+    uri = URI.parse(path)
+    if uri.path == list_page_admin_leads_path
+      destination = lead_list_page_return_path(Rack::Utils.parse_nested_query(uri.query.to_s))
+      return uri.fragment.present? ? "#{destination}##{uri.fragment}" : destination
+    end
+
     path
+  rescue URI::InvalidURIError
+    nil
+  end
+
+  def lead_list_page_return_path(query = request.query_parameters)
+    page = [query["offset"].to_i, 0].max / LEAD_LIST_PAGE_SIZE + 1
+    admin_leads_path(query.except("offset", "return_to", "format").merge("view" => "list", "page" => page))
   end
 
   # O lead ainda pertence ao corretor que clicou (não expirou/redistribuiu)?
