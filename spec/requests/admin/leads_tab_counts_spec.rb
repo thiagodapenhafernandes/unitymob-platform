@@ -40,6 +40,21 @@ RSpec.describe "Admin leads tab counts", type: :request do
 
       expect(counts).to include("verify")
     end
+
+    it "reuses equivalent scopes within the request without mixing filters" do
+      lead = create(:lead, tenant: tenant, name: "Selecionado")
+      create(:lead, tenant: tenant, name: "Outro")
+      first = controller.send(:lead_tab_counts_for, tenant.leads, only: %w[all])
+      queries = []
+      subscriber = ->(*args) { queries << args.last[:sql] unless args.last[:name] == "SCHEMA" }
+      repeated = ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+        controller.send(:lead_tab_counts_for, tenant.leads, only: %w[all])
+      end
+
+      expect(repeated).to eq(first)
+      expect(queries).to be_empty
+      expect(controller.send(:lead_tab_counts_for, tenant.leads.where(id: lead.id), only: %w[all])).to eq("all" => 1)
+    end
   end
 
   describe "tab scope tenant scoping" do

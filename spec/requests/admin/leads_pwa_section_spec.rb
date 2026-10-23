@@ -24,8 +24,11 @@ RSpec.describe "Admin leads PWA section", type: :request do
       expect(frame).to be_present
       expect(frame["loading"]).to eq("lazy")
       expect(frame["target"]).to eq("_top")
-      expect(frame["src"]).to include("pwa_section")
-      expect(frame["src"]).to include("lead_pipeline_id=#{pipeline.id}")
+      expect(frame["src"]).to be_nil
+      expect(frame["data-controller"]).to eq("ax-media-frame")
+      expect(frame["data-ax-media-frame-media-value"]).to eq("(max-width: 767.98px)")
+      expect(frame["data-ax-media-frame-src-value"]).to include("pwa_section")
+      expect(frame["data-ax-media-frame-src-value"]).to include("lead_pipeline_id=#{pipeline.id}")
       expect(document.css("section.lead-pwa-screen")).to be_empty
     end
   end

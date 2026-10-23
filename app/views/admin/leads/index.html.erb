@@ -2453,7 +2453,9 @@
 
 <div class="ax-leads-mobile-shell tw-flex tw-flex-col tw-gap-3"
      data-controller="lead-pwa-filter">
-  <%= turbo_frame_tag "lead_pwa_section", target: "_top", src: pwa_section_admin_leads_path(lead_query_params), loading: "lazy" %>
+  <%= turbo_frame_tag "lead_pwa_section", target: "_top", loading: "lazy",
+        data: { controller: "ax-media-frame", ax_media_frame_media_value: "(max-width: 767.98px)",
+                ax_media_frame_src_value: pwa_section_admin_leads_path(lead_query_params) } %>
 
   <%= lead_desktop_header %>
 
