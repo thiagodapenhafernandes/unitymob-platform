@@ -460,4 +460,17 @@ RSpec.describe Leads::NotificationDispatcher do
     ).once
   end
 
+  it "leva novo lead e atribuição ao sino sem depender de assinatura push" do
+    corretor.update!(profile: corretor.tenant.profiles.create!(name: 'Responsável', axis: 'vertical', position: 700, permissions: { 'leads' => { 'view' => true, 'scope' => 'own' } }))
+    lead
+    LeadSetting.instance.update!(notify_on_direct_assignment: true, notify_on_reassignment: true, notify_on_lost_turn: true)
+    described_class.notify_direct_assignment(lead)
+    described_class.notify_reassignment(lead, corretor)
+    described_class.notify_lost_turn(lead, corretor)
+    notices = InAppNotification.where(admin_user: corretor).order(:id).to_a
+    expect(notices.map { |n| n.metadata['event'] }).to eq(%w[lead_new lead_assigned lead_lost_turn])
+    expect(notices.last.title).not_to include(lead.display_name)
+    expect(notices.last.metadata).not_to have_key('lead_id')
+  end
+
 end

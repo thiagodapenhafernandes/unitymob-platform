@@ -15,8 +15,8 @@ class InAppNotification < ApplicationRecord
 
   def self.visible_for(user, tenant)
     scope = where(admin_user_id: user.id, tenant_id: tenant.id)
-    direct = scope.where(kind: "instagram_message")
-    other = scope.where.not(kind: "instagram_message")
+    direct = scope.where(kind: %w[instagram_message lead_event])
+    other = scope.where.not(kind: %w[instagram_message lead_event])
     return other unless user.can?(:view, :leads)
 
     visible_leads = Lead.accessible_to_admin(user, tenant: tenant).select("leads.id::text")
@@ -31,11 +31,25 @@ class InAppNotification < ApplicationRecord
     user = conversation.tenant.admin_users.active.find_by(id: conversation.alert_recipient_id)
     return unless user&.can?(:view, :whatsapp_inbox)
 
+    previous = conversation.messages.where("id < ?", message.id).order(id: :desc).pick(:direction, :status)
+    reply = message.replied_message&.outbound? || (previous && previous.first == "outbound" && %w[sent delivered read].include?(previous.last))
     notify!(admin_user: user, kind: "whatsapp_message", title: "Nova mensagem no WhatsApp", body: message.preview.to_s.truncate(160),
       url: Rails.application.routes.url_helpers.admin_whatsapp_conversation_path(conversation),
-      metadata: { conversation_id: conversation.id, whatsapp_message_id: message.id, sender_name: conversation.display_name })
+      metadata: { conversation_id: conversation.id, whatsapp_message_id: message.id, sender_name: conversation.display_name,
+        event: (reply ? "message_reply" : "whatsapp_message") })
   rescue StandardError => error
     Rails.logger.warn("[WhatsApp unread] notification unavailable class=#{error.class}")
+  end
+
+  def self.notify_lead!(lead, user, event:, title:, body: nil, url: nil)
+    return unless user&.active? && user.tenant_id == lead.tenant_id && user.can?(:view, :leads)
+    return unless Lead.accessible_to_admin(user, tenant: lead.tenant).exists?(id: lead.id)
+
+    notify!(admin_user: user, kind: "lead_event", title: title, body: body,
+      url: url || Rails.application.routes.url_helpers.admin_lead_path(lead),
+      metadata: { event: event, lead_id: lead.id, sender_name: lead.display_name })
+  rescue StandardError => error
+    Rails.logger.warn("[Lead notification] unavailable class=#{error.class}")
   end
 
   def self.invalidate_title!(tenant_id)
