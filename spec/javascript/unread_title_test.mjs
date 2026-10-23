@@ -6,7 +6,7 @@ const code = readFileSync('app/javascript/controllers/in_app_notifications_contr
   .replace(/^import .*$/gm, '').replace('export default class', 'globalThis.Notifications = class')
 function setup(total = 3, title = 'Salute — Leads') {
   const document = { title }
-  const context = { Controller: class {}, document, fetch: async () => ({ ok: true, json: async () => ({total, unread_count: 1}) }) }
+  const context = { Controller: class {}, document, URL, window: { location: { origin: "https://crm.test" } }, fetch: async () => ({ ok: true, json: async () => ({total, unread_count: 1}) }) }
   vm.runInNewContext(code, context)
   const c = new context.Notifications()
   c.hasSummaryUrlValue = true; c.summaryUrlValue = '/summary'; c.baseTitle = title; c.renderBadge = () => {}
@@ -30,5 +30,20 @@ test('resposta antiga não sobrescreve navegação nem uma consulta mais recente
   context.fetch = () => new Promise(r => { resolve = r })
   const pending = c.refreshTitle(); c.disconnected = true
   resolve({ok:true,json:async()=>({total:10})}); await pending
+  assert.equal(document.title, 'Salute — Leads')
+})
+
+test('carrega a próxima página pessoal do sino sem alterar a contagem', async () => {
+  const { c, document, context } = setup()
+  let inserted = ''
+  c.nextCursor = 90; c.titleRequest = 1
+  c.listTarget = { insertAdjacentHTML: (where, html) => { inserted += html } }
+  c.moreTarget = {hidden:false}
+  context.fetch = async url => {
+    assert.equal(url.searchParams.get('before'), '90')
+    return {ok:true,json:async()=>({html:'<a>Aviso pessoal</a>',next_cursor:null})}
+  }
+  await c.more()
+  assert.equal(inserted, '<a>Aviso pessoal</a>'); assert.equal(c.moreTarget.hidden, true)
   assert.equal(document.title, 'Salute — Leads')
 })

@@ -3,7 +3,7 @@ import consumer from "channels/consumer"
 
 // Sino + toast em tempo real. O servidor envia { id, title, body, url, unread_count }.
 export default class extends Controller {
-  static targets = ["badge", "list", "empty", "toasts", "soundToggle"]
+  static targets = ["badge", "list", "empty", "toasts", "soundToggle", "more"]
   static values = { unread: Number, readUrl: String, readAllUrl: String, summaryUrl: String }
 
   connect() {
@@ -43,12 +43,34 @@ export default class extends Controller {
     try {
       const response = await fetch(this.summaryUrlValue, { headers: { Accept: "application/json" }, credentials: "same-origin" })
       if (!response.ok) return
-      const { total, unread_count } = await response.json()
+      const { total, unread_count, html, next_cursor } = await response.json()
       if (this.disconnected || request !== this.titleRequest) return
+      this.nextCursor = next_cursor
+      if (this.hasMoreTarget) this.moreTarget.hidden = !next_cursor
       this.renderBadge(unread_count)
+      if (this.hasListTarget && typeof html === "string") this.listTarget.innerHTML = html
+      if (this.hasEmptyTarget && typeof html === "string") this.emptyTarget.hidden = html.trim().length > 0
       const count = Math.max(0, Number(total) || 0)
       document.title = `${count ? `(${count}) ` : ""}${this.baseTitle}`
     } catch (_error) { /* Sem rede: mantém a última contagem confirmada. */ }
+  }
+
+  async more() {
+    if (!this.nextCursor || this.loadingMore) return
+    this.loadingMore = true
+    const request = this.titleRequest
+    try {
+      const url = new URL(this.summaryUrlValue, window.location.origin)
+      url.searchParams.set("before", this.nextCursor)
+      const response = await fetch(url, { headers: { Accept: "application/json" }, credentials: "same-origin" })
+      if (!response.ok) return
+      const data = await response.json()
+      if (this.disconnected || request !== this.titleRequest) return
+      this.listTarget.insertAdjacentHTML("beforeend", data.html)
+      this.nextCursor = data.next_cursor
+      this.moreTarget.hidden = !data.next_cursor
+    } catch (_error) { /* Mantém os itens e permite tentar novamente. */ }
+    finally { this.loadingMore = false }
   }
 
   received(data) {
@@ -59,7 +81,7 @@ export default class extends Controller {
     if (data.event === "read") return this.markRead(data)
     if (data.event === "attendance_changed") return window.dispatchEvent(new CustomEvent("wa:attendance-changed", { detail: data }))
 
-    this.playSound()
+    if (data.kind !== "whatsapp_message") this.playSound()
     this.renderBadge(data.unread_count)
     this.prepend(data)
     this.toast(data)

@@ -34,3 +34,5 @@
 .ax-notifications__toast-close { position: absolute; top: 6px; right: 8px; border: 0; background: none; font-size: 18px; line-height: 1; color: var(--ab-muted, #667085); cursor: pointer; }
 @keyframes ax-notification-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .ax-notifications__toast { animation: none; } }
+
+.ax-notifications [data-in-app-notifications-target="more"][hidden] { display: none; }

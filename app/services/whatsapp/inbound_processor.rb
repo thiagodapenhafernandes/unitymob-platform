@@ -151,6 +151,8 @@ module Whatsapp
       InAppNotification.broadcast_event!(conversation.alert_recipient_id,
                                          event: "whatsapp_message", conversation_id: conversation.id)
 
+      InAppNotification.notify_whatsapp_message!(conversation, message)
+
       campaign_message = mark_campaign_reply!(conversation, message, raw_message: msg)
       Whatsapp::ResponseFlowRunner.call(conversation: conversation, inbound_message: message, raw_message: msg, campaign_message: campaign_message, phone_number_id: phone_number_id)
       enqueue_entry_enrichment(conversation, message)

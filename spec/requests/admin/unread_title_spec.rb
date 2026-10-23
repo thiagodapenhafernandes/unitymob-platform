@@ -20,15 +20,17 @@ RSpec.describe 'Contador de não lidos da aba', type: :request do
     InAppNotification.notify!(admin_user: admin, kind: 'notice', title: 'Aviso')
     message = lead.instagram_messages.create!(message_id: 'title-in', body: 'Privado', occurred_at: Time.current)
     lead.instagram_messages.create!(message_id: 'title-out', direction: 'outbound', occurred_at: Time.current)
-    WhatsappConversation.create!(tenant: admin.tenant, contact_phone: '5547999990077', unread_count: 3)
+    conversation = WhatsappConversation.create!(tenant: admin.tenant, assigned_admin_user: admin, contact_phone: '5547999990077', unread_count: 3)
+    incoming = conversation.messages.create!(tenant: admin.tenant, direction: 'inbound', msg_type: 'text', body: 'Privado')
+    InAppNotification.notify_whatsapp_message!(conversation, incoming)
     other = create(:admin_user, :admin)
     InAppNotification.notify!(admin_user: other, kind: 'notice', title: 'Outra conta')
     get summary_admin_in_app_notifications_path
-    expect(response.parsed_body).to include('total' => 5, 'unread_count' => 2)
+    expect(response.parsed_body).to include('total' => 3, 'unread_count' => 3)
     post read_direct_admin_in_app_notifications_path, params: { lead_id: lead.id, cursor: message.id }
     expect(response).to have_http_status(:no_content)
     get summary_admin_in_app_notifications_path
-    expect(response.parsed_body['total']).to eq(4)
+    expect(response.parsed_body['total']).to eq(2)
   end
 
   it 'não marca mensagem que chegou após o cursor exibido nem avisos' do
@@ -36,6 +38,25 @@ RSpec.describe 'Contador de não lidos da aba', type: :request do
     lead.instagram_messages.create!(message_id: 'later', occurred_at: Time.current)
     post read_direct_admin_in_app_notifications_path, params: { lead_id: lead.id, cursor: first.id }
     expect(InAppNotification.unread.where(admin_user: admin, kind: 'instagram_message').count).to eq(1)
+  end
+
+  it 'mantém sino e título pessoais mesmo para gestores com acesso a todos' do
+    observer = create(:admin_user, :admin, tenant: admin.tenant)
+    lead.instagram_messages.create!(message_id: 'owner-only', occurred_at: Time.current)
+    expect(InAppNotification.where(admin_user: observer, kind: 'instagram_message')).to be_empty
+    get summary_admin_in_app_notifications_path
+    expect(response.parsed_body['html']).to include('Nova mensagem no Instagram')
+    expect(response.parsed_body['total']).to eq(response.parsed_body['unread_count'])
+  end
+
+  it 'pagina notificações sem incluir itens de outro usuário' do
+    31.times { InAppNotification.create!(admin_user: admin, tenant: admin.tenant, kind: 'notice', title: 'Aviso pessoal') }
+    get summary_admin_in_app_notifications_path
+    cursor = response.parsed_body['next_cursor']
+    expect(response.parsed_body['html'].scan('data-notification-id=').length).to eq(30)
+    get summary_admin_in_app_notifications_path, params: { before: cursor }
+    expect(response.parsed_body['html'].scan('data-notification-id=').length).to eq(1)
+    expect(response.parsed_body['next_cursor']).to be_nil
   end
 
   it 'nega acesso a outro tenant e conta apenas conversas permitidas' do

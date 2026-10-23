@@ -1,6 +1,11 @@
 class Admin::InAppNotificationsController < Admin::BaseController
   def summary
-    render json: { total: InAppNotification.title_count_for(current_admin_user, current_tenant), unread_count: unread_count }
+    scope = notifications.recent
+    scope = scope.where("id < ?", params[:before].to_i) if params[:before].present?
+    items = scope.limit(31).to_a
+    render json: { total: unread_count, unread_count: unread_count,
+      next_cursor: (items[29].id if items.length > 30),
+      html: render_to_string(partial: "admin/shared/notification_item", collection: items.first(30), as: :notification, formats: [:html]) }
   end
 
   def read_direct
@@ -29,10 +34,10 @@ class Admin::InAppNotificationsController < Admin::BaseController
   private
 
   def notifications
-    InAppNotification.where(admin_user_id: current_admin_user.id, tenant_id: current_tenant.id)
+    InAppNotification.visible_for(current_admin_user, current_tenant)
   end
 
   def unread_count
-    InAppNotification.unread_count_for(current_admin_user)
+    notifications.unread.count
   end
 end
