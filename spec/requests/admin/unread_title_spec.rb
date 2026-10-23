@@ -6,6 +6,16 @@ RSpec.describe 'Contador de não lidos da aba', type: :request do
   let(:lead) { create(:lead, tenant: admin.tenant, admin_user: admin) }
   before { host! 'localhost'; sign_in admin }
 
+  it 'envia invalidação pelo contrato posicional do Action Cable' do
+    payloads = []
+    allow(ActionCable.server).to receive(:broadcast) do |*args, **options|
+      raise ArgumentError unless args.length == 2 && options.empty?
+      payloads << args
+    end
+    InAppNotification.invalidate_title!(admin.tenant_id)
+    expect(payloads).to eq([["unread_title:#{admin.tenant_id}", { event: "unread_changed" }]])
+  end
+
   it 'soma avisos, Direct e WhatsApp sem contar outra conta ou saída' do
     InAppNotification.notify!(admin_user: admin, kind: 'notice', title: 'Aviso')
     message = lead.instagram_messages.create!(message_id: 'title-in', body: 'Privado', occurred_at: Time.current)
