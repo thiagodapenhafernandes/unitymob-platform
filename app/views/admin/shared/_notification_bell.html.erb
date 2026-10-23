@@ -1,7 +1,7 @@
 <%# Sino de notificações internas (tempo real via InAppNotificationsChannel). toasts_only: só o toast (workspace em foco). %>
 <% toasts_only = local_assigns.fetch(:toasts_only, false) %>
-<% notifications = InAppNotification.where(admin_user_id: current_admin_user.id).recent.limit(10).to_a %>
-<% unread = InAppNotification.unread_count_for(current_admin_user) %>
+<% notifications = InAppNotification.visible_for(current_admin_user, current_tenant).recent.limit(30).to_a %>
+<% unread = InAppNotification.visible_for(current_admin_user, current_tenant).unread.count %>
 <div class="ax-notifications"
      data-controller="<%= "ax-dropdown " unless toasts_only %>in-app-notifications"
      data-in-app-notifications-summary-url-value="<%= summary_admin_in_app_notifications_path %>"
@@ -26,6 +26,7 @@
           <%= render "admin/shared/notification_item", notification: notification %>
         <% end %>
       </div>
+      <button type="button" class="ax-menu__item" data-in-app-notifications-target="more" data-action="in-app-notifications#more" hidden>Carregar mais notificações</button>
       <p class="ax-notifications__empty" data-in-app-notifications-target="empty" <%= "hidden" if notifications.any? %>>Nenhuma notificação por aqui.</p>
     </div>
   <% end %>

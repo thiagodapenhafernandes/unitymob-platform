@@ -13,13 +13,29 @@ class InAppNotification < ApplicationRecord
 
   def self.unread_count_for(admin_user) = unread.where(admin_user_id: admin_user.id).count
 
-  def self.title_count_for(user, tenant)
-    notices = unread.where(admin_user_id: user.id, tenant_id: tenant.id)
-    direct = notices.where(kind: "instagram_message")
+  def self.visible_for(user, tenant)
+    scope = where(admin_user_id: user.id, tenant_id: tenant.id)
+    direct = scope.where(kind: "instagram_message")
+    other = scope.where.not(kind: "instagram_message")
+    return other unless user.can?(:view, :leads)
+
     visible_leads = Lead.accessible_to_admin(user, tenant: tenant).select("leads.id::text")
-    direct_count = user.can?(:view, :leads) ? direct.where("metadata ->> 'lead_id' IN (?)", visible_leads).count : 0
-    whatsapp = user.can?(:view, :whatsapp_inbox) ? tenant.whatsapp_conversations.visible_to(user).unread.sum(:unread_count) : 0
-    notices.where.not(kind: "instagram_message").count + direct_count + whatsapp
+    other.or(direct.where("metadata ->> 'lead_id' IN (?)", visible_leads))
+  end
+
+  def self.title_count_for(user, tenant)
+    visible_for(user, tenant).unread.count
+  end
+
+  def self.notify_whatsapp_message!(conversation, message)
+    user = conversation.tenant.admin_users.active.find_by(id: conversation.alert_recipient_id)
+    return unless user&.can?(:view, :whatsapp_inbox)
+
+    notify!(admin_user: user, kind: "whatsapp_message", title: "Nova mensagem no WhatsApp",
+      url: Rails.application.routes.url_helpers.admin_whatsapp_conversation_path(conversation),
+      metadata: { conversation_id: conversation.id, whatsapp_message_id: message.id })
+  rescue StandardError => error
+    Rails.logger.warn("[WhatsApp unread] notification unavailable class=#{error.class}")
   end
 
   def self.invalidate_title!(tenant_id)
