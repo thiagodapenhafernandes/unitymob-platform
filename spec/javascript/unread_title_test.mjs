@@ -47,3 +47,11 @@ test('carrega a próxima página pessoal do sino sem alterar a contagem', async 
   assert.equal(inserted, '<a>Aviso pessoal</a>'); assert.equal(c.moreTarget.hidden, true)
   assert.equal(document.title, 'Salute — Leads')
 })
+
+test('abrir aviso usa o ID correto na rota de leitura do sino', () => {
+  const { c } = setup(); let posted
+  c.readUrlValue = '/admin/notificacoes/internas/0/read'
+  c.post = url => { posted = url }
+  c.open({currentTarget:{dataset:{notificationId:'42'},classList:{remove(){},contains(){return false}}}})
+  assert.equal(posted, '/admin/notificacoes/internas/42/read')
+})
