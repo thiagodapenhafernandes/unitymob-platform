@@ -1,0 +1,3 @@
+<%= turbo_frame_tag "lead_instagram_messages_#{lead.id}", src: instagram_thread_admin_lead_path(lead), data: { ax_live_thread_target: "frame" } do %>
+  <%= render "admin/leads/instagram_messages", lead: lead %>
+<% end %>

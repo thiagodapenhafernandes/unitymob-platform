@@ -274,6 +274,14 @@ class Lead < ApplicationRecord
   }
 
   validates :name, presence: true
+  # Mesmo recorte de dono/equipe para o HTTP e a inscrição no chat.
+  def self.accessible_to_admin(user, tenant:)
+    scope = where(tenant_id: tenant.id)
+    return scope if user.owns_all?(:leads)
+
+    scope.where(admin_user_id: user.can_view_team?(:leads) ? user.team_scope_ids : [user.id])
+  end
+
   # Telefone é obrigatório, exceto quando o lead é identificado por BSUID
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta),
   # Direct do Instagram, migração habilitada ou Lead Sync LinkedIn com e-mail válido.

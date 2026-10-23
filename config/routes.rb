@@ -293,6 +293,7 @@ Rails.application.routes.draw do
       post :close_deal, on: :member
       post :reconcile_inquiry, on: :member
       post :schedule_activity, on: :member
+      get :instagram_thread, on: :member
       post :reply_instagram, on: :member
       resources :proposals, only: [:new, :create]
       resources :lead_labels, only: [:index, :create, :update, :destroy] do

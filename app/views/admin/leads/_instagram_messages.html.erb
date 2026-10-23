@@ -1,0 +1,23 @@
+<% messages = lead.instagram_messages.includes(:sent_by_admin_user).chronological.to_a %>
+<% window_open = Instagram::Reply.window_open?(lead) %>
+    <div class="lead-ig-thread__head" data-thread-reply-open="<%= window_open %>">
+      <i class="bi bi-instagram"></i>
+      <strong>Instagram Direct</strong>
+      <span class="lead-ig-thread__window lead-ig-thread__window--<%= window_open ? "open" : "closed" %>">
+        <%= window_open ? "Janela de resposta aberta" : "Janela de 24h encerrada" %>
+      </span>
+    </div>
+    <div class="lead-ig-thread__messages">
+      <% if messages.empty? %>
+        <p class="lead-ig-thread__empty">Nenhuma mensagem ainda.</p>
+      <% end %>
+      <% messages.each do |message| %>
+        <div class="lead-ig-thread__msg lead-ig-thread__msg--<%= message.direction %>">
+          <p><%= message.body %></p>
+          <small>
+            <%= message.outbound? ? (message.sent_by_admin_user&.name.presence || "Equipe") : "Cliente" %>
+            · <%= l(message.occurred_at, format: :short) %>
+          </small>
+        </div>
+      <% end %>
+    </div>
