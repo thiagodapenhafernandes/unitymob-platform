@@ -82,7 +82,8 @@ class WhatsappSenderNumber < ApplicationRecord
   end
 
   def formatted_phone
-    Phones::Normalizer.display(display_phone_number).presence || display_phone_number.presence
+    # O cadastro de remetentes já armazena DDI, inclusive quando há só 11 dígitos.
+    Phones::Normalizer.display("+#{display_phone_number.to_s.delete_prefix('+')}").presence || display_phone_number.presence
   end
 
   def campaign_cost(sent_count:, failed_count:)
