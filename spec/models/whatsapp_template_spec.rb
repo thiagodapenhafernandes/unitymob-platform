@@ -23,6 +23,16 @@ RSpec.describe WhatsappTemplate, type: :model do
   end
 
   describe "normalizacao para Meta" do
+    it "preserva o nome oficial ao importar e editar um template vinculado à Meta" do
+      template = described_class.create!(tenant: Tenant.default,
+        name: "imveis_at_100000000__50ed", meta_id: "1986698655468227",
+        category: "MARKETING", body: "Olá")
+
+      expect(template.reload.name).to eq("imveis_at_100000000__50ed")
+      template.update!(usage_context: "attendance")
+      expect(template.reload.name).to eq("imveis_at_100000000__50ed")
+    end
+
     it "transforma nome de produto em identificador aceito pela Meta" do
       template = described_class.new(
         name: "Campanha Fake Julho",
