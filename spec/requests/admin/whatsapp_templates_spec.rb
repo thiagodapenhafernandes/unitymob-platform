@@ -19,6 +19,16 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
   end
 
   describe "GET index" do
+    it "exibe o número internacional sem acrescentar o DDI brasileiro" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, display_phone_number: "+15559878827")
+
+      get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).css(".whatsapp-template-selector__option strong").map(&:text)).to include("+15559878827")
+      expect(sender.reload.display_phone_number).to eq("15559878827")
+    end
+
     it "lista templates e acoes de campanha para aprovados" do
       sender = create(:whatsapp_sender_number, tenant: admin.tenant, waba_id: "waba-listagem")
       admin.tenant.whatsapp_templates.create!(name: "convite", language: "pt_BR", status: "APPROVED", category: "MARKETING", body: "Olá", waba_id: sender.waba_id)
