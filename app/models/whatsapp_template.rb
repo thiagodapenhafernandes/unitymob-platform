@@ -575,6 +575,8 @@ class WhatsappTemplate < ApplicationRecord
   end
 
   def normalize_meta_identifier
+    return if meta_id.present?
+
     normalized = name.to_s.strip.parameterize(separator: "_").gsub(/_+/, "_").delete_prefix("_").delete_suffix("_")
     self.name = normalized if normalized.present?
   end
