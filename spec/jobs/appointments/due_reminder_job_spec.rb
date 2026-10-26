@@ -44,7 +44,7 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
       admin_user_id: broker.id,
       title: "Em breve: Visita no Centro",
       body: "Faltam 30 minutos para o compromisso: Marina. Horário: 19/08/2026 às 09:50.",
-      url: "/admin/leads/#{lead.id}",
+      url: "/admin/leads/#{lead.id}?appointment_id=#{appointment.id}",
       tag: a_string_starting_with("appointment-30_minutes_before-#{appointment.id}-"),
       urgency: "high",
       ttl: 3600,
@@ -63,7 +63,7 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
       admin_user_id: broker.id,
       title: "Ligação com cliente",
       body: "Está na hora do compromisso: Marina",
-      url: "/admin/leads/#{lead.id}",
+      url: "/admin/leads/#{lead.id}?appointment_id=#{appointment.id}",
       tag: a_string_starting_with("appointment-due-#{appointment.id}-"),
       lead_id: lead.id,
       metadata: { appointment_id: appointment.id, source: "appointment_due_reminder", phase: "due" }
@@ -125,10 +125,37 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
 
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(
       admin_user_id: broker.id,
-      body: "Esse compromisso está vencido: Marina. Marque como realizado ou cancele quando resolver.",
+      body: "Esse compromisso está vencido: Marina. Horário: 19/08/2026 às 06:30. Marque como realizado ou cancele quando resolver.",
       tag: a_string_starting_with("appointment-overdue-#{appointment.id}-"),
       metadata: { appointment_id: appointment.id, source: "appointment_due_reminder", phase: "overdue" }
     ))
+  end
+
+  it "distingue visitas vencidas de mesmo título por data e local" do
+    first = create(:appointment, tenant: tenant, lead: lead, admin_user: broker,
+      title: "Visita", starts_at: 3.days.ago, location: "Ed. Vivaldi")
+    second = create(:appointment, tenant: tenant, lead: lead, admin_user: broker,
+      title: "Visita", starts_at: 2.days.ago, location: "Notre Dame")
+
+    described_class.perform_now
+
+    [first, second].each do |appointment|
+      expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(
+        url: "/admin/leads/#{lead.id}?appointment_id=#{appointment.id}",
+        body: a_string_including(I18n.l(appointment.starts_at, format: "%d/%m/%Y às %H:%M"), appointment.location)
+      ))
+    end
+  end
+
+  %w[realizado cancelado].each do |status|
+    it "não cobra novamente compromisso resolvido como #{status}" do
+      appointment = create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: 3.days.ago)
+      appointment.update!(status: status)
+
+      described_class.perform_now
+
+      expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+    end
   end
 
   it "nao repete compromisso vencido fora do horario comercial" do

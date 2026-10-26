@@ -67,14 +67,15 @@ module Appointments
         anticipation = { 1 => "Falta 1 minuto", 60 => "Falta 1 hora" }.fetch(minutes) { "Faltam #{minutes} minutos" }
         "#{anticipation} para o compromisso: #{subject}. Horário: #{time}."
       when "overdue"
-        "Esse compromisso está vencido: #{subject}. Marque como realizado ou cancele quando resolver."
+        location = appointment.location.present? ? " Local: #{appointment.location}." : ""
+        "Esse compromisso está vencido: #{subject}. Horário: #{time}.#{location} Marque como realizado ou cancele quando resolver."
       else
         "Está na hora do compromisso: #{subject}"
       end
     end
 
     def reminder_url(appointment)
-      appointment.lead_id.present? ? "/admin/leads/#{appointment.lead_id}" : "/admin/appointments"
+      appointment.lead_id.present? ? "/admin/leads/#{appointment.lead_id}?appointment_id=#{appointment.id}" : "/admin/appointments"
     end
   end
 end

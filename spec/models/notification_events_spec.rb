@@ -5,6 +5,24 @@ RSpec.describe 'Contexto dos eventos do sino' do
   let(:lead) { create(:lead, tenant: owner.tenant, admin_user: owner) }
   before { allow_any_instance_of(Lead).to receive(:route_lead) }
 
+  it 'retorna uma consulta vazia sem usuário ou conta' do
+    InAppNotification.create!(admin_user: owner, tenant: owner.tenant, kind: 'appointment', title: 'Privada')
+
+    expect(InAppNotification.visible_for(owner, nil).recent.to_a).to be_empty
+    expect(InAppNotification.visible_for(nil, owner.tenant).unread.count).to eq(0)
+    expect(InAppNotification.title_count_for(owner, nil)).to eq(0)
+  end
+
+  it 'limita as notificações ao destinatário e à conta informados' do
+    other = create(:admin_user, :admin)
+    notice = InAppNotification.create!(admin_user: owner, tenant: owner.tenant, kind: 'appointment', title: 'Privada')
+    InAppNotification.create!(admin_user: other, tenant: other.tenant, kind: 'appointment', title: 'Outro destinatário')
+
+    expect(InAppNotification.visible_for(owner, owner.tenant)).to contain_exactly(notice)
+    other_tenant = Tenant.create!(name: 'Outra conta', slug: SecureRandom.hex(8))
+    expect(InAppNotification.visible_for(owner, other_tenant)).to be_empty
+  end
+
   it 'identifica apenas a primeira entrada após saída como nova resposta no Direct' do
     time = Time.current
     lead.instagram_messages.create!(message_id: 'out', direction: 'outbound', occurred_at: time)

@@ -6,7 +6,7 @@
   scheduled_tasks = future_scheduled_tasks(all_open_tasks)
   open_tasks = operational_tasks_without_future_schedule(all_open_tasks)
   next_task = open_tasks.select(&:pendente?).find { |task| task.due_at.present? } || open_tasks.find(&:pendente?)
-  appointments = lead.appointments.upcoming.limit(20)
+  appointments = lead.appointments.for_lead_agenda(params[:appointment_id])
   proposals = lead.proposals.ordered.limit(20)
   lead_labels = lead.labels_for(current_admin_user)
   contact_history_activities = lead.activities.where(kind: "note").recent.limit(40)

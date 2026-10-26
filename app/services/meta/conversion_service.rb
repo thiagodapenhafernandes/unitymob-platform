@@ -35,6 +35,9 @@ module Meta
 
         begin
           response = graph.graph_call("#{dataset["id"]}/events", payload, "post")
+          unless response.is_a?(Hash) && response["events_received"] == 1
+            raise ConversionError, "CAPI #{event_name} lead_id=#{lead.id} dataset=#{dataset['id']}: recebimento não confirmado"
+          end
           Rails.logger.info("[Meta::ConversionService] lead_id=#{lead.id} event=#{event_name} " \
                             "dataset=#{dataset["id"]} received=#{response&.dig("events_received")} " \
                             "trace=#{response&.dig("fbtrace_id")}")
@@ -49,7 +52,12 @@ module Meta
     private
 
     def graph
-      @graph ||= Koala::Facebook::API.new(@config.sending_token)
+      @graph ||= begin
+        token = @config.sending_token
+        raise ConversionError, "CAPI sem token Meta válido para esta conta." if token.blank?
+
+        Koala::Facebook::API.new(token)
+      end
     end
 
     def build_user_data(lead)

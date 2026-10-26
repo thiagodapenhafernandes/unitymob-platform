@@ -409,7 +409,7 @@ class Admin::LeadsController < Admin::BaseController
     @actionable_tasks = actionable_lead_tasks(@tasks)
     @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||
                  @actionable_tasks.find(&:pendente?)
-    @appointments = @lead.appointments.upcoming.limit(20)
+    @appointments = @lead.appointments.for_lead_agenda(params[:appointment_id])
     @proposals = @lead.proposals.ordered.limit(20)
     load_proposal_modal_context
     @archive_reason_options = archive_reason_options_for(@lead)
@@ -2573,25 +2573,13 @@ class Admin::LeadsController < Admin::BaseController
     )
   end
 
-  # Loop CRM -> Meta (Conversions API): dispara no máximo um evento por marco;
-  # o Dispatcher filtra origem/config e o event_id estável dedupa na Meta.
+  # O frontend configura envio na entrada da etapa; outros campos não geram eventos fixos.
   def dispatch_meta_funnel_conversions!
-    qualification_changes = [@lead.saved_change_to_broker_qualification_status,
-                             @lead.saved_change_to_manager_qualification_status].compact
-    if qualification_changes.any? { |(_, to)| to == "qualified" }
-      Meta::ConversionDispatcher.call(lead: @lead, milestone: :qualified)
-    end
+    return unless @lead.saved_change_to_lead_pipeline_stage_id?
 
-    if @lead.saved_change_to_lead_pipeline_stage_id?
-      # Lookup fresco: a associação pode estar com a etapa antiga em cache.
-      # O evento vem do mapeamento da etapa (modal de funil); em branco = nada.
-      new_stage = current_tenant.lead_pipeline_stages.find_by(id: @lead.lead_pipeline_stage_id)
-      if new_stage&.meta_conversion_event.present?
-        Meta::ConversionDispatcher.call(lead: @lead, event_name: new_stage.meta_conversion_event)
-      end
-    elsif @lead.saved_change_to_status? && @lead.status == Lead.status_value(:concluido, tenant: current_tenant)
-      Meta::ConversionDispatcher.call(lead: @lead, milestone: :sale)
-    end
+    # Lookup fresco: a associação pode estar com a etapa antiga em cache.
+    stage = current_tenant.lead_pipeline_stages.find_by(id: @lead.lead_pipeline_stage_id)
+    Meta::ConversionDispatcher.call(lead: @lead, event_name: stage.meta_conversion_event) if stage&.meta_conversion_event.present?
   end
 
   def load_lead_pipeline_context
@@ -3248,7 +3236,7 @@ class Admin::LeadsController < Admin::BaseController
     @actionable_tasks = actionable_lead_tasks(@tasks)
     @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||
                  @actionable_tasks.find(&:pendente?)
-    @appointments = @lead.appointments.upcoming.limit(20)
+    @appointments = @lead.appointments.for_lead_agenda(params[:appointment_id])
     @proposals = @lead.proposals.ordered.limit(20)
     load_proposal_modal_context
     @archive_reason_options = archive_reason_options_for(@lead)

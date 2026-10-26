@@ -22,6 +22,10 @@ class Appointment < ApplicationRecord
   validate :associations_belong_to_same_tenant
 
   scope :upcoming, -> { where("starts_at >= ?", Time.current.beginning_of_day).order(:starts_at) }
+  scope :for_lead_agenda, ->(selected_id = nil) {
+    where("status = :pending OR starts_at >= :today OR id = :selected_id",
+      pending: "agendado", today: Time.current.beginning_of_day, selected_id: selected_id.to_i).order(:starts_at)
+  }
   scope :for_day, ->(date) { where(starts_at: date.beginning_of_day..date.end_of_day) }
   scope :between, ->(a, b) { where(starts_at: a..b) }
   scope :ordered, -> { order(:starts_at) }

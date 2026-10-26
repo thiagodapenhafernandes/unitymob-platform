@@ -1,6 +1,7 @@
 require "rails_helper"
 
 RSpec.describe MetaConversionJob, type: :job do
+  include ActiveJob::TestHelper
   let(:admin) { create(:admin_user, :admin) }
   let(:tenant) { admin.tenant }
   let(:lead) { create(:lead, tenant: tenant, attribution_channel: "meta_ads") }
@@ -33,5 +34,31 @@ RSpec.describe MetaConversionJob, type: :job do
     MetaConversionConfig.for_tenant(tenant).first.update!(enabled: false)
     described_class.perform_now(tenant.id, lead.id, "Schedule", "evt-x", Time.current.iso8601, nil)
     expect(service).not_to have_received(:send_event)
+  end
+
+  it "não envia se a conexão expirar enquanto o evento aguarda na fila" do
+    UserMetaIntegration.owned_by_tenant(tenant.id).update_all(token_expires_at: 1.second.ago)
+
+    described_class.perform_now(tenant.id, lead.id, "Schedule", "evt-expired", Time.current.iso8601, nil)
+
+    expect(service).not_to have_received(:send_event)
+  end
+
+  it "não acessa lead de outro tenant" do
+    other = Tenant.create!(name: "Outro tenant", slug: "outro-#{SecureRandom.hex(3)}")
+    foreign_lead = create(:lead, tenant: other, attribution_channel: "meta_ads")
+
+    described_class.perform_now(tenant.id, foreign_lead.id, "Schedule", "evt-foreign", Time.current.iso8601, nil)
+
+    expect(service).not_to have_received(:send_event)
+  end
+
+  it "agenda retry com o mesmo evento quando o recebimento não é confirmado" do
+    allow(service).to receive(:send_event).and_raise(Meta::ConversionService::ConversionError, "recebimento não confirmado")
+    args = [tenant.id, lead.id, "Schedule", "evt-retry", Time.current.iso8601, nil]
+    original = lead.attributes.deep_dup
+
+    expect { described_class.perform_now(*args) }.to have_enqueued_job(described_class).with(*args)
+    expect(lead.reload.attributes).to eq(original)
   end
 end

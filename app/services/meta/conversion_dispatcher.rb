@@ -1,19 +1,7 @@
 module Meta
-  # Ponto único de disparo do loop CRM -> Meta (Conversions API). Marcos fixos
-  # (qualificado, visita, venda) via milestone; etapas do funil via event_name
-  # direto do mapeamento da etapa. Só leads de origem Meta Ads e só contas com
-  # config CAPI ativa; o event_id estável (um por lead por evento) faz a Meta
-  # dedupar reenvios da mesma etapa ou marco comercial.
+  # Envia o evento configurado na etapa para leads Meta Ads da conta com CAPI ativa.
   class ConversionDispatcher
-    EVENTS = {
-      qualified: "QualifiedLead",
-      visit_done: "Schedule",
-      sale: "Purchase"
-    }.freeze
-
-    # milestone (marcos fixos) ou event_name direto (mapeamento por etapa).
-    def self.call(lead:, milestone: nil, event_name: nil, value: nil, occurred_at: Time.current)
-      event_name ||= EVENTS[milestone&.to_sym]
+    def self.call(lead:, event_name:, value: nil, occurred_at: Time.current)
       return unless LeadPipelineStage::META_CONVERSION_EVENTS.key?(event_name) && lead&.tenant_id && lead.meta_ads_origin?
 
       config = MetaConversionConfig.for_tenant(lead.tenant).first

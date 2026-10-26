@@ -29,7 +29,8 @@ RSpec.describe "Admin::System", type: :request do
   end
 
   it "permite acesso ao admin do sistema" do
-    sys = create(:admin_user, super_admin: true)
+    sys = create(:admin_user, super_admin: true, tenant: nil)
+    expect(sys.reload.tenant_id).to be_nil
     sign_in sys, scope: :admin_user
 
     expect {

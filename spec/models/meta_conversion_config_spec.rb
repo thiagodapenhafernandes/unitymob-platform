@@ -40,6 +40,24 @@ RSpec.describe MetaConversionConfig, type: :model do
     expect(config.active?).to be(true)
   end
 
+  it "não seleciona token expirado mesmo quando não há outro disponível" do
+    create(:user_meta_integration, admin_user: admin, tenant: tenant,
+                                   access_token: "expirado", token_expires_at: 1.second.ago)
+    config = described_class.new(tenant: tenant, datasets: [{ "id" => "123" }])
+
+    expect(config.sending_token).to be_nil
+    expect(config.active?).to be(false)
+  end
+
+  it "aceita token sem expiração informada" do
+    create(:user_meta_integration, admin_user: admin, tenant: tenant,
+                                   access_token: "sem-expiracao", token_expires_at: nil)
+    config = described_class.new(tenant: tenant, datasets: [{ "id" => "123" }])
+
+    expect(config.sending_token).to eq("sem-expiracao")
+    expect(config.active?).to be(true)
+  end
+
   it "fica inativa sem dataset, sem token ou com envio desligado" do
     config = described_class.new(tenant: tenant, datasets: [{ "id" => "123" }])
 

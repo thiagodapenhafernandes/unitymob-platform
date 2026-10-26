@@ -12,7 +12,7 @@ RSpec.describe Meta::ConversionDispatcher do
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
 
     expect do
-      described_class.call(lead: lead, milestone: :qualified)
+      described_class.call(lead: lead, event_name: "QualifiedLead")
     end.to have_enqueued_job(MetaConversionJob).with(
       tenant.id, lead.id, "QualifiedLead",
       described_class.event_id(tenant.id, lead.id, "QualifiedLead"),
@@ -51,16 +51,17 @@ RSpec.describe Meta::ConversionDispatcher do
     end
   end
 
-  it "ignora lead de outra origem, config ausente/inativa e marco desconhecido" do
+  it "ignora lead de outra origem, config inativa e evento ausente ou desconhecido" do
     MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }], enabled: false)
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
     other = create(:lead, tenant: tenant, origin: "site")
 
     expect do
-      described_class.call(lead: other, milestone: :qualified)
-      described_class.call(lead: lead, milestone: :qualified)
-      described_class.call(lead: lead, milestone: :unknown)
-      described_class.call(lead: nil, milestone: :qualified)
+      described_class.call(lead: other, event_name: "QualifiedLead")
+      described_class.call(lead: lead, event_name: "QualifiedLead")
+      described_class.call(lead: lead, event_name: "EventoInventado")
+      described_class.call(lead: lead, event_name: nil)
+      described_class.call(lead: nil, event_name: "QualifiedLead")
     end.not_to have_enqueued_job(MetaConversionJob)
   end
 end
