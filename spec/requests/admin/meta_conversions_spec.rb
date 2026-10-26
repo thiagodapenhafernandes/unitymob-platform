@@ -71,12 +71,15 @@ RSpec.describe "Admin::MetaConversions", type: :request do
     policy.update!(qualification_enabled: true)
   end
 
-  it "enfileira QualifiedLead ao qualificar lead de origem Meta" do
+  it "salva qualificação sem evento fixo quando não há mudança de etapa" do
     enable_qualification!(meta_lead.lead_pipeline_stage)
+    meta_lead.lead_pipeline_stage.update!(meta_conversion_event: "Contact")
 
     expect do
       patch admin_lead_path(meta_lead), params: { lead: { manager_qualification_status: "qualified" } }
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "QualifiedLead", kind_of(String), kind_of(String), nil)
+    end.not_to have_enqueued_job(MetaConversionJob)
+    expect(response).to redirect_to(admin_lead_path(meta_lead))
+    expect(meta_lead.reload.manager_qualification_status).to eq("qualified")
   end
 
   it "não enfileira qualificação de lead de outra origem" do
@@ -111,13 +114,78 @@ RSpec.describe "Admin::MetaConversions", type: :request do
     end.not_to have_enqueued_job(MetaConversionJob)
   end
 
-  it "enfileira Schedule ao concluir visita" do
+  it "respeita o evento escolhido no frontend sem inferir pelo nome da etapa" do
+    stage = meta_lead.lead_pipeline.stages.find_by!(tenant_id: tenant.id, name: "Proposta")
+    stage.update!(meta_conversion_event: "Contact")
+    LeadPipelineStageTransition.find_or_create_by!(tenant: tenant,
+      lead_pipeline_stage: meta_lead.lead_pipeline_stage, next_stage: stage)
+
+    expect do
+      patch admin_lead_path(meta_lead), params: { lead: { lead_pipeline_stage_id: stage.id } }
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil)
+    expect(enqueued_jobs.select { |job| job[:job] == MetaConversionJob }.map { |job| job[:args][2] }).to eq(["Contact"])
+  end
+
+  it "envia somente o evento da etapa ao qualificar e mover no mesmo salvamento" do
+    stage = meta_lead.lead_pipeline.stages.find_by!(tenant_id: tenant.id, name: "Proposta")
+    stage.update!(meta_conversion_event: "Contact")
+    enable_qualification!(meta_lead.lead_pipeline_stage)
+    enable_qualification!(stage)
+    LeadPipelineStageTransition.find_or_create_by!(tenant: tenant,
+      lead_pipeline_stage: meta_lead.lead_pipeline_stage, next_stage: stage)
+
+    expect do
+      patch admin_lead_path(meta_lead), params: { lead: { lead_pipeline_stage_id: stage.id, manager_qualification_status: "qualified" } }
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil)
+    expect(meta_lead.reload.manager_qualification_status).to eq("qualified")
+    expect(enqueued_jobs.select { |job| job[:job] == MetaConversionJob }.map { |job| job[:args][2] }).to eq(["Contact"])
+  end
+
+  it "não presume Purchase ao entrar em etapa ganha sem evento configurado" do
+    stage = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: meta_lead.lead_pipeline,
+      name: "Fechamento sem evento", stage_type: "won", meta_conversion_event: nil)
+    LeadPipelineStageTransition.find_or_create_by!(tenant: tenant,
+      lead_pipeline_stage: meta_lead.lead_pipeline_stage, next_stage: stage)
+
+    expect do
+      patch admin_lead_path(meta_lead), params: { lead: { lead_pipeline_stage_id: stage.id, status: stage.name } }
+    end.not_to have_enqueued_job(MetaConversionJob)
+    expect(meta_lead.reload.lead_pipeline_stage_id).to eq(stage.id)
+    expect(meta_lead.status).to eq(stage.name)
+  end
+
+  it "usa eventos diferentes para a mesma etapa nominal de contas distintas" do
+    other_tenant = Tenant.create!(name: "Outra imobiliária", slug: "outra-eventos-#{SecureRandom.hex(3)}")
+    other_admin = create(:admin_user, :admin, tenant: other_tenant)
+    other_lead = create(:lead, tenant: other_tenant, admin_user: other_admin, attribution_channel: "meta_ads")
+    MetaConversionConfig.create!(tenant: other_tenant, datasets: [{ "id" => "777" }])
+    create(:user_meta_integration, admin_user: other_admin, tenant: other_tenant, access_token: "other-token")
+
+    [[admin, meta_lead, "Contact"], [other_admin, other_lead, "SubmitApplication"]].each do |operator, lead, event|
+      sign_out :admin_user
+      sign_in operator
+      stage = lead.lead_pipeline.stages.find_by!(tenant_id: lead.tenant_id, name: "Proposta")
+      stage.update!(meta_conversion_event: event)
+      LeadPipelineStageTransition.find_or_create_by!(tenant: lead.tenant,
+        lead_pipeline_stage: lead.lead_pipeline_stage, next_stage: stage)
+
+      expect do
+        patch admin_lead_path(lead), params: { lead: { lead_pipeline_stage_id: stage.id } }
+      end.to have_enqueued_job(MetaConversionJob).with(lead.tenant_id, lead.id, event, kind_of(String), kind_of(String), nil)
+      expect(lead.reload.lead_pipeline_stage_id).to eq(stage.id)
+    end
+  end
+
+  it "conclui visita e preserva auditoria sem evento fixo nem reenvio da etapa atual" do
+    meta_lead.lead_pipeline_stage.update!(meta_conversion_event: "Contact")
     appointment = create(:appointment, tenant: tenant, lead: meta_lead, admin_user: admin,
                                      kind: "visita", status: "agendado")
 
     expect do
       patch admin_appointment_path(appointment), params: { appointment: { status: "realizado" } }
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Schedule", kind_of(String), kind_of(String), nil)
+    end.not_to have_enqueued_job(MetaConversionJob)
+    expect(appointment.reload).to be_realizado
+    expect(LeadActivity.where(lead: meta_lead, kind: "appointment_done")).to exist
   end
 
   it "não enfileira visita de outro tipo nem lead de outra origem" do

@@ -15,7 +15,7 @@ class MetaConversionConfig < ApplicationRecord
     UserMetaIntegration
       .owned_by_tenant(tenant_id)
       .where.not(access_token: [nil, ""])
-      .order(Arel.sql("CASE WHEN token_expires_at IS NULL OR token_expires_at > NOW() THEN 0 ELSE 1 END"))
+      .where("token_expires_at IS NULL OR token_expires_at > ?", Time.current)
       .pick(:access_token)
   end
 

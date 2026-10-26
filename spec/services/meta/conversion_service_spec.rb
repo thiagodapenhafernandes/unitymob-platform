@@ -101,4 +101,73 @@ RSpec.describe Meta::ConversionService do
       )
     end.to raise_error(Meta::ConversionService::ConversionError, /CAPI Schedule lead_id=#{lead.id} dataset=999/)
   end
+
+  [nil, {}, [], { "events_received" => 0 }, { "events_received" => -1 },
+   { "events_received" => 2 }, { "events_received" => "1" }].each do |response|
+    it "rejeita resposta sem confirmação unitária: #{response.inspect}" do
+      allow(graph).to receive(:graph_call).and_return(response)
+
+      expect do
+        described_class.new(config).send_event(lead: lead, event_name: "Schedule", event_id: "evt-ack", occurred_at: Time.current)
+      end.to raise_error(Meta::ConversionService::ConversionError, /recebimento não confirmado/)
+      expect(graph).not_to have_received(:graph_call).with("888/events", anything, anything)
+    end
+  end
+
+  it "só confirma sucesso após todos os datasets e preserva o evento no retry" do
+    allow(graph).to receive(:graph_call).with("888/events", anything, "post")
+      .and_return({ "events_received" => 0 }, { "events_received" => 1 })
+    service = described_class.new(config)
+    occurred_at = Time.current
+    args = { lead: lead, event_name: "Schedule", event_id: "evt-retry", occurred_at: occurred_at }
+
+    expect { service.send_event(**args) }.to raise_error(Meta::ConversionService::ConversionError, /dataset=888/)
+    expect(service.send_event(**args)).to eq(:sent)
+    %w[999 888].each do |id|
+      expect(graph).to have_received(:graph_call).with("#{id}/events", anything, "post").twice do |_, payload, _|
+        expect(payload['data'].first).to include('event_id' => 'evt-retry', 'event_time' => occurred_at.to_i)
+      end
+    end
+  end
+
+  it "não expõe a resposta não confirmada no erro ou no log" do
+    allow(graph).to receive(:graph_call).and_return({ "events_received" => 0, "message" => "segredo-do-provedor" })
+    allow(Rails.logger).to receive(:info)
+
+    expect do
+      described_class.new(config).send_event(lead: lead, event_name: "Schedule", event_id: "evt-safe", occurred_at: Time.current)
+    end.to raise_error(Meta::ConversionService::ConversionError) { |error| expect(error.message).not_to include('segredo-do-provedor') }
+    expect(Rails.logger).not_to have_received(:info).with(a_string_including('[Meta::ConversionService]'))
+    expect(Rails.logger).not_to have_received(:info).with(a_string_including('segredo-do-provedor'))
+  end
+
+  it "bloqueia chamada direta quando o token expira antes do envio" do
+    UserMetaIntegration.owned_by_tenant(tenant.id).update_all(token_expires_at: 1.second.ago)
+
+    expect do
+      described_class.new(config).send_event(lead: lead, event_name: "Schedule", event_id: "evt-expired", occurred_at: Time.current)
+    end.to raise_error(Meta::ConversionService::ConversionError, /sem token Meta válido/)
+    expect(graph).not_to have_received(:graph_call)
+  end
+
+  it "usa somente os datasets, token e modo de teste configurados em cada conta" do
+    other_tenant = Tenant.create!(name: "Outra conta", slug: "outra-capi-#{SecureRandom.hex(3)}")
+    other_admin = create(:admin_user, tenant: other_tenant)
+    create(:user_meta_integration, admin_user: other_admin, tenant: other_tenant, access_token: "other-token")
+    other_config = MetaConversionConfig.create!(tenant: other_tenant, datasets: [{ "id" => "777" }], test_event_code: "OTHER_TEST")
+    other_lead = create(:lead, tenant: other_tenant, email: "outro@example.com", attribution_channel: "meta_ads")
+    other_graph = instance_double(Koala::Facebook::API)
+    allow(Koala::Facebook::API).to receive(:new).with("other-token").and_return(other_graph)
+    allow(other_graph).to receive(:graph_call).and_return({ "events_received" => 1 })
+
+    expect(described_class.new(config).send_event(lead: lead, event_name: "Contact", event_id: "first", occurred_at: Time.current)).to eq(:sent)
+    expect(described_class.new(other_config).send_event(lead: other_lead, event_name: "Schedule", event_id: "second", occurred_at: Time.current)).to eq(:sent)
+
+    expect(graph).to have_received(:graph_call).with("999/events", anything, "post")
+    expect(graph).to have_received(:graph_call).with("888/events", anything, "post")
+    expect(graph).not_to have_received(:graph_call).with("777/events", anything, "post")
+    expect(other_graph).to have_received(:graph_call).with("777/events", hash_including("test_event_code" => "OTHER_TEST"), "post").once
+    expect(other_graph).not_to have_received(:graph_call).with("999/events", anything, "post")
+    expect(other_graph).not_to have_received(:graph_call).with("888/events", anything, "post")
+  end
 end

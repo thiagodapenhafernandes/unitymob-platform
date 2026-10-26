@@ -32,6 +32,8 @@ module Admin::NotificationsHelper
 
   # Legados guardam somente o ID: recupera previews em lote, sempre na conta atual.
   def notification_message_previews(notifications, tenant)
+    return {} unless tenant
+
     legacy = notifications.select { |item| item.metadata.to_h['sender_name'].blank? }
     instagram_ids = legacy.filter_map { |item| item.metadata.to_h['instagram_message_id'] }
     whatsapp_ids = legacy.filter_map { |item| item.metadata.to_h['whatsapp_message_id'] }

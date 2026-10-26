@@ -33,3 +33,9 @@ Novos leads Meta com `ad_id`, `campaign_id` ou `meta_leadgen_id` disparam `MetaL
 O job confere a conta retornada pela Meta, salva nomes de campanha/conjunto/anúncio e formulário em `other_information`, e a lista prioriza a campanha enriquecida. Não altera atribuição, corretor, status ou distribuição. A marca `meta_enriched_at` evita consultas após sucesso; falhas da API têm até três tentativas. O cadastro continua se o enfileiramento falhar (com registro técnico no log).
 
 Não há backfill automático. Os leads antigos sem identificadores oficiais continuam exibindo somente os dados disponíveis. A migração `20260909160000` deve preceder a ativação em produção. O worker existente deve consumir a fila `sync`.
+
+## CAPI — disparos configurados por conta (ajuste local de 25/10/2026)
+
+Na atualização administrativa do lead, o envio ocorre somente quando ele entra em outra etapa com `Evento Meta` preenchido. Usa o valor salvo pela própria conta; nomes de etapas e tipos ganha/perdida não determinam um evento. Em branco, não envia. Alterar somente a qualificação, concluir um compromisso ou salvar novamente a mesma etapa não dispara eventos fixos de CAPI. Qualificação, agenda, auditoria e as demais integrações mantêm seus fluxos próprios.
+
+A configuração de conversões da conta continua definindo ativação, datasets e código de teste. Os destinos não são substituídos pelo sistema. Tokens expirados são excluídos e o sucesso requer confirmação `events_received: 1` de cada destino; o identificador estável é preservado nos retries. Não há reprocessamento nem alteração de mapeamentos existentes. Estas mudanças permanecem locais até publicação autorizada.

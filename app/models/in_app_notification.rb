@@ -14,6 +14,8 @@ class InAppNotification < ApplicationRecord
   def self.unread_count_for(admin_user) = unread.where(admin_user_id: admin_user.id).count
 
   def self.visible_for(user, tenant)
+    return none unless user && tenant
+
     scope = where(admin_user_id: user.id, tenant_id: tenant.id)
     direct = scope.where(kind: %w[instagram_message lead_event])
     other = scope.where.not(kind: %w[instagram_message lead_event])

@@ -46,11 +46,20 @@
       </div>
       <div class="tw-grid tw-gap-2">
         <% if appointments.any? || scheduled_tasks.any? %>
-          <% appointments.first(6).each do |appointment| %>
-            <div class="lead-operational-row">
+          <% appointments.each do |appointment| %>
+            <% from_alert = params[:appointment_id].to_s == appointment.id.to_s %>
+            <div id="<%= "#{anchor_prefix}-appointment-#{appointment.id}" %>" class="lead-operational-row<%= " lead-operational-section--pulse" if from_alert %>" data-controller="<%= "ax-scroll-into-view" if from_alert %>" tabindex="-1">
               <span class="lead-operational-row__body">
                 <strong><%= appointment.title %></strong>
                 <span><%= appointment.kind_label %> · <%= l(appointment.starts_at, format: :short) %><%= " · #{appointment.location}" if appointment.location.present? %></span>
+                <small class="tw-flex tw-flex-wrap tw-gap-1">
+                <% if appointment.status == "agendado" && appointment.starts_at < Time.current %>
+                  <%= ax_badge("Vencido · pendente", tone: :amber) %>
+                <% elsif appointment.status != "agendado" %>
+                  <%= ax_badge(appointment.status.humanize, tone: :gray) %>
+                <% end %>
+                <% if from_alert %><%= ax_badge("Compromisso do alerta", tone: :blue) %><% end %>
+                </small>
               </span>
               <% if can?(:manage, :comercial) %>
                 <%= render "admin/appointments/form_modal",
