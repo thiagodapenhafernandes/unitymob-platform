@@ -22,7 +22,7 @@ module RdStation
 
     def call
       source = EntrySource.call(payload)
-      if RdStationIntegrationSetting.current(tenant: tenant).blocks_source?(source)
+      if integration_setting.blocks_source?(source)
         return Result.new(errors: [], ignored_source: source[:key])
       end
       lead = tenant.leads.new(lead_attributes)
@@ -38,6 +38,10 @@ module RdStation
 
     attr_reader :tenant, :payload, :request
 
+    def integration_setting
+      @integration_setting ||= RdStationIntegrationSetting.current(tenant: tenant)
+    end
+
     def lead_attributes
       {
         tenant:,
@@ -45,10 +49,11 @@ module RdStation
         email: field_value("email"),
         phone: Phones::Normalizer.call(field_value("mobile_phone", "personal_phone", "phone")),
         lead_type: "rd_station",
-        origin: ORIGIN,
+        origin: integration_setting.default_origin.to_s.strip.presence || ORIGIN,
         product: product_value,
         source_url: field_value("conversion_url", "url"),
         other_information: {
+          "business_type" => field_value("business_type", "negotiation_type", "cf_tipo_negocio") || integration_setting.default_business_type.presence_in(%w[venda locacao ambos]),
           "rd_station_payload" => payload,
           "rd_station_contact_uuid" => field_value("uuid"),
           "rd_station_event_type" => payload["event_type"],

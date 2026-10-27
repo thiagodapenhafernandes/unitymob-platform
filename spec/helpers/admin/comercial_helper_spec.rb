@@ -2,6 +2,11 @@ require "rails_helper"
 
 RSpec.describe Admin::ComercialHelper, type: :helper do
 
+  it "explica a modalidade ambígua sem exibir o código técnico" do
+    activity = LeadActivity.new(kind: "distribution_failed", metadata: {reason: "ambiguous_business_type"})
+    expect(helper.timeline_entry(activity)[:detail]).to include("Venda ou locação não definida")
+  end
+
   it "mostra na linha do tempo quando uma consulta não encontrou regra de distribuição" do
     activity = LeadActivity.new(kind: "distribution_failed", metadata: { reason: "no_matching_rule" })
     expect(helper.lead_timeline_event_visible?(activity)).to eq(true)

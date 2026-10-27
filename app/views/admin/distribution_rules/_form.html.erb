@@ -256,6 +256,19 @@
         <% end %>
       </div>
 
+      <%= ax_operational_panel(eyebrow: "Filtros", title: "Filtros opcionais da entrada") do %>
+        <div class="ax-panel-body">
+          <%= hidden_field_tag "distribution_rule[custom_filters][0][key]", "" %>
+          <%= ax_repeatable_rows(label: "Restringir a fila por campos da entrada",
+                rows: distribution_rule.custom_filters,
+                input_name: "distribution_rule[custom_filters]",
+                fields: [{key: "key", label: "Campo", placeholder: "Ex.: rd_station_conversion_identifier"},
+                         {key: "value", label: "Valor", placeholder: "Ex.: Form - Refuge"}],
+                add_label: "Adicionar filtro",
+                empty_hint: "Sem filtros, a fila considera a fonte e o tipo comercial. Todos os filtros devem coincidir. O ID da campanha Meta (meta_campaign_id) exige igualdade; os demais campos procuram o texto informado. Exemplos: rd_station_conversion_identifier, rd_station_campaign_name, meta_campaign_id, product.") %>
+        </div>
+      <% end %>
+
       <%# Equipe %>
       <div id="team" data-controller="team-rules"
            data-team-rules-all-agents-value="<%= (@all_agents || []).to_json %>">

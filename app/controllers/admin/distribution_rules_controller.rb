@@ -357,8 +357,15 @@ class Admin::DistributionRulesController < Admin::BaseController
       auto_update_trigger: [],
       hierarchy_manager_ids: [],
       represamento_schedule: {},
-      custom_filters: {}
+      custom_filters: [:key, :value]
     ).tap do |perms|
+      if perms[:custom_filters].present?
+        filters = perms[:custom_filters]
+        perms[:custom_filters] = filters.respond_to?(:values) ? filters.values.map(&:to_h) : filters.map(&:to_h)
+      elsif params[:distribution_rule].key?(:custom_filters)
+        perms[:custom_filters] = []
+      end
+
       # Selects multiplos enviam um "" inicial (hidden field do Rails). Limpar para
       # não poluir os arrays JSONB (que viram chips vazios fantasmas ao reabrir).
       %i[contingency_triggers tiktok_account_ids tiktok_form_ids linkedin_campaign_ids linkedin_form_ids meta_forms excluded_meta_form_ids meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
