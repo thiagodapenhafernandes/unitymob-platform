@@ -55,7 +55,7 @@ module GoogleConversions
           user_data: { email_address: email.presence, phone_number: parsed_phone&.valid? ? parsed_phone.full_e164 : nil,
             address: { first_name: first.presence, last_name: last.presence }.compact.presence }.compact,
           diagnostic: Rails.env.production? ? nil : true
-        }.compact
+        }.compact.merge(Leads::TrackingUid.payload(lead.attribution_data))
         if event == "closed" && lead.closing_commission_cents.present?
           payload[:value] = BigDecimal(lead.closing_commission_cents.to_s) / 100
           payload[:currency] = "BRL"

@@ -27,11 +27,13 @@ RSpec.describe PublicFormLeadRoutingJob do
     create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent)
     form = build_form(tenant, distribution_rule: rule)
     submission = build_submission(form)
+    submission.update!(source: submission.source.merge("tracking_uid" => "Form_UID"))
 
     expect { described_class.perform_now(submission.id) }.to change { tenant.leads.count }.by(1)
 
     lead = tenant.leads.order(:created_at).last
     expect(lead.origin).to eq("public_form:#{form.slug}")
+    expect(lead.attribution_data).to include("tracking_uid" => "Form_UID", "tracking_uids" => ["Form_UID"])
     expect(lead.admin_user_id).to eq(agent.id)
     expect(submission.reload.lead_id).to eq(lead.id)
 

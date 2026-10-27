@@ -158,7 +158,7 @@ RSpec.describe Leads::Attribution, "attribution v2" do
   it "preserva cookies autorizados e contexto HTTP para eventos posteriores" do
     lead = build(:lead)
     request = instance_double(ActionDispatch::Request, remote_ip: "192.0.2.1", user_agent: "Browser",
-      host: "example.test", cookies: { "unitymob_lgpd_consent" => "accepted", "_fbp" => "fb.1.browser", "_fbc" => "fb.1.click", "_ga" => "GA1.1.123.456" })
+      host: "example.test", query_parameters: {}, referer: nil, cookies: { "unitymob_lgpd_consent" => "accepted", "_fbp" => "fb.1.browser", "_fbc" => "fb.1.click", "_ga" => "GA1.1.123.456" })
     described_class.apply!(lead, raw: { gclid: "click" }, request:)
     expect(lead.attribution_data).to include("fbc" => "fb.1.click", "fbp" => "fb.1.browser", "client_id" => "123.456",
       "analytics_consent" => "granted", "analytics_consent_captured_at" => be_present,
@@ -171,7 +171,7 @@ RSpec.describe Leads::Attribution, "attribution v2" do
   it "não persiste cookies de analytics sem aceite" do
     lead = build(:lead)
     request = instance_double(ActionDispatch::Request, remote_ip: "192.0.2.1", user_agent: "Browser",
-      host: "example.test", cookies: { "unitymob_lgpd_consent" => "rejected", "_fbp" => "private" })
+      host: "example.test", query_parameters: {}, referer: nil, cookies: { "unitymob_lgpd_consent" => "rejected", "_fbp" => "private" })
     described_class.apply!(lead, raw: { gclid: "click", analytics_consent: "granted" }, request:)
     expect(lead.attribution_data.keys).not_to include("fbc", "fbp", "client_id")
     expect(lead.attribution_data["analytics_consent"]).to eq("denied")

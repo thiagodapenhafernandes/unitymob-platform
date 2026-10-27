@@ -143,3 +143,26 @@ O modal mostra o status HTTP e o payload efetivamente enviado, com opção de co
 `business_type` é o campo padrão: `venda`, `locacao`, `venda_locacao` (ambos) ou `geral`. A tradução de valores legados é definida em `Leads::Attribution::BUSINESS_TYPE_VALUES`, reutilizada pelo webhook e serializada para o rastreamento do site. No navegador, `negotiation_type` permanece com seus valores anteriores para compatibilidade. O roteamento WhatsApp interno continua usando seu contrato original.
 
 O site envia `event_name` junto com `event` (obrigatório para gatilhos do dataLayer). Para imóveis, `property_id` e `property_code` usam o código público, como no webhook; `habitation_id` continua sendo o ID interno legado. Quando não houver código disponível, os campos públicos ficam vazios, sem substituir pelo ID interno. Eventos de clique e de captura/qualificação continuam distintos: padronizar campos não significa que sejam a mesma conversão nem que compartilhem identificação de deduplicação.
+
+## UID inicial do contato
+
+Novas capturas usam esta prioridade: cookie `user_id_mh`, campo enviado
+`utm_content`, parâmetro `utm_content` da URL (incluindo a página de origem).
+O texto recebido não é normalizado nem truncado. O parser HTTP/URL faz a
+decodificação padrão do transporte; o UID já recebido não é recodificado.
+
+O UID fica em `lead.attribution_data.tracking_uid`; a lista sem duplicatas fica
+em `tracking_uids`. O primeiro UID não é substituído por edição ou conversão.
+Novas consultas acrescentam IDs à lista pelo complemento existente, sem trocar
+a origem ou a primeira atribuição do cadastro. Formulários públicos guardam o
+UID na submissão antes do roteamento assíncrono.
+
+O webhook geral usa o UID inicial em `utm_content` e
+`source.utm.utm_content`, preservando os demais parâmetros de campanha. O mesmo
+contrato vale para `qualify_lead`, `working_lead` (visita/proposta) e
+`close_convert_lead`. Sem UID, esses campos não são incluídos nos eventos de
+conversão. O tratamento legado das UTMs no webhook geral permanece disponível
+para entradas que não possuem UID dedicado.
+
+Não há migração, backfill, replay ou atualização de eventos já registrados.
+Ativação e mapeamento Google por conta continuam independentes desta captura.

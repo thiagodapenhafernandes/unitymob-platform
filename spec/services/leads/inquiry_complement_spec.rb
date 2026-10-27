@@ -17,6 +17,16 @@ RSpec.describe Leads::InquiryComplement do
     lead
   end
 
+  it "acumula o UID da consulta preservando a atribuição inicial" do
+    first = distributed_lead(phone: "5547999990000")
+    original = { "tracking_uid" => "First", "tracking_uids" => ["First"], "utm_source" => "google", "first_touch" => { "gclid" => "initial" } }
+    first.update!(attribution_data: original, origin: "Google Ads")
+    inquiry = build(:lead, tenant: tenant, phone: first.phone, attribution_data: { "tracking_uid" => "Second", "utm_source" => "facebook" })
+    described_class.complement!(first, inquiry, notify: false)
+    expect(first.reload.attribution_data).to eq(original.merge("tracking_uids" => %w[First Second]))
+    expect(first.origin).to eq("Google Ads")
+  end
+
   it "agrega a consulta ao lead aberto dentro do pocket em vez de criar outro" do
     first = distributed_lead(phone: "5547999990000")
     first.update_columns(email: nil, client_email: nil)
