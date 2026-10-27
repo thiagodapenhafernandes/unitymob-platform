@@ -28,6 +28,8 @@ class Proposal < ApplicationRecord
 
   before_validation :ensure_token, on: :create
   after_update { Ga4::ConversionRecorder.proposal_updated(self) }
+  after_update { Leads::StageConversionEvents.proposal_updated(self, provider: :google) }
+  after_update_commit { Leads::StageConversionEvents.proposal_updated(self, provider: :meta) }
 
   scope :ordered, -> { order(created_at: :desc) }
 

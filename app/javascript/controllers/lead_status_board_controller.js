@@ -249,6 +249,8 @@ export default class extends Controller {
         name: row.querySelector('[data-lead-status-field="name"]')?.value.trim() || "",
         description: row.querySelector('[data-lead-status-field="description"]')?.value.trim() || "",
         stage_type: row.querySelector('[data-lead-status-field="stage_type"]')?.value || "open",
+        google_event_trigger: row.querySelector('[data-lead-status-field="google_event_trigger"]')?.value || "stage_entered",
+        meta_event_trigger: row.querySelector('[data-lead-status-field="meta_event_trigger"]')?.value || "stage_entered",
         google_event: row.querySelector('[data-lead-status-field="google_event"]')?.value || "none",
         meta_conversion_event: row.querySelector('[data-lead-status-field="meta_conversion_event"]')?.value || "",
         color: row.querySelector('[data-lead-status-field="color"]')?.value || "",

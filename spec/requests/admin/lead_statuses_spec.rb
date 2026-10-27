@@ -12,6 +12,27 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     sign_in admin
   end
 
+  it "salva o evento e a ação por etapa sem ativar integração" do
+    pipeline = create(:lead_pipeline, tenant: admin.tenant)
+    stage = create(:lead_pipeline_stage, lead_pipeline: pipeline)
+    post bulk_update_admin_lead_statuses_path, params: { lead_pipeline_id: pipeline.id, statuses: [
+      { id: stage.id, name: stage.name, google_event: "qualify_lead", google_event_trigger: "qualified", meta_conversion_event: "QualifiedLead", meta_event_trigger: "qualified" }
+    ] }, as: :json
+    expect(response).to have_http_status(:ok), response.body
+    expect(stage.reload).to have_attributes(google_event: "qualify_lead", google_event_trigger: "qualified", meta_event_trigger: "qualified")
+    expect(admin.tenant.webhook_settings.where(google_conversions_enabled: true)).to be_empty
+  end
+
+  it "rejeita ações inválidas sem salvar parcialmente o mapeamento" do
+    pipeline = create(:lead_pipeline, tenant: admin.tenant)
+    stage = create(:lead_pipeline_stage, lead_pipeline: pipeline)
+    post bulk_update_admin_lead_statuses_path, params: { lead_pipeline_id: pipeline.id, statuses: [
+      { id: stage.id, name: stage.name, google_event: "visit", google_event_trigger: "qualified" }
+    ] }, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(stage.reload).to have_attributes(google_event: "none", google_event_trigger: "stage_entered")
+  end
+
   it "exibe a documentacao didatica do modal de funil e etapas" do
     get documentation_admin_lead_statuses_path
 

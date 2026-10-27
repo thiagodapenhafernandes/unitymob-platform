@@ -10,6 +10,8 @@ module Admin
           name: stage.name,
           description: stage.description,
           stage_type: stage.stage_type,
+          google_event: stage.google_event, google_event_trigger: stage.google_event_trigger,
+          meta_conversion_event: stage.meta_conversion_event, meta_event_trigger: stage.meta_event_trigger,
           color: stage.display_color,
           active: stage.active,
           policy: policy_payload(stage.policy_or_default),
@@ -50,7 +52,7 @@ module Admin
       rows = params.permit(
         :lead_pipeline_id,
         statuses: [
-          :id, :name, :description, :stage_type, :meta_conversion_event, :google_event, :color, :active, :replacement_stage_id, :_destroy,
+          :id, :name, :description, :stage_type, :meta_conversion_event, :google_event, :google_event_trigger, :meta_event_trigger, :color, :active, :replacement_stage_id, :_destroy,
           automations: [
             :id, :trigger, :after_amount, :after_unit, :auto_advance_to_stage_id, :action_type, :active, :_destroy,
             action_config: {}
@@ -121,7 +123,9 @@ module Admin
           transfer_leads_before_destroy!(stage, row[:replacement_stage_id])
           stage.destroy!
         else
-          stage.update!(name: name, description: description, stage_type: stage_type, meta_conversion_event: meta_conversion_event, google_event: row.key?(:google_event) ? row[:google_event].presence || "none" : stage.google_event, color: color, active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true, position: index)
+          trigger_attributes = row.slice(:google_event_trigger, :meta_event_trigger).to_h
+          stage.assign_attributes(trigger_attributes)
+          stage.update!(name: name, description: description, stage_type: stage_type, meta_conversion_event: row.key?(:meta_conversion_event) ? meta_conversion_event : stage.meta_conversion_event, google_event: row.key?(:google_event) ? row[:google_event].presence || "none" : stage.google_event, color: color, active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true, position: index)
           sync_policy!(stage, row[:policy])
           sync_transitions!(stage, row[:next_stage_ids])
           sync_automations!(stage, row[:automations])
@@ -134,6 +138,8 @@ module Admin
           stage_type: stage_type,
           meta_conversion_event: meta_conversion_event,
           google_event: row[:google_event].presence || "none",
+          google_event_trigger: row[:google_event_trigger].presence || "stage_entered",
+          meta_event_trigger: row[:meta_event_trigger].presence || "stage_entered",
           color: color,
           active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true,
           position: index

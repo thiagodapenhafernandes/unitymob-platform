@@ -828,3 +828,8 @@ body.ax-app .lead-status-row__multiselect-wrapper.multi .ts-control > div.item {
 }
 
 .lead-stage-grid .lead-google-event-field { grid-column: 1 / -1; }
+
+/* Configuração de integração ocupa uma linha completa no formulário de criação. */
+.lead-status-row__fields > .lead-status-row__conversion-fields {
+  grid-column: 1 / -1;
+}

@@ -7,7 +7,7 @@ class LeadPipelineStage < ApplicationRecord
     "lost" => "Perdida",
     "archived" => "Arquivada"
   }.freeze
-  # Evento enviado à Meta (Conversions API) quando o lead ENTRA na etapa.
+  # Evento Meta (Conversions API), condicionado ao momento configurado na etapa.
   # Eventos padrão: https://developers.facebook.com/docs/meta-pixel/reference/
   # QualifiedLead preserva o evento CRM já usado pela integração.
   META_CONVERSION_EVENTS = {
@@ -33,7 +33,14 @@ class LeadPipelineStage < ApplicationRecord
   }.freeze
   GOOGLE_EVENTS = { "none" => "Nenhum", "qualify_lead" => "Lead qualificado", "visit" => "Visita realizada", "proposal" => "Proposta enviada", "closed" => "Fechamento" }.freeze
   validates :google_event, inclusion: { in: GOOGLE_EVENTS.keys }
-  after_save :disable_google_qualification_duplicate
+  CONVERSION_TRIGGERS = {
+    "stage_entered" => "Ao entrar na etapa", "qualified" => "Ao marcar como qualificado",
+    "visit_completed" => "Ao concluir uma visita", "proposal_sent" => "Ao enviar uma proposta",
+    "deal_closed" => "Ao concluir o negócio"
+  }.freeze
+  GOOGLE_ACTIONS = { "qualify_lead" => "qualified", "visit" => "visit_completed", "proposal" => "proposal_sent", "closed" => "deal_closed" }.freeze
+  validates :google_event_trigger, :meta_event_trigger, inclusion: { in: CONVERSION_TRIGGERS.keys }
+  validate :google_action_matches_event
 
   HEX_COLOR = /\A#\h{6}\z/
   DEFAULT_COLORS = %w[#2f80a0 #365f8f #8a63d2 #d97706 #08875d #e0402f #667085].freeze
@@ -121,12 +128,11 @@ class LeadPipelineStage < ApplicationRecord
 
   private
 
-  def disable_google_qualification_duplicate
-    return unless active? && google_event == "qualify_lead"
+  def google_action_matches_event
+    return if google_event == "none" || google_event_trigger == "stage_entered"
+    return if GOOGLE_ACTIONS[google_event] == google_event_trigger
 
-    tenant.webhook_settings.where(google_conversions_enabled: true).find_each do |setting|
-      setting.update!(subscribed_events: setting.subscribed_events - ["qualified_lead"]) if setting.delivers_event?("qualified_lead")
-    end
+    errors.add(:google_event_trigger, "não corresponde ao evento Google selecionado")
   end
 
   def assign_position

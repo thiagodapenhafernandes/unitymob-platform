@@ -3,7 +3,6 @@
   stage_name = local_assigns[:name].to_s
   stage_description = local_assigns[:description].to_s
   stage_type = local_assigns[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open"
-  meta_conversion_event = local_assigns[:meta_conversion_event].presence_in(LeadPipelineStage::META_CONVERSION_EVENTS.keys)
 %>
 
 <div class="lead-status-row" data-lead-pipeline-form-target="stageRow">
@@ -34,16 +33,11 @@
         <option value="<%= value %>" <%= "selected" if stage_type == value %>><%= label %></option>
       <% end %>
     </select>
-    <select class="ax-control ax-control--sm"
-            name="stages[<%= stage_index %>][meta_conversion_event]"
-            id="lead_pipeline_stage_<%= stage_index %>_meta_conversion_event"
-            aria-label="Evento Meta da etapa">
-      <option value="">Evento Meta: nenhum</option>
-      <% LeadPipelineStage::META_CONVERSION_EVENTS.each do |value, label| %>
-        <option value="<%= value %>" <%= "selected" if meta_conversion_event == value %>><%= label %> (<%= value %>)</option>
-      <% end %>
-    </select>
-    <%= render "admin/leads/google_event_field", name: "stages[#{stage_index}][google_event]", field_id: "lead_pipeline_stage_#{stage_index}_google_event", selected: local_assigns[:google_event], class_name: "lead-google-event-field" %>
+    <% %w[meta google].each do |provider| %>
+      <%= render "admin/shared/ui/stage_conversion_fields", provider: provider, field_prefix: "lead_pipeline_stage_#{stage_index}_#{provider}",
+            selected: local_assigns[provider == "meta" ? :meta_conversion_event : :google_event],
+            selected_trigger: local_assigns[:"#{provider}_event_trigger"], input_prefix: "stages[#{stage_index}]", board: false %>
+    <% end %>
   </div>
   <button type="button"
           class="ax-icon-btn lead-status-row__remove"

@@ -75,11 +75,11 @@ RSpec.describe GoogleConversions::Recorder do
     expect { lead.update!(lead_pipeline_stage: visit, status: visit.name) }.not_to change(GoogleStageConversionEvent, :count)
   end
 
-  it "mantém os eventos de entrada e desmarca a qualificação por avaliação quando há etapa mapeada" do
+  it "não altera inscrições da conta ao configurar uma etapa" do
     setting.update!(subscribed_events: WebhookSetting::DEFAULT_EVENTS + ["qualified_lead"])
     pipeline = create(:lead_pipeline)
     create(:lead_pipeline_stage, lead_pipeline: pipeline, google_event: "qualify_lead")
-    expect(setting.reload.subscribed_events).to eq(WebhookSetting::DEFAULT_EVENTS)
+    expect(setting.reload.subscribed_events).to eq(WebhookSetting::DEFAULT_EVENTS + ["qualified_lead"])
     expect(WebhookSetting.new.google_conversions_enabled).to be(false)
     expect(build(:lead_pipeline_stage).google_event).to eq("none")
   end
@@ -93,6 +93,9 @@ RSpec.describe GoogleConversions::Recorder do
 
   it "deduplica a qualificação por avaliação, inclusive entre corretor e gestor" do
     setting.update!(subscribed_events: WebhookSetting::DEFAULT_EVENTS + ["qualified_lead"])
+    pipeline = create(:lead_pipeline)
+    stage = create(:lead_pipeline_stage, lead_pipeline: pipeline, google_event: "qualify_lead", google_event_trigger: "qualified")
+    lead.update!(lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
     lead.update!(broker_qualification_status: "qualified")
     lead.update!(manager_qualification_status: "qualified")
     lead.update!(broker_qualification_status: "disqualified")

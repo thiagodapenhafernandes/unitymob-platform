@@ -31,6 +31,8 @@ class Appointment < ApplicationRecord
   scope :ordered, -> { order(:starts_at) }
 
   after_update { Ga4::ConversionRecorder.appointment_updated(self) }
+  after_update { Leads::StageConversionEvents.appointment_updated(self, provider: :google) }
+  after_update_commit { Leads::StageConversionEvents.appointment_updated(self, provider: :meta) }
 
   def kind_label = KINDS[kind] || kind
   def realizado? = status == "realizado"

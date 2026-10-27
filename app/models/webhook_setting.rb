@@ -6,16 +6,9 @@ class WebhookSetting < ApplicationRecord
   has_many :google_stage_conversion_events, dependent: :nullify
   validates :tenant_id, uniqueness: { conditions: -> { where(google_conversions_enabled: true) } }, if: :google_conversions_enabled?
   validate :valid_google_destination
-  before_validation :normalize_google_qualification_source
 
   def google_destination_url
     whatsapp_webhook_url.presence || webhook_url
-  end
-
-  def normalize_google_qualification_source
-    return unless google_conversions_enabled? && tenant&.lead_pipeline_stages&.where(active: true, google_event: "qualify_lead")&.exists?
-
-    self.subscribed_events = Array(subscribed_events) - ["qualified_lead"]
   end
 
   def valid_google_destination
