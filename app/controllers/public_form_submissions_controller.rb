@@ -17,7 +17,8 @@ class PublicFormSubmissionsController < ApplicationController
           public_form_slug: @public_form.slug,
           public_form_name: @public_form.name,
           public_form_category: @public_form.category,
-          page_url: source_payload[:page_url]
+          page_url: source_payload[:page_url],
+          tracking_uid: submission.source["tracking_uid"]
         ),
         webhook_options
       )
@@ -119,6 +120,10 @@ class PublicFormSubmissionsController < ApplicationController
       referrer_url: request.referer,
       user_agent: request.user_agent,
       remote_ip: request.remote_ip,
+      tracking_uid: Leads::TrackingUid.capture(
+        raw: params.fetch(:public_form_submission, params.fetch(:submission, ActionController::Parameters.new)).to_unsafe_h.merge("page_url" => params[:page_url]),
+        request: request
+      ),
       utm: request.query_parameters.slice(
         "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
         "gclid", "fbclid", "msclkid"

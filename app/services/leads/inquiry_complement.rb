@@ -73,6 +73,7 @@ module Leads
       target.property_interests.find_or_create_by!(habitation: habitation) { |interest| interest.tenant = target.tenant } if habitation
       fill_contact_blanks(target)
       merge_information(target)
+      target.attribution_data = TrackingUid.merge(target.attribution_data, @lead.attribution_data)
       target.save! if target.changed?
 
       LeadActivity.log!(lead: target, kind: "inquiry_complemented", metadata: complement_metadata(target, habitation).merge(metadata))

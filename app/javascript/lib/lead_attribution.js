@@ -54,7 +54,7 @@ export class LeadAttribution {
     const result = { landing_url: url.href, referrer_url: this.doc.referrer }
     for (const key of TRACKING_KEYS) {
       const value = url.searchParams.get(key)
-      if (value) result[key] = value.slice(0, 1024)
+      if (value) result[key] = key === 'utm_content' ? value : value.slice(0, 1024)
     }
     return result
   }

@@ -28,6 +28,7 @@ class PublicFormLeadRoutingJob < ApplicationJob
           phone: submission.normalized_phone,
           origin: form.webhook_origin
         )
+        lead.attribution_data = Leads::TrackingUid.merge({}, submission.source.slice("tracking_uid"))
         lead.skip_automatic_routing = true
         lead = Leads::Intake.receive!(lead, distribution_rule: rule)
         if lead.intake_reused

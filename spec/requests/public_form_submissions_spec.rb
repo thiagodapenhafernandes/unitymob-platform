@@ -3,6 +3,18 @@ require "rails_helper"
 RSpec.describe "Public form submissions" do
   before { host! "localhost" }
 
+  it "guarda o UID do cookie na submissão para o roteamento assíncrono" do
+    form = PublicForm.ensure_default_announce_property!(tenant: Tenant.default)
+    allow(WebhookService).to receive(:send_form_data)
+    cookies["user_id_mh"] = "Cookie_UID"
+    post public_form_submissions_path(form.slug), params: { public_form_submission: {
+      name: "Maria Cliente", phone: "(47) 99999-0000", interest: "venda",
+      city_state: "Balneário Camboriú/SC", property_details: "Apartamento", utm_content: "hidden"
+    } }, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(form.submissions.last.source["tracking_uid"]).to eq("Cookie_UID")
+  end
+
   it "salva submissão e dispara webhook do formulário público" do
     tenant = Tenant.default
     form = PublicForm.ensure_default_announce_property!(tenant: tenant)

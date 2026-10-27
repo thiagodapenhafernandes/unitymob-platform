@@ -48,3 +48,14 @@ test('retains Microsoft and Google iOS identifiers with their original casing',(
  const b=browser(),d=document();b.location=new URL('https://site.test/?msclkid=AbC&gbraid=Def&wbraid=Xyz&utm_campaign=Casa');
  const p=new LeadAttribution(b,d).payload();assert.equal(p.msclkid,'AbC');assert.equal(p.gbraid,'Def');assert.equal(p.wbraid,'Xyz');assert.equal(p.utm_campaign,'Casa');
 });
+
+test('UID keeps its exact value while other tracking parameters retain their limits',()=>{
+ const b=browser(),d=document();
+ const uid=' Ab%2F+'+'x'.repeat(1100);
+ b.location=new URL('https://site.test/');
+ b.location.searchParams.set('utm_content',uid);
+ b.location.searchParams.set('utm_campaign','y'.repeat(1100));
+ const payload=new LeadAttribution(b,d,()=>0).payload();
+ assert.equal(payload.utm_content,uid);
+ assert.equal(payload.utm_campaign.length,1024);
+});

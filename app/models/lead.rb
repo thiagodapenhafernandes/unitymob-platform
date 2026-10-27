@@ -207,6 +207,7 @@ class Lead < ApplicationRecord
   after_update :record_audit_update
   after_update :record_ga4_conversion, unless: :skip_automatic_routing?
   after_update :record_google_stage_conversion, unless: :skip_automatic_routing?
+  before_validation :preserve_tracking_uid
   before_create :snapshot_google_business_type
   has_many :google_stage_conversion_events, dependent: :destroy
   after_destroy :record_audit_destroy
@@ -830,6 +831,18 @@ class Lead < ApplicationRecord
 
   def dispatch_outbound_webhook_changes
     Leads::OutboundWebhook.dispatch_changes(self)
+  end
+
+  def preserve_tracking_uid
+    return unless persisted? && will_save_change_to_attribution_data?
+
+    original = attribute_in_database("attribution_data").to_h
+    return if original["tracking_uid"].blank?
+
+    self.attribution_data = attribution_data.to_h.merge(
+      "tracking_uid" => original["tracking_uid"],
+      "tracking_uids" => ([original["tracking_uid"]] + Array(original["tracking_uids"]) + Array(attribution_data.to_h["tracking_uids"])).uniq
+    )
   end
 
   def snapshot_google_business_type

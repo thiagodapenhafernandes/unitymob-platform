@@ -63,6 +63,7 @@ module Leads
 
     def self.apply!(lead, raw:, request: nil)
       raw = raw.respond_to?(:to_h) ? raw.to_h.with_indifferent_access : {}
+      uid = TrackingUid.capture(raw: raw, request: request)
       current = raw[:conversion_touch].is_a?(Hash) ? raw[:conversion_touch] : raw
       result = new(raw: current, request: request).result
       context = browser_identifiers(request).stringify_keys
@@ -71,7 +72,7 @@ module Leads
         context["analytics_consent_captured_at"] = Time.current.iso8601
         context.merge!("client_ip_address" => request.remote_ip, "client_user_agent" => request.user_agent.to_s.first(1024))
       end
-      return lead if result.data.empty? && context.empty?
+      return lead if result.data.empty? && context.empty? && uid.blank?
 
       first = new(raw: raw[:first_touch], request: request).result if raw[:first_touch].is_a?(Hash)
       lead.attribution_channel = result.channel
@@ -79,7 +80,8 @@ module Leads
       lead.attribution_data = lead.attribution_data.to_h.merge(result.data).merge(context).merge(
         "version" => 2, "model" => "conversion_session", "conversion_touch" => result.data
       )
-      lead.attribution_data["first_touch"] = first.data if first && first.data.present?
+      lead.attribution_data["first_touch"] ||= first.data if first && first.data.present?
+      lead.attribution_data = TrackingUid.merge(lead.attribution_data, { "tracking_uid" => uid })
       lead.origin = result.label if lead.origin.blank?
       lead
     end

@@ -92,6 +92,8 @@ class WebhookService
       event_name = WebhookSetting.event_name_for(origin_form, values)
       event_id = SecureRandom.uuid
       tracking = tracking_params(request, values)
+      uid = attribution[:tracking_uid].presence || values[:tracking_uid].presence
+      tracking["utm_content"] = uid if uid
       lead_event = !%w[form_submitted test_webhook].include?(event_name) || (event_name == "test_webhook" && values[:diagnostic] == true)
       tenant = options[:tenant] || Current.tenant
       property = tenant.habitations.find_by(id: values[:property_id]) if lead_event && tenant && values[:property_code].blank? && values[:property_id].present? && values[:tenant_id].to_s == tenant.id.to_s
@@ -118,7 +120,7 @@ class WebhookService
         placement: values[:placement],
         client_ip_address: request ? request.remote_ip : values[:client_ip_address],
         client_user_agent: request ? request.user_agent : values[:client_user_agent],
-        source: source_metadata(request, values),
+        source: source_metadata(request, uid ? values.merge(utm_content: uid) : values),
         data: sanitize_data(data)
       }.merge(tracking).merge(Leads::Attribution.browser_identifiers(request)).compact
     end

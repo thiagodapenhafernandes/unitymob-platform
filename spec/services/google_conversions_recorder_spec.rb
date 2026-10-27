@@ -17,6 +17,17 @@ RSpec.describe GoogleConversions::Recorder do
     lead.update_column(:google_business_type, "venda")
   end
 
+  it "inclui o UID inicial nos três nomes de conversão e omite quando ausente" do
+    lead.update!(attribution_data: { "tracking_uid" => "UID_Ab%2F+", "utm_content" => "outra-campanha" })
+    %w[qualify_lead visit proposal closed].each do |event|
+      described_class.record(lead, setting, event)
+    end
+    GoogleStageConversionEvent.where(lead_id: lead.id).each do |event|
+      expect(event.payload_data["utm_content"]).to eq("UID_Ab%2F+")
+      expect(event.payload_data.dig("source", "utm", "utm_content")).to eq("UID_Ab%2F+")
+    end
+  end
+
   it "usa a identidade original e registra cada tipo uma única vez" do
     lead.update!(email: "edited@example.com")
     2.times { described_class.record(lead, setting, "visit") }
@@ -35,6 +46,7 @@ RSpec.describe GoogleConversions::Recorder do
     payload = GoogleStageConversionEvent.find_by!(lead_id: lead.id).payload_data
     expect(payload).to include("value" => 1234.56, "currency" => "BRL")
     expect(payload).not_to have_key("lead_status")
+    expect(payload.keys).not_to include("utm_content", "source")
   end
 
   it "omite valor e moeda quando não há comissão e em eventos intermediários" do

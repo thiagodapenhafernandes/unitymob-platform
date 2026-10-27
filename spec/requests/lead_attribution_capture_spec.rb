@@ -42,7 +42,7 @@ RSpec.describe "Lead attribution capture", type: :request do
     )
     expect(response.parsed_body.dig("analytics_event", "event_id")).to match(/\A[0-9a-f-]{36}\z/)
     expect(response.parsed_body.fetch("analytics_event").keys).to contain_exactly(
-      "event", "event_id", "business_type", "property_code", "form_id"
+      "event", "event_id", "business_type", "property_code", "form_id", "phone_e164"
     )
     lead = Lead.order(:created_at).last
     expect(lead).to have_attributes(
@@ -57,6 +57,17 @@ RSpec.describe "Lead attribution capture", type: :request do
       "utm_campaign" => "aluguel",
       "gclid" => "click-123"
     )
+  end
+
+  it "captura o cookie antes do campo oculto e inclui o UID no webhook" do
+    cookies["user_id_mh"] = "UID_Ab%2F+"
+    post leads_path, params: { lead: { name: "Cliente UID", phone: "47999997776", utm_content: "hidden" } }, as: :json
+    expect(response).to have_http_status(:ok)
+    lead = Lead.order(:created_at).last
+    expect(lead.attribution_data["tracking_uid"]).to eq("UID_Ab%2F+")
+    payload = WebhookService.build_payload("lead_created", lead.attributes)
+    expect(payload["utm_content"]).to eq("UID_Ab%2F+")
+    expect(payload.dig(:source, :utm, "utm_content")).to eq("UID_Ab%2F+")
   end
 
   it "não anuncia conversão para contato interno ignorado" do
