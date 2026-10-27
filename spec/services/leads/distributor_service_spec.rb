@@ -1,6 +1,12 @@
 require 'rails_helper'
 
 RSpec.describe Leads::DistributorService do
+  it "trata chaves de filtro como dados, sem executar métodos do lead" do
+    lead = build(:lead, other_information: {"destroy!" => "apenas texto"})
+    expect(lead).not_to receive(:destroy!)
+    expect(described_class.new(lead).send(:get_lead_value, "destroy!")).to eq("apenas texto")
+  end
+
   it "aplica exceções só no modo automático, inclusive se todos os forms forem excluídos" do
     integration = create(:user_meta_integration, selected_page_ids: ["exceptions-page"])
     page = create(:meta_facebook_page, user_meta_integration: integration, page_id: "exceptions-page")
@@ -168,6 +174,63 @@ RSpec.describe Leads::DistributorService do
     end
   end
 
+  describe "RD sem ambiguidade entre venda e locação" do
+    let!(:rent) { create(:distribution_rule, source_rd_station: true, business_type: :locacao) }
+    let!(:sale) { create(:distribution_rule, source_rd_station: true, business_type: :venda) }
+
+    before do
+      create(:distribution_rule_agent, distribution_rule: rent, admin_user: agent_with_checkin)
+      create(:distribution_rule_agent, distribution_rule: sale, admin_user: agent_without_checkin)
+      allow(Leads::NotificationDispatcher).to receive(:deliver)
+    end
+
+    it "deixa formulário sem modalidade para triagem, sem usar contingência genérica" do
+      lead = build_lead(origin: "RD Station", product: "Form - Refuge")
+      allow(Leads::ContingencyService).to receive(:default!).and_return(true)
+      described_class.find_and_distribute(lead)
+      expect(lead.reload.admin_user_id).to be_nil
+      expect(lead.distribution_rule_id).to be_nil
+      expect(lead.activities.where(kind: "distribution_failed").last.metadata["reason"]).to eq("ambiguous_business_type")
+      expect(Leads::ContingencyService).not_to have_received(:default!)
+    end
+
+    it "respeita uma regra específica do formulário, sem mudar a origem" do
+      sale.update!(custom_filters: [{key: "rd_station_conversion_identifier", value: "Form - Refuge"}])
+      lead = build_lead(origin: "RD Station", product: "Form - Refuge", other_information: {"rd_station_conversion_identifier" => "Form - Refuge", "business_type" => "sale"})
+      described_class.find_and_distribute(lead)
+      expect(lead.reload.distribution_rule_id).to eq(sale.id)
+      expect(lead.origin).to eq("RD Station")
+    end
+
+    it "continua distribuindo locação explícita" do
+      lead = build_lead(origin: "RD Station", product: "Alugar apartamento")
+      described_class.find_and_distribute(lead)
+      expect(lead.reload.distribution_rule_id).to eq(rent.id)
+    end
+
+    it "continua distribuindo venda explícita" do
+      lead = build_lead(origin: "RD Station", product: "Comprar apartamento")
+      described_class.find_and_distribute(lead)
+      expect(lead.reload.distribution_rule_id).to eq(sale.id)
+    end
+
+    it "não usa interesses antigos do payload RD para definir a modalidade atual" do
+      lead = build_lead(origin: "RD Station", product: "Comprar apartamento", other_information: {
+        "rd_station_payload" => {"contact" => {"old_interest" => "aluguel"}}
+      })
+      described_class.find_and_distribute(lead)
+      expect(lead.reload.distribution_rule_id).to eq(sale.id)
+    end
+
+    it "preserva o responsável de um atendimento em reentrada ambígua" do
+      lead = build_lead(admin_user: agent_without_checkin, status: :em_atendimento, distribution_rule: sale)
+      inquiry = build(:lead, tenant: lead.tenant, origin: "RD Station", product: "Form - Refuge")
+      expect(described_class.redistribute(lead, inquiry: inquiry)).to eq(:kept)
+      expect(lead.reload.admin_user_id).to eq(agent_without_checkin.id)
+      expect(lead.distribution_rule_id).to eq(sale.id)
+    end
+  end
+
   describe "Lovers" do
     it "distribui lead Lovers apenas para regra Lovers" do
       site_rule = create(:distribution_rule, source_site: true, source_lovers: false)
@@ -256,26 +319,26 @@ RSpec.describe Leads::DistributorService do
   end
 
   describe "tipo de negocio" do
-    it "mantem lead ambiguo elegivel para regra de venda" do
+    it "não presume venda para lead sem modalidade" do
       rule = create(:distribution_rule, business_type: :venda, source_site: false, source_meta: true)
       create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
 
       lead = build_lead(origin: "facebook", product: "Lead Meta sem modalidade")
       described_class.find_and_distribute(lead)
 
-      expect(lead.reload.admin_user_id).to eq(agent_without_checkin.id)
-      expect(lead.distribution_rule_id).to eq(rule.id)
+      expect(lead.reload.admin_user_id).to be_nil
+      expect(lead.distribution_rule_id).to be_nil
     end
 
-    it "mantem lead ambiguo elegivel para regra de locacao" do
+    it "não presume locação para lead sem modalidade" do
       rule = create(:distribution_rule, business_type: :locacao, source_site: false, source_meta: true)
       create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
 
       lead = build_lead(origin: "facebook", product: "Lead Meta sem modalidade")
       described_class.find_and_distribute(lead)
 
-      expect(lead.reload.admin_user_id).to eq(agent_without_checkin.id)
-      expect(lead.distribution_rule_id).to eq(rule.id)
+      expect(lead.reload.admin_user_id).to be_nil
+      expect(lead.distribution_rule_id).to be_nil
     end
 
     it "nao envia lead explicitamente de venda para regra de locacao" do

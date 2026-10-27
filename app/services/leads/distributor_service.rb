@@ -46,26 +46,34 @@ module Leads
         prepare_reentry!
         @lead.save!
         return true if rule && ContingencyService.try_forward!(@lead, rule: rule, reason: "deactivated")
-        return true if rule.nil? && ContingencyService.default!(@lead)
+        return true if rule.nil? && !@classification_blocked && !@ambiguous_business_type && ContingencyService.default!(@lead)
       end
       LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: {
-        reason: "no_matching_rule", inquiry_origin: @inquiry.origin, rule_id: rule&.id
+        reason: @ambiguous_business_type ? "ambiguous_business_type" : "no_matching_rule", inquiry_origin: @inquiry.origin, rule_id: rule&.id
       }.compact)
       keep_owner ? :kept : nil
     end
 
     def distribute
+      return unless entry_classification.nature == :commercial
+
       complemented = try_complement
       return complemented if complemented
 
       rule = find_matching_rule
       unless rule
-        forwarded = ContingencyService.default!(@lead)
-        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: { reason: "no_matching_rule" }) unless forwarded
+        forwarded = ContingencyService.default!(@lead) unless @ambiguous_business_type
+        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: { reason: @ambiguous_business_type ? "ambiguous_business_type" : "no_matching_rule" }) unless forwarded
         return forwarded
       end
 
       distribute_to(rule)
+    end
+
+    def matching_entry_rule(message: nil)
+      @entry_classification = EntryClassification.new(routing_lead, message: message)
+      @require_unique_rule = true
+      find_matching_rule
     end
 
     def distribute_to(rule)
@@ -293,18 +301,31 @@ module Leads
     end
 
     def find_matching_rule
-      tenant.distribution_rules.active.find_each do |rule|
-        begin
-          if matches_source?(rule) && matches_business_type?(rule) && matches_filters?(rule)
-            return rule
-          end
-        rescue => e
-          Rails.logger.error "[DistributorService] Erro ao verificar regra #{rule.id}: #{e.class}: #{e.message}"
-          raise if @inquiry
-          next
-        end
+      if entry_classification.nature != :commercial
+        @classification_blocked = true
+        return
       end
-      nil
+
+      candidates = tenant.distribution_rules.active.where.not(distribution_mode: :attendance)
+        .order(:id).select { |rule| rule_matches?(rule) }
+      matches = candidates.select { |rule| matches_business_type?(rule) }
+      specific = matches.select { |rule| Array(rule.custom_filters).any? { |filter| filter["key"].present? && filter["value"].present? } }
+      matches = specific if specific.any?
+      @ambiguous_business_type = entry_classification.business_type.nil? && candidates.any? && matches.empty?
+      return if @require_unique_rule && matches.size > 1
+      matches.first
+    end
+
+    def entry_classification
+      @entry_classification ||= EntryClassification.new(routing_lead)
+    end
+
+    def rule_matches?(rule)
+      matches_source?(rule) && matches_filters?(rule)
+    rescue => error
+      Rails.logger.error "[DistributorService] Erro ao verificar regra #{rule.id}: #{error.class}: #{error.message}"
+      raise if @inquiry
+      false
     end
 
     def tenant
@@ -340,7 +361,7 @@ module Leads
           key = filter["key"]
           val_rule = filter["value"].to_s.downcase.strip
           val_lead = get_lead_value(key).to_s.downcase.strip
-          return false unless val_lead.include?(val_rule)
+          return false unless (key == "meta_campaign_id" ? val_lead == val_rule : val_lead.include?(val_rule))
         end
       end
       true
@@ -434,8 +455,8 @@ module Leads
     end
 
     def get_lead_value(key)
-      if routing_lead.respond_to?(key) && routing_lead.send(key).present?
-        routing_lead.send(key)
+      if routing_lead.has_attribute?(key) && routing_lead[key].present?
+        routing_lead[key]
       elsif routing_lead.respond_to?(:answer_for) && routing_lead.answer_for(key).present?
         routing_lead.answer_for(key)
       elsif routing_lead.other_information.is_a?(Hash) && routing_lead.other_information.key?(key)
@@ -447,6 +468,7 @@ module Leads
 
     def matches_source?(rule)
       origin = routing_lead.origin.to_s.downcase
+      return rule.source_rd_station? if routing_lead.lead_type == "rd_station"
 
       return rule.source_tiktok? if routing_lead.attribution_channel == "tiktok_ads"
       return true if rule.source_linkedin? && routing_lead.attribution_channel == "linkedin_ads" && routing_lead.attribution_source == "linkedin"
@@ -493,53 +515,7 @@ module Leads
 
     def matches_business_type?(rule)
       return true if rule.ambos_business_type?
-      if routing_lead.external_lead_integration_id.present?
-        business_type = routing_lead.other_information["c2s_business_type"]
-        return rule.venda_business_type? if business_type == "sale"
-        return rule.locacao_business_type? if business_type == "rental"
-      end
-      lead_content = normalized_business_type_content
-      is_explicit_rental = lead_content.match?(/\b(aluguel|alugar|locacao|locar|rent|rental)\b/)
-      is_explicit_sale = lead_content.match?(/\b(venda|vender|comprar|compra|sale)\b/)
-
-      # Regra de negócio intencional: quando o lead não traz sinal explícito de
-      # venda ou locação (ex.: muitos leads Meta), regras específicas continuam
-      # elegíveis. Isso preserva flexibilidade e deixa a prioridade/ordem das
-      # regras decidir o destino em origens ambíguas.
-      if rule.locacao_business_type?
-        return is_explicit_rental || !is_explicit_sale
-      elsif rule.venda_business_type?
-        return is_explicit_sale || !is_explicit_rental
-      end
-      false
-    end
-
-    def normalized_business_type_content
-      values = [
-        routing_lead.product,
-        routing_lead.origin,
-        routing_lead.source_url,
-        routing_lead.other_information,
-        habitation_business_type_signal
-      ]
-
-      I18n.transliterate(values.compact.join(" ").downcase)
-    end
-
-    def habitation_business_type_signal
-      habitation = routing_lead.property_id.present? ? tenant.habitations.find_by(id: routing_lead.property_id) : nil
-      return "" unless habitation&.respond_to?(:whatsapp_negotiation_type)
-
-      case habitation.whatsapp_negotiation_type
-      when "rent"
-        "locacao aluguel rent"
-      when "sale"
-        "venda comprar sale"
-      when "sale_rent"
-        "venda locacao sale rent"
-      else
-        ""
-      end
+      entry_classification.business_type.to_s == rule.business_type
     end
 
     def inside_holding_hours?(rule)

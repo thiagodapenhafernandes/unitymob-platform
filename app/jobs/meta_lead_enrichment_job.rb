@@ -1,9 +1,16 @@
-# Reads only: enrichment never changes ownership, status or distribution.
+# Enrichment preserves ownership/status; fresh CTWA entries may request a separate opt-in routing job.
 class MetaLeadEnrichmentJob < ApplicationJob
   queue_as :sync
   retry_on Koala::Facebook::APIError, wait: :polynomially_longer, attempts: 3
 
-  def perform(tenant_id, lead_id)
+  def perform(tenant_id, lead_id, whatsapp_message_id: nil)
+    enrich(tenant_id, lead_id)
+    Whatsapp::EntryLeadRoutingJob.perform_later(tenant_id, lead_id, whatsapp_message_id) if whatsapp_message_id
+  end
+
+  private
+
+  def enrich(tenant_id, lead_id)
     tenant = Tenant.find_by(id: tenant_id)
     lead = tenant&.leads&.find_by(id: lead_id)
     return unless lead
@@ -59,8 +66,6 @@ class MetaLeadEnrichmentJob < ApplicationJob
         "meta_enriched_at" => Time.current.iso8601))
     end
   end
-
-  private
 
   def graph_id(value)
     value.to_s if value.to_s.match?(/\A[0-9]{5,30}\z/)

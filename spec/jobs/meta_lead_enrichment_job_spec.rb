@@ -122,4 +122,18 @@ RSpec.describe MetaLeadEnrichmentJob, type: :job do
     expect(lead.attribution_source).to be_blank
   end
 
+  it "só agenda distribuição CTWA quando chamada pela nova mensagem de entrada" do
+    expect { described_class.perform_now(tenant.id, lead.id) }.not_to have_enqueued_job(Whatsapp::EntryLeadRoutingJob)
+    expect { described_class.perform_now(tenant.id, lead.id, whatsapp_message_id: 123) }
+      .to have_enqueued_job(Whatsapp::EntryLeadRoutingJob).with(tenant.id, lead.id, 123)
+    expect(service).to have_received(:ad_details).once
+  end
+
+  it "permite classificar a entrada mesmo sem anúncio autorizado, sem aproveitar seus dados" do
+    allow(service).to receive(:ad_details).and_return({"id" => "987654", "account_id" => "999999"})
+    expect { described_class.perform_now(tenant.id, lead.id, whatsapp_message_id: 123) }
+      .to have_enqueued_job(Whatsapp::EntryLeadRoutingJob)
+    expect(lead.reload.other_information).not_to have_key("meta_campaign_id")
+  end
+
 end

@@ -246,9 +246,13 @@ module Whatsapp
     # a newly created lead receives an initial entry; existing acquisition stays intact.
     def enqueue_entry_enrichment(conversation, message)
       entry = (conversation.lead&.other_information || {}).to_h.fetch("whatsapp_entry", {})
-      return unless entry["message_id"] == message.wa_message_id && message.referral["source_type"] == "ad"
+      return unless entry["message_id"] == message.wa_message_id
 
-      MetaLeadEnrichmentJob.perform_later(tenant.id, conversation.lead_id)
+      if message.referral["source_type"] == "ad"
+        MetaLeadEnrichmentJob.perform_later(tenant.id, conversation.lead_id, whatsapp_message_id: message.id)
+      else
+        Whatsapp::EntryLeadRoutingJob.perform_later(tenant.id, conversation.lead_id, message.id)
+      end
     rescue StandardError => error
       Rails.logger.warn("[wa attribution] enrichment enqueue failed message_id=#{message.id} error=#{error.class}")
     end

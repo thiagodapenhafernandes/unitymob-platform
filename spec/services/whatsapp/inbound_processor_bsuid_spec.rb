@@ -106,6 +106,13 @@ RSpec.describe Whatsapp::InboundProcessor do
 
     expect(conv.reload.business_scoped_user_id).to eq("US.NEW")
   end
+  it "agenda classificação da nova consulta sem anúncio, mas não redistribui reentrega" do
+    message = {"id" => "wamid.classify", "from" => "5547999041234", "type" => "text", "text" => {"body" => "Quero alugar apartamento"}}
+    body = payload(contacts: [], messages: [message])
+    expect { described_class.call(body) }.to have_enqueued_job(Whatsapp::EntryLeadRoutingJob)
+    expect { described_class.call(body) }.not_to have_enqueued_job(Whatsapp::EntryLeadRoutingJob)
+  end
+
   it "preserva referral por mensagem, não duplica e não troca a entrada inicial" do
     first = {"id" => "wamid.ctwa.first", "from" => "5547999018877", "type" => "text", "text" => {"body" => "oi"},
       "referral" => {"source_type" => "ad", "source_id" => "987654", "headline" => "Imóvel", "ctwa_clid" => "click-1", "unknown" => "ignored"}}

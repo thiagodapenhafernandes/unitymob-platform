@@ -1,7 +1,24 @@
 class DistributionRule < ApplicationRecord
   include TenantScoped
 
+  validate :custom_filters_must_have_field_and_value
+  before_validation :normalize_custom_filters
   before_validation :remove_excluded_auto_meta_forms
+
+  def normalize_custom_filters
+    self.custom_filters = Array(custom_filters).filter_map do |filter|
+      next unless filter.is_a?(Hash)
+      key = filter["key"].to_s.strip
+      value = filter["value"].to_s.strip
+      {"key" => key, "value" => value} if key.present? || value.present?
+    end
+  end
+
+  def custom_filters_must_have_field_and_value
+    if Array(custom_filters).any? { |filter| filter["key"].blank? || filter["value"].blank? }
+      errors.add(:custom_filters, "devem informar campo e valor em cada linha")
+    end
+  end
 
   def meta_form_excluded?(form_id)
     auto_add_forms? && Array(excluded_meta_form_ids).map(&:to_s).include?(form_id.to_s)

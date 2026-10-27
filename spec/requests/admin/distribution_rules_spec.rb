@@ -10,6 +10,27 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "salva filtros opcionais, ignora linhas vazias e permite removê-los" do
+    rule = create(:distribution_rule, tenant: admin.tenant)
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {custom_filters: {
+      "0" => {key: " rd_station_conversion_identifier ", value: " Form - Refuge ", ignored: "x"},
+      "1" => {key: "", value: ""}
+    }}}
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(rule.reload.custom_filters).to eq([{"key" => "rd_station_conversion_identifier", "value" => "Form - Refuge"}])
+    get edit_admin_distribution_rule_path(rule)
+    expect(response.body).to include("Filtros opcionais da entrada", "Form - Refuge")
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {custom_filters: {"0" => {key: ""}}}}
+    expect(rule.reload.custom_filters).to eq([])
+  end
+
+  it "não amplia a fila silenciosamente quando um filtro está incompleto" do
+    rule = create(:distribution_rule, tenant: admin.tenant, custom_filters: [{"key" => "product", "value" => "Apartamento"}])
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {custom_filters: {"0" => {key: "product", value: ""}}}}
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(rule.reload.custom_filters).to eq([{"key" => "product", "value" => "Apartamento"}])
+  end
+
   it "salva exceções por regra, preserva ao desligar e rejeita formulários de outra conta" do
     integration = create(:user_meta_integration, admin_user: admin, tenant: admin.tenant, selected_page_ids: ["exceptions-page"])
     page = create(:meta_facebook_page, user_meta_integration: integration, page_id: "exceptions-page")
