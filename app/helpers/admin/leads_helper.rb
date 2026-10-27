@@ -1,4 +1,9 @@
 module Admin::LeadsHelper
+  def stage_conversion_integration_state(provider)
+    @stage_conversion_integration_states ||= {}
+    @stage_conversion_integration_states[provider] ||= Integrations::StageConversionAvailability.new(current_tenant).state(provider)
+  end
+
   def lead_contact_kind_label(activity)
     LeadActivity::CONTACT_KIND_LABELS[activity.meta("contact_kind").to_s] || "Anotação interna"
   end

@@ -207,6 +207,7 @@ class Lead < ApplicationRecord
   after_update :record_audit_update
   after_update :record_ga4_conversion, unless: :skip_automatic_routing?
   after_update :record_google_stage_conversion, unless: :skip_automatic_routing?
+  after_update_commit :record_meta_stage_conversion, unless: :skip_automatic_routing?
   before_validation :preserve_tracking_uid
   before_create :snapshot_google_business_type
   has_many :google_stage_conversion_events, dependent: :destroy
@@ -847,6 +848,10 @@ class Lead < ApplicationRecord
 
   def snapshot_google_business_type
     self.google_business_type = GoogleConversions::Recorder.business_type(attribution_data.to_h["business_type"])
+  end
+
+  def record_meta_stage_conversion
+    Leads::StageConversionEvents.dispatch(self, Leads::StageConversionEvents.lead_actions(self), provider: :meta, occurred_at: updated_at)
   end
 
   def record_google_stage_conversion

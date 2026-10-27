@@ -1,5 +1,0 @@
-<%= ax_standalone_select_field(name: name, id: field_id, label: "EVENTO GOOGLE",
-      choices: LeadPipelineStage::GOOGLE_EVENTS.map { |value, label| [label, value] },
-      selected: selected.presence || "none", class_name: local_assigns[:class_name],
-      hint: "Enviado ao entrar nesta etapa, por webhook, para medir conversões no Google Ads.",
-      data: local_assigns[:data] || {}) %>

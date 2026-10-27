@@ -1,0 +1,36 @@
+<%
+  event_key = provider == "meta" ? "meta_conversion_event" : "google_event"
+  trigger_key = "#{provider}_event_trigger"
+  state = stage_conversion_integration_state(provider)
+  unavailable = state == :missing
+  label = provider == "meta" ? "Meta" : "Google"
+  hint = if unavailable
+    "Configure a integração #{label} desta conta para habilitar este controle. O mapeamento existente é preservado."
+  elsif state == :paused
+    "Integração configurada, mas pausada. Salvar esta etapa não ativa o envio."
+  else
+    "Integração ativa. O envio respeita o evento e a ação desta etapa."
+  end
+  choices = provider == "meta" ? [["Nenhum evento", ""]] + LeadPipelineStage::META_CONVERSION_EVENTS.map { |value, text| ["#{text} (#{value})", value] } : LeadPipelineStage::GOOGLE_EVENTS.map { |value, text| [text, value] }
+  event_name = board ? nil : "#{input_prefix}[#{event_key}]"
+  trigger_name = board ? nil : "#{input_prefix}[#{trigger_key}]"
+  event_data = { stage_conversion_target: "event", action: "change->stage-conversion#sync" }
+  event_data[:lead_status_field] = event_key if board
+  trigger_data = { stage_conversion_target: "trigger" }
+  trigger_data[:lead_status_field] = trigger_key if board
+%>
+<%= ax_field_group(title: "Conversões #{label}", class_name: board ? nil : "lead-status-row__conversion-fields") do %>
+  <div data-controller="stage-conversion" data-stage-conversion-actions-value="<%= (provider == 'google' ? LeadPipelineStage::GOOGLE_ACTIONS : {}).to_json %>">
+    <%= ax_field_grid(columns: 2) do %>
+      <%= ax_standalone_select_field(name: event_name, id: "#{field_prefix}-event", label: "Evento #{label}", choices: choices,
+            selected: selected.presence || (provider == "google" ? "none" : ""), disabled: unavailable, hint: hint, data: event_data) %>
+      <%= ax_standalone_select_field(name: trigger_name, id: "#{field_prefix}-trigger", label: "Quando disparar",
+            choices: LeadPipelineStage::CONVERSION_TRIGGERS.map { |value, text| [text, value] }, selected: selected_trigger.presence || "stage_entered",
+            disabled: unavailable, hint: "A ação precisa ocorrer enquanto o lead está nesta etapa. O nome da etapa não determina o evento.", data: trigger_data) %>
+    <% end %>
+    <% if unavailable && !board %>
+      <%= hidden_field_tag event_name, selected.presence || (provider == "google" ? "none" : "") %>
+      <%= hidden_field_tag trigger_name, selected_trigger.presence || "stage_entered" %>
+    <% end %>
+  </div>
+<% end %>

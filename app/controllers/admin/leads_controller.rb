@@ -621,7 +621,6 @@ class Admin::LeadsController < Admin::BaseController
         LeadActivity.log!(lead: @lead, kind: "status_change", metadata: { from: previous_status, to: @lead.status, by: current_admin_user&.name })
       end
       log_qualification_change! if @lead.saved_change_to_broker_qualification_status? || @lead.saved_change_to_manager_qualification_status?
-      dispatch_meta_funnel_conversions!
       if @lead.saved_change_to_admin_user_id? && @lead.admin_user_id.present?
         Leads::NotificationDispatcher.notify_reassignment(@lead, @lead.admin_user)
       end
@@ -2571,15 +2570,6 @@ class Admin::LeadsController < Admin::BaseController
         by: current_admin_user&.name
       }.compact
     )
-  end
-
-  # O frontend configura envio na entrada da etapa; outros campos não geram eventos fixos.
-  def dispatch_meta_funnel_conversions!
-    return unless @lead.saved_change_to_lead_pipeline_stage_id?
-
-    # Lookup fresco: a associação pode estar com a etapa antiga em cache.
-    stage = current_tenant.lead_pipeline_stages.find_by(id: @lead.lead_pipeline_stage_id)
-    Meta::ConversionDispatcher.call(lead: @lead, event_name: stage.meta_conversion_event) if stage&.meta_conversion_event.present?
   end
 
   def load_lead_pipeline_context

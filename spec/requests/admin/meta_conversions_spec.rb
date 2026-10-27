@@ -176,6 +176,14 @@ RSpec.describe "Admin::MetaConversions", type: :request do
     end
   end
 
+  it "envia a visita realizada quando essa ação está configurada na etapa" do
+    meta_lead.lead_pipeline_stage.update!(meta_conversion_event: "Contact", meta_event_trigger: "visit_completed")
+    appointment = create(:appointment, tenant: tenant, lead: meta_lead, admin_user: admin, kind: "visita", status: "agendado")
+    expect do
+      patch admin_appointment_path(appointment), params: { appointment: { status: "realizado" } }
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil)
+  end
+
   it "conclui visita e preserva auditoria sem evento fixo nem reenvio da etapa atual" do
     meta_lead.lead_pipeline_stage.update!(meta_conversion_event: "Contact")
     appointment = create(:appointment, tenant: tenant, lead: meta_lead, admin_user: admin,

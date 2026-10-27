@@ -6,28 +6,16 @@ module GoogleConversions
       "proposal" => ["working_lead", "proposta"],
       "closed" => ["close_convert_lead", "fechamento"]
     }.freeze
-    QUALIFICATION_FIELDS = %w[broker_qualification_status manager_qualification_status].freeze
 
     def self.business_type(value)
       { "sale" => "venda", "venda" => "venda", "rent" => "aluguel", "rental" => "aluguel", "aluguel" => "aluguel" }[value.to_s]
     end
 
     def self.lead_updated(lead)
-      setting = lead.tenant.webhook_settings.find_by(enabled: true, google_conversions_enabled: true)
-      return unless setting
-
-      stage = lead.lead_pipeline_stage
-      event = stage&.google_event if lead.saved_change_to_lead_pipeline_stage_id? && stage&.tenant_id == lead.tenant_id && stage&.lead_pipeline_id == lead.lead_pipeline_id
-      qualified = QUALIFICATION_FIELDS.any? { |field| lead.saved_change_to_attribute?(field) && lead.public_send(field) == "qualified" }
-      previously_qualified = QUALIFICATION_FIELDS.any? { |field| (lead.saved_change_to_attribute?(field) ? lead.saved_change_to_attribute(field).first : lead.public_send(field)) == "qualified" }
-      record(lead, setting, event) if EVENTS.key?(event)
-      record(lead, setting, "qualify_lead") if qualified && !previously_qualified && setting.delivers_event?("qualified_lead")
-    rescue StandardError => error
-      # Telemetria não pode desfazer a alteração comercial, inclusive sem chaves de criptografia.
-      Rails.logger.warn("[GOOGLE_STAGE] capture_failed tenant_id=#{lead.tenant_id} lead_id=#{lead.id} error_class=#{error.class.name}")
+      Leads::StageConversionEvents.dispatch(lead, Leads::StageConversionEvents.lead_actions(lead), provider: :google, occurred_at: lead.updated_at)
     end
 
-    def self.record(lead, setting, event)
+    def self.record(lead, setting, event, occurred_at: lead.updated_at)
       GoogleStageConversionEvent.transaction(requires_new: true) do
         type = lead.google_business_type.presence || business_type(lead.attribution_data.to_h["business_type"]) || business_type(lead.lead_pipeline&.kind)
         original = lead.lead_audit_logs.where(tenant_id: lead.tenant_id, action: "created").order(:id).first&.changeset.to_h
@@ -46,7 +34,6 @@ module GoogleConversions
         phone = (original.dig("phone", "after").presence || original.dig("client_phone", "after")).to_s.gsub(/\D/, "")
         parsed_phone = Phonelib.parse("+#{phone}") if phone.present?
         event_name, suffix = EVENTS.fetch(event)
-        occurred_at = lead.updated_at
         identifier = "#{lead.id}_#{suffix}"
         payload = {
           event_name: event_name, business_type: type, transaction_id: identifier, event_id: identifier,
