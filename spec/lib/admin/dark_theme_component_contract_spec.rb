@@ -44,6 +44,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "inline_notice" => "ax-inline-notice",
     "input_group" => "ax-input-group",
     "integration_layout" => "ax-integration-layout",
+    "journey_explorer" => "ax-journey",
     "layout_studio" => "lss-topbar-demo",
     "lead_label_chip" => "lead-label-chip",
     "lead_migration_integration" => "lead-migration-workspace",
@@ -3796,8 +3797,10 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(combined_view).not_to include('class="ax-card', 'class: "ax-input"', 'class: "ax-select"', 'class="ax-badge')
     expect(new_view).to include("ax_workspace_heading(", 'render "form", rule: @rule')
     expect(edit_view).to include("ax_workspace_heading(", 'render "form", rule: @rule')
-    expect(form_view.scan(/ax_operational_panel\(/).size).to eq(3)
-    expect(form_view).to include("ax_error_summary(rule)", "ax_field_grid do", "ax_field_group(", "ax_toggle_chip(", "ax_badge(")
+    expect(form_view).to include('render "admin/shared/module_objective_notice"', 'eyebrow: "Automação horizontal"')
+    expect(form_view.scan(/ax_operational_panel\(/).size).to eq(2)
+    expect(form_view).to include('title: "Identificação e gatilho"', 'title: "Intervenções"')
+    expect(form_view).to include("ax_error_summary(rule)", "ax_field_grid do", "ax_field_group(", "ax_toggle_chip(", "ax_form_actions do")
     expect(form_view).to include('controller: "automation-builder"', 'automation_builder_target: "trigger"', 'data-automation-builder-target="idleCond"')
     expect(form_view).to include('data-automation-builder-target="rows"', 'data-automation-builder-target="template"', 'automation_builder_target: "json"')
     expect(form_view).to include("simulate_admin_automation_rule_path(rule)", "simulate_admin_automation_rules_path", 'f.submit "Salvar regra"')

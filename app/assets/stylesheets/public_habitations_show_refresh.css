@@ -987,7 +987,7 @@
   }
 
   .public-habitations-show__media-actions {
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: nowrap;
     overflow-x: auto;
     gap: 10px;
@@ -1062,7 +1062,7 @@
   .public-habitations-show__features,
   .public-habitations-show__description,
   .public-habitations-show__amenities,
-  .public-habitations-show__main > .banner-container {
+  .public-habitations-show__main > .public-habitations-show__promotion {
     order: 3;
     margin-top: 18px;
   }

@@ -39,8 +39,8 @@ Arquivos de controllers, models, serviços, banco e views públicas presentes no
 
 - camada semântica de tokens para preservar light e aplicar dark;
 - bundle próprio de componentes compartilhados carregado depois do legado;
-- 94 folhas de componente extraídas ou consolidadas;
-- contrato automatizado no conjunto atual, incluindo varredura das folhas próprias do admin para impedir tokens `--ax-dark-*` fora de seletores `data-admin-theme`, manifesto de adoção estática mínima dos 94 componentes, preferência individual no admin, comportamento acessível de modais, command menus, disclosures, tooltips, drawer, aside contextual e confirmação destrutiva e completude das matrizes deste relatório;
+- 98 folhas de componente extraídas ou consolidadas;
+- contrato automatizado no conjunto atual, incluindo varredura das folhas próprias do admin para impedir tokens `--ax-dark-*` fora de seletores `data-admin-theme`, manifesto de adoção estática mínima dos 98 componentes, preferência individual no admin, comportamento acessível de modais, command menus, disclosures, tooltips, drawer, aside contextual e confirmação destrutiva e completude das matrizes deste relatório;
 - redução de 3.246 linhas e adição de 1.051 linhas no `admin_tailwind.css`/catálogo no diff rastreado atual, resultado principalmente da retirada de regras duplicadas para componentes;
 - correção recente do botão acoplado de multiselect promovida do editor de imóvel para o componente compartilhado.
 
@@ -82,7 +82,7 @@ A regra de implementação é: correção recorrente vai para o componente compa
 Legenda:
 
 - **Camada CSS**: existe folha compartilhada carregada pelo bundle de componentes. Isso comprova disponibilidade do contrato, não adoção por todas as telas nem ausência de markup legado;
-- **Protegido**: a folha participa da varredura automatizada que impede tokens dark fora de `data-admin-theme`, além dos contratos comportamentais aplicáveis. O contrato exige tratamento dark explícito em 66 folhas; as três exceções são catalogadas e justificadas (`code_snippet.css` mantém a superfície de código escura nos dois temas; `field_grid.css` e `stack.css` são puramente estruturais e não declaram cor);
+- **Protegido**: a folha participa da varredura automatizada que impede tokens dark fora de `data-admin-theme`, além dos contratos comportamentais aplicáveis. O contrato exige escopo dark explícito ou consumo de tokens compartilhados; os três componentes neutros são catalogados e justificados (`code_snippet.css` mantém a superfície de código escura nos dois temas; `field_grid.css` e `stack.css` são puramente estruturais e não declaram cor);
 - **Adoção estática mínima**: cada folha possui um seletor-raiz explicitamente catalogado e referenciado em view, helper ou controller do admin. Essa proteção impede componente órfão, mas não substitui renderização nem auditoria de legado por tela;
 - **Visual**: indica a evidência visual registrada, sem transformar screenshot anterior em homologação completa;
 - **Próximo gate**: menor validação que ainda falta para poder encerrar o componente.
@@ -93,6 +93,7 @@ Legenda:
 | Agenda/compromissos | `appointment_card.css` | Sim | Sim | Contrato automatizado para status visível, botões por ícone acessíveis, hover/foco, dark e movimento reduzido; sem homologação após o refinamento | Dark/light + agendado/realizado/cancelado + hover/foco + compacto |
 | Aside/inspector contextual | `aside_panel.css` | Sim | Sim | Evidências anteriores em filtros/editores | Dark/light + recolher/expandir + foco + compacto |
 | Avatar | `avatar.css` | Sim | Sim | Imagem/iniciais protegidas em sete tamanhos; adotado também na topbar e no formulário de usuário, sem homologação após o refinamento | Imagem/fallback dark/light + topbar/form/listas + compacto |
+| Jornada do atendimento | `journey_explorer.css` | Sim | Sim | Seletor-raiz `ax-journey` e uso no modal de jornada catalogados; cores consomem tokens compartilhados, sem escopo dark próprio nem homologação visual completa | Dark/light + evidências/vazio + inspector + compacto |
 | Histórico/auditoria | `audit_history_modal.css` | Sim | Sim | Modal dark desktop inspecionado | Light + compacto |
 | Badges | `badge.css` | Sim | Sim | Sete tons e badge informativo protegidos; tooltip do badge agora acessível por teclado, sem homologação após o refinamento | Tons/aliases e info badge dark/light + foco + compacto |
 | Board/Kanban | `board.css` | Sim | Sim | Estrutura, colunas e cards extraídos do monólito; região/colunas nomeadas, contador anunciado, foco, dark, compacto e movimento reduzido protegidos, sem homologação após a promoção | Dark/light + vazio/preenchido + drag/retorno/erro + foco + compacto |
@@ -187,7 +188,7 @@ Legenda:
 | Cabeçalho do workspace | `workspace_heading.css` | Sim | Sim | Evidência em várias áreas | Light + compacto |
 | Shell de workspace | `workspace_shell.css` | Sim | Sim | Contrato estrutural extraído do monólito; main/aside, contexto, estado recolhido, nomes acessíveis, dark e movimento reduzido protegidos; geometria inline de `aside_first` removida, sem homologação após a promoção | Dark/light + main/aside + expandido/recolhido + contextbar + movimento reduzido + compacto |
 
-Leitura objetiva da matriz: **94/94 componentes têm folha compartilhada carregada, seletor-raiz referenciado no admin e entram na proteção automatizada; 91/94 possuem escopo dark explícito e 3/94 são neutros por contrato; 0/94 estão homologados em toda a matriz dark/light + desktop/compacto + estados interativos**. A matriz não afirma que todas as telas já adotaram cada contrato: adoção e resíduos legados são auditados por área. Evidência por screenshot ou inspeção parcial é registrada separadamente para não inflar o avanço.
+Leitura objetiva da matriz: **98/98 componentes têm folha compartilhada carregada, seletor-raiz referenciado no admin e entram na proteção automatizada; 77/98 possuem escopo dark explícito, 18/98 consomem tokens compartilhados sem escopo dark próprio e 3/98 são neutros por contrato; 0/98 estão homologados em toda a matriz dark/light + desktop/compacto + estados interativos**. A matriz não afirma que todas as telas já adotaram cada contrato: adoção e resíduos legados são auditados por área. Evidência por screenshot ou inspeção parcial é registrada separadamente para não inflar o avanço.
 
 ## Avanço comprovado
 
@@ -200,7 +201,7 @@ Os contratos automatizados cobrem atualmente **210 comportamentos** de dark them
 - cards, tabelas, estados vazios, skeletons e tooltips;
 - componentes do dashboard, catálogo de imóveis, leads e editor de imóveis;
 - componentes específicos de captações, automações, distribuição, SEO e marketing.
-- correspondência integral entre as 94 folhas carregadas, seus seletores-raiz catalogados e ao menos uma referência estática no admin.
+- correspondência integral entre as 98 folhas carregadas, seus seletores-raiz catalogados e ao menos uma referência estática no admin.
 
 Nesta rodada foram consolidados os seguintes comportamentos compartilhados:
 

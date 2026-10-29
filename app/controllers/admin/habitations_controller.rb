@@ -1154,7 +1154,7 @@ class Admin::HabitationsController < Admin::BaseController
   def load_filter_data
     tenant_habitations = current_tenant.habitations
 
-    cached = Rails.cache.fetch("admin/habitations/filter_data/v8/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
+    cached = Rails.cache.fetch("admin/habitations/filter_data/v9/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
       city_sql = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))"
       neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))"
       commercial_neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''))"
@@ -1166,11 +1166,10 @@ class Admin::HabitationsController < Admin::BaseController
       {
         categories: tenant_habitations.where("NULLIF(TRIM(categoria), '') IS NOT NULL AND categoria != '.'")
                               .distinct.pluck(:categoria).sort,
-        cities: tenant_habitations.left_outer_joins(:address)
+        cities: Habitation.canonical_location_labels(tenant_habitations.left_outer_joins(:address)
                           .where("#{city_sql} IS NOT NULL AND #{city_sql} != '.'")
                           .distinct
-                          .pluck(Arel.sql(city_sql))
-                          .sort,
+                          .pluck(Arel.sql(city_sql))),
         bairros: tenant_habitations.left_outer_joins(:address)
                            .where("#{neighborhood_sql} IS NOT NULL AND #{neighborhood_sql} != '.'")
                            .distinct
@@ -1207,6 +1206,9 @@ class Admin::HabitationsController < Admin::BaseController
 
     @filter_categories = cached[:categories]
     @filter_cities = cached[:cities]
+    city_labels = @filter_cities.index_by { |city| Habitation.normalize_location_value(city) }
+    @cidades = @cidades.map { |city| city_labels.fetch(Habitation.normalize_location_value(city), city) }.uniq
+    @cidade = @cidades.first
     @filter_bairros = cached[:bairros]
     @filter_bairros_comerciais = cached[:bairros_comerciais]
     @filter_statuses = filter_status_options_for(tenant_habitations)
@@ -1631,9 +1633,7 @@ class Admin::HabitationsController < Admin::BaseController
               end
     end
     if @cidades.any?
-      city_sql = "unaccent(COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), '')))"
-      city_conditions = @cidades.map { "#{city_sql} = unaccent(?)" }.join(" OR ")
-      scope = scope.where(city_conditions, *@cidades)
+      scope = scope.by_city(@cidades)
     end
     if @bairros.any?
       neighborhood_sql = "unaccent(COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), '')))"
