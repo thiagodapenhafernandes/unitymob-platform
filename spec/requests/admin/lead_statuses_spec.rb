@@ -16,10 +16,10 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     pipeline = create(:lead_pipeline, tenant: admin.tenant)
     stage = create(:lead_pipeline_stage, lead_pipeline: pipeline)
     post bulk_update_admin_lead_statuses_path, params: { lead_pipeline_id: pipeline.id, statuses: [
-      { id: stage.id, name: stage.name, google_event: "qualify_lead", google_event_trigger: "qualified", meta_conversion_event: "QualifiedLead", meta_event_trigger: "qualified" }
+      { id: stage.id, name: stage.name, google_event: "qualify_lead", google_event_trigger: "qualified", google_qualification_enabled: true, meta_conversion_event: "QualifiedLead", meta_event_trigger: "qualified" }
     ] }, as: :json
     expect(response).to have_http_status(:ok), response.body
-    expect(stage.reload).to have_attributes(google_event: "qualify_lead", google_event_trigger: "qualified", meta_event_trigger: "qualified")
+    expect(stage.reload).to have_attributes(google_event: "qualify_lead", google_event_trigger: "qualified", google_qualification_enabled: true, meta_event_trigger: "qualified")
     expect(admin.tenant.webhook_settings.where(google_conversions_enabled: true)).to be_empty
   end
 
@@ -31,6 +31,18 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     ] }, as: :json
     expect(response).to have_http_status(:unprocessable_entity)
     expect(stage.reload).to have_attributes(google_event: "none", google_event_trigger: "stage_entered")
+  end
+
+  it "rejeita ocultar a qualificação em uma etapa que depende dela, sem salvar parcialmente" do
+    pipeline = create(:lead_pipeline, tenant: admin.tenant)
+    stage = create(:lead_pipeline_stage, lead_pipeline: pipeline)
+    post bulk_update_admin_lead_statuses_path, params: { lead_pipeline_id: pipeline.id, statuses: [
+      { id: stage.id, name: stage.name, google_event: "qualify_lead", google_event_trigger: "qualified",
+        policy: { qualification_enabled: false, qualification_options: ["qualified"] } }
+    ] }, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body["error"]).to include("Exibir qualificação no card")
+    expect(stage.reload.google_event).to eq("none")
   end
 
   it "exibe a documentacao didatica do modal de funil e etapas" do

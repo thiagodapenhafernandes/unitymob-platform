@@ -107,7 +107,10 @@
 
           <div class="distribution-rule-show__block">
             <span class="distribution-rule-show__block-label">Filtros adicionais</span>
-            <% if Array(@rule.neighborhoods).compact_blank.any? || Array(@rule.custom_filters).compact_blank.any? %>
+            <% if @rule.property_cities.present? || Array(@rule.neighborhoods).compact_blank.any? || Array(@rule.custom_filters).compact_blank.any? %>
+              <% if @rule.property_cities.present? %>
+                <p class="distribution-rule-show__line"><strong>Cidades do imóvel ou interesse (qualquer uma):</strong> <%= @rule.property_cities.to_sentence %></p>
+              <% end %>
               <% if Array(@rule.neighborhoods).compact_blank.any? %>
                 <p class="distribution-rule-show__line"><strong>Bairros:</strong> <%= Array(@rule.neighborhoods).compact_blank.to_sentence %></p>
               <% end %>

@@ -2544,6 +2544,7 @@ CREATE TABLE public.distribution_rules (
     contingency_pool_minutes integer DEFAULT 30 NOT NULL,
     contingency_acceptance_minutes integer DEFAULT 30 NOT NULL,
     excluded_meta_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    property_cities jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0)))
 );
 
@@ -4487,6 +4488,9 @@ CREATE TABLE public.lead_pipeline_stages (
     updated_at timestamp(6) without time zone NOT NULL,
     meta_conversion_event character varying,
     google_event character varying DEFAULT 'none'::character varying NOT NULL,
+    google_event_trigger character varying DEFAULT 'stage_entered'::character varying NOT NULL,
+    meta_event_trigger character varying DEFAULT 'stage_entered'::character varying NOT NULL,
+    google_qualification_enabled boolean DEFAULT false NOT NULL,
     CONSTRAINT lead_stages_google_event CHECK (((google_event)::text = ANY ((ARRAY['none'::character varying, 'qualify_lead'::character varying, 'visit'::character varying, 'proposal'::character varying, 'closed'::character varying])::text[])))
 );
 
@@ -20857,6 +20861,9 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261029180000'),
+('20261027190000'),
+('20261027160000'),
 ('20261023150000'),
 ('20261021200000'),
 ('20261021190000'),

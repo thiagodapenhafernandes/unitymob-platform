@@ -24,6 +24,7 @@ class LeadPipelineStagePolicy < ApplicationRecord
             numericality: { only_integer: true, greater_than: 0 },
             allow_nil: true
   validate :records_must_belong_to_tenant
+  validate :required_qualification_remains_available
 
   before_validation :normalize_arrays
 
@@ -58,6 +59,13 @@ class LeadPipelineStagePolicy < ApplicationRecord
   end
 
   private
+
+  def required_qualification_remains_available
+    return unless lead_pipeline_stage&.requires_qualification_action?
+    return if qualification_enabled? && Array(qualification_options).include?("qualified")
+
+    errors.add(:base, 'Esta etapa usa a ação de qualificação em uma conversão. Mantenha "Exibir qualificação no card" e a opção "Qualificado", ou altere o gatilho da conversão.')
+  end
 
   def normalize_arrays
     self.visible_to_roles = normalize_list(visible_to_roles, VISIBLE_ROLES.keys)

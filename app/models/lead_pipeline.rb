@@ -54,6 +54,10 @@ class LeadPipeline < ApplicationRecord
     stages.active.ordered.first || stages.ordered.first
   end
 
+  def closing_stages
+    stages.where(tenant_id: tenant_id).active.where(stage_type: "won").ordered
+  end
+
   def google_event_warning
     return unless stages.where.not(google_event: "none").group(:google_event).having("COUNT(*) > 1").exists?
 

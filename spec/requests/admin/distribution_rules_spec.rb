@@ -24,6 +24,28 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(rule.reload.custom_filters).to eq([])
   end
 
+  it "salva, reabre e remove cidades por conta sem alterar modalidade e filtros existentes" do
+    rule = create(:distribution_rule, tenant: admin.tenant, business_type: :locacao,
+      custom_filters: [{"key" => "product", "value" => "Apartamento"}])
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {property_cities: ["", " Itapema ", "itapema", "Porto Belo"]}}
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(rule.reload.property_cities).to eq(["Itapema", "Porto Belo"])
+    expect(rule.business_type).to eq("locacao")
+    expect(rule.custom_filters).to eq([{"key" => "product", "value" => "Apartamento"}])
+    get edit_admin_distribution_rule_path(rule)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Cidades do imóvel ou interesse", "Itapema", "Porto Belo", "Locação E")
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {property_cities: [""]}}
+    expect(rule.reload.property_cities).to eq([])
+  end
+
+  it "rejeita cidade inválida sem remover a restrição salva" do
+    rule = create(:distribution_rule, tenant: admin.tenant, property_cities: ["Itapema"])
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {property_cities: ["x" * 121]}}
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(rule.reload.property_cities).to eq(["Itapema"])
+  end
+
   it "não amplia a fila silenciosamente quando um filtro está incompleto" do
     rule = create(:distribution_rule, tenant: admin.tenant, custom_filters: [{"key" => "product", "value" => "Apartamento"}])
     patch admin_distribution_rule_path(rule), params: {distribution_rule: {custom_filters: {"0" => {key: "product", value: ""}}}}

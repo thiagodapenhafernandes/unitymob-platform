@@ -23,6 +23,38 @@ RSpec.describe Leads::StageConversionEvents do
     expect(GoogleStageConversionEvent.where(tenant: tenant).count).to eq(1)
   end
 
+  it "registra qualificação tardia sem substituir o evento de visita e sem duplicar" do
+    stage.update!(google_event: "visit", google_event_trigger: "visit_completed", google_qualification_enabled: true,
+      meta_conversion_event: "Schedule", meta_event_trigger: "stage_entered")
+    allow(Meta::ConversionDispatcher).to receive(:call)
+    lead.update!(broker_qualification_status: "qualified")
+    expect(GoogleStageConversionEvent.where(lead: lead).pluck(:conversion_type)).to eq(["qualificado"])
+    create(:appointment, tenant: tenant, lead: lead, admin_user: owner).update!(status: "realizado")
+    lead.update!(manager_qualification_status: "qualified")
+    expect(GoogleStageConversionEvent.where(lead: lead).pluck(:conversion_type)).to match_array(%w[qualificado visita])
+    expect(stage.reload).to have_attributes(google_event: "visit", google_event_trigger: "visit_completed", meta_conversion_event: "Schedule", meta_event_trigger: "stage_entered")
+    expect(Meta::ConversionDispatcher).not_to have_received(:call)
+  end
+
+  it "permite proposta e qualificação no mesmo salvamento sem sobrescrever o mapeamento" do
+    stage.update!(google_event: "proposal", google_event_trigger: "stage_entered", google_qualification_enabled: true)
+    initial = create(:lead_pipeline_stage, lead_pipeline: pipeline)
+    lead.update!(lead_pipeline_stage: initial, status: initial.name)
+    lead.update!(lead_pipeline_stage: stage, status: stage.name, broker_qualification_status: "qualified")
+    expect(GoogleStageConversionEvent.where(lead: lead).pluck(:conversion_type)).to match_array(%w[proposta qualificado])
+  end
+
+  it "mantém qualificação adicional desligada por padrão e respeita envio pausado" do
+    stage.update!(google_event: "visit", google_event_trigger: "visit_completed")
+    lead.update!(broker_qualification_status: "qualified")
+    expect(GoogleStageConversionEvent.where(lead: lead)).to be_empty
+    stage.update!(google_qualification_enabled: true)
+    setting.update!(google_conversions_enabled: false)
+    lead.update!(broker_qualification_status: "disqualified")
+    lead.update!(broker_qualification_status: "qualified")
+    expect(GoogleStageConversionEvent.where(lead: lead)).to be_empty
+  end
+
   it "respeita funis diferentes da mesma conta e não muda inscrições globais" do
     setting.update!(subscribed_events: WebhookSetting::DEFAULT_EVENTS + ["qualified_lead"])
     other_pipeline = create(:lead_pipeline, tenant: tenant)
@@ -100,6 +132,12 @@ RSpec.describe Leads::StageConversionEvents do
     end
     expect(GoogleStageConversionEvent.where(tenant: tenant)).to be_empty
     expect(Meta::ConversionDispatcher).not_to have_received(:call)
+  end
+
+  it "rejeita opção adicional nula sem alterar o mapeamento" do
+    stage.google_qualification_enabled = nil
+    expect(stage).not_to be_valid
+    expect(stage.errors[:google_qualification_enabled]).to be_present
   end
 
   it "rejeita combinação incompatível entre evento e ação Google" do

@@ -26,11 +26,22 @@
             selected: selected.presence || (provider == "google" ? "none" : ""), disabled: unavailable, hint: hint, data: event_data) %>
       <%= ax_standalone_select_field(name: trigger_name, id: "#{field_prefix}-trigger", label: "Quando disparar",
             choices: LeadPipelineStage::CONVERSION_TRIGGERS.map { |value, text| [text, value] }, selected: selected_trigger.presence || "stage_entered",
-            disabled: unavailable, hint: "A ação precisa ocorrer enquanto o lead está nesta etapa. O nome da etapa não determina o evento.", data: trigger_data) %>
+            disabled: unavailable, hint: 'Ao entrar na etapa: dispara ao mover o lead para ela. Ao marcar como qualificado: exige clicar em "Qualificado" no card; mover de etapa ou usar esse nome não qualifica o lead.', data: trigger_data) %>
+    <% end %>
+    <% if provider == "google" %>
+      <% qualification_name = board ? nil : "#{input_prefix}[google_qualification_enabled]" %>
+      <% unless board %>
+        <%= hidden_field_tag qualification_name, unavailable && local_assigns[:google_qualification_enabled] ? "1" : "0" %>
+      <% end %>
+      <%= ax_switch_field(label: "Registrar também a qualificação efetiva", name: qualification_name, id: "#{field_prefix}-qualification",
+            checked: local_assigns[:google_qualification_enabled] == true,
+            description: "Quando corretor ou gestor marcar como qualificado nesta etapa, registra qualify_lead sem substituir o evento principal. O envio continua dependendo da ativação da conta.",
+            input_html: { disabled: unavailable, data: board ? { lead_status_field: "google_qualification_enabled" } : {} }) %>
     <% end %>
     <% if unavailable && !board %>
       <%= hidden_field_tag event_name, selected.presence || (provider == "google" ? "none" : "") %>
       <%= hidden_field_tag trigger_name, selected_trigger.presence || "stage_entered" %>
     <% end %>
+    <p class="ax-field__hint">Gatilhos de qualificação mantêm o botão "Qualificado" visível no card desta etapa. A ação precisa ocorrer enquanto o lead está nela; salvar a configuração não qualifica nem reenvia leads antigos.</p>
   </div>
 <% end %>

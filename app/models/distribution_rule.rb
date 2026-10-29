@@ -4,6 +4,30 @@ class DistributionRule < ApplicationRecord
   validate :custom_filters_must_have_field_and_value
   before_validation :normalize_custom_filters
   before_validation :remove_excluded_auto_meta_forms
+  before_validation :normalize_property_cities
+  validate :valid_property_cities
+
+  def normalize_property_cities
+    self.property_cities = Array(property_cities).map { |city| city.is_a?(String) ? city.squish : city }.reject { |city| city == "" }
+      .uniq { |city| Leads::EntryLocation.normalized_city(city) }
+  end
+
+  def valid_property_cities
+    cities = Array(property_cities)
+    unless cities.size <= 100 && cities.all? { |city| city.is_a?(String) && city.present? && city.length <= 120 }
+      errors.add(:property_cities, "devem conter até 100 cidades, com no máximo 120 caracteres cada")
+    end
+  end
+
+  def matches_property_city?(city)
+    property_cities.empty? || (city.present? && property_cities.any? do |candidate|
+      Leads::EntryLocation.normalized_city(candidate) == Leads::EntryLocation.normalized_city(city)
+    end)
+  end
+
+  def specific_entry_filters?
+    property_cities.present? || Array(custom_filters).any? { |filter| filter["key"].present? && filter["value"].present? }
+  end
 
   def normalize_custom_filters
     self.custom_filters = Array(custom_filters).filter_map do |filter|

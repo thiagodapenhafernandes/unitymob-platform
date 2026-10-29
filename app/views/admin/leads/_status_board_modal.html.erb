@@ -12,6 +12,12 @@
   }
 
   sidebar = capture do %>
+    <% if @selected_pipeline.blank? %>
+      <p class="ax-field__hint">O Kanban reúne todos os funis e status antigos com leads. Este editor altera somente <strong><%= selected_pipeline.name %></strong>. Selecione um funil nos filtros para ver e editar as mesmas etapas.</p>
+      <% @lead_pipelines.each do |pipeline| %>
+        <%= ax_button(pipeline.name, admin_lead_pipeline_leads_path(pipeline, view: @view_mode), variant: :ghost, size: :sm) %>
+      <% end %>
+    <% end %>
     <%= form_with model: [:admin, selected_pipeline], url: admin_lead_pipeline_path(selected_pipeline), method: :patch, local: true, class: "lead-status-board__pipeline-form" do |f| %>
       <%= hidden_field_tag :view, @view_mode %>
       <%= ax_text_field(form: f, method: :name, label: "Nome do funil",
@@ -46,7 +52,7 @@
         <% selected_pipeline_stages.each do |stage| %>
           <%= render "admin/leads/status_board_row", **row_options,
                 id: stage.id, name: stage.name, description: stage.description,
-                stage_type: stage.stage_type, meta_conversion_event: stage.meta_conversion_event, google_event: stage.google_event, google_event_trigger: stage.google_event_trigger, meta_event_trigger: stage.meta_event_trigger,
+                stage_type: stage.stage_type, meta_conversion_event: stage.meta_conversion_event, google_event: stage.google_event, google_qualification_enabled: stage.google_qualification_enabled, google_event_trigger: stage.google_event_trigger, meta_event_trigger: stage.meta_event_trigger,
                 color: stage.display_color, position: stage.position, active: stage.active?,
                 policy: stage.policy_or_default, transitions: stage.transitions.ordered, automations: stage.automations.ordered %>
         <% end %>

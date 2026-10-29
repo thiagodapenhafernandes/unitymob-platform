@@ -53,3 +53,39 @@ Migration: `20261008150000_add_lead_distribution_contingency.rb`.
 8. Confirmar que o destino padrão só recebe entradas sem regra compatível, mantendo registros históricos e atendimentos válidos.
 
 Rollback da migration remove a configuração e os marcadores de contingência, mantendo cadastros e histórico de atividades. Ajustar o código em conjunto com o rollback, pois o código novo depende das colunas.
+
+## Fila por modalidade e cidades — preparação local de 29/10/2026
+
+Na criação/edição da regra, selecionar **Tipo de negócio** e, em **Filtros opcionais
+da entrada → Localização do interesse**, preencher **Cidades do imóvel ou interesse**.
+O campo aceita várias cidades digitadas como chips: Locação E (Itapema OU Porto
+Belo). As cidades e demais filtros se combinam com E. A igualdade de cidade é
+completa, ignorando caixa, acentos e espaços repetidos; não aceita partes de nomes.
+
+Usa o imóvel vinculado à consulta, consultado na própria conta. Sem imóvel,
+aceita `property_city`/`interest_city` explicitamente informados nos dados/respostas
+da entrada, ou a cidade do produto importado. Não infere cidade pelo endereço
+pessoal, IP, nome de campanha ou texto livre. Sem cidade, não escolhe regra
+restrita; regra sem cidades preserva seu comportamento anterior. Uma consulta
+nova usa seu próprio contexto, sem reaproveitar a cidade do primeiro lead.
+
+A regra elegível com cidades entra na prioridade já existente dos filtros
+específicos, antes das gerais. Desempate por ID e exigência de unicidade na
+seleção de entrada WhatsApp permanecem. Fontes, modalidade, critérios adicionais,
+check-in, participantes, fidelização e contingência continuam independentes.
+Encaminhamento explícito/manual e contingência mantêm seu contrato: filtros são
+para seleção automática da entrada, não uma proibição de transferência manual.
+
+Configuração isolada por conta, sem filas ou cidades pré-cadastradas para Salute.
+Migration reversível `20261029180000` cria JSONB `property_cities` com padrão vazio
+e `NOT NULL`, sem backfill de leads, redistribuição ou ativação de filas existentes.
+Aplicação/reversão verificadas somente no banco de testes; produção não alterada.
+
+Validação visual desktop local em 29/10: criação de regra inativa, seleção de
+Locação, inclusão de Itapema/Porto Belo com Enter, remoção individual e completa,
+gravação e reabertura confirmadas. Ajustados label Locação e resumo lateral ao
+vivo, incluindo modalidade e cidades com OU; nomes das cidades são inseridos como
+texto, sem interpretar HTML. Regra sintética local permaneceu inativa, sem leads;
+usuário temporário de validação desativado ao encerrar. Evidência em
+`tmp/codex-screenshots/fila-cidades-desktop-20261029.jpg`. Após os ajustes: 30
+exemplos de request e teste JavaScript do resumo passaram; diff sem erros.
