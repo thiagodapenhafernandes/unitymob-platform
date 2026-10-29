@@ -48,6 +48,10 @@ RSpec.describe "Admin::AutomationRules", type: :request do
       expect(response.body).to include("Editar intervenção de automação", "Identificação e gatilho", "Intervenções")
       expect(response.body).to include('data-controller="automation-builder"', 'data-automation-builder-target="rows"', 'data-automation-builder-target="template"')
       expect(response.body).to include("Acompanhamento editável", "Retomar contato")
+      document = Nokogiri::HTML(response.body)
+      expect(document.css(".ax-module-objective").size).to eq(1)
+      expect(document.at_css(".ax-module-objective").text).to include("Automação horizontal", "Distribuição de Leads")
+      expect(document.css(".ax-operational-panel").size).to eq(2)
     end
   end
 

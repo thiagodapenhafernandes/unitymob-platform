@@ -325,7 +325,8 @@ class HabitationsController < ApplicationController
     else
       cache_show_page(@habitation)
     end
-    
+    return if performed?
+
     respond_to do |format|
       format.html { render :show }
       format.json { render json: @habitation.card_data }

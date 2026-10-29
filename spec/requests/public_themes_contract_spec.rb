@@ -43,6 +43,37 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(response).to redirect_to(habitations_path)
       end
 
+      it "mantém identificação e preço do imóvel antes das promoções" do
+        property = create(:habitation, tenant:, exibir_no_site_flag: true,
+          valor_venda_cents: 189_000_000, address_attributes: address)
+        tenant.banners.create!(title: "Outras oportunidades", positions: ["property_detail"], active: true)
+
+        get habitation_path(property)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("h1").text).to include(property.display_title)
+        expect(html.css(".public-habitations-show__price-card").text).to include("1.890.000")
+        promotion = html.at_css(".public-habitations-show__promotion")
+        if variant == "default"
+          expect(promotion.text).to include("Outras oportunidades")
+          expect(response.body.index("<h1")).to be < response.body.index('class="public-habitations-show__promotion')
+        else
+          expect(promotion).to be_nil
+        end
+      end
+
+      it "reabre o detalhe pelo cache HTTP sem renderizar novamente uma resposta 304" do
+        property = create(:habitation, tenant:, exibir_no_site_flag: true, address_attributes: address)
+        get habitation_path(property)
+        expect(response).to have_http_status(:ok)
+        etag = response.headers.fetch("ETag")
+
+        get habitation_path(property), headers: { "If-None-Match" => etag }
+
+        expect(response).to have_http_status(:not_modified)
+        expect(response.body).to be_empty
+      end
+
       it "mantém os assets de reload estáveis entre home, busca e detalhe" do
         property = create(:habitation, tenant:, exibir_no_site_flag: true, address_attributes: address)
         tracked_assets = [root_path, habitations_path, habitation_path(property)].map do |path|
