@@ -301,7 +301,7 @@ class Lead < ApplicationRecord
   validates :name, presence: true
   # Mesmo recorte de dono/equipe para o HTTP e a inscrição no chat.
   def self.accessible_to_admin(user, tenant:)
-    scope = where(tenant_id: tenant.id)
+    scope = Leads::OperationalScope.visible_to(where(tenant_id: tenant.id), user: user, tenant: tenant)
     return scope if user.owns_all?(:leads)
 
     scope.where(admin_user_id: user.can_view_team?(:leads) ? user.team_scope_ids : [user.id])

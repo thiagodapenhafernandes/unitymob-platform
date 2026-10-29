@@ -24,6 +24,7 @@ RSpec.describe "Admin leads tab counts", type: :request do
       current_tenant = tenant
       current_admin = admin
       Admin::LeadsController.new.tap do |ctrl|
+        ctrl.params = {}
         ctrl.define_singleton_method(:current_tenant) { current_tenant }
         ctrl.define_singleton_method(:current_admin_user) { current_admin }
       end
@@ -76,6 +77,7 @@ RSpec.describe "Admin leads tab counts", type: :request do
       current_tenant = tenant
       current_admin = admin
       Admin::LeadsController.new.tap do |ctrl|
+        ctrl.params = {}
         ctrl.define_singleton_method(:current_tenant) { current_tenant }
         ctrl.define_singleton_method(:current_admin_user) { current_admin }
       end
