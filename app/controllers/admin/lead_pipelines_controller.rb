@@ -58,7 +58,7 @@ module Admin
       rows.filter_map do |row|
         next unless row.respond_to?(:to_h)
 
-        permitted = ActionController::Parameters.new(row.to_h).permit(:name, :description, :stage_type, :meta_conversion_event, :google_event, :google_event_trigger, :meta_event_trigger)
+        permitted = ActionController::Parameters.new(row.to_h).permit(:name, :description, :stage_type, :meta_conversion_event, :google_event, :google_event_trigger, :meta_event_trigger, :google_qualification_enabled)
         name = permitted[:name].to_s.strip
         next if name.blank?
 
@@ -68,6 +68,7 @@ module Admin
           stage_type: permitted[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open",
           google_event: permitted[:google_event].presence || "none",
           google_event_trigger: permitted[:google_event_trigger].presence || "stage_entered",
+          google_qualification_enabled: ActiveModel::Type::Boolean.new.cast(permitted[:google_qualification_enabled]) || false,
           meta_event_trigger: permitted[:meta_event_trigger].presence || "stage_entered",
           meta_conversion_event: permitted[:meta_conversion_event].presence_in(LeadPipelineStage::META_CONVERSION_EVENTS.keys)
         }
@@ -119,6 +120,7 @@ module Admin
           meta_conversion_event: stage[:meta_conversion_event],
           google_event: stage[:google_event] || "none",
           google_event_trigger: stage[:google_event_trigger] || "stage_entered",
+          google_qualification_enabled: stage[:google_qualification_enabled] || false,
           meta_event_trigger: stage[:meta_event_trigger] || "stage_entered",
           position: index
         )

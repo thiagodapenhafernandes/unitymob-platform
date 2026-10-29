@@ -88,3 +88,34 @@ test('automation payload retains inactive rules and deletion markers and exclude
   assert.equal(payload[1]._destroy, true)
   assert.equal(payload[1].auto_advance_to_stage_id, '20')
 })
+
+test('qualification actions expose and lock the required card option, then release it without hiding it', () => {
+  const board = new context.Board()
+  const fields = {
+    google_event: { value: 'qualify_lead' }, google_event_trigger: { value: 'qualified' },
+    meta_conversion_event: { value: '' }, meta_event_trigger: { value: 'stage_entered' },
+    google_qualification_enabled: { checked: false }
+  }
+  const visible = { checked: false }, qualified = { checked: false }
+  const row = { querySelector(selector) {
+    if (selector.includes('qualification_options')) return qualified
+    if (selector.includes('qualification_enabled') && selector.includes('policy-field')) return visible
+    return fields[selector.match(/data-lead-status-field="(.*?)"/)?.[1]]
+  } }
+  board.syncRequiredQualification(row)
+  assert.equal(visible.checked, true)
+  assert.equal(qualified.checked, true)
+  assert.equal(visible.disabled, true)
+  fields.google_event_trigger.value = 'stage_entered'
+  board.syncRequiredQualification(row)
+  assert.equal(visible.disabled, false)
+  assert.equal(visible.checked, true)
+  fields.meta_conversion_event.value = 'Lead'
+  fields.meta_event_trigger.value = 'qualified'
+  board.syncRequiredQualification(row)
+  assert.equal(qualified.disabled, true)
+  fields.meta_conversion_event.value = ''
+  fields.google_qualification_enabled.checked = true
+  board.syncRequiredQualification(row)
+  assert.equal(visible.disabled, true)
+})

@@ -34,7 +34,7 @@
                     form: f,
                     method: :business_type,
                     label: "Tipo de negócio",
-                    choices: DistributionRule.business_types.keys.map { |k| [k.humanize, k] },
+                    choices: [["Venda", "venda"], ["Locação", "locacao"], ["Venda e locação", "ambos"]],
                     html_options: {
                       data: {
                         controller: "broadcast-change",
@@ -42,7 +42,7 @@
                         action: "change->broadcast-change#change"
                       }
                     },
-                    tooltip: "Define também a área do filtro de gestores e quem pode receber: regra de venda distribui a quem atua em venda/ambos; locação idem. Leads sem venda ou locação explícita continuam elegíveis para regras específicas."
+                    tooltip: "Define a modalidade do interesse e quem pode receber: venda distribui a quem atua em venda/ambos; locação idem. Sem modalidade identificada, a entrada só pode corresponder a uma regra Ambos."
                   ) %>
             </div>
           </div>
@@ -258,6 +258,13 @@
 
       <%= ax_operational_panel(eyebrow: "Filtros", title: "Filtros opcionais da entrada") do %>
         <div class="ax-panel-body">
+          <%= ax_field_group(title: "Localização do interesse") do %>
+            <p class="ax-field__hint">Combine o tipo de negócio com uma das cidades abaixo. Exemplo: Locação E (Itapema OU Porto Belo). Vazio aceita qualquer cidade; com cidades selecionadas, entradas sem cidade não correspondem a esta regra.</p>
+            <%= ax_autocomplete_select_field(form: f, method: :property_cities, label: "Cidades do imóvel ou interesse",
+                  choices: Array(distribution_rule.property_cities).map { |city| [city, city] },
+                  multiple: true, tags: true, create: true, placeholder: "Digite a cidade e pressione Enter",
+                  tooltip: "Vazio aceita qualquer cidade. Usa o imóvel da consulta ou os campos explícitos property_city/interest_city e a cidade do produto importado. Não usa endereço pessoal nem IP. Com cidades selecionadas, entradas sem cidade não correspondem a esta regra.") %>
+          <% end %>
           <%= hidden_field_tag "distribution_rule[custom_filters][0][key]", "" %>
           <%= ax_repeatable_rows(label: "Restringir a fila por campos da entrada",
                 rows: distribution_rule.custom_filters,

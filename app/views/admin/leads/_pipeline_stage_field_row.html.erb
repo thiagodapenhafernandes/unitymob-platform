@@ -36,7 +36,7 @@
     <% %w[meta google].each do |provider| %>
       <%= render "admin/shared/ui/stage_conversion_fields", provider: provider, field_prefix: "lead_pipeline_stage_#{stage_index}_#{provider}",
             selected: local_assigns[provider == "meta" ? :meta_conversion_event : :google_event],
-            selected_trigger: local_assigns[:"#{provider}_event_trigger"], input_prefix: "stages[#{stage_index}]", board: false %>
+            selected_trigger: local_assigns[:"#{provider}_event_trigger"], google_qualification_enabled: local_assigns[:google_qualification_enabled], input_prefix: "stages[#{stage_index}]", board: false %>
     <% end %>
   </div>
   <button type="button"

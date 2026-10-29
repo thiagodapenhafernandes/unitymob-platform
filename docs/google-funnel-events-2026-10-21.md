@@ -57,3 +57,45 @@ A migration `20261027160000` adiciona os dois seletores de momento com padrão d
 entrada da etapa, preservando mapeamentos existentes. Não preenche leads,
 não altera eventos históricos e não ativa contas. Nesta preparação, aplicação e
 reversão são verificadas somente nos bancos locais; produção permanece intacta.
+
+## Qualificação tardia e botão Fechado — preparação local
+
+A opção **Registrar também a qualificação efetiva**, na configuração Google de
+cada etapa, permite manter o evento principal (visita ou proposta, por exemplo)
+e registrar `qualify_lead` quando corretor ou gestor efetivamente qualificar o
+lead nessa etapa. A opção tem padrão desligado, usa a mesma disponibilidade da
+integração e não ativa envio nem qualificação no card. A política de qualificação
+continua sendo configurada na seção Atendimento da etapa. Mapeamentos Meta não
+são alterados. A outbox continua deduplicando por lead/tipo; habilitar a opção
+não reprocessa avaliações ou eventos anteriores.
+
+A migration `20261027190000` adiciona somente esse opt-in. Não há backfill ou
+ativação automática nas etapas já existentes. Para cobrir qualificação tardia
+na Salute, selecionar explicitamente a opção nas etapas desejadas depois de
+publicar; esta implementação local não modifica a configuração de produção.
+
+**Fechado** agora solicita uma etapa ganha e ativa do próprio funil. Se houver
+uma única etapa ganha, ela vem selecionada; havendo várias, a escolha é explícita.
+O backend também valida conta, funil, estado ativo e tipo ganha. Nenhuma etapa é
+criada automaticamente. Ausência de etapa válida ou comissão inválida impede o
+fechamento sem modificar o lead. Status, vínculo da etapa e comissão são salvos
+juntos, permitindo os gatilhos já configurados e preservando as condições de
+ativação de cada integração. Desktop e mobile usam o mesmo formulário.
+
+## Disponibilidade da ação de qualificação — preparação local de 29/10/2026
+
+Para todas as contas, escolher `qualified` em uma conversão Google ou Meta, ou
+habilitar qualificação adicional Google, garante na gravação da etapa uma policy
+da própria conta com qualificação visível e a opção `qualified`. O editor de
+etapas marca e trava esses dois controles enquanto houver dependência. Alterar
+a policy diretamente para ocultar/remover a ação é rejeitado, com mensagem
+orientando a mudar o gatilho primeiro; a gravação em lote permanece atômica.
+Criação de funil usa a mesma normalização do model. Etapas sem essa dependência
+mantêm a configuração anterior; retirar o gatilho libera os controles sem
+ocultar a qualificação automaticamente. Mapeamentos sem evento não geram essa
+obrigação. Configurações antigas inconsistentes são corrigidas ao salvar a etapa;
+não há backfill, mudança de contas em produção ou qualificação de leads.
+
+A interface e o guia distinguem entrada/movimentação de etapa de clicar em
+Qualificado no card. Nenhum nome de etapa registra avaliação. Essa proteção não
+ativa destinos nem reenvia eventos históricos.

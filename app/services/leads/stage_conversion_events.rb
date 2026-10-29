@@ -28,8 +28,12 @@ module Leads
         setting = lead.tenant.webhook_settings.find_by(enabled: true, google_conversions_enabled: true)
         return unless setting
 
-        event = stage.google_event if actions.include?(stage.google_event_trigger)
-        GoogleConversions::Recorder.record(lead, setting, event, occurred_at: occurred_at) if GoogleConversions::Recorder::EVENTS.key?(event)
+        events = []
+        events << stage.google_event if actions.include?(stage.google_event_trigger)
+        events << "qualify_lead" if stage.google_qualification_enabled? && actions.include?("qualified")
+        events.uniq.each do |event|
+          GoogleConversions::Recorder.record(lead, setting, event, occurred_at: occurred_at) if GoogleConversions::Recorder::EVENTS.key?(event)
+        end
       elsif provider == :meta && stage.meta_conversion_event.present? && actions.include?(stage.meta_event_trigger)
         Meta::ConversionDispatcher.call(lead: lead, event_name: stage.meta_conversion_event, occurred_at: occurred_at)
       end

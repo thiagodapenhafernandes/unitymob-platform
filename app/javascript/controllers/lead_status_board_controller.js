@@ -90,6 +90,7 @@ export default class extends Controller {
   }
 
   refreshStage(row, index) {
+    this.syncRequiredQualification(row)
     const name = row.querySelector('[data-lead-status-field="name"]').value.trim() || "Nova etapa"
     const typeField = row.querySelector('[data-lead-status-field="stage_type"]')
     const type = typeField.selectedOptions[0]?.textContent || "Aberta"
@@ -111,6 +112,21 @@ export default class extends Controller {
     const activeCount = rules.filter((rule) => rule.querySelector('[data-lead-status-automation-field="active"]').checked).length
     row.querySelector("[data-lead-status-automation-summary]").textContent = rules.length ? `${activeCount} ativa(s) · ${rules.length} regra(s)` : "Nenhuma automação configurada"
     row.querySelector("[data-lead-status-automation-empty]").hidden = rules.length > 0
+  }
+
+  syncRequiredQualification(row) {
+    const field = (name) => row.querySelector(`[data-lead-status-field="${name}"]`)
+    const googleEvent = field("google_event")?.value
+    const required = field("google_qualification_enabled")?.checked ||
+      (googleEvent && googleEvent !== "none" && field("google_event_trigger")?.value === "qualified") ||
+      (field("meta_conversion_event")?.value && field("meta_event_trigger")?.value === "qualified")
+    const visible = row.querySelector('[data-lead-status-policy-field="qualification_enabled"]')
+    const qualified = row.querySelector('[data-lead-status-policy-array-field="qualification_options"][value="qualified"]')
+    for (const control of [visible, qualified]) {
+      if (!control) continue
+      if (required) control.checked = true
+      control.disabled = Boolean(required)
+    }
   }
 
   refreshStageOptions() {
@@ -249,6 +265,7 @@ export default class extends Controller {
         name: row.querySelector('[data-lead-status-field="name"]')?.value.trim() || "",
         description: row.querySelector('[data-lead-status-field="description"]')?.value.trim() || "",
         stage_type: row.querySelector('[data-lead-status-field="stage_type"]')?.value || "open",
+        google_qualification_enabled: row.querySelector('[data-lead-status-field="google_qualification_enabled"]')?.checked || false,
         google_event_trigger: row.querySelector('[data-lead-status-field="google_event_trigger"]')?.value || "stage_entered",
         meta_event_trigger: row.querySelector('[data-lead-status-field="meta_event_trigger"]')?.value || "stage_entered",
         google_event: row.querySelector('[data-lead-status-field="google_event"]')?.value || "none",

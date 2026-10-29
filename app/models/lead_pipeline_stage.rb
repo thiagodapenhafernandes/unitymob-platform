@@ -33,6 +33,7 @@ class LeadPipelineStage < ApplicationRecord
   }.freeze
   GOOGLE_EVENTS = { "none" => "Nenhum", "qualify_lead" => "Lead qualificado", "visit" => "Visita realizada", "proposal" => "Proposta enviada", "closed" => "Fechamento" }.freeze
   validates :google_event, inclusion: { in: GOOGLE_EVENTS.keys }
+  validates :google_qualification_enabled, inclusion: { in: [true, false] }
   CONVERSION_TRIGGERS = {
     "stage_entered" => "Ao entrar na etapa", "qualified" => "Ao marcar como qualificado",
     "visit_completed" => "Ao concluir uma visita", "proposal_sent" => "Ao enviar uma proposta",
@@ -53,6 +54,7 @@ class LeadPipelineStage < ApplicationRecord
            inverse_of: :lead_pipeline_stage
   has_one :policy,
           class_name: "LeadPipelineStagePolicy",
+          autosave: true,
           dependent: :destroy,
           inverse_of: :lead_pipeline_stage
   has_many :transitions,
@@ -83,10 +85,17 @@ class LeadPipelineStage < ApplicationRecord
 
   before_validation :assign_position, on: :create
   before_validation :infer_stage_type
+  before_validation :expose_required_qualification
   after_update_commit :sync_leads_status_on_rename, if: :saved_change_to_name?
 
   def policy_or_default
     policy || build_policy(LeadPipelineStagePolicy.default_attributes.merge(tenant: tenant))
+  end
+
+  def requires_qualification_action?
+    google_qualification_enabled? ||
+      (google_event != "none" && google_event_trigger == "qualified") ||
+      (meta_conversion_event.present? && meta_event_trigger == "qualified")
   end
 
   def visible_to_admin_user?(admin_user)
@@ -127,6 +136,14 @@ class LeadPipelineStage < ApplicationRecord
   end
 
   private
+
+  def expose_required_qualification
+    return unless requires_qualification_action?
+
+    stage_policy = policy_or_default
+    stage_policy.qualification_enabled = true
+    stage_policy.qualification_options = Array(stage_policy.qualification_options) | ["qualified"]
+  end
 
   def google_action_matches_event
     return if google_event == "none" || google_event_trigger == "stage_entered"

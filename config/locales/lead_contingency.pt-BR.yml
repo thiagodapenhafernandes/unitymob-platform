@@ -2,6 +2,7 @@ pt-BR:
   activerecord:
     attributes:
       distribution_rule:
+        property_cities: Cidades do imóvel ou interesse
         contingency_rule: Regra de destino
         contingency_enabled: Encaminhamento
         contingency_triggers: Situações de encaminhamento

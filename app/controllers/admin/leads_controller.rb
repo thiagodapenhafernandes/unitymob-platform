@@ -269,10 +269,14 @@ class Admin::LeadsController < Admin::BaseController
   def kanban_column
     assign_lead_filter_state
 
-    status = Lead.status_value(params[:status], tenant: current_tenant)
+    # Clientes antigos usavam status para a coluna, não para consultar histórico.
+    @status_filters = [] unless params[:column_status].present?
+
+    status = Lead.status_value(params[:column_status].presence || params[:status], tenant: current_tenant)
     offset = [params[:offset].to_i, 0].max
     desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
     lead_scope = lead_scope_for_tab(filtered_lead_scope_for_current_user, desktop_tab).where(leads: { status: status_filter_values_for(status) })
+    lead_scope = lead_scope.none if @selected_pipeline.present? && !lead_status_options_for_selected_context.include?(status)
     # Sem COUNT: busca uma linha extra e deriva has_more dela. Nenhum
     # consumidor usa `total` (os dois controllers Stimulus usam
     # next_offset/has_more/loaded_count).
@@ -838,8 +842,19 @@ class Admin::LeadsController < Admin::BaseController
     check_permission!(:manage, :comercial)
 
     previous_status = @lead.status
-    attributes = params.fetch(:lead, ActionController::Parameters.new).permit(:closing_commission).to_h
-    if @lead.update(attributes.merge(status: Lead.status_value("Concluido", tenant: current_tenant)))
+    attributes = params.fetch(:lead, ActionController::Parameters.new).permit(:closing_commission, :lead_pipeline_stage_id).to_h
+    stages = @lead.lead_pipeline&.closing_stages || LeadPipelineStage.none
+    requested_stage_id = attributes.delete("lead_pipeline_stage_id").presence
+    closing_stage = if requested_stage_id
+      stages.find_by(id: requested_stage_id)
+    else
+      stages.find_by(id: @lead.lead_pipeline_stage_id) || (stages.first if stages.count == 1)
+    end
+    unless closing_stage
+      return redirect_to admin_lead_path(@lead), alert: "Selecione uma etapa ganha e ativa deste funil para concluir o negócio."
+    end
+
+    if @lead.update(attributes.merge(lead_pipeline_stage: closing_stage, status: closing_stage.name))
       LeadActivity.log!(lead: @lead, kind: "deal_closed", metadata: { from: previous_status, by: current_admin_user&.name })
       redirect_to admin_lead_path(@lead), notice: "Negócio marcado como fechado."
     else
@@ -1087,9 +1102,14 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def hide_discarded_from_list_scope(scope)
-    return scope if @status_filters.present? || @archive_reason_id.present?
+    return scope if archived_history_requested?
 
     scope.where.not(leads: { status: Lead.status_value(:descartado, tenant: current_tenant) })
+  end
+
+  def archived_history_requested?
+    @status_filters.present? || @archive_reason_id.present? || @lead_pipeline_stage_id.present? ||
+      @attention_filter == "archived_unsuccessful"
   end
 
   def hide_waiting_acceptance_from_common_scope(scope)
@@ -2807,6 +2827,9 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def lead_scope_for_tab(base_scope, tab)
+    unless archived_history_requested?
+      base_scope = Leads::OperationalScope.without_archived(base_scope, tenant: current_tenant)
+    end
     case tab
     when "todo"
       pwa_actionable_leads(base_scope)
@@ -3088,22 +3111,23 @@ class Admin::LeadsController < Admin::BaseController
       visible = visible_stages_for(@selected_pipeline.stages.active.ordered)
       return visible.map { |stage| Lead.status_value(stage.name, tenant: current_tenant) }.compact_blank.uniq if visible.any?
 
-      return Lead.status_options(pipeline: @selected_pipeline, tenant: current_tenant)
-        .map { |status| Lead.status_value(status, tenant: current_tenant) }
-        .compact_blank
-        .uniq
+      return []
     end
 
     pipeline_statuses = visible_stages_for(current_tenant.lead_pipeline_stages.active.ordered).map(&:name)
     existing_statuses = lead_scope_for_current_user.reorder(nil).distinct.pluck(:status).compact
-    (pipeline_statuses + existing_statuses + Lead::LEGACY_STATUSES)
+    (pipeline_statuses + existing_statuses)
       .map { |status| Lead.status_value(status, tenant: current_tenant) }
       .compact_blank
       .uniq
   end
 
   def lead_statuses_for_kanban(lead_scope)
-    configured_statuses = lead_status_options_for_selected_context
+    configured_statuses = if @selected_pipeline.present?
+      lead_status_options_for_selected_context
+    else
+      visible_stages_for(current_tenant.lead_pipeline_stages.active.ordered).map(&:name)
+    end
     configured_statuses = configured_statuses + [Lead.status_value(:waiting_acceptance, tenant: current_tenant)] if searching_without_status?
     if @selected_pipeline.blank?
       default_pipeline = LeadPipeline.default_for(tenant: current_tenant)
@@ -3112,6 +3136,8 @@ class Admin::LeadsController < Admin::BaseController
     end
     if @status_filters.present?
       filters = visible_kanban_statuses(@status_filters)
+      return visible_kanban_statuses(configured_statuses) & filters if @selected_pipeline.present?
+
       return visible_kanban_statuses(configured_statuses + filters) & filters
     end
     return visible_kanban_statuses(configured_statuses) if @selected_pipeline.present?

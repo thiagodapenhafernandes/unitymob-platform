@@ -41,6 +41,20 @@ RSpec.describe "Admin leads tab counts", type: :request do
       expect(counts).to include("verify")
     end
 
+    it "usa a mesma exclusão de arquivados nos contadores e cards, preservando o histórico filtrado" do
+      active = create(:lead, tenant: tenant, admin_user: admin)
+      archived = create(:lead, tenant: tenant, admin_user: admin)
+      archived.update_columns(archived_at: Time.current)
+      scope = tenant.leads.where(id: [active.id, archived.id])
+      expect(controller.send(:lead_tab_counts_for, scope, only: %w[all])).to eq("all" => 1)
+      expect(controller.send(:lead_scope_for_tab, scope, "all").pluck(:id)).to eq([active.id])
+      controller.instance_variable_set(:@status_filters, [archived.status])
+      expect(controller.send(:lead_scope_for_tab, scope, "all").pluck(:id)).to match_array([active.id, archived.id])
+      controller.instance_variable_set(:@status_filters, [])
+      controller.instance_variable_set(:@attention_filter, "archived_unsuccessful")
+      expect(controller.send(:lead_scope_for_tab, scope, "all").pluck(:id)).to include(archived.id)
+    end
+
     it "reuses equivalent scopes within the request without mixing filters" do
       lead = create(:lead, tenant: tenant, name: "Selecionado")
       create(:lead, tenant: tenant, name: "Outro")

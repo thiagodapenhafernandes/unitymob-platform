@@ -352,6 +352,7 @@ class Admin::DistributionRulesController < Admin::BaseController
       meta_page_ids: [],
       webhook_tags: [],
       neighborhoods: [],
+      property_cities: [],
       notify_webhook_urls: [],
       checkin_store_ids: [],
       auto_update_trigger: [],

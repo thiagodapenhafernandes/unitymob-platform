@@ -309,7 +309,7 @@ module Leads
       candidates = tenant.distribution_rules.active.where.not(distribution_mode: :attendance)
         .order(:id).select { |rule| rule_matches?(rule) }
       matches = candidates.select { |rule| matches_business_type?(rule) }
-      specific = matches.select { |rule| Array(rule.custom_filters).any? { |filter| filter["key"].present? && filter["value"].present? } }
+      specific = matches.select(&:specific_entry_filters?)
       matches = specific if specific.any?
       @ambiguous_business_type = entry_classification.business_type.nil? && candidates.any? && matches.empty?
       return if @require_unique_rule && matches.size > 1
@@ -340,6 +340,10 @@ module Leads
     end
 
     def matches_filters?(rule)
+      if rule.property_cities.present?
+        @entry_city = EntryLocation.city(routing_lead) unless defined?(@entry_city)
+        return false unless rule.matches_property_city?(@entry_city)
+      end
       return false unless matches_webhook_tags?(rule)
       return false unless matches_meta_scope?(rule)
       return false unless matches_tiktok_scope?(rule)

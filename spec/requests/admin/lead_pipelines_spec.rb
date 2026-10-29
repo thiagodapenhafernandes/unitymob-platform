@@ -55,6 +55,18 @@ RSpec.describe "Admin::LeadPipelines", type: :request do
     expect(pipeline).not_to be_default_for_rental
   end
 
+  it "cria etapas com o botão Qualificado disponível quando a conversão exige a ação" do
+    post admin_lead_pipelines_path, params: {
+      lead_pipeline: { name: "Funil com qualificação", kind: "custom" },
+      stages: { "0" => { name: "Atendimento", google_event: "qualify_lead", google_event_trigger: "qualified" } }
+    }
+
+    pipeline = admin.tenant.lead_pipelines.find_by!(name: "Funil com qualificação")
+    expect(response).to redirect_to(admin_lead_pipeline_leads_path(pipeline, view: "kanban"))
+    expect(pipeline.stages.first.policy).to have_attributes(qualification_enabled: true)
+    expect(pipeline.stages.first.policy.qualification_options).to include("qualified")
+  end
+
   it "recalcula defaults automaticamente quando altera o tipo do funil" do
     pipeline = create(:lead_pipeline, tenant: admin.tenant, name: "Venda", kind: "custom")
 

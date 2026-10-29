@@ -1,3 +1,8 @@
+<%
+  closing_stages = lead.lead_pipeline&.closing_stages&.to_a || []
+  selected_closing_stage = closing_stages.find { |stage| stage.id == lead.lead_pipeline_stage_id }
+  selected_closing_stage ||= closing_stages.first if closing_stages.one?
+%>
 <div data-controller="ax-modal" class="tw-inline-block">
   <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--success" data-action="ax-modal#open">
     <i class="bi bi-check-circle" aria-hidden="true"></i><span>Fechado</span>
@@ -10,11 +15,18 @@
       </div>
       <%= form_with model: lead, url: close_deal_admin_lead_path(lead), method: :post, namespace: modal_id, data: { turbo: false } do |form| %>
         <div class="tw-px-4 tw-py-4 tw-grid tw-gap-3">
+          <%= ax_select_field(form: form, method: :lead_pipeline_stage_id, label: "Etapa de fechamento",
+                choices: closing_stages.map { |stage| [stage.name, stage.id] },
+                select_options: { selected: selected_closing_stage&.id, include_blank: "Selecione uma etapa ganha" },
+                html_options: { required: true }, tooltip: "Somente etapas ganhas e ativas do próprio funil. O fechamento mantém o lead vinculado à etapa escolhida.") %>
+          <% if closing_stages.empty? %>
+            <%= ax_inline_notice(tone: :warning, icon: "info-circle") { "Configure uma etapa ganha e ativa neste funil antes de fechar o negócio." } %>
+          <% end %>
           <%= ax_currency_field form: form, method: :closing_commission, label: "Comissão real do fechamento (opcional)", inputmode: "decimal", tooltip: "Informe a comissão real em reais. Sem valor informado, a conversão Google será enviada sem valor monetário." %>
         </div>
         <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">
           <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
-          <%= form.submit "Fechar negócio", class: "ax-btn ax-btn--sm ax-btn--success" %>
+          <%= form.submit "Fechar negócio", disabled: closing_stages.empty?, class: "ax-btn ax-btn--sm ax-btn--success" %>
         </div>
       <% end %>
     </div>

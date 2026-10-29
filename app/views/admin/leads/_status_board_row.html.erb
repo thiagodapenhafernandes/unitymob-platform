@@ -183,6 +183,7 @@
         <%= ax_standalone_field(name: nil, id: "#{field_prefix}-agenda", label: "Agenda futura", type: :number, value: policy&.future_activity_limit_days, min: 1, step: 1, placeholder: "Limite em dias", hint: "Em branco, sem limite para agendar.",
               data: { lead_status_policy_field: "future_activity_limit_days" }) %>
         <%= ax_switch_field(label: "Exibir qualificação no card", name: nil, id: "#{field_prefix}-qualification", checked: policy&.qualification_enabled,
+              description: 'Obrigatório quando uma conversão usa a ação de qualificação. O botão "Qualificado" registra a avaliação; mover o card apenas altera a etapa.',
               input_html: { data: { lead_status_policy_field: "qualification_enabled" } }) %>
         <div class="lead-status-row__chip-list" data-lead-status-qualification-options <%= "hidden" unless policy&.qualification_enabled %>>
           <% LeadPipelineStagePolicy::QUALIFICATION_OPTIONS.each do |value, label| %>
@@ -227,7 +228,7 @@
       <% %w[meta google].each do |provider| %>
         <%= render "admin/shared/ui/stage_conversion_fields", provider: provider, field_prefix: "#{field_prefix}-#{provider}",
               selected: local_assigns[provider == "meta" ? :meta_conversion_event : :google_event],
-              selected_trigger: local_assigns[:"#{provider}_event_trigger"], board: true %>
+              selected_trigger: local_assigns[:"#{provider}_event_trigger"], google_qualification_enabled: local_assigns[:google_qualification_enabled], board: true %>
       <% end %>
       <p class="ax-field__hint">Os eventos informam à Meta o avanço do lead para medir conversões e apoiar a otimização dos anúncios. Eles não sincronizam as colunas da Central de Leads.</p>
       <%= ax_button("Entenda os eventos da Meta", documentation_admin_lead_statuses_path(anchor: "evento-meta"), variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener noreferrer", aria: { label: "Entenda os eventos da Meta (abre em nova aba)" }) %>

@@ -69,6 +69,12 @@ export default class extends Controller {
       const src = sources.length ? `<b>${sources.join(", ")}</b>` : "<b>nenhuma origem</b>"
       const who = n ? `<b>${n} corretor${n > 1 ? "es" : ""}</b>` : "<b>sem corretores</b>"
       this.lineTarget.innerHTML = `Leads de ${src} → ${who} em <b>${modeLabel}</b>.`
+      const business = this.element.querySelector('select[name="distribution_rule[business_type]"]')
+      const cities = this.element.querySelector('select[name="distribution_rule[property_cities][]"]')
+      const names = Array.from(cities?.selectedOptions || []).map(option => option.value).filter(Boolean)
+      const conditions = document.createElement("span")
+      conditions.textContent = ` ${business?.selectedOptions[0]?.textContent || "Venda e locação"} E (${names.length ? names.join(" OU ") : "qualquer cidade"}).`
+      this.lineTarget.append(conditions)
     }
 
     if (this.hasChipsTarget) {
