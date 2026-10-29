@@ -89,3 +89,7 @@ texto, sem interpretar HTML. Regra sintética local permaneceu inativa, sem lead
 usuário temporário de validação desativado ao encerrar. Evidência em
 `tmp/codex-screenshots/fila-cidades-desktop-20261029.jpg`. Após os ajustes: 30
 exemplos de request e teste JavaScript do resumo passaram; diff sem erros.
+
+### Visibilidade dos arquivados
+
+A aba **Arquivados**, na listagem desktop e mobile/PWA de leads, é exclusiva do administrador da própria conta (`tenant_owner`). Preserva o responsável, o autor, o motivo e a data do arquivamento. Corretor, gestor e perfis com permissão ampla para leads não ganham acesso ao histórico por serem responsáveis pelo registro. Filtros, paginação, acesso direto, chat e extensão respeitam a mesma restrição. Arquivar retorna à listagem, sem remover a atribuição no banco.

@@ -18,6 +18,7 @@ RSpec.describe Leads::OperationalScope do
     ids = described_class.without_archived(tenant.leads, tenant: tenant).pluck(:id)
     expect(ids).to include(active.id, lost.id)
     expect(ids).not_to include(stamped.id, staged.id, legacy.id, imported.id)
+    expect(described_class.archived(tenant.leads, tenant: tenant).pluck(:id)).to match_array([stamped.id, staged.id, legacy.id, imported.id])
     expect(tenant.leads.where(id: [stamped.id, staged.id, legacy.id]).count).to eq(3)
   end
 

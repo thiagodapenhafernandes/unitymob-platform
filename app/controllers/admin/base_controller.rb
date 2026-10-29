@@ -424,7 +424,8 @@ class Admin::BaseController < ApplicationController
 
   def accessible_commercial_leads
     check_permission!(:view, :leads)
-    %i[leads comercial].reduce(current_tenant.leads.commercial) do |scope, resource|
+    base = Leads::OperationalScope.visible_to(current_tenant.leads.commercial, user: current_admin_user, tenant: current_tenant)
+    %i[leads comercial].reduce(base) do |scope, resource|
       ids = accessible_owner_ids(resource)
       ids.nil? ? scope : scope.where(admin_user_id: ids)
     end

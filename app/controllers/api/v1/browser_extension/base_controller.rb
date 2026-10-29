@@ -47,11 +47,7 @@ module Api
         end
 
         def lead_scope
-          scope = grant.tenant.leads
-          return scope if grant.admin_user.owns_all?(:leads)
-
-          ids = grant.admin_user.can_view_team?(:leads) ? grant.admin_user.team_scope_ids : [grant.admin_user_id]
-          scope.where(admin_user_id: ids)
+          Lead.accessible_to_admin(grant.admin_user, tenant: grant.tenant)
         end
       end
     end

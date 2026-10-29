@@ -128,6 +128,8 @@ class Admin::LeadsController < Admin::BaseController
   before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
 
+  before_action :authorize_archived_list!, only: %i[index pwa_section list_page pwa_leads_page kanban_column report]
+
   def index
     assign_lead_filter_state
     @view_mode = resolve_view_mode
@@ -136,9 +138,9 @@ class Admin::LeadsController < Admin::BaseController
     filtered_scope = filtered_lead_scope_for_current_user
     common_scope = hide_waiting_acceptance_from_common_scope(filtered_scope)
     common_unfiltered_scope = hide_waiting_acceptance_from_common_scope(unfiltered_scope)
-    @desktop_lead_tab = params[:lead_tab].presence_in(%w[todo visits future favorites verify all]) || "all"
+    @desktop_lead_tab = params[:lead_tab].presence_in(lead_tab_keys) || "all"
     list_filtered_scope = hide_discarded_from_list_scope(common_scope)
-    @desktop_tab_counts = lead_tab_counts_for(list_filtered_scope)
+    @desktop_tab_counts = lead_tab_counts_for(list_filtered_scope, only: lead_tab_keys, archive_scope: common_scope)
     lead_scope = lead_scope_for_tab(common_scope, @desktop_lead_tab)
     list_scope = lead_scope_for_tab(list_filtered_scope, @desktop_lead_tab)
 
@@ -274,7 +276,7 @@ class Admin::LeadsController < Admin::BaseController
 
     status = Lead.status_value(params[:column_status].presence || params[:status], tenant: current_tenant)
     offset = [params[:offset].to_i, 0].max
-    desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
+    desktop_tab = params[:lead_tab].presence_in(lead_tab_keys) || "all"
     lead_scope = lead_scope_for_tab(filtered_lead_scope_for_current_user, desktop_tab).where(leads: { status: status_filter_values_for(status) })
     lead_scope = lead_scope.none if @selected_pipeline.present? && !lead_status_options_for_selected_context.include?(status)
     # Sem COUNT: busca uma linha extra e deriva has_more dela. Nenhum
@@ -319,7 +321,7 @@ class Admin::LeadsController < Admin::BaseController
 
     assign_lead_filter_state
 
-    desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
+    desktop_tab = params[:lead_tab].presence_in(lead_tab_keys) || "all"
     common_scope = hide_waiting_acceptance_from_common_scope(filtered_lead_scope_for_current_user)
     list_scope = lead_scope_for_tab(hide_discarded_from_list_scope(common_scope), desktop_tab)
     offset = [params[:offset].to_i, 0].max
@@ -348,7 +350,7 @@ class Admin::LeadsController < Admin::BaseController
   def pwa_leads_page
     assign_lead_filter_state
 
-    tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
+    tab = params[:mobile_tab].presence_in(lead_tab_keys(mobile: true)) || "todo"
     offset = [params[:offset].to_i, 0].max
     base_scope = hide_discarded_from_list_scope(filtered_lead_scope_for_current_user)
     lead_scope = pwa_lead_scope_for_tab(base_scope, tab)
@@ -832,7 +834,7 @@ class Admin::LeadsController < Admin::BaseController
         kind: "archived",
         metadata: { reason: reason&.name, note: @lead.archive_note, by: current_admin_user&.name }
       )
-      redirect_to admin_lead_path(@lead), notice: "Lead arquivado."
+      redirect_to(tenant_owner? ? admin_leads_path(view: "list", lead_tab: "archived", mobile_tab: "archived") : admin_leads_path, notice: "Lead arquivado.")
     else
       redirect_to admin_lead_path(@lead), alert: @lead.errors.full_messages.to_sentence
     end
@@ -1102,17 +1104,37 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def hide_discarded_from_list_scope(scope)
-    return scope if archived_history_requested?
+    return scope if explicit_lead_history_filter? || archived_history_requested?
 
     scope.where.not(leads: { status: Lead.status_value(:descartado, tenant: current_tenant) })
   end
 
-  def archived_history_requested?
+  def lead_tab_keys(mobile: false)
+    keys = %w[todo visits future favorites all]
+    keys << "verify" unless mobile
+    keys << "archived" if tenant_owner?
+    keys
+  end
+
+  def archived_list_requested?
+    params[:lead_tab] == "archived" || params[:mobile_tab] == "archived"
+  end
+
+  def authorize_archived_list!
+    head :forbidden if archived_list_requested? && !tenant_owner?
+  end
+
+  def explicit_lead_history_filter?
     @status_filters.present? || @archive_reason_id.present? || @lead_pipeline_stage_id.present? ||
       @attention_filter == "archived_unsuccessful"
   end
 
+  def archived_history_requested?
+    tenant_owner? && (archived_list_requested? || explicit_lead_history_filter?)
+  end
+
   def hide_waiting_acceptance_from_common_scope(scope)
+    return scope if archived_list_requested? && tenant_owner?
     return scope if explicit_waiting_acceptance_filter? || searching_without_status?
 
     scope.where("leads.status IS NULL OR leads.status <> ?", Lead.status_value(:waiting_acceptance, tenant: current_tenant))
@@ -2043,6 +2065,8 @@ class Admin::LeadsController < Admin::BaseController
   # Com `?view=` válido na URL, usa e salva a escolha; sem param, cai na
   # preferência salva e, por fim, no padrão kanban.
   def resolve_view_mode
+    return "list" if archived_list_requested? && tenant_owner?
+
     requested = params[:view].presence_in(%w[kanban list])
 
     if requested
@@ -2687,7 +2711,7 @@ class Admin::LeadsController < Admin::BaseController
   # e form de filtros). Todo o resto do contexto PWA é pesado (contagens,
   # listas, kanban) e carrega sob demanda em #pwa_section via Turbo Frame.
   def load_pwa_leads_light_context
-    @pwa_lead_tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
+    @pwa_lead_tab = params[:mobile_tab].presence_in(lead_tab_keys(mobile: true)) || "todo"
     @pwa_queue_position = current_user_distribution_queue_position
   end
 
@@ -2758,8 +2782,8 @@ class Admin::LeadsController < Admin::BaseController
     base_scope = filtered_scope
     list_base_scope = hide_discarded_from_list_scope(base_scope)
     original_scope = unfiltered_scope || filtered_scope
-    @pwa_tab_counts = lead_tab_counts_for(list_base_scope, only: %w[todo visits future favorites all])
-    @pwa_tab_original_counts = lead_tab_counts_for(hide_discarded_from_list_scope(original_scope), only: %w[todo visits future favorites all])
+    @pwa_tab_counts = lead_tab_counts_for(list_base_scope, only: lead_tab_keys(mobile: true), archive_scope: base_scope)
+    @pwa_tab_original_counts = lead_tab_counts_for(hide_discarded_from_list_scope(original_scope), only: lead_tab_keys(mobile: true), archive_scope: original_scope)
 
     @pwa_leads = pwa_lead_scope_for_tab(list_base_scope, @pwa_lead_tab)
                  .includes(:admin_user, lead_labelings: :lead_label)
@@ -2816,17 +2840,24 @@ class Admin::LeadsController < Admin::BaseController
     lead_scope_for_tab(base_scope, tab)
   end
 
-  def lead_tab_counts_for(base_scope, only: %w[todo visits future favorites verify all])
+  def lead_tab_counts_for(base_scope, only: %w[todo visits future favorites verify all], archive_scope: nil)
     @lead_tab_counts ||= {}
-    scope_sql = base_scope.to_sql
     only.index_with do |tab|
-      @lead_tab_counts.fetch([scope_sql, tab]) do |key|
-        @lead_tab_counts[key] = lead_scope_for_tab(base_scope, tab).reorder(nil).count
+      count_scope = tab == "archived" ? (archive_scope || base_scope) : base_scope
+      if tab != "archived" && archived_list_requested?
+        count_scope = Leads::OperationalScope.without_archived(count_scope, tenant: current_tenant)
+        count_scope = count_scope.where.not(status: Lead.status_value(:descartado, tenant: current_tenant)) unless explicit_lead_history_filter?
+      end
+      @lead_tab_counts.fetch([count_scope.to_sql, tab]) do |key|
+        @lead_tab_counts[key] = lead_scope_for_tab(count_scope, tab).reorder(nil).count
       end
     end
   end
 
   def lead_scope_for_tab(base_scope, tab)
+    if tab == "archived"
+      return tenant_owner? ? Leads::OperationalScope.archived(base_scope, tenant: current_tenant) : base_scope.none
+    end
     unless archived_history_requested?
       base_scope = Leads::OperationalScope.without_archived(base_scope, tenant: current_tenant)
     end
@@ -3187,6 +3218,7 @@ class Admin::LeadsController < Admin::BaseController
 
     owner_ids = visible_owner_ids(:leads)
     base = Leads::InternalContactScope.new(tenant: current_tenant).exclude(current_tenant.leads.commercial)
+    base = Leads::OperationalScope.visible_to(base, user: current_admin_user, tenant: current_tenant)
     return base if owner_ids.nil? # escopo "all"/admin dentro do Tenant
 
     scope = base.where(admin_user_id: owner_ids)

@@ -82,16 +82,10 @@
           <% end %>
         <% else %>
           <%
-            pwa_tab_items = [
-              ["todo", "A fazer", "house-door", "Tarefas vencidas ou sem data, e leads novos sem primeiro contato."],
-              ["visits", "Visitas", "bullseye", "Leads com visita marcada, mesmo se a data já passou, até ser resolvida."],
-              ["future", "Futuras", "clock", "Leads com retorno ou tarefa marcada para acompanhar depois."],
-              ["favorites", "Favoritos", "star", "Leads que você marcou para acompanhar mais de perto."],
-              ["all", "Todos", "archive", "Todos os leads que aparecem para você nesta tela."]
-            ]
+            pwa_tab_items = lead_navigation_tabs(mobile: true)
           %>
           <% pwa_tab_items.each do |key, label, icon, tooltip| %>
-            <% tab_path = admin_leads_path(lead_query_params.merge(view: @view_mode, mobile_tab: key, page: nil).compact) %>
+            <% tab_path = admin_leads_path(lead_query_params.merge(view: (key == "archived" ? "list" : @view_mode), lead_tab: key, mobile_tab: key, page: nil).compact) %>
             <%
               filtered_count = @pwa_tab_counts.fetch(key, 0)
               original_count = @pwa_tab_original_counts&.fetch(key, filtered_count) || filtered_count
@@ -104,7 +98,7 @@
             <%= link_to tab_path,
                         class: "lead-pwa-tab #{'is-active' if @pwa_lead_tab == key}",
                         data: { controller: "ax-tooltip", ax_tooltip_text_value: tooltip },
-                        aria: { label: "#{label}. #{tooltip}" } do %>
+                        aria: { label: "#{label}. #{tooltip}", current: (@pwa_lead_tab == key ? "page" : nil) } do %>
               <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
               <small>
                 <span class="lead-pwa-tab__label"><%= label %></span>
