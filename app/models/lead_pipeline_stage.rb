@@ -98,6 +98,16 @@ class LeadPipelineStage < ApplicationRecord
       (meta_conversion_event.present? && meta_event_trigger == "qualified")
   end
 
+  # Configurações antigas também precisam oferecer a ação exigida pela conversão.
+  def qualification_enabled?
+    requires_qualification_action? || policy&.qualification_enabled? || false
+  end
+
+  def qualification_options
+    options = Array(policy&.qualification_options).presence || LeadPipelineStagePolicy::DEFAULT_QUALIFICATION_OPTIONS
+    requires_qualification_action? ? options | ["qualified"] : options
+  end
+
   def visible_to_admin_user?(admin_user)
     policy_or_default.visible_to_admin_user?(admin_user)
   end
@@ -142,7 +152,7 @@ class LeadPipelineStage < ApplicationRecord
 
     stage_policy = policy_or_default
     stage_policy.qualification_enabled = true
-    stage_policy.qualification_options = Array(stage_policy.qualification_options) | ["qualified"]
+    stage_policy.qualification_options = qualification_options
   end
 
   def google_action_matches_event

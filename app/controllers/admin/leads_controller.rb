@@ -2581,7 +2581,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def lead_stage_qualification_enabled?
-    @lead.lead_pipeline_stage&.policy&.qualification_enabled?
+    @lead.lead_pipeline_stage&.qualification_enabled?
   end
 
   def normalize_qualification_params!(attributes)
@@ -2596,11 +2596,11 @@ class Admin::LeadsController < Admin::BaseController
     qualification_key = @lead.qualification_field_for(current_admin_user).to_s
     return true unless attributes.key?(qualification_key)
 
-    policy = @lead.lead_pipeline_stage&.policy
-    return false unless policy&.qualification_enabled?
+    stage = @lead.lead_pipeline_stage
+    return false unless stage&.qualification_enabled?
 
     value = attributes[qualification_key].presence
-    value.blank? || Array(policy.qualification_options).include?(value)
+    value.blank? || stage.qualification_options.include?(value)
   end
 
   def log_qualification_change!

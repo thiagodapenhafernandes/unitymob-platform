@@ -99,3 +99,7 @@ não há backfill, mudança de contas em produção ou qualificação de leads.
 A interface e o guia distinguem entrada/movimentação de etapa de clicar em
 Qualificado no card. Nenhum nome de etapa registra avaliação. Essa proteção não
 ativa destinos nem reenvia eventos históricos.
+
+### Compatibilidade de políticas antigas de qualificação
+
+A disponibilidade efetiva da qualificação é resolvida pela etapa, tanto no card quanto na autorização do salvamento. Uma conversão Google/Meta com gatilho `qualified`, ou a qualificação Google adicional, exige a opção `qualified` mesmo quando a política antiga está desligada, incompleta ou ausente. Essa resolução não grava configurações durante consultas, não ativa integrações e não altera as demais opções/permissões. Etapas sem dependência mantêm a configuração da conta. O salvamento administrativo continua validando e persistindo a exigência normalmente.
