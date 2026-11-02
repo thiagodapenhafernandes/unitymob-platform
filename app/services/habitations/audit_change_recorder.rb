@@ -11,7 +11,7 @@ module Habitations
       photo_ids_order
       tipo_vaga
     ].freeze
-    ATTACHMENT_ASSOCIATIONS = %w[photos fichas_cadastro autorizacoes_venda documentos].freeze
+    ATTACHMENT_ASSOCIATIONS = %w[photos portal_reel fichas_cadastro autorizacoes_venda documentos].freeze
     BROKER_ASSIGNMENT_FIELDS = %w[
       id admin_user_id admin_user_name role commission_type commission_value observations
     ].freeze
@@ -37,7 +37,12 @@ module Habitations
 
     def self.attachment_attributes(habitation)
       ATTACHMENT_ASSOCIATIONS.index_with do |association|
-        habitation.public_send(association).attachments.includes(:blob).map do |attachment|
+        attachments = if association == "portal_reel"
+          [habitation.portal_reel.attachment].compact
+        else
+          habitation.public_send(association).attachments.includes(:blob)
+        end
+        attachments.map do |attachment|
           attachment_payload(attachment)
         end.sort_by { |payload| payload["id"].to_i }
       end

@@ -1117,6 +1117,11 @@ export default class extends Controller {
         this.selectedNewFiles = []
         if (this.hasInputTarget) this.inputTarget.value = ""
       }
+      const reelInput = this.form.querySelector('input[name="habitation[portal_reel]"]')
+      if (reelInput) {
+        reelInput.value = ""
+        reelInput.dispatchEvent(new Event("change", { bubbles: true }))
+      }
       this.applyMediaPayload(response)
       this.showProgressFeedback(response.message || "Mídia salva com sucesso.", 100, "success")
       this.hideProgressLater()
@@ -1300,6 +1305,11 @@ export default class extends Controller {
   }
 
   applyMediaPayload(payload, options = {}) {
+    const reelStatus = this.form?.querySelector("[data-portal-reel-status]")
+    if (reelStatus && payload.portal_reel_status !== undefined) {
+      reelStatus.textContent = payload.portal_reel_status
+      reelStatus.hidden = !payload.portal_reel_status
+    }
     this.updateWatermarkStatus(payload)
     const replaceGallery = options.replaceGallery !== false
 

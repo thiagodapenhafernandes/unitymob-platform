@@ -41,6 +41,16 @@ RSpec.describe Dashboard::LeadPerformancePeriodQuery do
     expect(ids).to be_empty
   end
 
+  it "aceita períodos com apenas uma das datas" do
+    old = lead_at("2025-01-16")
+    accepted(old, at: "2026-10-12", pool: true)
+    later = lead_at("2026-11-01")
+    from = described_class.new(scope: admin.tenant.leads, starts_at: window.begin, ends_at: nil).call
+    until_date = described_class.new(scope: admin.tenant.leads, starts_at: nil, ends_at: window.end).call
+    expect(from.pluck(:id)).to contain_exactly(old.id, later.id)
+    expect(until_date.pluck(:id)).to contain_exactly(old.id)
+  end
+
   it "preserva o escopo autorizado recebido" do
     lead = lead_at("2025-01-16")
     accepted(lead, at: "2026-10-12", pool: true)

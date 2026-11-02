@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { loadChartJs } from "lib/chartjs_loader"
 
 export default class extends Controller {
   static values = {
@@ -26,24 +27,7 @@ export default class extends Controller {
   }
 
   ensureChartJs() {
-    if (window.Chart) return Promise.resolve()
-    if (window.__seoDashboardChartLoader) return window.__seoDashboardChartLoader
-
-    window.__seoDashboardChartLoader = new Promise((resolve, reject) => {
-      let script = document.getElementById("seo-dashboard-chartjs")
-      if (!script) {
-        script = document.createElement("script")
-        script.id = "seo-dashboard-chartjs"
-        script.src = this.chartUrlValue
-        script.async = true
-        script.dataset.turboTrack = "reload"
-        document.head.appendChild(script)
-      }
-      script.addEventListener("load", resolve, { once: true })
-      script.addEventListener("error", reject, { once: true })
-    })
-
-    return window.__seoDashboardChartLoader
+    return loadChartJs(this.chartUrlValue)
   }
 
   renderTrendChart() {

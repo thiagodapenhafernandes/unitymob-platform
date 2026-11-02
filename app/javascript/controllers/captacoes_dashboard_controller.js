@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { loadChartJs } from "lib/chartjs_loader"
 
 export default class extends Controller {
   static values = {
@@ -86,24 +87,7 @@ export default class extends Controller {
   }
 
   ensureChartJs() {
-    if (window.Chart) return Promise.resolve()
-    if (window.__captDashChartLoader) return window.__captDashChartLoader
-
-    window.__captDashChartLoader = new Promise((resolve, reject) => {
-      let script = document.getElementById("capt-dashboard-chartjs")
-      if (!script) {
-        script = document.createElement("script")
-        script.id = "capt-dashboard-chartjs"
-        script.src = this.chartUrlValue
-        script.async = true
-        script.dataset.turboTrack = "reload"
-        document.head.appendChild(script)
-      }
-      script.addEventListener("load", resolve, { once: true })
-      script.addEventListener("error", reject, { once: true })
-    })
-
-    return window.__captDashChartLoader
+    return loadChartJs(this.chartUrlValue)
   }
 
   chartConfigs() {

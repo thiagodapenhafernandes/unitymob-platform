@@ -1956,6 +1956,14 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def apply_created_at_filter(scope)
+    if action_name == "report" && (parsed_start_date.present? || parsed_end_date.present?)
+      return Dashboard::LeadPerformancePeriodQuery.new(
+        scope: scope,
+        starts_at: parsed_start_date&.beginning_of_day,
+        ends_at: parsed_end_date&.end_of_day
+      ).call
+    end
+
     if parsed_start_date.present?
       scope = scope.where("leads.created_at >= ?", parsed_start_date.beginning_of_day)
     end

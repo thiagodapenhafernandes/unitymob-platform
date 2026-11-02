@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { loadChartJs } from "lib/chartjs_loader"
 import { Turbo } from "@hotwired/turbo-rails"
 
 export default class extends Controller {
@@ -33,24 +34,7 @@ export default class extends Controller {
   }
 
   ensureChartJs() {
-    if (window.Chart) return Promise.resolve()
-    if (window.__adminDashboardChartLoader) return window.__adminDashboardChartLoader
-
-    window.__adminDashboardChartLoader = new Promise((resolve, reject) => {
-      let script = document.getElementById("admin-dashboard-chartjs")
-      if (!script) {
-        script = document.createElement("script")
-        script.id = "admin-dashboard-chartjs"
-        script.src = this.chartUrlValue
-        script.async = true
-        script.dataset.turboTrack = "reload"
-        document.head.appendChild(script)
-      }
-      script.addEventListener("load", resolve, { once: true })
-      script.addEventListener("error", reject, { once: true })
-    })
-
-    return window.__adminDashboardChartLoader
+    return loadChartJs(this.chartUrlValue)
   }
 
   renderLeadsChart() {

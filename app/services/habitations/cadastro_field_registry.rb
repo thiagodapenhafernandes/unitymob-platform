@@ -285,6 +285,7 @@ module Habitations
             extra_params: %w[ordered_photo_ids ordered_picture_indices site_hidden_photo_ids site_hidden_picture_urls remove_photo_ids remove_picture_indices] },
           { key: "apply_photo_watermark", label: "Aplicar marca d'água", kind: :flag },
           { key: "videos", label: "Vídeos" },
+          { key: "portal_reel", label: "Reel (Grupo ZAP)" },
           { key: "tour_virtual", label: "Tour virtual" },
           { key: "podcast_url", label: "Podcast (URL)" },
           { key: "use_development_photos_flag", label: "Usar fotos do empreendimento", kind: :flag },

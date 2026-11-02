@@ -264,6 +264,13 @@
             placeholder: "https://...",
             add_label: "Adicionar outro vídeo"
           ) %>
+      <%= ax_file_field(form: f, method: :portal_reel, label: "Reel para o Grupo ZAP",
+            accept: ".mp4,.mov,video/mp4,video/quicktime",
+            disabled: !can_edit_media || media_policy.field_locked?("portal_reel"),
+            hint: "Um arquivo MP4 ou MOV, até 80 MB, de 10 a 60 segundos, vertical (9:16). Será enviado ao ZAP/Viva Real após a análise do arquivo. O envio substitui apenas o reel anterior.") %>
+      <p class="ax-field__hint" data-portal-reel-status <%= "hidden" unless f.object.portal_reel.attached? %>>
+        <% if f.object.portal_reel.attached? %><%= f.object.portal_reel.filename %> — <%= f.object.portal_reel_status %><% end %>
+      </p>
       <div class="ax-media-link-field">
         <%= ax_text_field(form: f, method: :podcast_url, label: "Link do Podcast", placeholder: "https://...") %>
       </div>

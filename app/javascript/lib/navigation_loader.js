@@ -23,6 +23,7 @@ export function createNavigationLoader({ document, window }) {
   let token = 0
   let active = false
   let visiting = false
+  let reloading = false
   let skipNextVisit = false
   let nextLabel = null
   let failsafeTimer = null
@@ -45,6 +46,7 @@ export function createNavigationLoader({ document, window }) {
   function show(label = "Carregando página...") {
     token += 1
     active = true
+    reloading = false
     const mine = token
     window.clearTimeout(failsafeTimer)
     failsafeTimer = window.setTimeout(() => hide(mine), FAILSAFE_MS)
@@ -64,6 +66,7 @@ export function createNavigationLoader({ document, window }) {
     if (forToken !== token) return
     active = false
     visiting = false
+    reloading = false
     window.clearTimeout(failsafeTimer)
     holds.clear()
     const el = overlay()
@@ -141,13 +144,14 @@ export function createNavigationLoader({ document, window }) {
   }
 
   async function settle() {
-    if (!active) return
+    if (!active || reloading) return
     const mine = token
     await paint()
-    if (mine !== token) return
+    if (mine !== token || reloading) return
     await Promise.race([ready(mine), sleep(GATE_TIMEOUT_MS)])
-    if (mine !== token) return
+    if (mine !== token || reloading) return
     await paint()
+    if (mine !== token || reloading) return
     hide(mine)
   }
 
@@ -197,7 +201,7 @@ export function createNavigationLoader({ document, window }) {
     if (!visiting) settle() // render sem visita (422 de form): não haverá turbo:load
   })
   on("turbo:load", () => {
-    if (isPreview()) return
+    if (isPreview() || reloading) return
     visiting = false
     settle()
   })
@@ -219,6 +223,9 @@ export function createNavigationLoader({ document, window }) {
     if (event.detail?.reason === "request_failed" && event.detail?.context?.statusCode === CONTENT_TYPE_MISMATCH) {
       const mine = token
       window.setTimeout(() => hide(mine), DOWNLOAD_HIDE_MS)
+    } else {
+      // O Turbo também emite turbo:load na origem antes de um reload completo.
+      reloading = true
     }
   })
   on("pageshow", (event) => { if (event.persisted) hide() }, window)

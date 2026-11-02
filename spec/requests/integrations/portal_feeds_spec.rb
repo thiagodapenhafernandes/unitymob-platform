@@ -278,3 +278,80 @@ RSpec.describe "Portal feeds", type: :request do
   end
 
 end
+
+RSpec.describe "Grupo ZAP reel feed", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  before { host! "localhost" }
+
+  let(:tenant) { Current.tenant }
+  let(:integration) do
+    PortalIntegration.create!(tenant: tenant, portal: "vivareal_vrsync", enabled: true,
+      allowed_statuses: Habitation::STATUS_OPTIONS, allowed_business_types: %w[venda aluguel], feed_token: SecureRandom.hex(16))
+  end
+  let!(:habitation) do
+    create(:habitation, tenant: tenant, titulo_anuncio: "Imóvel com reel", publicar_viva_real_vrsync: true, exibir_no_site_flag: true,
+      status: "Venda", valor_venda_cents: 850_000_00, videos: ["https://www.youtube.com/watch?v=existing"],
+      pictures: [{ "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/first.jpg" }, { "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/second.jpg" }])
+  end
+
+  def attach_reel(record = habitation, analyzed: true)
+    record.portal_reel.attach(io: StringIO.new("video"), filename: "reel.mp4", content_type: "video/mp4", identify: false)
+    record.portal_reel.blob.update!(metadata: { analyzed: analyzed, duration: 30, width: 1080, height: 1920 })
+  end
+
+  def fetch_feed(headers = {})
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token), headers: headers
+    expect(response).to have_http_status(:ok)
+    Nokogiri::XML(response.body).remove_namespaces!
+  end
+
+  it "adds one downloadable reel while preserving the photos and existing video links" do
+    attach_reel
+    doc = fetch_feed
+    expect(doc.xpath('//Media/Item[@medium="image"]').map { |item| item.text.strip }).to eq(["#{Storage::PublicPropertyPhoto.public_base_url}/spec/first.jpg", "#{Storage::PublicPropertyPhoto.public_base_url}/spec/second.jpg"])
+    expect(doc.at_xpath('//Media/Item[@medium="image"]')["primary"]).to eq("true")
+    reels = doc.xpath('//Media/Item[@medium="reel"]')
+    expect(reels.size).to eq(1)
+    expect(reels.first.text.strip).to include("http://localhost/rails/active_storage/blobs/proxy/")
+    expect(habitation.reload.videos).to eq(["https://www.youtube.com/watch?v=existing"])
+    get URI(reels.first.text.strip).request_uri
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to eq("video")
+  end
+
+  it "refreshes the cached feed when server analysis finishes" do
+    attach_reel(analyzed: false)
+    expect(fetch_feed.xpath('//Item[@medium="reel"]')).to be_empty
+    etag = response.headers.fetch("ETag")
+    travel 2.seconds do
+      habitation.portal_reel.blob.update!(metadata: { analyzed: true, duration: 30, width: 1080, height: 1920 })
+      expect(fetch_feed("If-None-Match" => etag).xpath('//Item[@medium="reel"]').size).to eq(1)
+    end
+  end
+
+  it "omits invalid reels and reels from another tenant" do
+    attach_reel
+    habitation.portal_reel.blob.update!(metadata: { analyzed: true, duration: 90, width: 1920, height: 1080 })
+    other = create(:habitation, tenant: Tenant.create!(name: "Outra conta reels", slug: "reel-other"), codigo: "OTHER-REEL")
+    attach_reel(other)
+    doc = fetch_feed
+    expect(doc.xpath('//Item[@medium="reel"]')).to be_empty
+    expect(doc.xpath('//ListingID').map(&:text)).not_to include("OTHER-REEL")
+    expect(doc.xpath('//Item[@medium="image"]').size).to eq(2)
+  end
+
+  it "does not change VRSync exports for other portal families" do
+    attach_reel
+    integration.update!(portal: "lais_ai")
+    xml = Portal::VrsyncXmlSerializer.new(habitations: [habitation], integration: integration, base_url: "https://example.test").to_xml
+    expect(Nokogiri::XML(xml).remove_namespaces!.xpath('//Item[@medium="reel"]')).to be_empty
+  end
+  it "also sends reels in the ZapImóveis feed" do
+    attach_reel
+    integration.update!(portal: "zapimoveis")
+    habitation.update!(publicar_zapimoveis: true)
+    expect(fetch_feed.xpath('//Item[@medium="reel"]').size).to eq(1)
+  end
+
+end

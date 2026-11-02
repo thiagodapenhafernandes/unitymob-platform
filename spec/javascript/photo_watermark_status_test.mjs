@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
 function setup() {
-  const context = vm.createContext({ Controller: class {}, AbortController, setTimeout, clearTimeout, FormData: class { append() {} }, URL: { revokeObjectURL() {} } });
+  const context = vm.createContext({ Controller: class {}, Event, AbortController, setTimeout, clearTimeout, FormData: class { append() {} delete() {} }, URL: { revokeObjectURL() {} } });
   const source = readFileSync('app/javascript/controllers/photo_upload_controller.js', 'utf8')
     .replace(/import[\s\S]*?from "[^"]+"\n/g, '').replace('export default class', 'this.Upload = class');
   vm.runInContext(source, context);
@@ -104,3 +104,20 @@ test('summary counts confirmed completions and does not turn failure into succes
   controller.renderProcessingSummary();
   assert.equal(summary[0], '1 foto salva. Tudo pronto!');
 });
+
+for (const succeeds of [true, false]) {
+  test(`media save ${succeeds ? 'clears the saved reel' : 'keeps the reel selected on failure'}`, async () => {
+    const controller = setup();
+    const reel = { value: 'reel.mp4', dispatchEvent(event) { assert.equal(event.type, 'change'); } };
+    controller.form = { action: '/media', querySelector: () => reel };
+    for (const name of ['syncNewFilesFromDom', 'updateOrder', 'setBusyState', 'hideProgressLater']) controller[name] = () => {};
+    controller.canSyncUpload = () => true;
+    controller.resolvedFormMethod = () => 'PATCH';
+    controller.requestJsonWithProgress = async () => {
+      if (!succeeds) throw new Error('Upload failed');
+      return { message: 'Saved' };
+    };
+    await controller.submitMediaForm();
+    assert.equal(reel.value, succeeds ? '' : 'reel.mp4');
+  });
+}

@@ -3,6 +3,7 @@ module Integrations
     class FeedsController < ApplicationController
       FEED_CACHE_VERSIONS = {
         "chaves_xml" => "chaves_xml_v2",
+        "vrsync_xml" => "vrsync_xml_reel_v1",
         "open_navent_xml" => "open_navent_xml_v1"
       }.freeze
 
@@ -20,7 +21,7 @@ module Integrations
         tenant_last_update = @integration.tenant&.habitations&.maximum(:updated_at)
         last_modified = [scope_last_update, tenant_last_update].compact.max
         should_render = stale?(
-          etag: [@portal, @integration.updated_at.to_i, last_modified&.to_i, feed_cache_version],
+          etag: [@portal, @integration.updated_at.to_i, last_modified&.to_f, feed_cache_version],
           last_modified: last_modified,
           public: false
         )
@@ -106,7 +107,7 @@ module Integrations
           serializer = Portal::ChavesXmlSerializer.new(habitations: habitations, integration: @integration)
           stream_xml(serializer)
         else
-          serializer = Portal::VrsyncXmlSerializer.new(habitations: habitations, integration: @integration)
+          serializer = Portal::VrsyncXmlSerializer.new(habitations: habitations.with_attached_portal_reel, integration: @integration, base_url: request.base_url)
           stream_xml(serializer)
         end
       end
