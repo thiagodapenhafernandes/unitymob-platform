@@ -67,6 +67,7 @@ class HabitationAuditLog < ApplicationRecord
     "plantas" => "Plantas",
     "fotos_empreendimento" => "Fotos do empreendimento",
     "photos_attachments" => "Fotos anexadas",
+    "portal_reel_attachments" => "Reel do Grupo ZAP",
     "fichas_cadastro_attachments" => "Fichas de cadastro",
     "autorizacoes_venda_attachments" => "Autorizações de venda",
     "documentos_attachments" => "Documentos",

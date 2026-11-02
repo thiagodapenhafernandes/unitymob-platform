@@ -176,3 +176,31 @@ test("segura o overlay por imagem visível ainda carregando; imagem fora da tela
   await flush()
   assert.equal(overlay.hidden, true)
 })
+
+test("reload completo não encerra o loader no turbo:load ainda emitido na origem", async () => {
+  const { fire, flush, overlay } = setup()
+  fire("turbo:visit", visit("http://x/admin/leads"))
+  fire("turbo:reload", { detail: { reason: "tracked_element_mismatch" } })
+  fire("turbo:load")
+  await flush()
+  assert.equal(overlay.hidden, false, "origem continua coberta até o navegador carregar o destino")
+})
+
+test("reload completo invalida um settle que já estava aguardando paint", async () => {
+  const { fire, flush, overlay } = setup()
+  fire("turbo:visit", visit("http://x/admin/leads"))
+  fire("turbo:load")
+  fire("turbo:reload", { detail: { reason: "turbo_visit_control_is_reload" } })
+  await flush()
+  assert.equal(overlay.hidden, false)
+})
+
+test("uma nova visita pode concluir depois de um reload interrompido", async () => {
+  const { fire, flush, overlay } = setup()
+  fire("turbo:visit", visit("http://x/admin/leads"))
+  fire("turbo:reload", { detail: { reason: "tracked_element_mismatch" } })
+  fire("turbo:visit", visit("http://x/admin/habitations"))
+  fire("turbo:load")
+  await flush()
+  assert.equal(overlay.hidden, true)
+})

@@ -35,7 +35,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
       serializer = Portal::ChavesXmlSerializer.new(habitations: sample, integration: @integration)
       render xml: serializer.to_xml
     when "vrsync_xml"
-      serializer = Portal::VrsyncXmlSerializer.new(habitations: sample, integration: @integration)
+      serializer = Portal::VrsyncXmlSerializer.new(habitations: sample.with_attached_portal_reel, integration: @integration, base_url: request.base_url)
       render xml: serializer.to_xml
     else
       render plain: "Estratégia de feed desconhecida.", status: :unprocessable_entity

@@ -2840,6 +2840,7 @@ class Admin::HabitationsController < Admin::BaseController
       proprietor_locked_fields.each { |field| permitted.delete(field) }
     end
 
+    Habitations::MediaUpdater.normalize_portal_reel_upload!(permitted, habitation: @habitation)
     permitted.delete(:intake_status) unless @habitation&.broker_intake? && can_manage_intake_status?(@habitation)
     if @habitation&.intake_site_publication_locked? && permitted[:intake_status] == "published"
       permitted.delete(:intake_status)
@@ -3100,7 +3101,7 @@ class Admin::HabitationsController < Admin::BaseController
       :rental_management_answer,
       :rental_management_flag, :home_corporate_flag, :home_corporate_position,
       :key_location, :key_location_notes, :senha_portaria, :senha_imovel, :ordered_photo_ids, :ordered_picture_indices, :site_hidden_photo_ids, :site_hidden_picture_urls, :intake_status,
-      :use_development_photos_flag,
+      :use_development_photos_flag, :portal_reel,
       rental_guarantee_method: [],
       videos: [], plantas: [], fotos_empreendimento: [], photos: [],
       fichas_cadastro: [], autorizacoes_venda: [], documentos: [],

@@ -1656,6 +1656,38 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads/report" do
+    it "inclui capturas de leads antigos no período em CSV e Excel sem alterar a listagem" do
+      travel_to Time.zone.local(2026, 11, 2, 12) do
+        old = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Antigo capturado na semana", status: "Em Atendimento", created_at: 1.year.ago)
+        2.times { old.activities.create!(kind: "accepted", metadata: { shark_tank: true }, created_at: 2.days.ago) }
+        recent = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Novo da semana", status: "Em Atendimento")
+        outside = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Capturado fora da semana", status: "Em Atendimento", created_at: 1.year.ago)
+        outside.activities.create!(kind: "accepted", metadata: { shark_tank: true }, created_at: 10.days.ago)
+        regular = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Antigo aceite comum", status: "Em Atendimento", created_at: 1.year.ago)
+        regular.activities.create!(kind: "accepted", created_at: 2.days.ago)
+        peer = create(:admin_user, tenant: admin.tenant)
+        hidden = create(:lead, tenant: admin.tenant, admin_user: peer, name: "Outro corretor", status: "Em Atendimento", created_at: 1.year.ago)
+        hidden.activities.create!(kind: "accepted", metadata: { shark_tank: true }, created_at: 2.days.ago)
+        other_tenant = Tenant.create!(name: "Outra conta", slug: "relatorio-#{SecureRandom.hex(4)}")
+        foreign = create(:lead, tenant: other_tenant, name: "Captura de outra conta", created_at: 1.year.ago)
+        foreign.activities.create!(tenant: other_tenant, kind: "accepted", metadata: { shark_tank: true }, created_at: 2.days.ago)
+        filters = { start_date: "2026-10-27", end_date: "2026-11-02", broker_id: admin.id }
+
+        %i[csv xlsx].each do |format|
+          get report_admin_leads_path(filters.merge(format: format))
+          expect(response).to have_http_status(:ok)
+          body = response.body.dup.force_encoding("UTF-8")
+          expect(body.b.scan(old.name.b).size).to eq(1)
+          expect(body).to include(recent.name)
+          expect(body).not_to include(outside.name, regular.name, hidden.name, foreign.name)
+        end
+
+        get admin_leads_path(filters.merge(view: "list"))
+        expect(response).to have_http_status(:ok)
+        expect(Nokogiri::HTML(response.body).css(".lead-list-workspace").text).not_to include(old.name)
+      end
+    end
+
     it "bloqueia exportacao sem permissao de relatorios de leads" do
       profile = Profile.create!(
         tenant: admin.tenant,

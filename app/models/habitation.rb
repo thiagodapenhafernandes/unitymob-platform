@@ -17,6 +17,7 @@ class Habitation < ApplicationRecord
                          :zelador_telefone
 
   # Concerns organizados por responsabilidade
+  include Habitation::PortalReel
   include Habitation::PriceFormatting
   include Habitation::SearchScopes
   include Habitation::CacheableMethods

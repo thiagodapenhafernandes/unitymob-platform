@@ -5,9 +5,10 @@ module Portal
     SCHEMA_URL = "http://www.vivareal.com/schemas/1.0/VRSync".freeze
     SCHEMA_XSD = "http://xml.vivareal.com/vrsync.xsd".freeze
 
-    def initialize(habitations:, integration:)
+    def initialize(habitations:, integration:, base_url: nil)
       @habitations = habitations
       @integration = integration
+      @base_url = base_url
       @identity = Tenants::PublicIdentity.new(integration.tenant)
     end
 
@@ -95,6 +96,10 @@ module Portal
                   attrs = { "medium" => "image", "caption" => "" }
                   attrs["primary"] = "true" if idx.zero?
                   xml.Item(attrs) { xml.text!(url.to_s) }
+                end
+                if @integration.grupozap_family? && habitation.portal_reel_exportable?
+                  url = Rails.application.routes.url_helpers.rails_storage_proxy_url(habitation.portal_reel, host: @base_url)
+                  xml.Item("medium" => "reel") { xml.text!(url) }
                 end
               end
 

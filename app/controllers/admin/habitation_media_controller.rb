@@ -608,11 +608,13 @@ class Admin::HabitationMediaController < Admin::BaseController
       :remove_picture_indices,
       :tour_virtual,
       :podcast_url,
+      :portal_reel,
       videos: [],
       photos: []
     )
 
     permitted = permitted.slice(*media_field_lock_policy.allowed_top_level_params)
+    Habitations::MediaUpdater.normalize_portal_reel_upload!(permitted, habitation: @habitation)
 
     strip_blank_photo_uploads!(permitted)
   end
@@ -694,6 +696,7 @@ class Admin::HabitationMediaController < Admin::BaseController
       ok: true,
       message: message,
       media_url: admin_habitation_media_path(@habitation.id),
+      portal_reel_status: (@habitation.portal_reel.attached? ? "#{@habitation.portal_reel.filename} — #{@habitation.portal_reel_status}" : ""),
       watermark_photos: Habitations::MediaGallery.new(@habitation).watermark_uploads,
       watermark_html: render_to_string(partial: "admin/shared/ui/media_processing_tiles", formats: [:html], locals: {
         habitation: @habitation,

@@ -13,6 +13,21 @@ module Habitations
       attributes
     end
 
+    def self.normalize_portal_reel_upload!(attributes, habitation:)
+      attributes.delete(:portal_reel) if attributes[:portal_reel].blank?
+      return unless attributes.key?(:portal_reel)
+
+      upload = attributes[:portal_reel]
+      unless upload.is_a?(ActionDispatch::Http::UploadedFile)
+        raise ActionController::BadRequest, "Envie um arquivo MP4 ou MOV para o reel"
+      end
+      service_name = Storage::Routing.service_name_for(record: habitation, name: "portal_reel")
+      Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name.to_sym == :local
+      attributes[:portal_reel] = {
+        io: upload, filename: upload.original_filename, content_type: upload.content_type, service_name: service_name
+      }
+    end
+
     def self.blank_upload?(upload)
       upload.blank? || (upload.respond_to?(:size) && upload.size.to_i.zero?)
     end
