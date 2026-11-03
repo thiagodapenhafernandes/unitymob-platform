@@ -800,6 +800,7 @@ Rails.application.routes.draw do
     get "whatsapp", to: "whatsapp#verify"
     post "whatsapp", to: "whatsapp#receive"
     post "portals/:portal/events", to: "portals#events", as: :portal_events
+    post "imovelweb/:route_key", to: "imovelweb#create"
     post "portal_leads/grupozap", to: "portal_leads#grupozap", as: :portal_leads_grupozap
     post "portal_leads/grupozap/:route_key", to: "portal_leads#grupozap"
   end

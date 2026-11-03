@@ -101,6 +101,9 @@ ActiveRecord::Migration.suppress_messages { RemoveRedundantReceiptIndex.new.migr
 require_relative '../db/migrate/20261022190000_create_meta_oauth_attempts'
 ActiveRecord::Migration.suppress_messages { CreateMetaOauthAttempts.new.migrate(:up) }
 
+require_relative "../db/migrate/20261103180000_add_imovelweb_routes"
+ActiveRecord::Migration.suppress_messages { AddImovelwebRoutes.new.migrate(:up) }
+
 RSpec.configure do |config|
   config.include Rack::Test::Methods
 

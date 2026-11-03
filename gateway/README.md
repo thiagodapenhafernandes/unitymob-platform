@@ -276,3 +276,10 @@ Implementação aditiva: índice `account_memberships`, credenciais exclusivas p
 Contratos, configuração privada, reconciliador e rollback: [roteiro de ativação](../docs/discovery-v2-activation.md). Execute as migrations antes de subir o processo novo. Configure a manutenção horária `bundle exec rake discovery:cleanup`.
 
 O endpoint antigo continua compatível para um destino único. Com múltiplos vínculos V2, responde `409 multiple_accounts`; é necessário o cliente V2 para escolher a conta. Não existe fallback silencioso para o último CRM sincronizado nesse caso.
+
+## Leads diretos Imovelweb
+
+Conector independente do Grupo OLX, desativado por padrão. Usa credenciais da
+Unitymob e rotas por cliente/ambiente, recebimento durável assíncrono e autenticação
+própria. Preparação e homologação assistida da Salute: [roteiro completo](../docs/imovelweb-direct-leads.md).
+Não configurar o callback nem habilitar produção antes da homologação autorizada.

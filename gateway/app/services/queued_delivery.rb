@@ -15,6 +15,9 @@ module Gateway
     def identity(attributes)
       provider = attributes.fetch(:provider)
       payload = attributes.fetch(:payload)
+      if provider == 'imovelweb'
+        return Digest::SHA256.hexdigest(JSON.generate([provider, attributes.fetch(:webhook_route).id, attributes.fetch(:external_id)]))
+      end
       detail = if provider == 'meta' && attributes[:external_id].present?
         [attributes[:page_id], attributes[:form_id], attributes[:external_id]]
       else

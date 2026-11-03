@@ -10,6 +10,7 @@ module Gateway
       delivered = 0
       pending = WebhookEvent.where(queue_finished_at: nil).where.not(queued_at: nil)
         .where('next_retry_at IS NULL OR next_retry_at <= ?', Time.now)
+      pending = pending.where.not(provider: 'imovelweb') unless ENV['IMOVELWEB_RECEIVING_ENABLED'] == 'true'
       DeliveryDestination.where(id: pending.select(:delivery_destination_id))
         .where('available_at <= ?', Time.now).order(:available_at).limit(100).pluck(:id).each do |id|
         DeliveryDestination.transaction do
@@ -17,7 +18,9 @@ module Gateway
           destination = DeliveryDestination.lock('FOR NO KEY UPDATE SKIP LOCKED').find_by(id: id)
           next unless destination && destination.available_at <= Time.now
 
-          event = WebhookEvent.where(delivery_destination: destination, queue_finished_at: nil)
+          scope = WebhookEvent.where(delivery_destination: destination, queue_finished_at: nil)
+          scope = scope.where.not(provider: 'imovelweb') unless ENV['IMOVELWEB_RECEIVING_ENABLED'] == 'true'
+          event = scope
             .where.not(queued_at: nil).where('next_retry_at IS NULL OR next_retry_at <= ?', Time.now).order(:id).first
           next unless event
           event.with_lock do
@@ -39,7 +42,7 @@ module Gateway
             else
               UnroutedEventAlerter.call(event)
             end
-            MirrorForwarder.call(event: event, raw_body: event.raw_body) if event.attempts <= 1
+            MirrorForwarder.call(event: event, raw_body: event.raw_body) if event.attempts <= 1 && event.provider != "imovelweb"
             finished = !event.webhook_route || event.forwarded? || event.attempts >= MAX_ATTEMPTS
             event.update!(queue_finished_at: Time.now) if finished
             destination.update!(available_at: event.last_error.to_s.start_with?('HTTP 429:') ? event.next_retry_at : Time.now + INTERVAL)

@@ -122,3 +122,49 @@ namespace :admin do
     puts Gateway::AdminAuth.hash_password(password)
   end
 end
+
+namespace :imovelweb do
+  desc 'Configure Unitymob callbacks and BOTH lead subscriptions. Dry-run unless APPLY=true. ENVIRONMENT CALLBACK_URL'
+  task :configure_callbacks do
+    environment = ENV.fetch('ENVIRONMENT', 'sandbox')
+    abort 'Invalid environment' unless %w[sandbox production].include?(environment)
+    url = ENV.fetch('CALLBACK_URL')
+    abort 'Callback must use the environment-specific Imovelweb path' unless URI(url).path == "/webhooks/imovelweb/#{environment}"
+    puts "environment=#{environment} events=CONTACTO,CONTACTO_MENSAJE apply=#{ENV['APPLY'] == 'true'}"
+    if ENV['APPLY'] == 'true'
+      client = Gateway::ImovelwebClient.new(environment: environment)
+      client.configure_callbacks(url: url, token: ENV.fetch("IMOVELWEB_#{environment.upcase}_CALLBACK_TOKEN"))
+      confirmation = client.callbacks
+      abort 'Callback not confirmed' unless confirmation.is_a?(Hash) && confirmation['url'] == url
+      puts 'callback_confirmed=true'
+    end
+  end
+
+  desc 'Associate ONE listing to the readonly interface. Dry-run unless APPLY=true. ENVIRONMENT CLIENT_CODE REFERENCE EXTERNAL_ID'
+  task :associate_listing do
+    environment = ENV.fetch('ENVIRONMENT', 'sandbox')
+    arguments = { client_code: ENV.fetch('CLIENT_CODE'), reference: ENV.fetch('REFERENCE'), external_id: ENV.fetch('EXTERNAL_ID') }
+    puts "environment=#{environment} apply=#{ENV['APPLY'] == 'true'}"
+    if ENV['APPLY'] == 'true'
+      Gateway::ImovelwebClient.new(environment: environment).associate_listing(**arguments)
+      puts 'listing_associated=true'
+    end
+  end
+end
+
+namespace :imovelweb do
+  desc 'Requeue ONE failed Imovelweb receipt after correction. Dry-run unless APPLY=true. EVENT_ID (local numeric receipt ID)'
+  task :retry_event do
+    abort 'Imovelweb receiving/worker disabled' unless ENV['IMOVELWEB_RECEIVING_ENABLED'] == 'true' && Gateway::QueuedDelivery.enabled?
+    event = WebhookEvent.find_by!(id: ENV.fetch('EVENT_ID'), provider: 'imovelweb')
+    abort 'Route not active' unless event.webhook_route&.active?
+    abort 'Receipt already forwarded' if event.forwarded?
+    puts "receipt_id=#{event.id} status=#{event.status} apply=#{ENV['APPLY'] == 'true'}"
+    if ENV['APPLY'] == 'true'
+      event.with_lock do
+        abort 'Receipt already forwarded' if event.forwarded?
+        event.update!(status: 'received', attempts: 0, next_retry_at: nil, queue_finished_at: nil, last_error: nil)
+      end
+    end
+  end
+end

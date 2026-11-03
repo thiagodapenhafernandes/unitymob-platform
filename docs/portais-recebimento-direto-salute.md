@@ -4,8 +4,9 @@ Preparação em 11/10/2026. Não representa conexão habilitada ou entrega homol
 
 ## Situação
 
-Imovelweb, Imovelweb 2, Casa Mineira e Chaves na Mão publicam imóveis,
-mas não possuem conector dedicado de entrada de leads na Unitymob.
+Imovelweb possui implementação local do conector direto, ainda não publicada ou
+homologada: ver `docs/imovelweb-direct-leads.md`. Isso não representa recebimento
+ativo em produção. Casa Mineira e Chaves na Mão continuam sem conector dedicado.
 O recebimento Grupo OLX existente deve ser preservado.
 
 O admin oferece uma solicitação por conta em **Portais → canal → Recebimento direto**.

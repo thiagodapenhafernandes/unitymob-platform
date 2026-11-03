@@ -474,6 +474,7 @@ module Leads
       origin = routing_lead.origin.to_s.downcase
       return rule.source_rd_station? if routing_lead.lead_type == "rd_station"
 
+      return rule.source_portal? if routing_lead.attribution_source == "imovelweb" && routing_lead.attribution_data.to_h["provider"] == "imovelweb_direct"
       return rule.source_tiktok? if routing_lead.attribution_channel == "tiktok_ads"
       return true if rule.source_linkedin? && routing_lead.attribution_channel == "linkedin_ads" && routing_lead.attribution_source == "linkedin"
       return true if rule.source_meta? && meta_origin?(origin)

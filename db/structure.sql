@@ -3909,6 +3909,118 @@ ALTER SEQUENCE public.home_settings_id_seq OWNED BY public.home_settings.id;
 
 
 --
+-- Name: imovelweb_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.imovelweb_connections (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    route_key character varying NOT NULL,
+    client_code character varying NOT NULL,
+    environment character varying DEFAULT 'sandbox'::character varying NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    authorized_at timestamp(6) without time zone,
+    last_lead_received_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT imovelweb_environment CHECK (((environment)::text = ANY ((ARRAY['sandbox'::character varying, 'production'::character varying])::text[])))
+);
+
+
+--
+-- Name: imovelweb_connections_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.imovelweb_connections_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: imovelweb_connections_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.imovelweb_connections_id_seq OWNED BY public.imovelweb_connections.id;
+
+
+--
+-- Name: imovelweb_lead_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.imovelweb_lead_receipts (
+    id bigint NOT NULL,
+    imovelweb_connection_id bigint NOT NULL,
+    lead_id bigint,
+    event_id character varying NOT NULL,
+    event_type character varying NOT NULL,
+    payload text NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    reason character varying,
+    received_at timestamp(6) without time zone NOT NULL,
+    processed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT imovelweb_receipt_status CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'processed'::character varying, 'quarantined'::character varying])::text[])))
+);
+
+
+--
+-- Name: imovelweb_lead_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.imovelweb_lead_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: imovelweb_lead_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.imovelweb_lead_receipts_id_seq OWNED BY public.imovelweb_lead_receipts.id;
+
+
+--
+-- Name: imovelweb_listings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.imovelweb_listings (
+    id bigint NOT NULL,
+    imovelweb_connection_id bigint NOT NULL,
+    habitation_id bigint NOT NULL,
+    reference character varying NOT NULL,
+    external_id character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: imovelweb_listings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.imovelweb_listings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: imovelweb_listings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.imovelweb_listings_id_seq OWNED BY public.imovelweb_listings.id;
+
+
+--
 -- Name: in_app_notifications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -9096,6 +9208,27 @@ ALTER TABLE ONLY public.home_settings ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: imovelweb_connections id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_connections ALTER COLUMN id SET DEFAULT nextval('public.imovelweb_connections_id_seq'::regclass);
+
+
+--
+-- Name: imovelweb_lead_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_lead_receipts ALTER COLUMN id SET DEFAULT nextval('public.imovelweb_lead_receipts_id_seq'::regclass);
+
+
+--
+-- Name: imovelweb_listings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_listings ALTER COLUMN id SET DEFAULT nextval('public.imovelweb_listings_id_seq'::regclass);
+
+
+--
 -- Name: in_app_notifications id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10478,6 +10611,30 @@ ALTER TABLE ONLY public.home_sections
 
 ALTER TABLE ONLY public.home_settings
     ADD CONSTRAINT home_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: imovelweb_connections imovelweb_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_connections
+    ADD CONSTRAINT imovelweb_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: imovelweb_lead_receipts imovelweb_lead_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_lead_receipts
+    ADD CONSTRAINT imovelweb_lead_receipts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: imovelweb_listings imovelweb_listings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_listings
+    ADD CONSTRAINT imovelweb_listings_pkey PRIMARY KEY (id);
 
 
 --
@@ -14945,6 +15102,83 @@ CREATE UNIQUE INDEX index_home_settings_on_unique_tenant_id ON public.home_setti
 
 
 --
+-- Name: index_imovelweb_connections_on_environment_and_client_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_imovelweb_connections_on_environment_and_client_code ON public.imovelweb_connections USING btree (environment, client_code);
+
+
+--
+-- Name: index_imovelweb_connections_on_route_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_imovelweb_connections_on_route_key ON public.imovelweb_connections USING btree (route_key);
+
+
+--
+-- Name: index_imovelweb_connections_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_imovelweb_connections_on_tenant_id ON public.imovelweb_connections USING btree (tenant_id);
+
+
+--
+-- Name: index_imovelweb_lead_receipts_on_imovelweb_connection_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_imovelweb_lead_receipts_on_imovelweb_connection_id ON public.imovelweb_lead_receipts USING btree (imovelweb_connection_id);
+
+
+--
+-- Name: index_imovelweb_lead_receipts_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_imovelweb_lead_receipts_on_lead_id ON public.imovelweb_lead_receipts USING btree (lead_id);
+
+
+--
+-- Name: index_imovelweb_lead_receipts_on_status_and_received_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_imovelweb_lead_receipts_on_status_and_received_at ON public.imovelweb_lead_receipts USING btree (status, received_at);
+
+
+--
+-- Name: index_imovelweb_listing_external; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_imovelweb_listing_external ON public.imovelweb_listings USING btree (imovelweb_connection_id, external_id) WHERE (external_id IS NOT NULL);
+
+
+--
+-- Name: index_imovelweb_listing_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_imovelweb_listing_reference ON public.imovelweb_listings USING btree (imovelweb_connection_id, reference);
+
+
+--
+-- Name: index_imovelweb_listings_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_imovelweb_listings_on_habitation_id ON public.imovelweb_listings USING btree (habitation_id);
+
+
+--
+-- Name: index_imovelweb_listings_on_imovelweb_connection_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_imovelweb_listings_on_imovelweb_connection_id ON public.imovelweb_listings USING btree (imovelweb_connection_id);
+
+
+--
+-- Name: index_imovelweb_receipt_identity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_imovelweb_receipt_identity ON public.imovelweb_lead_receipts USING btree (imovelweb_connection_id, event_id);
+
+
+--
 -- Name: index_in_app_notifications_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15677,6 +15911,13 @@ CREATE INDEX index_leads_on_tenant_id_and_property_id ON public.leads USING btre
 --
 
 CREATE INDEX index_leads_on_tenant_id_and_status ON public.leads USING btree (tenant_id, status);
+
+
+--
+-- Name: index_leads_on_tenant_imovelweb_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_on_tenant_imovelweb_event ON public.leads USING btree (tenant_id, ((other_information ->> 'imovelweb_event_id'::text))) WHERE ((other_information ->> 'imovelweb_event_id'::text) IS NOT NULL);
 
 
 --
@@ -18416,6 +18657,14 @@ ALTER TABLE ONLY public.habitation_exports
 
 
 --
+-- Name: imovelweb_lead_receipts fk_rails_14504474dc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_lead_receipts
+    ADD CONSTRAINT fk_rails_14504474dc FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE SET NULL;
+
+
+--
 -- Name: footer_links fk_rails_14fda2a7a0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20104,6 +20353,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: imovelweb_connections fk_rails_9e4fb28558; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_connections
+    ADD CONSTRAINT fk_rails_9e4fb28558 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: lead_stage_changes fk_rails_9fe567e849; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20397,6 +20654,14 @@ ALTER TABLE ONLY public.manual_checkin_requests
 
 ALTER TABLE ONLY public.marketing_campaigns
     ADD CONSTRAINT fk_rails_bac0f15c01 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: imovelweb_lead_receipts fk_rails_bad981aa9e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_lead_receipts
+    ADD CONSTRAINT fk_rails_bad981aa9e FOREIGN KEY (imovelweb_connection_id) REFERENCES public.imovelweb_connections(id);
 
 
 --
@@ -20725,6 +20990,14 @@ ALTER TABLE ONLY public.lead_labels
 
 ALTER TABLE ONLY public.automation_rules
     ADD CONSTRAINT fk_rails_cf6a0dd51b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: imovelweb_listings fk_rails_cf81223076; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_listings
+    ADD CONSTRAINT fk_rails_cf81223076 FOREIGN KEY (imovelweb_connection_id) REFERENCES public.imovelweb_connections(id);
 
 
 --
@@ -21352,6 +21625,14 @@ ALTER TABLE ONLY public.habitation_availability_blocks
 
 
 --
+-- Name: imovelweb_listings fk_rails_ffa64443be; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imovelweb_listings
+    ADD CONSTRAINT fk_rails_ffa64443be FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
 -- Name: whatsapp_attendances fk_rails_fff8adf61d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21368,6 +21649,8 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261103180100'),
+('20261103180000'),
 ('20261029180000'),
 ('20261027190000'),
 ('20261027160000'),
