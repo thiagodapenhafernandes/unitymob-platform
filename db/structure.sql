@@ -1,4 +1,4 @@
-\restrict 6YUWWpV3JqI62jeNSzGXbnbi96llhutSN3dEXkf6OHxExnQta58iWoBaQ57gOZi
+\restrict jLDXILON694tqyJrgHGnm8Rsb5Gds5oR9gCTrfo2P7wkVGnJngHINHjEYuPtinf
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -1044,7 +1044,8 @@ CREATE TABLE public.appointments (
     invite_via_email boolean DEFAULT false NOT NULL,
     invite_via_whatsapp boolean DEFAULT false NOT NULL,
     invite_email_recipients text,
-    reminder_state jsonb DEFAULT '{}'::jsonb NOT NULL
+    reminder_state jsonb DEFAULT '{}'::jsonb NOT NULL,
+    completed_at timestamp(6) without time zone
 );
 
 
@@ -2543,8 +2544,11 @@ CREATE TABLE public.distribution_rules (
     contingency_unavailable_minutes integer DEFAULT 0 NOT NULL,
     contingency_pool_minutes integer DEFAULT 30 NOT NULL,
     contingency_acceptance_minutes integer DEFAULT 30 NOT NULL,
+    first_contact_sla_minutes integer,
+    origin_paths jsonb DEFAULT '[]'::jsonb NOT NULL,
     excluded_meta_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
     property_cities jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT chk_distribution_rules_first_contact_sla_positive CHECK (((first_contact_sla_minutes IS NULL) OR (first_contact_sla_minutes > 0))),
     CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0)))
 );
 
@@ -3880,8 +3884,8 @@ CREATE TABLE public.home_settings (
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
     daily_rental_search_enabled boolean DEFAULT false NOT NULL,
-    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
-    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
 );
 
 
@@ -4315,6 +4319,112 @@ ALTER SEQUENCE public.lead_labels_id_seq OWNED BY public.lead_labels.id;
 
 
 --
+-- Name: lead_origin_aliases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_origin_aliases (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    normalized_value character varying NOT NULL,
+    raw_value character varying NOT NULL,
+    origin_source character varying NOT NULL,
+    origin_medium character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_origin_aliases_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_origin_aliases_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_origin_aliases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_origin_aliases_id_seq OWNED BY public.lead_origin_aliases.id;
+
+
+--
+-- Name: lead_origin_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_origin_entries (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    level integer NOT NULL,
+    key character varying NOT NULL,
+    name character varying NOT NULL,
+    parent_key character varying,
+    channel character varying,
+    detail_kind character varying DEFAULT 'none'::character varying NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_origin_entries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_origin_entries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_origin_entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_origin_entries_id_seq OWNED BY public.lead_origin_entries.id;
+
+
+--
+-- Name: lead_origin_resolutions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_origin_resolutions (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_origin_resolutions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_origin_resolutions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_origin_resolutions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_origin_resolutions_id_seq OWNED BY public.lead_origin_resolutions.id;
+
+
+--
 -- Name: lead_pipeline_stage_automation_executions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4487,10 +4597,12 @@ CREATE TABLE public.lead_pipeline_stages (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     meta_conversion_event character varying,
+    sla_minutes integer,
     google_event character varying DEFAULT 'none'::character varying NOT NULL,
     google_event_trigger character varying DEFAULT 'stage_entered'::character varying NOT NULL,
     meta_event_trigger character varying DEFAULT 'stage_entered'::character varying NOT NULL,
     google_qualification_enabled boolean DEFAULT false NOT NULL,
+    CONSTRAINT chk_lead_pipeline_stages_sla_positive CHECK (((sla_minutes IS NULL) OR (sla_minutes > 0))),
     CONSTRAINT lead_stages_google_event CHECK (((google_event)::text = ANY ((ARRAY['none'::character varying, 'qualify_lead'::character varying, 'visit'::character varying, 'proposal'::character varying, 'closed'::character varying])::text[])))
 );
 
@@ -4586,6 +4698,44 @@ ALTER SEQUENCE public.lead_property_interests_id_seq OWNED BY public.lead_proper
 
 
 --
+-- Name: lead_property_suggestion_feedbacks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_property_suggestion_feedbacks (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    habitation_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    decision character varying NOT NULL,
+    reason character varying,
+    match_score integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_suggestion_feedbacks_decision CHECK (((decision)::text = ANY ((ARRAY['accepted'::character varying, 'rejected'::character varying])::text[])))
+);
+
+
+--
+-- Name: lead_property_suggestion_feedbacks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_property_suggestion_feedbacks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_property_suggestion_feedbacks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_property_suggestion_feedbacks_id_seq OWNED BY public.lead_property_suggestion_feedbacks.id;
+
+
+--
 -- Name: lead_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4659,6 +4809,45 @@ ALTER SEQUENCE public.lead_settings_id_seq OWNED BY public.lead_settings.id;
 
 
 --
+-- Name: lead_stage_changes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_stage_changes (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    from_stage_id bigint,
+    to_stage_id bigint,
+    from_status character varying,
+    to_status character varying,
+    admin_user_id bigint,
+    source character varying,
+    changed_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_stage_changes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_stage_changes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_stage_changes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_stage_changes_id_seq OWNED BY public.lead_stage_changes.id;
+
+
+--
 -- Name: leads; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4724,6 +4913,17 @@ CREATE TABLE public.leads (
     contingency_pending boolean DEFAULT false NOT NULL,
     c2s_export_external_id character varying,
     c2s_exported_at timestamp(6) without time zone,
+    origin_channel character varying,
+    origin_source character varying,
+    origin_medium character varying,
+    origin_detail jsonb DEFAULT '{}'::jsonb NOT NULL,
+    origin_raw character varying,
+    entry_method character varying,
+    imported_from character varying,
+    origin_pending boolean DEFAULT false NOT NULL,
+    origin_manually_selected boolean DEFAULT false NOT NULL,
+    origin_input jsonb DEFAULT '{}'::jsonb NOT NULL,
+    origin_resolution jsonb DEFAULT '{}'::jsonb NOT NULL,
     google_business_type character varying,
     closing_commission_cents bigint,
     CONSTRAINT leads_closing_commission_range CHECK (((closing_commission_cents >= 0) AND (closing_commission_cents <= '999999999999'::bigint)))
@@ -7630,7 +7830,8 @@ CREATE TABLE public.user_meta_integrations (
     ad_account_name character varying,
     last_sync_error text,
     selected_page_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
-    ad_accounts jsonb DEFAULT '{}'::jsonb NOT NULL
+    ad_accounts jsonb DEFAULT '{}'::jsonb NOT NULL,
+    last_webhook_at timestamp(6) without time zone
 );
 
 
@@ -7911,7 +8112,11 @@ CREATE TABLE public.whatsapp_business_integrations (
     inbox_attendance_enabled boolean DEFAULT false CONSTRAINT whatsapp_business_integration_inbox_attendance_enabled_not_null NOT NULL,
     sale_redirect_after_capture boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_sale_redirect_after_captur_not_null NOT NULL,
     rent_redirect_after_capture boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_rent_redirect_after_captur_not_null NOT NULL,
-    sale_rent_redirect_after_capture boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_sale_rent_redirect_after_c_not_null NOT NULL
+    sale_rent_redirect_after_capture boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_sale_rent_redirect_after_c_not_null NOT NULL,
+    last_checked_at timestamp(6) without time zone,
+    last_check_status character varying,
+    last_check_message character varying,
+    last_webhook_at timestamp(6) without time zone
 );
 
 
@@ -8968,6 +9173,27 @@ ALTER TABLE ONLY public.lead_labels ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: lead_origin_aliases id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_aliases ALTER COLUMN id SET DEFAULT nextval('public.lead_origin_aliases_id_seq'::regclass);
+
+
+--
+-- Name: lead_origin_entries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_entries ALTER COLUMN id SET DEFAULT nextval('public.lead_origin_entries_id_seq'::regclass);
+
+
+--
+-- Name: lead_origin_resolutions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_resolutions ALTER COLUMN id SET DEFAULT nextval('public.lead_origin_resolutions_id_seq'::regclass);
+
+
+--
 -- Name: lead_pipeline_stage_automation_executions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9017,10 +9243,24 @@ ALTER TABLE ONLY public.lead_property_interests ALTER COLUMN id SET DEFAULT next
 
 
 --
+-- Name: lead_property_suggestion_feedbacks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_suggestion_feedbacks ALTER COLUMN id SET DEFAULT nextval('public.lead_property_suggestion_feedbacks_id_seq'::regclass);
+
+
+--
 -- Name: lead_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.lead_settings ALTER COLUMN id SET DEFAULT nextval('public.lead_settings_id_seq'::regclass);
+
+
+--
+-- Name: lead_stage_changes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_stage_changes ALTER COLUMN id SET DEFAULT nextval('public.lead_stage_changes_id_seq'::regclass);
 
 
 --
@@ -10329,6 +10569,30 @@ ALTER TABLE ONLY public.lead_labels
 
 
 --
+-- Name: lead_origin_aliases lead_origin_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_aliases
+    ADD CONSTRAINT lead_origin_aliases_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_origin_entries lead_origin_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_entries
+    ADD CONSTRAINT lead_origin_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_origin_resolutions lead_origin_resolutions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_resolutions
+    ADD CONSTRAINT lead_origin_resolutions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: lead_pipeline_stage_automation_executions lead_pipeline_stage_automation_executions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10385,11 +10649,27 @@ ALTER TABLE ONLY public.lead_property_interests
 
 
 --
+-- Name: lead_property_suggestion_feedbacks lead_property_suggestion_feedbacks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_suggestion_feedbacks
+    ADD CONSTRAINT lead_property_suggestion_feedbacks_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: lead_settings lead_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.lead_settings
     ADD CONSTRAINT lead_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_stage_changes lead_stage_changes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_stage_changes
+    ADD CONSTRAINT lead_stage_changes_pkey PRIMARY KEY (id);
 
 
 --
@@ -11515,6 +11795,55 @@ CREATE INDEX idx_lead_activities_tenant_kind_lead_created ON public.lead_activit
 
 
 --
+-- Name: idx_lead_origin_aliases_unique_value; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_lead_origin_aliases_unique_value ON public.lead_origin_aliases USING btree (tenant_id, normalized_value);
+
+
+--
+-- Name: idx_lead_origin_entries_unique_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_lead_origin_entries_unique_key ON public.lead_origin_entries USING btree (tenant_id, level, key, parent_key);
+
+
+--
+-- Name: idx_lead_stage_changes_on_lead_and_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_stage_changes_on_lead_and_time ON public.lead_stage_changes USING btree (lead_id, changed_at);
+
+
+--
+-- Name: idx_lead_stage_changes_on_tenant_status_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_stage_changes_on_tenant_status_time ON public.lead_stage_changes USING btree (tenant_id, to_status, changed_at);
+
+
+--
+-- Name: idx_leads_on_tenant_origin_channel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_on_tenant_origin_channel ON public.leads USING btree (tenant_id, origin_channel);
+
+
+--
+-- Name: idx_leads_on_tenant_origin_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_on_tenant_origin_path ON public.leads USING btree (tenant_id, origin_source, origin_medium);
+
+
+--
+-- Name: idx_leads_on_tenant_pending_origin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_on_tenant_pending_origin ON public.leads USING btree (tenant_id, origin_raw) WHERE origin_pending;
+
+
+--
 -- Name: idx_leads_tenant_status_admin_user; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11960,6 +12289,20 @@ CREATE UNIQUE INDEX idx_stage_transitions_on_unique_next ON public.lead_pipeline
 --
 
 CREATE INDEX idx_store_shifts_agent_day_active ON public.store_shifts USING btree (admin_user_id, day_of_week, active);
+
+
+--
+-- Name: idx_suggestion_feedbacks_on_lead_and_habitation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_suggestion_feedbacks_on_lead_and_habitation ON public.lead_property_suggestion_feedbacks USING btree (lead_id, habitation_id);
+
+
+--
+-- Name: idx_suggestion_feedbacks_on_tenant_and_decision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suggestion_feedbacks_on_tenant_and_decision ON public.lead_property_suggestion_feedbacks USING btree (tenant_id, decision);
 
 
 --
@@ -14882,6 +15225,41 @@ CREATE INDEX index_lead_labels_on_tenant_id ON public.lead_labels USING btree (t
 
 
 --
+-- Name: index_lead_origin_aliases_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_origin_aliases_on_tenant_id ON public.lead_origin_aliases USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_origin_entries_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_origin_entries_on_tenant_id ON public.lead_origin_entries USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_origin_entries_unique_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_lead_origin_entries_unique_source ON public.lead_origin_entries USING btree (tenant_id, key) WHERE (level = 1);
+
+
+--
+-- Name: index_lead_origin_resolutions_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_origin_resolutions_on_lead_id ON public.lead_origin_resolutions USING btree (lead_id);
+
+
+--
+-- Name: index_lead_origin_resolutions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_origin_resolutions_on_tenant_id ON public.lead_origin_resolutions USING btree (tenant_id);
+
+
+--
 -- Name: index_lead_pipeline_stage_automation_executions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14987,6 +15365,34 @@ CREATE INDEX index_lead_property_interests_on_tenant_id ON public.lead_property_
 
 
 --
+-- Name: index_lead_property_suggestion_feedbacks_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_property_suggestion_feedbacks_on_admin_user_id ON public.lead_property_suggestion_feedbacks USING btree (admin_user_id);
+
+
+--
+-- Name: index_lead_property_suggestion_feedbacks_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_property_suggestion_feedbacks_on_habitation_id ON public.lead_property_suggestion_feedbacks USING btree (habitation_id);
+
+
+--
+-- Name: index_lead_property_suggestion_feedbacks_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_property_suggestion_feedbacks_on_lead_id ON public.lead_property_suggestion_feedbacks USING btree (lead_id);
+
+
+--
+-- Name: index_lead_property_suggestion_feedbacks_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_property_suggestion_feedbacks_on_tenant_id ON public.lead_property_suggestion_feedbacks USING btree (tenant_id);
+
+
+--
 -- Name: index_lead_settings_on_default_distribution_rule_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15005,6 +15411,20 @@ CREATE INDEX index_lead_settings_on_tenant_id ON public.lead_settings USING btre
 --
 
 CREATE UNIQUE INDEX index_lead_settings_on_unique_tenant_id ON public.lead_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_stage_changes_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_stage_changes_on_lead_id ON public.lead_stage_changes USING btree (lead_id);
+
+
+--
+-- Name: index_lead_stage_changes_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_stage_changes_on_tenant_id ON public.lead_stage_changes USING btree (tenant_id);
 
 
 --
@@ -15614,6 +16034,13 @@ CREATE INDEX index_operational_user_sessions_on_tenant_id_and_last_seen_at ON pu
 --
 
 CREATE UNIQUE INDEX index_operational_user_sessions_on_token ON public.operational_user_sessions USING btree (token);
+
+
+--
+-- Name: index_origin_resolutions_on_tenant_lead_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_origin_resolutions_on_tenant_lead_time ON public.lead_origin_resolutions USING btree (tenant_id, lead_id, created_at);
 
 
 --
@@ -18245,11 +18672,27 @@ ALTER TABLE ONLY public.checkin_audit_logs
 
 
 --
+-- Name: lead_property_suggestion_feedbacks fk_rails_290412bba3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_suggestion_feedbacks
+    ADD CONSTRAINT fk_rails_290412bba3 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: footer_settings fk_rails_294347decd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.footer_settings
     ADD CONSTRAINT fk_rails_294347decd FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_property_suggestion_feedbacks fk_rails_29d91fd16d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_suggestion_feedbacks
+    ADD CONSTRAINT fk_rails_29d91fd16d FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -19365,6 +19808,14 @@ ALTER TABLE ONLY public.automation_workflow_versions
 
 
 --
+-- Name: lead_property_suggestion_feedbacks fk_rails_86c4da13bd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_suggestion_feedbacks
+    ADD CONSTRAINT fk_rails_86c4da13bd FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: access_control_rules fk_rails_8770e6ed8e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19653,6 +20104,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: lead_stage_changes fk_rails_9fe567e849; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_stage_changes
+    ADD CONSTRAINT fk_rails_9fe567e849 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: commercial_contract_proposals fk_rails_9fedbc2fdb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19749,6 +20208,14 @@ ALTER TABLE ONLY public.captacao_goals
 
 
 --
+-- Name: lead_origin_resolutions fk_rails_a8908ccec0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_resolutions
+    ADD CONSTRAINT fk_rails_a8908ccec0 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: in_app_notifications fk_rails_a8a5869b74; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19786,6 +20253,14 @@ ALTER TABLE ONLY public.public_form_submissions
 
 ALTER TABLE ONLY public.commercial_contract_events
     ADD CONSTRAINT fk_rails_ac64d95b71 FOREIGN KEY (proposal_id) REFERENCES public.commercial_contract_proposals(id);
+
+
+--
+-- Name: lead_stage_changes fk_rails_ace58df1b0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_stage_changes
+    ADD CONSTRAINT fk_rails_ace58df1b0 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -20037,6 +20512,14 @@ ALTER TABLE ONLY public.trusted_devices
 
 
 --
+-- Name: lead_origin_aliases fk_rails_c1ff36587c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_aliases
+    ADD CONSTRAINT fk_rails_c1ff36587c FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: seo_conversion_events fk_rails_c272ff638d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20242,6 +20725,14 @@ ALTER TABLE ONLY public.lead_labels
 
 ALTER TABLE ONLY public.automation_rules
     ADD CONSTRAINT fk_rails_cf6a0dd51b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_origin_entries fk_rails_cfba7fe169; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_entries
+    ADD CONSTRAINT fk_rails_cfba7fe169 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -20533,6 +21024,14 @@ ALTER TABLE ONLY public.ai_property_share_audit_events
 
 
 --
+-- Name: lead_property_suggestion_feedbacks fk_rails_e4bc86acfe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_suggestion_feedbacks
+    ADD CONSTRAINT fk_rails_e4bc86acfe FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
 -- Name: admin_users fk_rails_e4ce59bd8f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20570,6 +21069,14 @@ ALTER TABLE ONLY public.manual_checkin_requests
 
 ALTER TABLE ONLY public.banners
     ADD CONSTRAINT fk_rails_e823ce7552 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_origin_resolutions fk_rails_e875f66ccd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_origin_resolutions
+    ADD CONSTRAINT fk_rails_e875f66ccd FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -20856,7 +21363,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 6YUWWpV3JqI62jeNSzGXbnbi96llhutSN3dEXkf6OHxExnQta58iWoBaQ57gOZi
+\unrestrict jLDXILON694tqyJrgHGnm8Rsb5Gds5oR9gCTrfo2P7wkVGnJngHINHjEYuPtinf
 
 SET search_path TO "$user", public;
 
@@ -20873,6 +21380,19 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20261021150000'),
 ('20261019020000'),
 ('20261019010000'),
+('20261014070500'),
+('20261014070400'),
+('20261014070300'),
+('20261014070200'),
+('20261014070100'),
+('20261014070000'),
+('20261014060000'),
+('20261014050000'),
+('20261014040300'),
+('20261014040200'),
+('20261014040100'),
+('20261014040000'),
+('20261014030000'),
 ('20261012180000'),
 ('20261011191320'),
 ('20261010010000'),

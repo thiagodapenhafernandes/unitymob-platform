@@ -13,7 +13,7 @@
                     size: :xxl
                   ) %>
             </div>
-            <%= ax_file_field(form: f, method: :avatar, label: "Foto de perfil", tooltip: "Formatos aceitos: JPG e PNG.", button_label: "Escolher foto", class_name: "au-avatar-row__field") %>
+            <%= ax_file_field(form: f, method: :avatar, label: "Foto de perfil", tooltip: "Formatos aceitos: JPG e PNG.", button_label: "Escolher foto", class_name: "au-avatar-row__field", preserve_attachment: true) %>
           </div>
 
           <%= ax_field_grid do %>

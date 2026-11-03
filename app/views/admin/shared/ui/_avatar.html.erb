@@ -3,7 +3,7 @@
   image_blob = image.blob if image_attached && image.respond_to?(:blob)
   image_renderable =
     if image_blob
-      image_blob.image? && (image_blob.service_name != "local" || image_blob.service.exist?(image_blob.key))
+      image_blob.persisted? && image_blob.image? && (image_blob.service_name != "local" || image_blob.service.exist?(image_blob.key))
     else
       image_attached
     end

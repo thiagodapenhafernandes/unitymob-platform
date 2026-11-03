@@ -2,6 +2,10 @@
   input_id ||= "#{form.object_name}_#{method}"
   field_classes = ["ax-field", "ax-file-field", class_name, field_class].compact.join(" ")
   options = (local_assigns[:options] || {}).dup
+  preserve_attachment = options.delete(:preserve_attachment)
+  attachment = form.object.public_send(method) if preserve_attachment
+  retained_blob = attachment.blob if attachment&.attached? && attachment.blob.persisted?
+  empty_label = retained_blob.filename.to_s if retained_blob
   input_data = (options.delete(:data) || {}).dup
   input_data[:ax_file_field_target] = "input"
   input_data[:action] = [input_data[:action], "change->ax-file-field#sync"].compact_blank.join(" ")
@@ -13,6 +17,7 @@
      data-ax-file-field-empty-label-value="<%= empty_label %>">
   <%= ax_field_label(form, method, text: label, tooltip:) %>
   <div class="ax-file-field__control">
+    <%= form.hidden_field method, value: retained_blob.signed_id, id: nil if retained_blob %>
     <%= form.file_field method,
           options.merge(
             id: input_id,
