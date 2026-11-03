@@ -13,3 +13,11 @@ Rails.application.config.filter_parameters += [
   :image, :verifier, :challenge, :contact_phone, :expected_email,
   /\A(?:note\.body|lead\.(?:name|email|phone)|task\.title)\z/
 ]
+
+# Only the normalized Imovelweb callback envelope; do not expose contact data in request logs.
+Rails.application.config.filter_parameters << lambda do |key, value, parameters|
+  if parameters["event_type"].in?(%w[CONTACTO CONTACTO_MENSAJE]) && parameters.key?("client_code") &&
+      %w[name email phone message].include?(key) && value.is_a?(String)
+    value.replace("[FILTERED]")
+  end
+end

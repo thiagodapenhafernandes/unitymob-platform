@@ -28,7 +28,7 @@ module Leads
       return if reference.blank?
 
       provider, identifier = reference.split(":", 2)
-      key = { "meta" => "meta_leadgen_id", "olx" => "portal_lead_id", "linkedin" => "linkedin_response_id", "tiktok" => "tiktok_lead_id" }[provider]
+      key = { "imovelweb" => "imovelweb_event_id", "meta" => "meta_leadgen_id", "olx" => "portal_lead_id", "linkedin" => "linkedin_response_id", "tiktok" => "tiktok_lead_id" }[provider]
       original = if key
         tenant.leads.where("other_information ->> ? = ?", key, identifier).order(:id).first
       elsif provider == "c2s"
@@ -50,7 +50,7 @@ module Leads
         "meta" => info["meta_leadgen_id"], "olx" => info["portal_lead_id"],
         "linkedin" => info["linkedin_response_id"], "tiktok" => info["tiktok_lead_id"],
         "c2s" => lead.external_lead_id, "whatsapp" => info.dig("whatsapp_entry", "message_id"),
-        "rd_station" => rd_station_reference(info)
+        "rd_station" => rd_station_reference(info), "imovelweb" => info["imovelweb_event_id"]
       }.find { |_provider, id| id.present? }&.join(":")
     end
 
