@@ -1688,6 +1688,50 @@ RSpec.describe "Admin::Leads", type: :request do
       end
     end
 
+    it "identifica captura no bolsão pelo histórico sem confundir espera ou rodízio" do
+      captured = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Captura shark", attribution_data: { from_hierarchy_company: false })
+      captured.activities.create!(kind: "accepted", metadata: { shark_tank: true })
+      pocket = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Captura pocket")
+      pocket.activities.create!(kind: "pocket_pool_ready", created_at: 2.hours.ago)
+      pocket.activities.create!(kind: "accepted", created_at: 1.hour.ago)
+      regular = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Aceite rodizio")
+      regular.activities.create!(kind: "accepted")
+      waiting = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Aguardando captura", status: Lead.status_value(:waiting_acceptance))
+      waiting.activities.create!(kind: "pocket_pool_ready")
+
+      get report_admin_leads_path(format: :xlsx)
+
+      expect(response).to have_http_status(:ok)
+      xml = response.body.b[/<worksheet .*?<\/worksheet>/mn].force_encoding("UTF-8")
+      rows = Nokogiri::XML(xml).remove_namespaces!.css("sheetData row").map { |row| row.css("c").map(&:text) }
+      [captured, pocket].each { |lead| expect(rows.find { |row| row.first == lead.name }[5]).to eq("Sim") }
+      [regular, waiting].each { |lead| expect(rows.find { |row| row.first == lead.name }[5]).to eq("Não") }
+    end
+
+    it "resume todos os imóveis por responsável no período em CSV e Excel, mesmo sem leads" do
+      peer = create(:admin_user, tenant: admin.tenant, name: "Corretor sem leads")
+      2.times { create(:habitation, tenant: admin.tenant, admin_user: peer, created_at: Time.zone.local(2026, 10, 28)) }
+      create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: peer, created_at: Time.zone.local(2026, 10, 29))
+      create(:habitation, tenant: admin.tenant, admin_user: peer, created_at: Time.zone.local(2026, 9, 1))
+      create(:habitation, tenant: admin.tenant, admin_user: admin, created_at: Time.zone.local(2026, 10, 29))
+      other_tenant = Tenant.create!(name: "Outra conta resumo", slug: "resumo-#{SecureRandom.hex(4)}")
+      create(:habitation, tenant: other_tenant, created_at: Time.zone.local(2026, 10, 29))
+      filters = { include_captacoes: "1", start_date: "2026-10-26", end_date: "2026-11-01", broker_id: peer.id }
+
+      get report_admin_leads_path(filters.merge(format: :csv))
+      expect(response).to have_http_status(:ok)
+      rows = CSV.parse(response.body, col_sep: ";")
+      expect(rows).to include(["IMÓVEIS CADASTRADOS POR CORRETOR"], [peer.name, "3"])
+      expect(rows).not_to include([admin.name, "1"], ["Sem corretor", "1"])
+
+      get report_admin_leads_path(filters.merge(format: :xlsx))
+      expect(response).to have_http_status(:ok)
+      xml = response.body.b[/<worksheet .*?<\/worksheet>/mn].force_encoding("UTF-8")
+      rows = Nokogiri::XML(xml).remove_namespaces!.css("sheetData row").map { |row| row.css("c").map(&:text) }
+      expect(rows).to include([peer.name, "3"])
+      expect(rows).not_to include([admin.name, "1"], ["Sem corretor", "1"])
+    end
+
     it "bloqueia exportacao sem permissao de relatorios de leads" do
       profile = Profile.create!(
         tenant: admin.tenant,

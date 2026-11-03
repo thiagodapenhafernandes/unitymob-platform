@@ -6,7 +6,11 @@ module Dashboard
     end
 
     def call
-      pool_acceptances = LeadActivity.where(lead_id: @scope.reorder(nil).select(:id), kind: "accepted", created_at: @window)
+      @scope.where(leads: { created_at: @window }).or(@scope.where(id: pool_acceptances.select(:lead_id)))
+    end
+
+    def pool_acceptances
+      LeadActivity.where(lead_id: @scope.reorder(nil).select(:id), kind: "accepted", created_at: @window)
         .where(<<~SQL.squish)
           lead_activities.metadata ->> 'shark_tank' = 'true' OR EXISTS (
             SELECT 1 FROM lead_activities pool_entry
@@ -15,7 +19,6 @@ module Dashboard
               AND pool_entry.created_at <= lead_activities.created_at
           )
         SQL
-      @scope.where(leads: { created_at: @window }).or(@scope.where(id: pool_acceptances.select(:lead_id)))
     end
   end
 end

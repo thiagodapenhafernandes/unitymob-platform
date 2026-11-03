@@ -1452,13 +1452,20 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def commercial_report_xlsx(scope, include_captacoes:)
-    leads = scope.reorder(nil).includes(:admin_user, :distribution_rule).to_a
+    leads = scope.reorder(nil).includes(:admin_user).to_a
+    @commercial_report_pool_lead_ids = Dashboard::LeadPerformancePeriodQuery.new(
+      scope: scope, starts_at: nil, ends_at: nil
+    ).pool_acceptances.distinct.pluck(:lead_id).to_set
     property_ids = leads.map(&:property_id).compact.uniq
     properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     rows = commercial_report_xlsx_rows(scope, leads, properties_by_id)
 
     if include_captacoes
       rows << commercial_report_xlsx_blank_row
+      rows << commercial_report_xlsx_blank_row
+      commercial_report_property_count_rows.each do |cells|
+        rows << { style: :body, cells: cells }
+      end
       rows << commercial_report_xlsx_blank_row
       rows << commercial_report_xlsx_section_title("CAPTAÇÕES")
       rows << commercial_report_xlsx_header_row
@@ -1540,12 +1547,12 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def commercial_report_pool_attendance_label(lead)
+    return "Sim" if @commercial_report_pool_lead_ids.include?(lead.id)
+
     values = [
       lead.attribution_data.is_a?(Hash) ? lead.attribution_data["from_hierarchy_company"] : nil,
       lead.other_information.is_a?(Hash) ? lead.other_information.dig("attributes", "from_hierarchy_company") : nil,
-      lead.other_information.is_a?(Hash) ? lead.other_information.dig("external_lead_payload", "attributes", "from_hierarchy_company") : nil,
-      lead.distribution_rule&.shark_tank?,
-      Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
+      lead.other_information.is_a?(Hash) ? lead.other_information.dig("external_lead_payload", "attributes", "from_hierarchy_company") : nil
     ]
 
     ActiveModel::Type::Boolean.new.cast(values.find { |value| !value.nil? }) ? "Sim" : "Não"
@@ -1765,6 +1772,8 @@ class Admin::LeadsController < Admin::BaseController
 
   def append_captacoes_to_report(csv)
     csv << []
+    commercial_report_property_count_rows.each { |row| csv << row }
+    csv << []
     csv << ["CAPTAÇÕES"]
     csv << commercial_report_headers
     captacao_report_scope.reorder(:id).find_each(batch_size: 500) do |captacao|
@@ -1787,6 +1796,21 @@ class Admin::LeadsController < Admin::BaseController
       nil,
       captacao.display_title,
       captacao.cidade
+    ]
+  end
+
+  def commercial_report_property_count_rows
+    scope = current_tenant.habitations
+    scope = scope.where("habitations.created_at >= ?", parsed_start_date.beginning_of_day) if parsed_start_date.present?
+    scope = scope.where("habitations.created_at <= ?", parsed_end_date.end_of_day) if parsed_end_date.present?
+    counts = apply_captacao_report_owner_scope(scope).group(:admin_user_id).count
+    names = current_tenant.admin_users.where(id: counts.keys.compact).pluck(:id, :name).to_h
+    rows = counts.map { |id, count| [names[id].presence || "Sem corretor", count] }.sort_by(&:first)
+
+    [
+      ["IMÓVEIS CADASTRADOS POR CORRETOR"],
+      ["Corretor responsável no cadastro", "Quantidade no período"],
+      *rows
     ]
   end
 
