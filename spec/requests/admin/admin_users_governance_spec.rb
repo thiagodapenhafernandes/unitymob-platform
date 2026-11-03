@@ -18,6 +18,75 @@ RSpec.describe "Admin user governance", type: :request do
     )
   end
 
+  it "mantem a foto apos erros de validacao e conclui o cadastro sem reenviar o arquivo" do
+    tenant = Tenant.create!(name: "Cadastro com foto", slug: "cadastro-foto-#{SecureRandom.hex(3)}")
+    owner = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "tenant_owner"))
+    sign_in owner
+    upload = Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/watermark.png"), "image/png")
+
+    expect do
+      post admin_admin_users_path, params: {
+        admin_user: { name: "Corretor sem email", email: "", avatar: upload }
+      }
+    end.not_to change { tenant.admin_users.count }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Corretor sem email")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css(".au-avatar .ax-avatar__image")).to be_present
+    signed_id = document.at_css('input[type="hidden"][name="admin_user[avatar]"]')["value"]
+    blob = ActiveStorage::Blob.find_signed!(signed_id)
+    expect(blob.download).to eq(File.binread(Rails.root.join("spec/fixtures/files/watermark.png")))
+
+    attributes = {
+      name: "Corretor com foto", email: "", avatar: signed_id,
+      password: "password123", password_confirmation: "password123",
+      access_profile_id: tenant.profiles.find_by!(key: "agent").id, manager_id: owner.id
+    }
+    post admin_admin_users_path, params: { admin_user: attributes }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(Nokogiri::HTML(response.body).at_css('input[type="hidden"][name="admin_user[avatar]"]')["value"]).to eq(signed_id)
+
+    expect do
+      post admin_admin_users_path, params: { admin_user: attributes.merge(email: "corretor-foto@example.test") }
+    end.to change { tenant.admin_users.count }.by(1)
+    expect(response).to redirect_to(admin_admin_users_path)
+    broker = tenant.admin_users.find_by!(email: "corretor-foto@example.test")
+    expect(broker.profile.key).to eq("agent")
+    expect(broker.avatar.blob).to eq(blob)
+    expect(broker.avatar.download).to eq(blob.download)
+    Storage::SafePurgeJob.perform_now(blob.id)
+    expect(broker.reload.avatar.download).to eq(blob.download)
+
+    get admin_admin_user_path(broker)
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css(".aus__avatar img")).to be_present
+  end
+
+  it "cadastra o corretor com foto na primeira tentativa" do
+    tenant = Tenant.create!(name: "Cadastro direto", slug: "cadastro-direto-#{SecureRandom.hex(3)}")
+    owner = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "tenant_owner"))
+    sign_in owner
+    upload = Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/watermark.png"), "image/png")
+
+    expect do
+      post admin_admin_users_path, params: { admin_user: {
+        name: "Corretor direto", email: "corretor-direto@example.test",
+        password: "password123", password_confirmation: "password123",
+        access_profile_id: tenant.profiles.find_by!(key: "agent").id,
+        manager_id: owner.id, avatar: upload
+      } }
+    end.to change { tenant.admin_users.count }.by(1)
+
+    expect(response).to redirect_to(admin_admin_users_path)
+    broker = tenant.admin_users.find_by!(email: "corretor-direto@example.test")
+    expect(broker.avatar).to be_attached
+    expect(broker.avatar.download).to eq(File.binread(Rails.root.join("spec/fixtures/files/watermark.png")))
+    get edit_admin_admin_user_path(broker)
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css(".au-avatar img")).to be_present
+  end
+
   it "limita a gestao de usuarios com permissao de corretores a propria subarvore" do
     tenant = Tenant.create!(name: "Tenant usuarios #{SecureRandom.hex(3)}", slug: "tenant-usuarios-#{SecureRandom.hex(3)}")
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")

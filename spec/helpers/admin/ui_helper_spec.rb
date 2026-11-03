@@ -55,7 +55,7 @@ RSpec.describe Admin::UiHelper, type: :helper do
 
     it "nao renderiza imagem quando o blob local anexado nao existe mais" do
       service = instance_double("ActiveStorage::Service", exist?: false)
-      blob = instance_double("ActiveStorage::Blob", image?: true, service_name: "local", service: service, key: "missing-key")
+      blob = instance_double("ActiveStorage::Blob", persisted?: true, image?: true, service_name: "local", service: service, key: "missing-key")
       image = double("avatar", attached?: true, blob: blob)
       document = Nokogiri::HTML.fragment(helper.ax_avatar(name: "Eduardo Antunes", image: image))
 
@@ -70,6 +70,17 @@ RSpec.describe Admin::UiHelper, type: :helper do
       expect(image).to be_present
       expect(image["data-controller"]).to eq("image-fallback")
       expect(image["data-action"]).to eq("error->image-fallback#hide")
+    end
+
+    it "exibe as iniciais quando a foto ainda nao foi persistida apos uma validacao" do
+      user = AdminUser.new(name: "Novo Corretor")
+      user.avatar.attach(io: StringIO.new("foto"), filename: "avatar.png", content_type: "image/png")
+
+      expect(user.avatar.blob).to be_new_record
+      document = Nokogiri::HTML.fragment(helper.ax_avatar(name: user.name, image: user.avatar))
+
+      expect(document.at_css(".ax-avatar__initials").text).to eq("NC")
+      expect(document.at_css("img")).to be_nil
     end
   end
 

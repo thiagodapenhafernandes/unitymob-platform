@@ -236,6 +236,7 @@ module Admin
       if @admin_user.save
         redirect_to admin_admin_users_path, notice: 'Usuário criado com sucesso.'
       else
+        preserve_avatar_upload
         render :new, status: :unprocessable_entity
       end
     end
@@ -255,6 +256,7 @@ module Admin
       if @admin_user.update(attrs)
         redirect_to admin_admin_users_path, notice: 'Usuário atualizado com sucesso.'
       else
+        preserve_avatar_upload
         render :edit, status: :unprocessable_entity
       end
     end
@@ -337,6 +339,15 @@ module Admin
     end
 
     private
+
+    def preserve_avatar_upload
+      change = @admin_user.attachment_changes["avatar"]
+      return unless change && !change.blob.persisted?
+
+      change.blob.save!
+      change.upload
+      Storage::SafePurgeJob.set(wait: 7.days).perform_later(change.blob.id)
+    end
 
     def set_admin_user
       @admin_user = current_tenant.admin_users.find(params[:id])
