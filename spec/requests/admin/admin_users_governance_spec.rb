@@ -174,7 +174,7 @@ RSpec.describe "Admin user governance", type: :request do
     agent_profile = tenant.profiles.find_by!(key: "agent")
     owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner")
     manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner, name: "Gestor")
-    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, name: "Corretor")
+    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, name: "Corretor", vista_id: "109")
     PushSubscription.create!(admin_user: broker, endpoint: "https://web.push.apple.com/request-revoke", p256dh: "p256dh", auth: "auth", active: true)
 
     sign_in manager
@@ -189,6 +189,14 @@ RSpec.describe "Admin user governance", type: :request do
 
     expect(response).to redirect_to(edit_admin_admin_user_path(broker))
     expect(PushSubscription.where(admin_user: broker).pluck(:active)).to eq([false])
+    follow_redirect!
+    expect(response.body).to include("Integração Vista", "Identificador no Vista", "109")
+    expect(Nokogiri::HTML(response.body).css('dl[aria-label="Integração Vista"]').text).not_to include("Conectado")
+
+    broker.update!(active: false)
+    get edit_admin_admin_user_path(broker)
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).css('dl[aria-label="Integração Vista"]').text).not_to include("Conectado")
   end
 
   it "bloqueia inativacao direta pelo formulario geral sem decisao de carteira" do
