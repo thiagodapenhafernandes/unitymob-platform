@@ -167,10 +167,12 @@
           <% end %>
 
           <% if admin_user.vista_id.present? %>
-            <%= ax_status_list(
-                  label: "Integração Vista",
-                  rows: [{ label: "Identificador", value: admin_user.vista_id }, { label: "Estado", value: ax_badge("Conectado", tone: :green, dot: true) }]
-                ) %>
+            <%= ax_field_group(title: "Integração Vista") do %>
+              <%= ax_status_list(
+                    label: "Integração Vista",
+                    rows: [{ label: "Identificador no Vista", value: admin_user.vista_id }]
+                  ) %>
+            <% end %>
           <% end %>
         </div>
       <% end %>
