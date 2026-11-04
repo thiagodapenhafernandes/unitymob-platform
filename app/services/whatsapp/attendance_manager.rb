@@ -145,7 +145,7 @@ module Whatsapp
         menu_since = [last_closed_at, MENU_RESEND_COOLDOWN.ago].compact.max
         return if conversation.messages.outbound.where(template_name: template.name).where.not(status: "failed").where("created_at > ?", menu_since).exists?
 
-        components = Whatsapp::TemplateMessageComponents.call(template: template, variables: {}, client: Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(conversation.tenant)))
+        components = Whatsapp::TemplateMessageComponents.call(template: template, variables: {}, client: Whatsapp::CloudClient.new(conversation.reply_credentials))
         return unless components.ok?
 
         message = conversation.messages.create!(direction: "outbound", status: "pending", msg_type: "template", template_name: template.name, body: template.body, template_components: components.components)

@@ -1,4 +1,16 @@
 namespace :external_lead_migration do
+  desc "Audita divergências de responsáveis C2S em JSONL, sem gravar. TENANT_ID obrigatório."
+  task audit_owners: :environment do
+    tenant = Tenant.find(ENV.fetch("TENANT_ID"))
+    integration = ExternalLeadIntegration.find_by(tenant_id: tenant.id)
+    abort "Integração C2S não cadastrada para a conta" unless integration
+
+    ActiveRecord::Base.transaction do
+      ActiveRecord::Base.connection.execute("SET TRANSACTION READ ONLY")
+      ExternalLeadMigration::OwnerAudit.new(integration: integration).each_difference { |row| puts row.to_json }
+    end
+  end
+
   desc "Reconcilia tarefas e visitas agendadas importadas do C2S. Use EXECUTE=1 para gravar."
   task reconcile_scheduled_actions: :environment do
     tenant = Tenant.find(ENV["TENANT_ID"]) if ENV["TENANT_ID"].present?

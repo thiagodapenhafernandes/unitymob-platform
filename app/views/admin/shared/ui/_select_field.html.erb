@@ -1,10 +1,17 @@
 <%
   html_options = (html_options || {}).dup
+  descriptions = local_assigns.fetch(:option_descriptions, {})
+  description_id = form.field_id(method, :description)
   clearable = local_assigns.fetch(:clearable, false)
   existing_data = (html_options[:data] || html_options["data"] || {}).dup
   html_options.delete(:data)
   html_options.delete("data")
   html_options[:class] = ["ax-control", html_options[:class]].compact.join(" ")
+  if descriptions.present?
+    existing_data[:action] = [existing_data[:action] || existing_data["action"], "change->ax-select-description#update"].compact_blank.join(" ")
+    existing_data[:ax_select_description_target] = "control"
+    html_options[:"aria-describedby"] = [html_options[:"aria-describedby"], description_id].compact_blank.join(" ")
+  end
   if clearable
     existing_action = existing_data[:action] || existing_data["action"]
     clear_action = "change->ax-clear-field#update input->ax-clear-field#update"
@@ -16,7 +23,7 @@
   end
 %>
 
-<div class="ax-field <%= class_name %>">
+<div class="ax-field <%= class_name %>" <% if descriptions.present? %>data-controller="ax-select-description" data-ax-select-description-options-value="<%= descriptions.to_json %>"<% end %>>
   <%= ax_field_label(form, method, text: label, tooltip:) %>
   <% if clearable %>
     <div class="ax-clearable-control ax-clearable-control--select" data-controller="ax-clear-field">
@@ -33,6 +40,9 @@
     </div>
   <% else %>
     <%= form.select method, choices, select_options || {}, html_options %>
+  <% end %>
+  <% if descriptions.present? %>
+    <p id="<%= description_id %>" class="ax-field__hint" data-ax-select-description-target="description" aria-live="polite"><%= descriptions[form.object.public_send(method).to_s] %></p>
   <% end %>
   <%= render "admin/shared/ui/field_error", form: form, method: method %>
 </div>

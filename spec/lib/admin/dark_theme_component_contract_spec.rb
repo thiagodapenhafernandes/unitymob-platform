@@ -3351,7 +3351,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     index_view = File.read(File.expand_path("../../../app/views/admin/distribution_rules/index.html.erb", __dir__))
     show_view = File.read(File.expand_path("../../../app/views/admin/distribution_rules/show.html.erb", __dir__))
 
-    expect(index_view).to include("ax_empty_state(", 'aria: { label: "Ver regra #{rule.name}" }', 'aria: { label: "Excluir regra #{rule.name}" }')
+    expect(index_view).to include("ax_empty_state(", 'aria: { label: "Ver regra #{rule.name}" }', 'aria: { label: "Arquivar regra #{rule.name}" }')
     expect(index_view).not_to include('<div class="ax-empty">')
     expect(show_view).to include('class="distribution-rule-show__state"', 'class="drag-handle distribution-rule-show__queue-handle" title="Arrastar para reordenar" aria-hidden="true"')
   end

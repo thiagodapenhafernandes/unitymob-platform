@@ -636,6 +636,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
   def webhook_settings_params
     params.require(:whatsapp_business_integration).permit(
+      :separate_conversations_by_number,
       :webhook_callback_url,
       :webhook_verify_token
     )
@@ -676,7 +677,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
   def record_test_message!(to:, body:, wa_message_id:)
     normalized_phone = Phones::Normalizer.call(to).to_s
-    conversation = current_tenant.whatsapp_conversations.find_or_create_by!(contact_phone: normalized_phone) do |record|
+    conversation = WhatsappConversation.contact_scope(tenant: current_tenant).find_or_create_by!(contact_phone: normalized_phone) do |record|
       record.status = "open"
       record.contact_name = "Teste de conexão"
     end

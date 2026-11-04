@@ -7,13 +7,13 @@ module Whatsapp
 
     LABEL = "Mensagem enviada por fora do sistema (o conteúdo não fica disponível aqui).".freeze
 
-    def perform(tenant_id, wa_message_id, recipient_id, recipient_user_id, sent_at)
+    def perform(tenant_id, wa_message_id, recipient_id, recipient_user_id, sent_at, phone_number_id = nil)
       tenant = Tenant.find_by(id: tenant_id)
       return if tenant.blank? || wa_message_id.blank?
       return if tenant.whatsapp_messages.exists?(wa_message_id: wa_message_id)
-      return if LeadActivity.where(kind: "notification_sent").where("metadata ->> 'message_id' = ?", wa_message_id).exists?
+      return if tenant.lead_activities.where(kind: "notification_sent").where("metadata ->> 'message_id' = ?", wa_message_id).exists?
 
-      conversation = conversation_for(tenant, recipient_id, recipient_user_id)
+      conversation = conversation_for(tenant, recipient_id, recipient_user_id, phone_number_id)
       return if conversation.blank?
 
       at = (Time.zone.parse(sent_at.to_s) rescue nil) || Time.current
@@ -30,10 +30,14 @@ module Whatsapp
     private
 
     # Só vincula a conversas que já existem: nunca cria conversa a partir de um aviso de envio.
-    def conversation_for(tenant, recipient_id, recipient_user_id)
+    def conversation_for(tenant, recipient_id, recipient_user_id, phone_number_id)
       phone = Phones::Normalizer.call(recipient_id).to_s.presence
-      (phone && tenant.whatsapp_conversations.find_by(contact_phone: phone)) ||
-        (recipient_user_id.present? && tenant.whatsapp_conversations.find_by(business_scoped_user_id: recipient_user_id))
+      sender = tenant.whatsapp_sender_numbers.find_by(phone_number_id: phone_number_id) if phone_number_id.present?
+      # Old queued jobs cannot identify which separated history sent the message.
+      return if phone_number_id.blank? && WhatsappBusinessIntegration.current(tenant).separate_conversations_by_number?
+      scope = WhatsappConversation.contact_scope(tenant: tenant, sender_number: sender)
+      (phone && scope.find_by(contact_phone: phone)) ||
+        (recipient_user_id.present? && scope.find_by(business_scoped_user_id: recipient_user_id))
     end
   end
 end

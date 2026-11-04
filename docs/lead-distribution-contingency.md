@@ -16,6 +16,8 @@ Implementação local de 08/10/2026. Não representa confirmação de deploy ou 
 
 Gatilhos começam desligados nas regras e o destino padrão começa vazio. Não existe configuração automática de uma central ou seleção de corretores para clientes existentes.
 
+> Atualização local de 04/11/2026: [Receber e exclusões](lead-distribution-receiving.md). A contingência passa a respeitar o recebimento e os formulários excluídos do destino; sobreposição não tem mais desempate por ID.
+
 ## Comportamento
 
 - Um encaminhamento automático por ciclo, com destino final da mesma conta. Autorreferência, cadeia A→B→C e ciclos A→B→A são bloqueados pela validação; a execução também verifica o destino.

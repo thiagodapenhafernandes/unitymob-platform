@@ -259,7 +259,7 @@ module Admin::NavbarHelper
   def navbar_unread_conversations_count
     return 0 unless current_admin_user && can?(:view, :whatsapp_inbox)
 
-    scope = current_tenant.whatsapp_conversations.where("unread_count > 0")
+    scope = current_tenant.whatsapp_conversations.inbox_enabled.where("unread_count > 0")
     unless tenant_owner? || current_admin_user.owns_all?(:whatsapp_inbox)
       scope = scope.left_joins(:lead).where(
         "whatsapp_conversations.assigned_admin_user_id = :id OR leads.admin_user_id = :id",

@@ -46,24 +46,22 @@ module Leads
         prepare_reentry!
         @lead.save!
         return true if rule && ContingencyService.try_forward!(@lead, rule: rule, reason: "deactivated")
-        return true if rule.nil? && !@classification_blocked && !@ambiguous_business_type && ContingencyService.default!(@lead)
+        return true if rule.nil? && @conflicting_rule_ids.blank? && !@ambiguous_business_type && ContingencyService.default!(@lead)
       end
       LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: {
-        reason: @ambiguous_business_type ? "ambiguous_business_type" : "no_matching_rule", inquiry_origin: @inquiry.origin, rule_id: rule&.id
+        reason: distribution_failure_reason, conflicting_rule_ids: @conflicting_rule_ids, inquiry_origin: @inquiry.origin, rule_id: rule&.id
       }.compact)
       keep_owner ? :kept : nil
     end
 
     def distribute
-      return unless entry_classification.nature == :commercial
-
       complemented = try_complement
       return complemented if complemented
 
       rule = find_matching_rule
       unless rule
-        forwarded = ContingencyService.default!(@lead) unless @ambiguous_business_type
-        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: { reason: @ambiguous_business_type ? "ambiguous_business_type" : "no_matching_rule" }) unless forwarded
+        forwarded = ContingencyService.default!(@lead) unless @ambiguous_business_type || @conflicting_rule_ids.present?
+        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: { reason: distribution_failure_reason, conflicting_rule_ids: @conflicting_rule_ids }) unless forwarded
         return forwarded
       end
 
@@ -72,7 +70,6 @@ module Leads
 
     def matching_entry_rule(message: nil)
       @entry_classification = EntryClassification.new(routing_lead, message: message)
-      @require_unique_rule = true
       find_matching_rule
     end
 
@@ -103,6 +100,7 @@ module Leads
 
       prepare_reentry!
       @lead.distribution_rule = rule
+      snapshot_entry_context! if @automatic_entry || @inquiry
       @lead.distribution_cycle_started_at ||= Time.current
       @lead.save! if @lead.changed? && (!@inquiry || rule.contingency_enabled? || rule.represamento_active? || candidates.empty?)
 
@@ -217,10 +215,32 @@ module Leads
       return unless @inquiry
 
       @lead.skip_automatic_routing = true
+      snapshot_entry_context!
       @lead.assign_attributes(admin_user: nil, status: Lead.default_status(tenant: tenant, pipeline: @lead.lead_pipeline),
         distribution_rule: nil, archived_at: nil, archived_by_admin_user: nil, archive_reason: nil, archive_note: nil,
         distribution_cycle_started_at: Time.current, contingency_forwarded_at: nil, contingency_pending: false,
         contingency_source_rule: nil, contingency_target_rule: nil, contingency_reason: nil)
+    end
+
+    def snapshot_entry_context!
+      @lead.other_information = @lead.other_information.to_h.merge("distribution_entry" => {
+        "category" => entry_classification.category,
+        "meta_form_id" => routing_lead.other_information.to_h["meta_form_id"],
+        "captured_at" => Time.current.iso8601
+      })
+    end
+
+    def assign_entry!(**attributes)
+      preserve_contact = if @automatic_entry
+        entry_classification.nature != :commercial
+      else
+        @lead.contingency_forwarded_at.present? && %w[administrativo triagem].include?(@lead.other_information.to_h.dig("distribution_entry", "category"))
+      end
+      if preserve_contact
+        @lead.update!(attributes)
+      else
+        @lead.promote_whatsapp_contact!(**attributes)
+      end
     end
 
     def try_complement
@@ -235,7 +255,7 @@ module Leads
     # Atribui o lead ao corretor, registra a atividade, agenda o pocket e dispara
     # as notificações da distribuição normal.
     def finalize_assignment(rule, admin_user_id:, admin_user_name:)
-      @lead.promote_whatsapp_contact!(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
+      assign_entry!(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
       rule.mark_agent_served!(admin_user_id)
 
       metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
@@ -254,7 +274,7 @@ module Leads
     end
 
     def finalize_sticky_assignment(rule, admin_user_id:, admin_user_name:)
-      @lead.promote_whatsapp_contact!(admin_user_id: admin_user_id, status: :em_atendimento, distribution_rule_id: rule.id)
+      assign_entry!(admin_user_id: admin_user_id, status: :em_atendimento, distribution_rule_id: rule.id)
 
       metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
       metadata[:sticky] = true
@@ -272,6 +292,15 @@ module Leads
       {
         rule_id: rule.id,
         rule_name: rule.name,
+        rule_updated_at: rule.updated_at&.iso8601,
+        receiving: rule.business_type,
+        meta_scope: (if rule.source_meta?
+          { auto_add_forms: rule.auto_add_forms?, page_ids: rule.meta_page_ids,
+            form_ids: rule.meta_forms, excluded_form_ids: rule.excluded_meta_form_ids }
+        end),
+        entry_category: @lead.other_information.to_h.dig("distribution_entry", "category") || entry_classification.category,
+        entry_nature: entry_classification.nature,
+        entry_business_type: entry_classification.business_type,
         admin_user_id: admin_user_id,
         admin_user_name: admin_user_name
       }
@@ -301,19 +330,26 @@ module Leads
     end
 
     def find_matching_rule
-      if entry_classification.nature != :commercial
-        @classification_blocked = true
-        return
-      end
-
+      @automatic_entry = true
       candidates = tenant.distribution_rules.active.where.not(distribution_mode: :attendance)
         .order(:id).select { |rule| rule_matches?(rule) }
       matches = candidates.select { |rule| matches_business_type?(rule) }
+      if meta_origin?(routing_lead.origin.to_s.downcase)
+        form_id = routing_lead.other_information.to_h["meta_form_id"].to_s
+        explicit = matches.select { |rule| rule.explicit_meta_form_ids.include?(form_id) }
+        matches = explicit if explicit.any?
+      end
       specific = matches.select(&:specific_entry_filters?)
       matches = specific if specific.any?
       @ambiguous_business_type = entry_classification.business_type.nil? && candidates.any? && matches.empty?
-      return if @require_unique_rule && matches.size > 1
+      @conflicting_rule_ids = matches.size > 1 ? matches.map(&:id) : []
+      return if @conflicting_rule_ids.present?
       matches.first
+    end
+
+    def distribution_failure_reason
+      return "conflicting_rules" if @conflicting_rule_ids.present?
+      @ambiguous_business_type ? "ambiguous_business_type" : "no_matching_rule"
     end
 
     def entry_classification
@@ -519,8 +555,7 @@ module Leads
     end
 
     def matches_business_type?(rule)
-      return true if rule.ambos_business_type?
-      entry_classification.business_type.to_s == rule.business_type
+      rule.accepts_entry?(entry_classification)
     end
 
     def inside_holding_hours?(rule)

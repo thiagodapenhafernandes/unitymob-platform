@@ -556,7 +556,7 @@ module Admin
       attrs["tipo"] = cadastro_type == "empreendimento" ? "Empreendimento" : "Unitário" if cadastro_type.present?
       if (modalidade = attrs.delete("modalidade")).present?
         attrs["intake_modalidade"] = modalidade
-        attrs["status"] = modalidade.in?(%w[locacao_anual locacao_diaria]) ? "Aluguel" : "Venda"
+        attrs["status"] = Habitation.commercial_status_for_intake_modality(modalidade)
       end
       attrs
     end
@@ -1250,7 +1250,7 @@ module Admin
       attrs["tipo"] = cadastro_type == "empreendimento" ? "Empreendimento" : "Unitário" if cadastro_type.present?
       if (modalidade = attrs.delete("modalidade")).present?
         attrs["intake_modalidade"] = modalidade
-        attrs["status"] = modalidade.in?(%w[locacao_anual locacao_diaria]) ? "Aluguel" : "Venda"
+        attrs["status"] = Habitation.commercial_status_for_intake_modality(modalidade)
       end
       attrs["proprietario"] = attrs.delete("proprietario_nome") if attrs["proprietario_nome"].present?
       attrs["proprietario_celular"] = attrs.delete("proprietario_telefone") if attrs["proprietario_telefone"].present?

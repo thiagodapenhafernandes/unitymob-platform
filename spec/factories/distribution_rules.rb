@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :distribution_rule do
     tenant { Current.tenant || Tenant.default }
     sequence(:name) { |n| "Regra #{n}" }
-    business_type { :ambos }
+    business_type { :todos }
     distribution_mode { :rotary }
     active { true }
     source_site { true }

@@ -45,7 +45,7 @@ class DistributionRule < ApplicationRecord
   end
 
   def meta_form_excluded?(form_id)
-    auto_add_forms? && Array(excluded_meta_form_ids).map(&:to_s).include?(form_id.to_s)
+    Array(excluded_meta_form_ids).map(&:to_s).include?(form_id.to_s)
   end
 
   def add_auto_meta_forms!(form_ids)
@@ -109,7 +109,65 @@ class DistributionRule < ApplicationRecord
 
   belongs_to :checkin_store, class_name: "Store", optional: true # legado — mantido pra retrocompat de URL/relatórios
 
-  enum :business_type, { venda: 0, locacao: 1, ambos: 2 }, suffix: true
+  BUSINESS_TYPE_LABELS = {
+    "venda" => "Venda", "locacao" => "Locação", "ambos" => "Venda e locação",
+    "diaria" => "Diária", "administrativo" => "Administrativo", "triagem" => "Triagem", "todos" => "Todos"
+  }.freeze
+  BUSINESS_TYPE_DESCRIPTIONS = {
+    "venda" => "Recebe interesses identificados como venda. Corretores de venda ou ambas as áreas.",
+    "locacao" => "Recebe locação convencional identificada. Corretores de locação ou ambas as áreas; não inclui diária.",
+    "ambos" => "Recebe venda, locação convencional ou interesse em ambas. Não inclui diária, administrativo ou indefinido.",
+    "diaria" => "Recebe diária ou temporada identificada. Corretores de locação ou ambas as áreas.",
+    "administrativo" => "Recebe solicitações administrativas identificadas, como boleto, rescisão e pedido de manutenção.",
+    "triagem" => "Recebe contatos sem natureza ou modalidade identificada, para classificação pela equipe.",
+    "todos" => "Recebe qualquer natureza ou modalidade, inclusive indefinida. Mantém os filtros de origem, formulários, exclusões e demais critérios da regra."
+  }.freeze
+  BUSINESS_TYPE_CATEGORIES = {
+    "venda" => %w[venda], "locacao" => %w[locacao], "ambos" => %w[venda locacao ambos],
+    "diaria" => %w[diaria], "administrativo" => %w[administrativo], "triagem" => %w[triagem],
+    "todos" => %w[venda locacao ambos diaria administrativo triagem]
+  }.freeze
+
+  enum :business_type, { venda: 0, locacao: 1, ambos: 2, diaria: 3, administrativo: 4, triagem: 5, todos: 6 }, suffix: true
+  validate :no_overlapping_explicit_meta_forms
+
+  def accepts_entry?(classification)
+    accepts_entry_category?(classification.category)
+  end
+
+  def accepts_entry_category?(category)
+    BUSINESS_TYPE_CATEGORIES.fetch(business_type, []).include?(category)
+  end
+
+  def explicit_meta_form_ids
+    return [] unless source_meta? && !auto_add_forms?
+    Array(meta_forms).map(&:to_s).reject { |id| id.blank? || meta_form_excluded?(id) }
+  end
+
+  def no_overlapping_explicit_meta_forms
+    return unless tenant && active? && !attendance? && explicit_meta_form_ids.any?
+    fields = %w[active business_type distribution_mode source_meta auto_add_forms meta_forms meta_page_ids excluded_meta_form_ids property_cities min_price max_price custom_filters]
+    return unless new_record? || fields.any? { |field| will_save_change_to_attribute?(field) }
+
+    tenant.distribution_rules.active.where.not(id: id).where(source_meta: true, auto_add_forms: false)
+      .where.not(distribution_mode: :attendance).each do |other|
+      next if (explicit_meta_form_ids & other.explicit_meta_form_ids).empty?
+      next if (BUSINESS_TYPE_CATEGORIES.fetch(business_type, []) & BUSINESS_TYPE_CATEGORIES.fetch(other.business_type, [])).empty?
+      next if entry_filters_disjoint?(other)
+      errors.add(:meta_forms, "já pertencem à regra ativa #{other.name} com recebimento sobreposto; exclua os formulários de uma das regras")
+    end
+  end
+
+  def entry_filters_disjoint?(other)
+    if property_cities.present? && other.property_cities.present?
+      cities = property_cities.map { |city| Leads::EntryLocation.normalized_city(city) }
+      other_cities = other.property_cities.map { |city| Leads::EntryLocation.normalized_city(city) }
+      return true if (cities & other_cities).empty?
+    end
+    (max_price.present? && other.min_price.present? && max_price < other.min_price) ||
+      (min_price.present? && other.max_price.present? && min_price > other.max_price)
+  end
+
   enum :distribution_mode, { rotary: 0, performance: 1, shark_tank: 2, attendance: 3 }
 
   validates :name, presence: true
@@ -126,7 +184,29 @@ class DistributionRule < ApplicationRecord
   validate :validate_tiktok_selection
   validate :validate_linkedin_selection
 
-  scope :active, -> { where(active: true) }
+  scope :unarchived, -> { where(archived_at: nil) }
+  scope :active, -> { unarchived.where(active: true) }
+  scope :display_order, -> { order(display_position: :asc, created_at: :desc, id: :desc) }
+  validate :archived_rule_stays_inactive
+
+  def archived_rule_stays_inactive
+    errors.add(:active, "não pode ser ativada enquanto estiver arquivada") if archived_at.present? && active?
+  end
+
+  def move_in_display_order!(direction)
+    return unless %w[up down].include?(direction)
+
+    tenant.with_lock do
+      rules = tenant.distribution_rules.unarchived.display_order.to_a
+      index = rules.index { |rule| rule.id == id }
+      return unless index
+      target = direction == "up" ? index - 1 : index + 1
+      return unless target.between?(0, rules.length - 1)
+
+      rules[index], rules[target] = rules[target], rules[index]
+      rules.each_with_index { |rule, position| rule.update!(display_position: position) }
+    end
+  end
   scope :terminal_destinations, -> { active.where(contingency_enabled: false).where.not(distribution_mode: distribution_modes[:attendance]) }
 
   def pool_timeline_participants
@@ -401,6 +481,27 @@ class DistributionRule < ApplicationRecord
 
   DAYS = %w[mon tue wed thu fri sat sun]
 
+  validate :valid_schedule_modes
+
+  def valid_schedule_modes
+    represamento_schedule.to_h.each do |day, config|
+      next if config["mode"].blank?
+      unless DAYS.include?(day) && %w[unrestricted hours closed].include?(config["mode"])
+        errors.add(:represamento_schedule, "contém um dia ou modo inválido")
+        next
+      end
+      next unless config["mode"] == "hours"
+      unless %w[start end].all? { |key| config[key].to_s.match?(/\A(?:[01]\d|2[0-3]):[0-5]\d\z/) }
+        errors.add(:represamento_schedule, "informe início e fim válidos para #{day}")
+      end
+    end
+  end
+
+  def schedule_mode(day)
+    config = represamento_schedule.to_h.fetch(day, {})
+    config["mode"].presence || (config["active"] == "true" ? "hours" : "unrestricted")
+  end
+
   def ensure_full_schedule
     self.represamento_schedule ||= {}
     DAYS.each do |day|
@@ -416,7 +517,8 @@ class DistributionRule < ApplicationRecord
 
     current_day_key = DAYS[(time.wday + 6) % 7]
     day_config = schedule[current_day_key]
-    return false unless day_config && day_config["active"] == "true"
+    return true if schedule_mode(current_day_key) == "closed"
+    return false unless day_config && schedule_mode(current_day_key) == "hours"
 
     start_time = Time.zone.parse("#{time.to_date} #{day_config["start"]}")
     end_time = Time.zone.parse("#{time.to_date} #{day_config["end"]}")

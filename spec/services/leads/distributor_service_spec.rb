@@ -7,7 +7,7 @@ RSpec.describe Leads::DistributorService do
     expect(described_class.new(lead).send(:get_lead_value, "destroy!")).to eq("apenas texto")
   end
 
-  it "aplica exceções só no modo automático, inclusive se todos os forms forem excluídos" do
+  it "aplica exceções nos modos automático e manual, inclusive se todos os forms forem excluídos" do
     integration = create(:user_meta_integration, selected_page_ids: ["exceptions-page"])
     page = create(:meta_facebook_page, user_meta_integration: integration, page_id: "exceptions-page")
     rule = create(:distribution_rule, tenant: integration.tenant, source_meta: true, auto_add_forms: true,
@@ -19,7 +19,7 @@ RSpec.describe Leads::DistributorService do
     expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(true)
     rule.update!(auto_add_forms: false, meta_forms: ["excluded"])
     lead.other_information["meta_form_id"] = "excluded"
-    expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(true)
+    expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(false)
   end
 
   it "não casa uma regra antiga com página Meta desmarcada, mesmo ainda ativa" do

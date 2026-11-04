@@ -1,6 +1,24 @@
 require "rails_helper"
 
 RSpec.describe Whatsapp::LeadAlertTemplate do
+  it "prepara versões sem e-mail com cinco variáveis e mapeamento correto sem substituir templates existentes" do
+    tenant = Tenant.default
+    integration = WhatsappBusinessIntegration.current(tenant)
+    described_class::NO_EMAIL_NAMES.each do |name|
+      template = described_class.for(tenant: tenant, integration: integration, name: name)
+      expect(template.body).not_to include("Email", "{{6}}")
+      expect(template.variable_count).to eq(5)
+      expect(template.example_values.size).to eq(5)
+      expect(template).to be_new_record
+      template.status = "APPROVED"
+      setting = NotificationTemplateSetting.new(tenant: tenant, channel: "whatsapp", purpose: "lead_distribution_broker_rotary", whatsapp_template: template)
+      expect(setting.default_variable_mapping["5"]).to eq("lead_other_or_link")
+      expect(setting.default_variable_mapping.values).not_to include("lead_email_or_link")
+    end
+    legacy = described_class.for(tenant: tenant, integration: integration, name: "lead_distribution_alert")
+    expect(legacy.body).to include("Email: *{{5}}*")
+  end
+
   describe ".for" do
     it "monta o template oficial de aviso de lead sem cabecalho, midia ou botoes" do
       tenant = Tenant.create!(name: "Conexão Imobiliária", slug: "conexao-#{SecureRandom.hex(3)}")

@@ -153,6 +153,7 @@
   <% form_main = capture do %>
 <% form_url = habitation.persisted? ? admin_habitation_path(habitation.id) : admin_habitations_path %>
 <%= form_with(model: [:admin, habitation], url: form_url, local: true, class: "needs-validation habitation-form-shell habitation-editor-form", html: { id: "admin_habitation_form", novalidate: true }, data: { controller: "save-state", action: "submit->save-state#confirm submit->save-state#submitting", turbo: false }) do |f| %>
+  <%= render "admin/shared/ui/unsaved_changes", id: "habitationForm" %>
   <%= hidden_field_tag :save_navigation, "stay", data: { save_state_target: "choice" } %>
   <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
   <%= hidden_field_tag :source_habitation_id, source_habitation.id if source_habitation.present? %>

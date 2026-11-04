@@ -1056,6 +1056,7 @@ class Habitation < ApplicationRecord
 
   def modalidade
     return intake_modalidade if intake_modalidade.in?(INTAKE_MODALITIES)
+    return "locacao_diaria" if daily_rental?
 
     if valor_venda_cents.to_i.positive? && valor_locacao_cents.to_i.positive?
       "ambos"
@@ -1066,10 +1067,14 @@ class Habitation < ApplicationRecord
     end
   end
 
+  def self.commercial_status_for_intake_modality(value)
+    { "locacao_diaria" => "Diária", "locacao_anual" => "Aluguel" }.fetch(value.to_s, "Venda")
+  end
+
   def modalidade=(value)
     normalized = value.to_s.presence_in(INTAKE_MODALITIES)
     self.intake_modalidade = normalized
-    self.status = normalized.in?(%w[locacao_anual locacao_diaria]) ? "Aluguel" : "Venda"
+    self.status = self.class.commercial_status_for_intake_modality(normalized)
   end
 
   def requires_sale_price?

@@ -33,8 +33,9 @@
               <%= ax_select_field(
                     form: f,
                     method: :business_type,
-                    label: "Tipo de negócio",
-                    choices: [["Venda", "venda"], ["Locação", "locacao"], ["Venda e locação", "ambos"]],
+                    label: "Receber",
+                    choices: DistributionRule::BUSINESS_TYPE_LABELS.map { |value, text| [text, value] },
+                    option_descriptions: DistributionRule::BUSINESS_TYPE_DESCRIPTIONS,
                     html_options: {
                       data: {
                         controller: "broadcast-change",
@@ -42,7 +43,7 @@
                         action: "change->broadcast-change#change"
                       }
                     },
-                    tooltip: "Define a modalidade do interesse e quem pode receber: venda distribui a quem atua em venda/ambos; locação idem. Sem modalidade identificada, a entrada só pode corresponder a uma regra Ambos."
+                    tooltip: "Define quais contatos esta regra recebe. Todos mantém os demais filtros, exclusões, disponibilidade, pocket e fidelização; não transforma a natureza do contato em venda."
                   ) %>
             </div>
           </div>
@@ -118,14 +119,14 @@
 
                 <%= ax_field_group(title: "Formulários excluídos da distribuição", token: "Exceções",
                       class_name: "distribution-rule-source-config",
-                      tooltip: "Exceções desta regra: não recebem novos leads enquanto a sincronização estiver ativa.") do %>
+                      tooltip: "Exceções desta regra: não recebem novos leads, mesmo sem sincronização e na contingência.") do %>
                   <div class="ax-field">
                     <%= f.select :excluded_meta_form_ids,
                           options_for_select(@meta_form_options_by_page.values.flatten(1), distribution_rule.excluded_meta_form_ids), {},
                           { multiple: true, class: "ax-control", data: { controller: "tom-select",
                             meta_rules_target: "exclusionSelect", action: "change->meta-rules#updateExclusions",
                             tom_select_create_value: false, placeholder: "Buscar formulários para excluir..." } } %>
-                    <p class="ax-field__hint">Aplicadas apenas com a sincronização ativa. As exceções ficam salvas ao desativá-la e não alteram leads já distribuídos.</p>
+                    <p class="ax-field__hint">Sempre prevalecem sobre a inclusão, com ou sem sincronização automática, inclusive na contingência. Não alteram leads já distribuídos.</p>
                   </div>
                 <% end %>
 

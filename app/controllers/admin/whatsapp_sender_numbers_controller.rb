@@ -96,6 +96,7 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
       :verified_name,
       :quality_rating,
       :use_for_notifications,
+      :administrative_inbox_enabled,
       :cpl_sent_unit_price,
       :cpl_fla_unit_price,
       :whatsapp_business_integration_id

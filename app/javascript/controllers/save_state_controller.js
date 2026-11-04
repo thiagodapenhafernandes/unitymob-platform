@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["submitButton", "cancelButton", "spinner", "label", "choice", "modal", "toast", "toastBody"]
+  static targets = ["submitButton", "cancelButton", "spinner", "label", "choice", "modal", "toast", "toastBody", "navigationModal"]
   static values = { submittingText: { type: String, default: "Salvando..." } }
 
   connect() {
@@ -222,13 +222,32 @@ export default class extends Controller {
     if (link.target && link.target !== "_self") return
     if (link.href === window.location.href || link.getAttribute("href")?.startsWith("#")) return
 
-    if (window.confirm("Existem alterações não salvas. Deseja sair sem salvar?")) {
-      this.dirty = false
-      return
-    }
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    if (!this.hasNavigationModalTarget) return
 
     event.preventDefault()
     event.stopImmediatePropagation()
+    this.pendingNavigation = link
+    this.navigationModalTarget.dispatchEvent(new CustomEvent("ax-modal:open"))
+  }
+
+  discardAndNavigate(event) {
+    event.preventDefault()
+    const link = this.pendingNavigation
+    this.navigationModalTarget.dispatchEvent(new CustomEvent("ax-modal:close"))
+    this.pendingNavigation = null
+    this.dirty = false
+    link?.click()
+  }
+
+  saveBeforeLeaving(event) {
+    event.preventDefault()
+    this.navigationModalTarget.dispatchEvent(new CustomEvent("ax-modal:close"))
+    this.pendingNavigation = null
+    this.saveOptionsConfirmed = true
+    if (this.hasChoiceTarget) this.choiceTarget.value = "stay"
+    const submitter = this.element.querySelector('[type="submit"][data-save-state-direct="true"]')
+    this.element.requestSubmit(submitter || undefined)
   }
 
   lockScroll() {

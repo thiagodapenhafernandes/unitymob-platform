@@ -32,7 +32,7 @@
         subtitle: "#{distribution_rule_business_label(@rule)} · #{distribution_rule_mode_label(@rule)} · #{enabled_sources.presence&.to_sentence || "Nenhuma fonte habilitada"}") %>
 
   <div class="distribution-rule-show__kpis">
-    <%= ax_metric_card(label: "Tipo", value: distribution_rule_business_label(@rule)) %>
+    <%= ax_metric_card(label: "Receber", value: distribution_rule_business_label(@rule)) %>
     <%= ax_metric_card(label: "Distribuição", value: distribution_rule_mode_label(@rule)) %>
     <%= ax_metric_card(label: "Corretores", value: "#{@agents_queue.size} na fila") %>
     <%= ax_metric_card(label: "Preço", value: distribution_rule_price_range(@rule)) %>
@@ -254,11 +254,11 @@
               <table class="ax-table distribution-rule-show__table">
                 <thead><tr><th>Dia</th><th>Status</th><th>Horário</th></tr></thead>
                 <tbody>
-                  <% distribution_rule_schedule_rows(@rule).each do |label, active, start_time, end_time| %>
+                  <% distribution_rule_schedule_rows(@rule).each do |label, mode, start_time, end_time| %>
                     <tr>
                       <td class="ax-strong"><%= label %></td>
-                      <td><%= active ? "Ativo" : "Desligado" %></td>
-                      <td><%= active ? "#{start_time} às #{end_time}" : "--" %></td>
+                      <td><%= { "hours" => "Somente no horário", "closed" => "Fechado", "unrestricted" => "Sem restrição" }.fetch(mode) %></td>
+                      <td><%= mode == "hours" ? "#{start_time} às #{end_time}" : "--" %></td>
                     </tr>
                   <% end %>
                 </tbody>

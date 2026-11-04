@@ -180,9 +180,11 @@
               input_data: { action: "change->distribution-rule#toggleRepresamento" }) %>
 
         <div class="section-toggle-container<%= ' tw-hidden' unless f.object.represamento_active? %>" data-distribution-rule-target="represamentoSection">
+          <p class="ax-guided-hint">Sem restrição permite distribuir durante todo o dia. Fechado mantém os leads represados ou segue a contingência configurada. A programação só vale com o represamento ligado.</p>
+          <div class="ax-table-wrap">
           <table class="ax-table distribution-rule-schedule">
             <thead>
-              <tr><th>Dia</th><th class="ax-num">Ativo</th><th>Início</th><th>Fim</th></tr>
+              <tr><th>Dia</th><th>Funcionamento</th><th>Início</th><th>Fim</th></tr>
             </thead>
             <tbody>
               <% day_labels = { "mon" => "Segunda", "tue" => "Terça", "wed" => "Quarta", "thu" => "Quinta", "fri" => "Sexta", "sat" => "Sábado", "sun" => "Domingo" } %>
@@ -190,9 +192,10 @@
                 <% config = f.object.represamento_schedule[day] || {} %>
                 <tr>
                   <td class="ax-strong"><%= day_labels[day] %></td>
-                  <td class="ax-num">
-                    <%= hidden_field_tag "distribution_rule[represamento_schedule][#{day}][active]", "false" %>
-                    <%= check_box_tag "distribution_rule[represamento_schedule][#{day}][active]", "true", config["active"] == "true" %>
+                  <td>
+                    <%= fields_for "distribution_rule[represamento_schedule][#{day}]", nil do |day_form| %>
+                    <%= ax_select_field(form: day_form, method: :mode, label: "Funcionamento na #{day_labels[day]}", choices: options_for_select([["Sem restrição", "unrestricted"], ["Somente no horário", "hours"], ["Fechado o dia todo", "closed"]], f.object.schedule_mode(day))) %>
+                    <% end %>
                   </td>
                   <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][start]", config["start"] || "09:00", class: "ax-control ax-control--sm" %></td>
                   <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][end]", config["end"] || "18:00", class: "ax-control ax-control--sm" %></td>
@@ -200,6 +203,7 @@
               <% end %>
             </tbody>
           </table>
+          </div>
         </div>
 
         <%= ax_toggle_chip(f, :pocket_active,

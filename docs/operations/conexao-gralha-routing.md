@@ -2,6 +2,8 @@
 
 Implementação local; sem configuração de produção, replay ou alteração de registros históricos.
 
+> Atualização local de 04/11/2026: [Receber, formulários e coexistência](../lead-distribution-receiving.md) substitui as referências abaixo a `ambos` como destino de modalidade desconhecida. Não altera a configuração de produção.
+
 ## Ordem da decisão
 
 1. Natureza: pedido administrativo, consulta comercial ou contato sem intenção identificada. Pedidos de financeiro/manutenção e atendimentos administrativos abertos ficam no atendimento, sem tomar o lead do corretor.

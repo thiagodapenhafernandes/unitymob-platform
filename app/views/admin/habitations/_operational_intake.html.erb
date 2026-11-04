@@ -4,7 +4,7 @@
 
   <% if snapshot_present %>
     <% captured_at = Time.zone.parse(snapshot["captured_at"].to_s) rescue nil %>
-    <% visible_sections = Array(snapshot["sections"]).reject { |section| section["key"] == "proprietario" && !can_view_owner_contact_data } %>
+    <% visible_sections = habitation_intake_snapshot_sections(snapshot, include_owner: can_view_owner_contact_data) %>
 
     <section class="habitation-intake-snapshot" aria-label="Fotografia inicial da captação">
       <header class="habitation-intake-snapshot__header">

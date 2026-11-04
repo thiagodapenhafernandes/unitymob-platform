@@ -74,7 +74,7 @@
         </section>
 
       <% if payload[:corporate_records].present? %>
-        <%= render 'shared/corporate_showcase', properties: payload[:corporate_records] %>
+        <%= render 'shared/corporate_showcase', properties: payload[:corporate_records], title: @home_setting.corporate_title %>
       <% end %>
       <% shown_ids.concat(properties.map(&:id)) %>
     <% end %>

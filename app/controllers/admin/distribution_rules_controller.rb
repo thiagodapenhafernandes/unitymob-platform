@@ -1,13 +1,15 @@
 class Admin::DistributionRulesController < Admin::BaseController
   requires_permission :manage, :distribution_rules
-  before_action :set_rule, only: [:show, :edit, :update, :destroy, :toggle_active, :reorder_agents]
+  before_action :set_rule, only: [:show, :edit, :update, :destroy, :toggle_active, :reorder_agents, :move, :restore, :archive]
   before_action :load_meta_options, only: [:new, :create, :edit, :update]
   before_action :load_tiktok_options, only: [:new, :create, :edit, :update]
   before_action :load_linkedin_options, only: [:new, :create, :edit, :update]
   before_action :load_team_structure, only: [:new, :create, :edit, :update]
 
   def index
-    @distribution_rules = current_tenant.distribution_rules.order(created_at: :desc)
+    scope = current_tenant.distribution_rules
+    @show_archived = params[:archived] == "1"
+    @distribution_rules = (@show_archived ? scope.where.not(archived_at: nil) : scope.unarchived).display_order
     @holding_leads_count = current_tenant.leads.represado.count
     @distribution_rule_lead_stats = distribution_rule_lead_stats
   end
@@ -69,6 +71,21 @@ class Admin::DistributionRulesController < Admin::BaseController
     redirect_to admin_distribution_rules_path,
       alert: "Esta regra possui histórico vinculado e não pode ser excluída. Desative a regra ou remova as fontes configuradas.",
       status: :see_other
+  end
+
+  def archive
+    @rule.update!(active: false, archived_at: Time.current)
+    redirect_to admin_distribution_rules_path, notice: "Regra arquivada. O histórico dos leads foi preservado.", status: :see_other
+  end
+
+  def restore
+    @rule.update!(archived_at: nil, active: false)
+    redirect_to admin_distribution_rules_path, notice: "Regra restaurada e mantida inativa.", status: :see_other
+  end
+
+  def move
+    @rule.move_in_display_order!(params[:direction].to_s)
+    redirect_to admin_distribution_rules_path, notice: "Ordem visual atualizada. A distribuição dos leads não foi alterada.", status: :see_other
   end
 
   def toggle_active
@@ -260,7 +277,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     if area_scope
       case rule_business_type_for_eligibility
       when "venda"   then scope = scope.where(acting_type: [AdminUser.acting_types[:sales], AdminUser.acting_types[:both]])
-      when "locacao" then scope = scope.where(acting_type: [AdminUser.acting_types[:rentals], AdminUser.acting_types[:both]])
+      when "locacao", "diaria" then scope = scope.where(acting_type: [AdminUser.acting_types[:rentals], AdminUser.acting_types[:both]])
       end
     end
 

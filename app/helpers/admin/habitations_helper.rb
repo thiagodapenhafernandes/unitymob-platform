@@ -1,4 +1,13 @@
 module Admin::HabitationsHelper
+  def habitation_intake_snapshot_sections(snapshot, include_owner:)
+    Array(snapshot["sections"]).filter_map do |section|
+      next if section["key"] == "proprietario" && !include_owner
+
+      rows = Array(section["rows"]).select { |row| row["value"].present? && row["value"].to_s.strip != "-" }
+      section.merge("rows" => rows) if rows.any?
+    end
+  end
+
   # Card #1 (Opção B): um campo do cadastro é editável para o usuário atual se o
   # perfil dele não o travou (Habitations::FieldLockPolicy). Só o dono edita tudo.
   # Usado nos readonly/disabled das partials do formulário.

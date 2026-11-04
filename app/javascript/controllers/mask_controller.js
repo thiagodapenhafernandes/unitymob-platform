@@ -5,20 +5,21 @@ export default class extends Controller {
 
   connect() {
     this.mask()
-    this.element.addEventListener('input', this.input.bind(this))
+    this.boundInput = this.input.bind(this)
+    this.element.addEventListener('input', this.boundInput)
   }
 
   disconnect() {
-    this.element.removeEventListener('input', this.input.bind(this))
+    this.element.removeEventListener('input', this.boundInput)
   }
 
   input(event) {
-    this.mask()
+    this.mask(event)
   }
 
-  mask() {
+  mask(event) {
     if (this.typeValue === "currency") {
-      this.currencyMask()
+      this.currencyMask(event)
     } else if (this.typeValue === "cep") {
       this.cepMask()
     } else if (this.typeValue === "cpf_cnpj") {
@@ -26,7 +27,10 @@ export default class extends Controller {
     }
   }
 
-  currencyMask() {
+  currencyMask(event) {
+    const previousValue = this.element.value
+    const selectionStart = this.element.selectionStart
+    const selectionEnd = this.element.selectionEnd
     let raw = this.element.value.replace(/\D/g, "")
     if (raw === "") {
       this.element.value = ""
@@ -50,7 +54,26 @@ export default class extends Controller {
     // Add dots to integer part
     integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
 
-    this.element.value = `${integerPart},${decimalPart}`
+    const formatted = `${integerPart},${decimalPart}`
+    if (formatted === previousValue) return
+
+    this.element.value = formatted
+    if (document.activeElement === this.element && selectionStart !== null && selectionEnd !== null) {
+      const position = (offset) => {
+        const digitsAfter = previousValue.slice(offset).replace(/\D/g, "").length
+        let index = formatted.length
+        let remaining = digitsAfter
+        while (index > 0 && remaining > 0) {
+          index -= 1
+          if (/\d/.test(formatted[index])) remaining -= 1
+        }
+        if (event?.inputType !== "deleteContentForward") {
+          while (index > 0 && /\D/.test(formatted[index - 1])) index -= 1
+        }
+        return index
+      }
+      this.element.setSelectionRange(position(selectionStart), position(selectionEnd))
+    }
   }
 
   cepMask() {

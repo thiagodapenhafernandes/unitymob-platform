@@ -10,11 +10,7 @@ module Admin::DistributionRulesHelper
   }.freeze
 
   def distribution_rule_business_label(rule)
-    {
-      "venda" => "Venda",
-      "locacao" => "Locação",
-      "ambos" => "Venda e locação"
-    }.fetch(rule.business_type, rule.business_type.to_s.humanize)
+    DistributionRule::BUSINESS_TYPE_LABELS.fetch(rule.business_type, rule.business_type.to_s.humanize)
   end
 
   def distribution_rule_mode_label(rule)
@@ -115,7 +111,7 @@ module Admin::DistributionRulesHelper
     rule.ensure_full_schedule
     DISTRIBUTION_RULE_DAY_LABELS.map do |day, label|
       config = rule.represamento_schedule[day] || {}
-      [label, config["active"] == "true", config["start"].presence || "09:00", config["end"].presence || "18:00"]
+      [label, rule.schedule_mode(day), config["start"].presence || "09:00", config["end"].presence || "18:00"]
     end
   end
 

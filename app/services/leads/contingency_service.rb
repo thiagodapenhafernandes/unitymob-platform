@@ -80,6 +80,16 @@ module Leads
       return false unless target && target.tenant_id == @lead.tenant_id && target.id != source&.id &&
         !target.contingency_enabled? && !target.attendance?
 
+      info = @lead.other_information.to_h
+      context = info["distribution_entry"] if info["distribution_entry"].is_a?(Hash)
+      form_id = context ? context["meta_form_id"] : info["meta_form_id"]
+      category = context ? context["category"] : EntryClassification.new(@lead).category
+      return false if target.meta_form_excluded?(form_id)
+      return false unless target.accepts_entry_category?(category)
+      failure = @lead.activities.where(kind: "distribution_failed")
+        .where("created_at >= ?", @lead.distribution_cycle_started_at || @lead.created_at).order(id: :desc).first
+      return false if failure&.metadata.to_h["reason"] == "conflicting_rules"
+
       initialize_cycle!
       previous_owner = @lead.admin_user
       previous_skip = @lead.skip_automatic_routing?
