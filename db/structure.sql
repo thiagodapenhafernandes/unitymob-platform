@@ -1,4 +1,4 @@
-\restrict jLDXILON694tqyJrgHGnm8Rsb5Gds5oR9gCTrfo2P7wkVGnJngHINHjEYuPtinf
+\restrict 7w19ujgujDWjrUegmLw6Ptq2sFtQOdM8FVAgIWCkLNNnhgL85Be6RpGjuLbnCQf
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -2548,6 +2548,8 @@ CREATE TABLE public.distribution_rules (
     origin_paths jsonb DEFAULT '[]'::jsonb NOT NULL,
     excluded_meta_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
     property_cities jsonb DEFAULT '[]'::jsonb NOT NULL,
+    archived_at timestamp(6) without time zone,
+    display_position integer DEFAULT 0 NOT NULL,
     CONSTRAINT chk_distribution_rules_first_contact_sla_positive CHECK (((first_contact_sla_minutes IS NULL) OR (first_contact_sla_minutes > 0))),
     CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0)))
 );
@@ -3884,6 +3886,7 @@ CREATE TABLE public.home_settings (
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
     daily_rental_search_enabled boolean DEFAULT false NOT NULL,
+    corporate_title character varying DEFAULT 'Private Corporate'::character varying NOT NULL,
     CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
     CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
 );
@@ -8228,7 +8231,8 @@ CREATE TABLE public.whatsapp_business_integrations (
     last_checked_at timestamp(6) without time zone,
     last_check_status character varying,
     last_check_message character varying,
-    last_webhook_at timestamp(6) without time zone
+    last_webhook_at timestamp(6) without time zone,
+    separate_conversations_by_number boolean DEFAULT false CONSTRAINT whatsapp_business_integrati_separate_conversations_by__not_null NOT NULL
 );
 
 
@@ -8614,7 +8618,8 @@ CREATE TABLE public.whatsapp_sender_numbers (
     cpl_fla_unit_price numeric(10,2) DEFAULT 0.12 NOT NULL,
     tenant_id bigint NOT NULL,
     use_for_notifications boolean DEFAULT false NOT NULL,
-    receptive_response_flow_id bigint
+    receptive_response_flow_id bigint,
+    administrative_inbox_enabled boolean DEFAULT true NOT NULL
 );
 
 
@@ -14227,6 +14232,13 @@ CREATE INDEX index_distribution_rules_on_contingency_rule_id ON public.distribut
 
 
 --
+-- Name: index_distribution_rules_on_display_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_distribution_rules_on_display_order ON public.distribution_rules USING btree (tenant_id, archived_at, display_position);
+
+
+--
 -- Name: index_distribution_rules_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17846,17 +17858,17 @@ CREATE UNIQUE INDEX index_wa_campaign_messages_on_tenant_and_external_id ON publ
 
 
 --
--- Name: index_wa_conversations_on_tenant_and_bsuid; Type: INDEX; Schema: public; Owner: -
+-- Name: index_wa_conversations_on_number_bsuid; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_wa_conversations_on_tenant_and_bsuid ON public.whatsapp_conversations USING btree (tenant_id, business_scoped_user_id) WHERE (business_scoped_user_id IS NOT NULL);
+CREATE UNIQUE INDEX index_wa_conversations_on_number_bsuid ON public.whatsapp_conversations USING btree (tenant_id, COALESCE(whatsapp_sender_number_id, (0)::bigint), business_scoped_user_id) WHERE (business_scoped_user_id IS NOT NULL);
 
 
 --
--- Name: index_wa_conversations_on_tenant_and_phone; Type: INDEX; Schema: public; Owner: -
+-- Name: index_wa_conversations_on_number_phone; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_wa_conversations_on_tenant_and_phone ON public.whatsapp_conversations USING btree (tenant_id, contact_phone) WHERE (contact_phone IS NOT NULL);
+CREATE UNIQUE INDEX index_wa_conversations_on_number_phone ON public.whatsapp_conversations USING btree (tenant_id, COALESCE(whatsapp_sender_number_id, (0)::bigint), contact_phone) WHERE (contact_phone IS NOT NULL);
 
 
 --
@@ -21644,11 +21656,13 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict jLDXILON694tqyJrgHGnm8Rsb5Gds5oR9gCTrfo2P7wkVGnJngHINHjEYuPtinf
+\unrestrict 7w19ujgujDWjrUegmLw6Ptq2sFtQOdM8FVAgIWCkLNNnhgL85Be6RpGjuLbnCQf
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261104190100'),
+('20261104190000'),
 ('20261103180100'),
 ('20261103180000'),
 ('20261029180000'),

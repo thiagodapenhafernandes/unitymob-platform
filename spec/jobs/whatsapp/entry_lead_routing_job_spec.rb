@@ -144,4 +144,16 @@ RSpec.describe Whatsapp::EntryLeadRoutingJob, type: :job do
     expect(lead.reload.admin_user_id).to be_nil
     expect(Leads::NotificationDispatcher).not_to have_received(:deliver)
   end
+  [:administrativo, :triagem, :todos].each do |receiving|
+    it "distribui #{receiving} sem promover contato administrativo ou indefinido a comercial" do
+      rule.update!(business_type: receiving, custom_filters: [])
+      message.update!(body: receiving == :administrativo ? "Preciso do boleto" : "Olá")
+      perform
+      expect(lead.reload.admin_user_id).to eq(agent.id)
+      expect(lead.whatsapp_service_contact?).to be(true)
+      expect(Lead.commercial.where(id: lead.id)).not_to exist
+      expect(lead.activities.where(kind: "distributed").count).to eq(1)
+    end
+  end
+
 end

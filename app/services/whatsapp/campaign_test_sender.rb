@@ -88,7 +88,7 @@ module Whatsapp
 
     def conversation
       @conversation ||= begin
-        record = tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: normalized_phone)
+        record = WhatsappConversation.contact_scope(tenant: tenant, sender_number: sender_number).find_or_initialize_by(contact_phone: normalized_phone)
         record.contact_name ||= "Teste WhatsApp #{normalized_phone}"
         record.status = "open"
         record.save!

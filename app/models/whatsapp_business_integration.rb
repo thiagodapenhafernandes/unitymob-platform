@@ -47,6 +47,17 @@ class WhatsappBusinessIntegration < ApplicationRecord
            dependent: :nullify,
            inverse_of: :whatsapp_business_integration
 
+  validate :number_isolation_cannot_merge_histories
+
+  def number_isolation_cannot_merge_histories
+    return unless will_save_change_to_separate_conversations_by_number?(from: true, to: false)
+
+    duplicates = %i[contact_phone business_scoped_user_id].any? do |field|
+      tenant.whatsapp_conversations.where.not(field => nil).group(field).having("COUNT(*) > 1").exists?
+    end
+    errors.add(:separate_conversations_by_number, "possui históricos separados; concilie antes de desativar") if duplicates
+  end
+
   validates :status, inclusion: { in: STATUSES }
   normalize_phone_fields :default_whatsapp_number,
                          :sale_whatsapp_number,

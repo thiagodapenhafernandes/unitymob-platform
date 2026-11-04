@@ -34,6 +34,7 @@ class Admin::HomeSettingsController < Admin::BaseController
   
   def home_setting_params
     permitted_params = params.require(:home_setting).permit(
+      :corporate_title,
       :hero_title,
       :hero_subtitle,
       :hero_title_font_size,

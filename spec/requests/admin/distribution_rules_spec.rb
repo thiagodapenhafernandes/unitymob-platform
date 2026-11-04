@@ -10,6 +10,34 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "arquiva preservando leads, esconde da lista e restaura inativa" do
+    rule = create(:distribution_rule, tenant: admin.tenant, name: "Fila histórica")
+    lead = create(:lead, tenant: admin.tenant, distribution_rule: rule, skip_automatic_routing: true)
+    patch archive_admin_distribution_rule_path(rule)
+    expect(rule.reload).to have_attributes(active: false)
+    expect(rule.archived_at).to be_present
+    expect(lead.reload.distribution_rule_id).to eq(rule.id)
+    get admin_distribution_rules_path
+    expect(response.body).not_to include("Fila histórica")
+    get admin_distribution_rules_path(archived: "1")
+    expect(response.body).to include("Fila histórica", "Restaurar")
+    patch toggle_active_admin_distribution_rule_path(rule)
+    expect(rule.reload.active).to be(false)
+    patch restore_admin_distribution_rule_path(rule)
+    expect(rule.reload).to have_attributes(active: false, archived_at: nil)
+  end
+
+  it "não permite mover ou arquivar fila de outra conta" do
+    tenant = Tenant.create!(name: "Outra conta", slug: "organization-#{SecureRandom.hex(4)}")
+    foreign = create(:distribution_rule, tenant: tenant)
+    patch archive_admin_distribution_rule_path(foreign)
+    expect(response).not_to have_http_status(:success)
+    expect(foreign.reload.archived_at).to be_nil
+    patch move_admin_distribution_rule_path(foreign), params: { direction: "up" }
+    expect(response).not_to have_http_status(:success)
+    expect(foreign.reload.display_position).to eq(0)
+  end
+
   it "salva filtros opcionais, ignora linhas vazias e permite removê-los" do
     rule = create(:distribution_rule, tenant: admin.tenant)
     patch admin_distribution_rule_path(rule), params: {distribution_rule: {custom_filters: {
@@ -638,4 +666,20 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     get admin_distribution_rules_path
     expect(response.body).to include("Sorteio ponderado")
   end
+  it "mostra todas as opções e a explicação acessível, salva Todos e reabre sem mudar outras regras" do
+    rule = create(:distribution_rule, tenant: admin.tenant)
+    other = create(:distribution_rule, tenant: admin.tenant, business_type: :venda)
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {business_type: "todos"}}
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(rule.reload.business_type).to eq("todos")
+    expect(other.reload.business_type).to eq("venda")
+    get edit_admin_distribution_rule_path(rule)
+    doc = Nokogiri::HTML(response.body)
+    select = doc.at_css("select[name='distribution_rule[business_type]']")
+    expect(select.css("option").map { |option| option["value"] }).to eq(DistributionRule.business_types.keys)
+    description = doc.at_css("##{select['aria-describedby']}")
+    expect(description.text).to include(DistributionRule::BUSINESS_TYPE_DESCRIPTIONS["todos"])
+    expect(response.body).to include("ax-select-description", "Sempre prevalecem sobre a inclusão")
+  end
+
 end

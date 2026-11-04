@@ -64,6 +64,8 @@ module Whatsapp
     VCARD_BUTTONS = [{ "kind" => "quick_reply", "text" => "Salvar contato" }].freeze
     EXAMPLE_VALUES = ["Thiago", "Facebook", "Thiago", "21990872427", "iprodutora@gmail.com", "Form name"].freeze
     EDITABLE_STATUSES = ["", "DRAFT", "REJECTED"].freeze
+    NO_EMAIL_NAMES = %w[lead_distribution_alert_no_email lead_pool_alert_no_email lead_distribution_alert_no_email_v2 lead_pool_alert_no_email_v2].freeze
+    NO_EMAIL_EXAMPLE_VALUES = EXAMPLE_VALUES.values_at(0, 1, 2, 3, 5).freeze
     DEFINITIONS = {
       TEMPLATE_NAME => {
         label: "Aviso padrão legado",
@@ -92,7 +94,15 @@ module Whatsapp
         body: POOL_UTILITY_BODY,
         buttons: VCARD_BUTTONS
       }
-    }.freeze
+    }.merge(
+      NO_EMAIL_NAMES.to_h do |name|
+        pool = name.start_with?("lead_pool")
+        body = (pool ? POOL_UTILITY_BODY : DISTRIBUTION_BODY).lines.reject { |line| line.include?("Email") }.join.gsub("{{6}}", "{{5}}").strip
+        [name, { label: "Aviso de #{pool ? 'bolsão' : 'rodízio'} sem e-mail#{name.end_with?('_v2') ? ' com cartão' : ''}",
+          description: "Versão sem o campo e-mail. Exige aprovação e seleção nas notificações da conta.",
+          body: body, buttons: name.end_with?("_v2") ? VCARD_BUTTONS : [] }]
+      end
+    ).freeze
 
     def self.names
       DEFINITIONS.keys
@@ -156,7 +166,7 @@ module Whatsapp
       record.carousel_cards = []
       record.flow_config = {}
       record.allow_category_change = true if record.allow_category_change.nil?
-      record.example_values = EXAMPLE_VALUES if record.example_values.blank?
+      record.example_values = (NO_EMAIL_NAMES.include?(name) ? NO_EMAIL_EXAMPLE_VALUES : EXAMPLE_VALUES) if record.example_values.blank?
     end
   end
 end

@@ -26,6 +26,17 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
     context "tema #{theme_key} (variante #{variant})" do
       before { tenant.update_columns(public_site_theme: theme_key) }
 
+      it "usa o título Corporate configurado pela conta" do
+        HomeSetting.instance(tenant: tenant).update!(corporate_title: "Salute Corporate")
+        create(:habitation, tenant: tenant, status: "Aluguel", valor_locacao_cents: 100_000,
+          home_corporate_flag: true, exibir_no_site_flag: true, address_attributes: address)
+        tenant.home_sections.create!(section_type: :rentals, title: "Locação", active: true, order_position: 1)
+        get root_path
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("Salute Corporate")
+        expect(response.body).not_to include("Private Corporate")
+      end
+
       it "publica diária na busca e no detalhe com preço por dia e sem total mensal" do
         property = create(:habitation, tenant: tenant, codigo: "9780-DIARIA", status: "Diária",
           titulo_anuncio: "Apartamento de temporada", valor_locacao_cents: 300_000, valor_venda_cents: 0,

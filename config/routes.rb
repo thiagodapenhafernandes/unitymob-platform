@@ -439,6 +439,9 @@ Rails.application.routes.draw do
     resources :access_control_rules, only: [:create, :update, :destroy]
     resources :trusted_devices, only: [:update, :destroy]
     resources :distribution_rules do
+      patch :move, on: :member
+      patch :archive, on: :member
+      patch :restore, on: :member
       patch :toggle_active, on: :member
       patch :reorder_agents, on: :member
     end

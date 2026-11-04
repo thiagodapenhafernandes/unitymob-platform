@@ -599,7 +599,8 @@ module Admin::ComercialHelper
       notification_activity_detail(meta)
     when "distribution_failed"
       { "no_matching_rule" => "Nenhuma regra ativa atende à nova consulta",
-        "ambiguous_business_type" => "Venda ou locação não definida: revise as regras da nova consulta",
+        "ambiguous_business_type" => "Modalidade não definida: configure Triagem ou Todos para esta entrada",
+        "conflicting_rules" => "Mais de uma regra compatível: revise o recebimento e os formulários das regras",
         "no_eligible_agent" => "Nenhum corretor elegível na regra" }[meta["reason"]] || "Não foi possível concluir a distribuição"
     when "contingency_forwarded"
       reason = DistributionRule::CONTINGENCY_TRIGGERS[meta["reason"]] || "Nenhuma regra compatível"

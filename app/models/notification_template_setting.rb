@@ -96,6 +96,9 @@ class NotificationTemplateSetting < ApplicationRecord
   end
 
   def default_variable_mapping
+    if Whatsapp::LeadAlertTemplate::NO_EMAIL_NAMES.include?(whatsapp_template&.name)
+      return LEAD_DISTRIBUTION_BROKER_FIRST_MAPPING.except("6").merge("5" => "lead_other_or_link")
+    end
     purpose_config.fetch(:default_variable_mapping, {})
   end
 

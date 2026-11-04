@@ -2123,7 +2123,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def existing_whatsapp_conversation_for(lead)
-    scope = current_tenant.whatsapp_conversations
+    scope = WhatsappConversation.contact_scope(tenant: current_tenant)
     bsuid = lead.business_scoped_user_id.presence
     phone = normalize_whatsapp_phone(lead.display_phone) if lead.display_phone.present?
 
@@ -2141,9 +2141,9 @@ class Admin::LeadsController < Admin::BaseController
     conversation = existing_whatsapp_conversation_for(lead)
     conversation = bind_whatsapp_conversation_to_lead!(conversation, lead) if conversation&.lead_id.blank?
     conversation ||= if bsuid.present?
-                       current_tenant.whatsapp_conversations.find_or_initialize_by(business_scoped_user_id: bsuid)
+                       WhatsappConversation.contact_scope(tenant: current_tenant).find_or_initialize_by(business_scoped_user_id: bsuid)
                      else
-                       current_tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: phone)
+                       WhatsappConversation.contact_scope(tenant: current_tenant).find_or_initialize_by(contact_phone: phone)
                      end
 
     if conversation.lead_id.blank? || conversation.lead_id == lead.id

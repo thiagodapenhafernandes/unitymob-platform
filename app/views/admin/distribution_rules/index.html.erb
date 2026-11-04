@@ -35,12 +35,17 @@
   </div>
 <% end %>
 
+<%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+  A ordem abaixo organiza a listagem e não altera a prioridade de distribuição.
+  <%= link_to(@show_archived ? "Ver filas atuais" : "Ver filas arquivadas", admin_distribution_rules_path(archived: @show_archived ? nil : "1")) %>
+<% end %>
+
 <div class="ax-table-wrap distribution-rules-index__table">
   <table class="ax-table">
     <thead>
       <tr>
         <th>Nome</th>
-        <th class="distribution-rules-index__col-type">Tipo</th>
+        <th class="distribution-rules-index__col-type">Receber</th>
         <th class="distribution-rules-index__col-sources">Fontes</th>
         <th class="distribution-rules-index__col-mode">Modo</th>
         <th class="distribution-rules-index__col-leads">Leads</th>
@@ -50,7 +55,7 @@
       </tr>
     </thead>
     <tbody>
-      <% @distribution_rules.each do |rule| %>
+      <% @distribution_rules.each_with_index do |rule, index| %>
         <% enabled_sources = distribution_rule_enabled_sources(rule) %>
         <% rule_lead_stats = @distribution_rule_lead_stats.fetch(rule.id, { count: 0, last_lead_at: nil }) %>
         <tr>
@@ -62,7 +67,7 @@
               <% if rule.represamento_active? %><span class="ax-badge ax-badge--blue"><i class="bi bi-moon-stars" aria-hidden="true"></i> Represamento</span><% end %>
             </div>
           </td>
-          <td><span class="ax-badge ax-badge--gray tw-uppercase tw-font-mono"><%= rule.business_type %></span></td>
+          <td><span class="ax-badge ax-badge--gray tw-uppercase tw-font-mono"><%= distribution_rule_business_label(rule) %></span></td>
           <td>
             <span class="tw-inline-flex tw-gap-2 tw-text-base" aria-label="Fontes: <%= enabled_sources.presence&.to_sentence || 'nenhuma' %>">
               <% if rule.source_tiktok? %><i class="bi bi-tiktok" title="TikTok Ads" aria-hidden="true"></i><% end %>
@@ -95,15 +100,23 @@
             <% end %>
           </td>
           <td>
-            <% if rule.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativa</span>
+            <% if rule.archived_at.present? %><span class="ax-badge ax-badge--gray">Arquivada</span>
+            <% elsif rule.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativa</span>
             <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativa</span><% end %>
           </td>
           <td class="ax-num">
             <span class="tw-inline-flex tw-gap-0.5">
               <%= link_to admin_distribution_rule_path(rule), class: "ax-ico-btn", title: "Ver #{rule.name}", aria: { label: "Ver regra #{rule.name}" } do %><i class="bi bi-eye" aria-hidden="true"></i><% end %>
               <%= link_to edit_admin_distribution_rule_path(rule), class: "ax-ico-btn", title: "Editar #{rule.name}", aria: { label: "Editar regra #{rule.name}" } do %><i class="bi bi-pencil" aria-hidden="true"></i><% end %>
-              <%= button_to toggle_active_admin_distribution_rule_path(rule), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: rule.active? ? "Pausar #{rule.name}" : "Ativar #{rule.name}", aria: { label: rule.active? ? "Pausar regra #{rule.name}" : "Ativar regra #{rule.name}" } do %><i class="bi bi-<%= rule.active? ? 'pause-circle' : 'play-circle' %>" aria-hidden="true"></i><% end %>
-              <%= button_to admin_distribution_rule_path(rule), method: :delete, form_class: "tw-inline", data: { turbo_confirm: "Excluir a regra #{rule.name}?" }, class: "ax-ico-btn", title: "Excluir #{rule.name}", aria: { label: "Excluir regra #{rule.name}" } do %><i class="bi bi-trash" aria-hidden="true"></i><% end %>
+              <% if @show_archived %>
+                <%= button_to "Restaurar", restore_admin_distribution_rule_path(rule), method: :patch, form_class: "tw-inline", class: "ax-btn ax-btn--sm" %>
+              <% else %>
+                <% [["up", "Subir", "arrow-up", index.zero?], ["down", "Descer", "arrow-down", index == @distribution_rules.size - 1]].each do |direction, label, icon, disabled| %>
+                  <%= button_to move_admin_distribution_rule_path(rule, direction: direction), method: :patch, disabled: disabled, form_class: "tw-inline", class: "ax-ico-btn", title: "#{label} #{rule.name}", aria: { label: "#{label} regra #{rule.name}" } do %><i class="bi bi-<%= icon %>" aria-hidden="true"></i><% end %>
+                <% end %>
+                <%= button_to toggle_active_admin_distribution_rule_path(rule), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: rule.active? ? "Pausar #{rule.name}" : "Ativar #{rule.name}", aria: { label: rule.active? ? "Pausar regra #{rule.name}" : "Ativar regra #{rule.name}" } do %><i class="bi bi-<%= rule.active? ? 'pause-circle' : 'play-circle' %>" aria-hidden="true"></i><% end %>
+                <%= button_to archive_admin_distribution_rule_path(rule), method: :patch, form_class: "tw-inline", form: { data: { turbo_confirm: "Arquivar a regra #{rule.name}? O histórico será preservado." } }, class: "ax-ico-btn", title: "Arquivar #{rule.name}", aria: { label: "Arquivar regra #{rule.name}" } do %><i class="bi bi-archive" aria-hidden="true"></i><% end %>
+              <% end %>
             </span>
           </td>
         </tr>

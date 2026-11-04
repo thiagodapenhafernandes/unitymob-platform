@@ -2,6 +2,7 @@ module Leads
   # Classifica a consulta atual, sem usar o histórico ou o nome da campanha como modalidade.
   class EntryClassification
     SALE = /\b(venda|vender|comprar|compra|sale)\b/
+    DAILY = /\b(diaria|diarias|temporada|daily|locacao_diaria)\b/
     RENT = /\b(aluguel|alugar|locacao|locar|rent|rental)\b/
     ADMINISTRATIVE = /\b(financeiro|segunda via|boleto|rescisao|suporte administrativo)\b|\b(solicitar|solicito|preciso de|pedido de|agendar)\s+(uma\s+)?manutencao\b/
 
@@ -10,14 +11,18 @@ module Leads
     end
 
     def nature
+      return :administrative if %w[administrative administrativo].include?(normalize(info["business_type"] || info["negotiation_type"]))
       return :administrative if normalize(@message ? @message.body : @lead.product).match?(ADMINISTRATIVE) || administrative_attendance?
-      return :commercial unless @lead.whatsapp_service_contact?
       business_type ? :commercial : :unknown
     end
 
     def business_type
       return @business_type if defined?(@business_type)
       @business_type = resolve_business_type
+    end
+
+    def category
+      nature == :administrative ? "administrativo" : (business_type&.to_s || "triagem")
     end
 
     private
@@ -27,14 +32,17 @@ module Leads
       explicit ||= info["c2s_business_type"] if @lead.external_lead_integration_id.present?
       explicit ||= @lead.attribution_data.to_h["business_type"]
       normalized = normalize(explicit)
+      return :diaria if %w[daily diaria temporada locacao_diaria].include?(normalized)
       return :venda if %w[sale venda compra].include?(normalized)
       return :locacao if %w[rent rental locacao aluguel].include?(normalized)
       return :ambos if %w[sale_rent ambos].include?(normalized)
 
       property = @lead.tenant.habitations.find_by(id: @lead.property_id) if @lead.property_id
       if property
+        return :diaria if property.daily_rental?
         return {"sale" => :venda, "rent" => :locacao, "sale_rent" => :ambos}[property.whatsapp_negotiation_type]
       end
+      return :diaria if text.match?(DAILY)
       sale, rent = text.match?(SALE), text.match?(RENT)
       return :ambos if sale && rent
       return :venda if sale

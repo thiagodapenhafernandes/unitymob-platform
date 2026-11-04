@@ -258,7 +258,8 @@ export default class extends Controller {
   }
 
   actingMatchesArea(user) {
-    const area = this.hasAreaValue ? this.areaValue : ""
+    const selectedArea = this.hasAreaValue ? this.areaValue : ""
+    const area = selectedArea === "diaria" ? "locacao" : selectedArea
     if (area === "venda") return user.actingType === "sales" || user.actingType === "both"
     if (area === "locacao") return user.actingType === "rentals" || user.actingType === "both"
     return true
@@ -338,7 +339,8 @@ export default class extends Controller {
   }
 
   buildChildrenIndex() {
-    const area = this.hasAreaValue ? this.areaValue : ""
+    const selectedArea = this.hasAreaValue ? this.areaValue : ""
+    const area = selectedArea === "diaria" ? "locacao" : selectedArea
     return this.users.reduce((index, user) => {
       const links = []
       if (area !== "locacao" && user.managerId) links.push(user.managerId)

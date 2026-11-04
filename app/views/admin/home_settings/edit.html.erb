@@ -362,6 +362,7 @@
         <%= ax_studio_section(id: "home-tab-sections", icon: "layout-text-sidebar", data: { live_focus: "sections" },
                               title: "Seções",
                               subtitle: "Os blocos da página na ordem do site. Ordene, publique e configure sem sair da Home.") do %>
+          <%= ax_text_field(form: f, method: :corporate_title, label: "Título da vitrine Corporate", tooltip: "Título exibido na vitrine Corporate em todos os temas desta conta.") %>
           <%= ax_collapsible_card(title: "Ordem da página", collapse_id: "home-page-order", icon: "list-ol", class_name: "hps-block-card", badge: "#{active_sections.size} de #{@home_sections.size} ativas", actions: ax_button("Nova seção", new_admin_home_section_path(return_to: "home_settings"), variant: :primary, size: :sm, icon: "plus-lg")) do %>
             <div class="ax-studio-group__head"><p>Do hero ao rodapé. Arraste para ordenar; Novo e Editar voltam para esta aba.</p></div>
             <ol class="hps-story">

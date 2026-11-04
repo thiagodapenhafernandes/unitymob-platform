@@ -1,0 +1,7 @@
+<% footer = capture do %>
+  <button type="button" class="ax-btn" data-action="ax-modal#close">Continuar editando</button>
+  <button type="button" class="ax-btn" data-action="save-state#discardAndNavigate">Sair sem salvar</button>
+  <button type="button" class="ax-btn ax-btn--primary" data-action="save-state#saveBeforeLeaving">Salvar</button>
+<% end %>
+<%= ax_quick_modal(id: "#{id}UnsavedChanges", title: "Alterações não salvas", footer: footer,
+      data: { save_state_target: "navigationModal" }, body: tag.p("Deseja salvar as alterações antes de sair?")) %>

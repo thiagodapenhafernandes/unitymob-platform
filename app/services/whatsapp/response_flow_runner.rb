@@ -15,6 +15,8 @@ module Whatsapp
     ATTENDANCE_ACTIONS = %w[distribute_lead send_to_user].freeze
 
     def call
+      sender = conversation.tenant.whatsapp_sender_numbers.find_by(phone_number_id: phone_number_id) if phone_number_id.present?
+      return if sender && !sender.administrative_inbox_enabled?
       return if campaign_message&.whatsapp_campaign&.response_decision_rows&.any?
       return handle_free_text unless button_text.present?
       return answer_switch if switch_answer?
@@ -52,7 +54,8 @@ module Whatsapp
       elsif automation_waiting_for_answer?
         nil # o cliente está respondendo uma pergunta da automação: não devolve o menu
       else
-        template = receptive_response_flow&.whatsapp_template || conversation.attendances.order(:closed_at).last&.whatsapp_response_flow&.whatsapp_template
+        template = receptive_response_flow&.whatsapp_template
+        template ||= conversation.attendances.order(:closed_at).last&.whatsapp_response_flow&.whatsapp_template unless isolated_number?
         AttendanceManager.resend_menu!(conversation, template)
       end
     end
@@ -102,6 +105,8 @@ module Whatsapp
       receptive_flow = receptive_response_flow
       return receptive_flow if receptive_flow&.action_for(button_key: button_key, button_text: button_text).present?
 
+      return if isolated_number?
+
       conversation.tenant.whatsapp_response_flows.active.includes(:whatsapp_template).detect { |flow| flow.action_for(button_key: button_key, button_text: button_text).present? }
     end
 
@@ -109,6 +114,10 @@ module Whatsapp
       scope = conversation.tenant.whatsapp_response_flows.active.includes(:whatsapp_template)
       scope = scope.where(whatsapp_template_id: template.id)
       scope.detect { |flow| flow.action_for(button_key: button_key, button_text: button_text).present? }
+    end
+
+    def isolated_number?
+      phone_number_id.present? && WhatsappBusinessIntegration.current(conversation.tenant).separate_conversations_by_number?
     end
 
     def receptive_response_flow
@@ -127,7 +136,8 @@ module Whatsapp
       context_id = raw_message.dig(:context, :id).presence
       return if context_id.blank?
 
-      outbound = conversation.tenant.whatsapp_messages.find_by(wa_message_id: context_id)
+      scope = isolated_number? ? conversation.messages : conversation.tenant.whatsapp_messages
+      outbound = scope.find_by(wa_message_id: context_id)
       return if outbound&.template_name.blank?
 
       conversation.tenant.whatsapp_templates.find_by(name: outbound.template_name)

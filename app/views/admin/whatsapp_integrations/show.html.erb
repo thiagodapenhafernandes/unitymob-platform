@@ -184,6 +184,7 @@
                             tooltip: "Cole este valor no painel da Meta ao assinar o webhook.", value: @webhook_verify_token) %>
                     </div>
                   </div>
+                  <%= ax_switch_field(form: f, method: :separate_conversations_by_number, label: "Separar conversas por número WhatsApp", description: "Novas mensagens usam o histórico do número receptor. Não divide nem transfere mensagens antigas. Após existirem conversas separadas, a desativação exige conciliação.") %>
                   <div class="wa-webhook__actions">
                     <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary ax-btn--sm" %>
                   </div>
@@ -810,6 +811,7 @@
                                   class: "whatsapp-sender-modal__form" do |f| %>
                       <%= hidden_field_tag :return_to, admin_whatsapp_integration_path %>
                       <%= ax_text_field(form: f, method: :label, label: "Nome interno") %>
+                      <%= ax_switch_field(form: f, method: :administrative_inbox_enabled, label: "Receber no atendimento administrativo") %>
                       <%= ax_text_field(form: f, method: :display_phone_number, label: "Número WhatsApp", type: :tel,
                             data: { controller: "phone-input" }) %>
                       <%= ax_text_field(form: f, method: :phone_number_id, label: "ID do telefone na Meta", tooltip: "Identificador do telefone na Cloud API. É diferente do número com DDD.") %>

@@ -97,7 +97,7 @@ module Whatsapp
     def attendance_in_progress?
       return false unless campaign.tenant.whatsapp_response_flows.exists?(whatsapp_template_id: campaign.whatsapp_template_id)
 
-      conversation = campaign.tenant.whatsapp_conversations.find_by(contact_phone: campaign_message.phone_number)
+      conversation = WhatsappConversation.contact_scope(tenant: campaign.tenant, sender_number: campaign.sender_number).find_by(contact_phone: campaign_message.phone_number)
       conversation&.open_attendance.present?
     end
 
@@ -145,7 +145,7 @@ module Whatsapp
     end
 
     def find_or_create_conversation!
-      conversation = campaign.tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: campaign_message.phone_number)
+      conversation = WhatsappConversation.contact_scope(tenant: campaign.tenant, sender_number: campaign.sender_number).find_or_initialize_by(contact_phone: campaign_message.phone_number)
       conversation.lead ||= lead if lead
       conversation.contact_name ||= recipient&.display_name || lead&.display_name || campaign_message.phone_number
       conversation.status = "open"

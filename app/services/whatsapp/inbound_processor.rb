@@ -52,7 +52,7 @@ module Whatsapp
             contacts = index_contacts(value["contacts"])
             phone_number_id = value.dig("metadata", "phone_number_id").presence || value["phone_number_id"].presence
             Array(value["messages"]).each { |msg| handle_inbound(msg, contacts, phone_number_id: phone_number_id) }
-            Array(value["statuses"]).each { |st| handle_status(st) }
+            Array(value["statuses"]).each { |st| handle_status(st, phone_number_id: phone_number_id) }
           ensure
             Current.tenant = nil
             @tenant = nil
@@ -106,7 +106,7 @@ module Whatsapp
         return
       end
 
-      conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name, entry_message: msg)
+      conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name, entry_message: msg, phone_number_id: phone_number_id)
       extend_free_entry_point_window(conversation, msg)
       remember_receiving_number(conversation, phone_number_id)
       type = msg["type"].to_s
@@ -278,7 +278,7 @@ module Whatsapp
       timestamp ? Time.zone.at(timestamp.to_i) : Time.current
     end
 
-    def handle_status(status)
+    def handle_status(status, phone_number_id: nil)
       state = status["status"].to_s
       return unless WhatsappMessage::STATUSES.include?(state)
 
@@ -286,7 +286,7 @@ module Whatsapp
 
       message = tenant.whatsapp_messages.find_by(wa_message_id: status["id"])
       unless message
-        schedule_external_message_marker(status) if state == "sent"
+        schedule_external_message_marker(status, phone_number_id: phone_number_id) if state == "sent"
         return
       end
 
@@ -321,11 +321,11 @@ module Whatsapp
     end
 
     # Envio por outro sistema no mesmo número: só chega o status, sem texto. O job confirma depois que não é nosso.
-    def schedule_external_message_marker(status)
+    def schedule_external_message_marker(status, phone_number_id: nil)
       return if status["id"].blank? || (status["recipient_id"].blank? && status["recipient_user_id"].blank?)
 
       Whatsapp::ExternalMessageMarkerJob.set(wait: 2.minutes).perform_later(
-        tenant.id, status["id"], status["recipient_id"], status["recipient_user_id"], (status_timestamp(status) || Time.current).iso8601
+        tenant.id, status["id"], status["recipient_id"], status["recipient_user_id"], (status_timestamp(status) || Time.current).iso8601, phone_number_id
       )
     end
 
@@ -527,17 +527,22 @@ module Whatsapp
       recipient_phone = Phones::Normalizer.call(recipient_phone).to_s.presence
       return if conversation.blank? || recipient_phone.blank?
       return if conversation.contact_phone.present?
-      return if tenant.whatsapp_conversations.where(contact_phone: recipient_phone).where.not(id: conversation.id).exists?
+      return if WhatsappConversation.contact_scope(tenant: tenant, sender_number: conversation.whatsapp_sender_number).where(contact_phone: recipient_phone).where.not(id: conversation.id).exists?
 
       conversation.update_columns(contact_phone: recipient_phone, updated_at: Time.current)
     end
 
-    def find_or_create_conversation(phone:, bsuid:, name:, entry_message:)
+    def find_or_create_conversation(phone:, bsuid:, name:, entry_message:, phone_number_id: nil)
       phone = Phones::Normalizer.call(phone).to_s.presence
+      sender = tenant.whatsapp_sender_numbers.find_by(phone_number_id: phone_number_id) if phone_number_id.present?
+      if phone_number_id.present? && sender.nil? && WhatsappBusinessIntegration.current(tenant).separate_conversations_by_number?
+        raise ArgumentError, "Número receptor não cadastrado para esta conta"
+      end
+      scope = WhatsappConversation.contact_scope(tenant: tenant, sender_number: sender)
       conversation =
-        (phone.present? && tenant.whatsapp_conversations.find_by(contact_phone: phone)) ||
-        (bsuid.present? && tenant.whatsapp_conversations.find_by(business_scoped_user_id: bsuid)) ||
-        tenant.whatsapp_conversations.new
+        (phone.present? && scope.find_by(contact_phone: phone)) ||
+        (bsuid.present? && scope.find_by(business_scoped_user_id: bsuid)) ||
+        scope.new
 
       # Backfill: completa a identidade que faltava (mescla telefone + BSUID).
       conversation.contact_phone = phone if phone.present? && conversation.contact_phone.blank?

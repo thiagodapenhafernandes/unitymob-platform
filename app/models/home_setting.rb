@@ -52,6 +52,8 @@ class HomeSetting < ApplicationRecord
   has_many :hero_slides, -> { ordered }, class_name: "HomeHeroSlide", dependent: :destroy
   accepts_nested_attributes_for :hero_slides, allow_destroy: true
   
+  validates :corporate_title, presence: true, length: { maximum: 100 }
+
   # Validations
   validates :hero_layout, inclusion: { in: HERO_LAYOUTS.keys }
   validates :hero_search_align, inclusion: { in: HERO_SEARCH_ALIGN_OPTIONS.map(&:last) }

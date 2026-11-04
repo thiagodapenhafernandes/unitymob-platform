@@ -20,7 +20,8 @@ module Whatsapp
           return unless rule
 
           lead.skip_automatic_routing = true
-          lead.promote_whatsapp_contact!
+          classification = Leads::EntryClassification.new(lead, message: message)
+          lead.promote_whatsapp_contact! if classification.nature == :commercial && classification.business_type.present?
           distributor.distribute_to(rule)
         end
       end

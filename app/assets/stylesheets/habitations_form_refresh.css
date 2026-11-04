@@ -831,13 +831,18 @@
   }
 
   body.ax-habitation-editor-workspace .habitation-editor-form {
+    display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     height: 100%;
     min-height: 0;
     overflow: hidden;
   }
 
-  body.ax-habitation-editor-workspace .habitation-editor-main,
+  body.ax-habitation-editor-workspace .habitation-editor-main {
+    min-height: 0;
+    overflow: hidden;
+  }
+
   body.ax-habitation-editor-workspace .habitation-editor-workspace {
     height: 100%;
     min-height: 0;

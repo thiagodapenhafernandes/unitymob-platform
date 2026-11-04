@@ -4,7 +4,7 @@ class WhatsappConversation < ApplicationRecord
 
   belongs_to :lead, optional: true
   belongs_to :assigned_admin_user, class_name: "AdminUser", optional: true
-  # Número do negócio que recebeu a última mensagem do contato: as respostas saem por ele.
+  # Número do negócio usado para receber e responder neste histórico.
   belongs_to :whatsapp_sender_number, optional: true
   has_many :messages, -> { order(:created_at) }, class_name: "WhatsappMessage", dependent: :destroy
   has_many :attendances, class_name: "WhatsappAttendance", dependent: :destroy
@@ -13,8 +13,38 @@ class WhatsappConversation < ApplicationRecord
 
   normalize_phone_fields :contact_phone
 
-  validates :contact_phone, uniqueness: { scope: :tenant_id }, allow_nil: true
-  validates :business_scoped_user_id, uniqueness: { scope: :tenant_id }, allow_nil: true
+  validate :unique_contact_identity
+  validate :sender_belongs_to_tenant
+
+  def self.contact_scope(tenant:, sender_number: nil)
+    scope = tenant.whatsapp_conversations
+    return scope unless WhatsappBusinessIntegration.current(tenant).separate_conversations_by_number?
+
+    sender_number ||= default_sender_number(tenant)
+    raise ArgumentError, "Número WhatsApp receptor não identificado" unless sender_number&.tenant_id == tenant.id
+
+    scope.where(whatsapp_sender_number_id: sender_number.id)
+  end
+
+  def self.default_sender_number(tenant)
+    integration = WhatsappBusinessIntegration.current(tenant)
+    tenant.whatsapp_sender_numbers.find_by(phone_number_id: integration.phone_number_id) if integration.phone_number_id.present?
+  end
+
+  def unique_contact_identity
+    return if tenant.blank?
+    scope = tenant.whatsapp_conversations.where.not(id: id)
+    if WhatsappBusinessIntegration.current(tenant).separate_conversations_by_number?
+      scope = scope.where(whatsapp_sender_number_id: whatsapp_sender_number_id)
+    end
+    %i[contact_phone business_scoped_user_id].each do |field|
+      errors.add(field, :taken) if self[field].present? && scope.exists?(field => self[field])
+    end
+  end
+
+  def sender_belongs_to_tenant
+    errors.add(:whatsapp_sender_number, "deve pertencer à mesma conta") if whatsapp_sender_number && whatsapp_sender_number.tenant_id != tenant_id
+  end
   # Toda conversa precisa de pelo menos uma identidade (telefone ou BSUID).
   validate :phone_or_bsuid_present
 
@@ -22,11 +52,24 @@ class WhatsappConversation < ApplicationRecord
   scope :without_commercial_lead, -> {
     where(lead_id: nil).or(where(lead_id: Lead.where("other_information ->> 'whatsapp_service_contact' = 'true'").select(:id)))
   }
+  scope :inbox_enabled, -> {
+    where(<<~SQL.squish)
+      whatsapp_conversations.whatsapp_sender_number_id IS NULL OR EXISTS (
+        SELECT 1 FROM whatsapp_sender_numbers
+        WHERE whatsapp_sender_numbers.id = whatsapp_conversations.whatsapp_sender_number_id
+          AND whatsapp_sender_numbers.tenant_id = whatsapp_conversations.tenant_id
+          AND whatsapp_sender_numbers.administrative_inbox_enabled = TRUE
+      )
+    SQL
+  }
   scope :administrative_inbox, -> {
     without_commercial_lead.or(where(id: WhatsappAttendance.open_now.administrative.select(:whatsapp_conversation_id)))
+      .inbox_enabled
   }
 
   def administrative_inbox?
+    return false if whatsapp_sender_number && !whatsapp_sender_number.administrative_inbox_enabled?
+
     return true if lead.nil? || lead.whatsapp_service_contact?
 
     attendance = attendances.find(&:open?)
@@ -74,6 +117,8 @@ class WhatsappConversation < ApplicationRecord
   # Credenciais para responder: o número que recebeu a conversa; senão a integração da conta.
   def reply_credentials
     sender = whatsapp_sender_number
+    return sender if sender && WhatsappBusinessIntegration.current(tenant).separate_conversations_by_number?
+
     sender&.messaging_ready? ? sender : WhatsappBusinessIntegration.current(tenant)
   end
 
@@ -87,6 +132,8 @@ class WhatsappConversation < ApplicationRecord
   # Quem ouve o som de mensagem nova: o dono do atendimento aberto; sem atendimento, o responsável de sempre.
   # Conversa cujo atendimento foi encerrado não alerta ninguém até um novo atendimento começar (o menu volta).
   def alert_recipient_id
+    return nil if whatsapp_sender_number && !whatsapp_sender_number.administrative_inbox_enabled?
+
     attendance = open_attendance
     return attendance.admin_user_id || assigned_admin_user_id if attendance
     return nil if attendances.exists?

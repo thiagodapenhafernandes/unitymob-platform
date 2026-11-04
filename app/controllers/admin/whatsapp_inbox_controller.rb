@@ -65,7 +65,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
 
     return head :not_found if @message.media_url.blank?
 
-    download = Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(current_tenant)).download_media(@message.media_url)
+    download = Whatsapp::CloudClient.new(@message.whatsapp_conversation.reply_credentials).download_media(@message.media_url)
     return head :bad_gateway unless download[:ok]
 
     disposition = @message.media_inline? ? "inline" : "attachment"
@@ -82,7 +82,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
     return render json: { ok: false, error: "Aguarde a mensagem ser entregue para reagir." }, status: :unprocessable_entity if message.wa_message_id.blank?
 
     emoji = params[:emoji].to_s.strip
-    integration = WhatsappBusinessIntegration.current(current_tenant)
+    integration = @conversation.reply_credentials
     client = Whatsapp::CloudClient.new(integration)
     result = client.send_reaction(to: @conversation.cloud_recipient, message_id: message.wa_message_id, emoji: emoji)
     return render json: { ok: false, error: result[:error].to_s.presence || "Não foi possível reagir." }, status: :unprocessable_entity unless result[:ok]
@@ -390,7 +390,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def conversation_scope
-    base = current_tenant.whatsapp_conversations.with_attached_contact_avatar.includes(:assigned_admin_user, { attendances: { admin_user: :profile } }, lead: { lead_labelings: :lead_label })
+    base = current_tenant.whatsapp_conversations.with_attached_contact_avatar.includes(:assigned_admin_user, :whatsapp_sender_number, { attendances: { admin_user: :profile } }, lead: { lead_labelings: :lead_label })
     ids = visible_owner_ids(:whatsapp_inbox)
     return base if ids.nil?
 
@@ -528,7 +528,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
     components = Whatsapp::TemplateMessageComponents.call(
       template: template,
       variables: variables,
-      client: Whatsapp::CloudClient.new(@integration),
+      client: Whatsapp::CloudClient.new(@conversation.reply_credentials),
       header_media_attachable: message.media_file.attached? ? message.media_file : nil
     )
     return PresentationTemplateMessage.new(ok?: false, error: components.error) unless components.ok?
@@ -551,7 +551,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
     components = Whatsapp::TemplateMessageComponents.call(
       template: template,
       variables: variables,
-      client: Whatsapp::CloudClient.new(@integration)
+      client: Whatsapp::CloudClient.new(@conversation.reply_credentials)
     )
     return PresentationTemplateMessage.new(ok?: false, error: components.error) unless components.ok?
 

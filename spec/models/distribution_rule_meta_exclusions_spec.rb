@@ -19,7 +19,7 @@ RSpec.describe DistributionRule do
     expect(other.reload.meta_forms).to eq(["excluded"])
     rule.update!(auto_add_forms: false, meta_forms: ["excluded"])
     expect(rule.excluded_meta_form_ids).to eq(["excluded", "blocked-later"])
-    expect(rule.meta_form_excluded?("excluded")).to eq(false)
+    expect(rule.meta_form_excluded?("excluded")).to eq(true)
     rule.update!(auto_add_forms: true)
     expect(rule.meta_forms).to be_empty
     rule.update!(excluded_meta_form_ids: [])

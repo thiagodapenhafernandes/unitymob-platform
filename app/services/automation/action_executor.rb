@@ -112,7 +112,7 @@ module Automation
       phone = normalized_phone
       return if phone.blank?
 
-      conversation = @lead.tenant.whatsapp_conversations.find_or_create_by!(contact_phone: phone) do |record|
+      conversation = WhatsappConversation.contact_scope(tenant: @lead.tenant).find_or_create_by!(contact_phone: phone) do |record|
         record.lead = @lead
         record.contact_name = @lead.display_name
       end

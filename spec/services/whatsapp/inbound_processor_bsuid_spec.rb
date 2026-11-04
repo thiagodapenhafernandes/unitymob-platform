@@ -12,6 +12,25 @@ RSpec.describe Whatsapp::InboundProcessor do
       "value" => { "metadata" => { "phone_number_id" => integration.phone_number_id }, "contacts" => contacts, "messages" => messages } }] }] }
   end
 
+  it "mantém mensagens do mesmo contato em históricos separados quando habilitado" do
+    tenant = integration.tenant
+    integration.update!(separate_conversations_by_number: true)
+    main = create(:whatsapp_sender_number, tenant: tenant, whatsapp_business_integration: integration, phone_number_id: integration.phone_number_id)
+    notification = create(:whatsapp_sender_number, tenant: tenant, whatsapp_business_integration: integration, administrative_inbox_enabled: false)
+    [main, notification].each_with_index do |sender, index|
+      data = payload(contacts: [{ "wa_id" => "5547999994444", "profile" => { "name" => "Contato" } }],
+        messages: [{ "id" => "wamid.isolated.#{index}", "from" => "5547999994444", "type" => "text", "text" => { "body" => "mensagem #{index}" } }])
+      data["entry"][0]["changes"][0]["value"]["metadata"]["phone_number_id"] = sender.phone_number_id
+      described_class.call(data)
+    end
+    conversations = tenant.whatsapp_conversations.where(contact_phone: "5547999994444").order(:id)
+    expect(conversations.size).to eq(2)
+    expect(conversations.first.messages.pluck(:body)).to eq(["mensagem 0"])
+    expect(conversations.last.messages.pluck(:body)).to eq(["mensagem 1"])
+    expect(tenant.whatsapp_conversations.administrative_inbox.pluck(:id)).to include(conversations.first.id)
+    expect(tenant.whatsapp_conversations.administrative_inbox.pluck(:id)).not_to include(conversations.last.id)
+  end
+
   it "captura o BSUID (contacts.user_id + messages.from_user_id) na conversa e no lead" do
     described_class.call(payload(
       contacts: [{ "wa_id" => "US.5521999990000", "user_id" => "US.13491208655302741918", "profile" => { "name" => "Fulano" } }],

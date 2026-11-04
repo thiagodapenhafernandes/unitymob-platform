@@ -53,4 +53,21 @@ RSpec.describe Leads::EntryClassification do
     expect(described_class.new(lead).nature).to eq(:commercial)
     expect(described_class.new(lead).business_type).to eq(:venda)
   end
+  it "distingue diária de locação convencional por imóvel, dado estruturado e texto" do
+    property = create(:habitation, tenant: tenant, status: "Diária", valor_locacao_cents: 350000)
+    lead.property_id = property.id
+    expect(described_class.new(lead).business_type).to eq(:diaria)
+    lead.property_id = nil
+    lead.product = "Alugar apartamento por temporada"
+    expect(described_class.new(lead).business_type).to eq(:diaria)
+    lead.other_information = {"business_type" => "locacao_diaria"}
+    expect(described_class.new(lead).business_type).to eq(:diaria)
+  end
+
+  it "preserva indefinido e administrativo sem presumir modalidade comercial" do
+    expect(described_class.new(lead).nature).to eq(:unknown)
+    lead.other_information = {"business_type" => "administrativo"}
+    expect(described_class.new(lead).nature).to eq(:administrative)
+  end
+
 end
