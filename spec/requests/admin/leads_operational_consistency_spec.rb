@@ -6,6 +6,62 @@ RSpec.describe "Consistência operacional dos leads", type: :request do
   let(:tenant) { admin.tenant }
   before { host! "localhost"; sign_in admin }
 
+  it "atualiza a agenda desktop e mobile ao salvar um retorno via Turbo" do
+    lead = create(:lead, tenant: tenant, admin_user: admin)
+    headers = { "Accept" => Mime[:turbo_stream].to_s }
+
+    post schedule_activity_admin_lead_path(lead),
+         params: { activity_kind: "return", due_at: 1.day.from_now.iso8601, notes: "Revisar proposta" },
+         headers: headers
+
+    expect(response).to have_http_status(:ok)
+    expect(lead.tasks.count).to eq(1)
+    streams = Nokogiri::HTML.fragment(response.body)
+    %w[desktop pwa].each do |variant|
+      stream = streams.at_css("turbo-stream[action='replace'][target='#{variant}_operational_panel_lead_#{lead.id}']")
+      expect(stream.at_css("#lead-#{variant}-agenda").text).to include("Retornar para o cliente", "Revisar proposta")
+    end
+
+    post schedule_activity_admin_lead_path(lead), params: { activity_kind: "" }, headers: headers
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Selecione o tipo de atividade.")
+    expect(response.body).not_to include('action="replace"')
+  end
+
+  it "envia o modal de tarefa da ficha com navegação completa e volta com a tarefa criada" do
+    lead = create(:lead, tenant: tenant, admin_user: admin)
+    get admin_lead_path(lead)
+    form = Nokogiri::HTML(response.body).at_css("#lead-desktop-tarefas form.task-form-modal__form")
+    expect(form["data-turbo"]).to eq("false")
+
+    post admin_tasks_path, params: { task: { lead_id: lead.id, title: "Retorno pelo modal", kind: "follow_up" } },
+         headers: { "HTTP_REFERER" => admin_lead_url(lead) }
+    expect(response).to redirect_to(admin_lead_url(lead))
+    follow_redirect!
+    expect(Nokogiri::HTML(response.body).at_css("#lead-desktop-tarefas").text).to include("Retorno pelo modal")
+  end
+
+  it "registra conclusão e reabertura com autoria e exige motivo para reabrir" do
+    lead = create(:lead, tenant: tenant, admin_user: admin)
+    task = create(:task, lead: lead, admin_user: admin)
+
+    patch complete_admin_task_path(task)
+    expect(task.reload).to be_concluida
+    patch reopen_admin_task_path(task), params: { reason: " " }
+    expect(task.reload).to be_concluida
+
+    2.times { patch reopen_admin_task_path(task), params: { reason: "Atualizar o fluxo" } }
+    expect(task.reload).to be_pendente
+    expect(task.completed_at).to be_nil
+    events = lead.activities.where(kind: %w[task_completed task_reopened]).order(:id)
+    expect(events.map(&:kind)).to eq(%w[task_completed task_reopened])
+    expect(events.last.metadata).to include("actor_id" => admin.id, "task_id" => task.id, "reason" => "Atualizar o fluxo")
+
+    get admin_lead_path(lead)
+    agenda = Nokogiri::HTML(response.body).at_css("#lead-desktop-agenda")
+    expect(agenda.text).to include("Concluir atividade", "Reaberta", "Atualizar o fluxo")
+  end
+
   it "mantém tarefas concluídas consultáveis na ficha e preserva os retornos pendentes na agenda" do
     lead = create(:lead, tenant: tenant, admin_user: admin)
     create(:task, lead: lead, admin_user: admin, title: "Retorno em aberto")

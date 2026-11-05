@@ -14,6 +14,8 @@
   contact_history_modal_id = local_assigns[:contact_history_modal_id].presence || "leadLogContactHistory#{namespace}"
   scheduled_tasks = Array(local_assigns[:scheduled_tasks])
   agenda_count = Array(appointments).size + scheduled_tasks.size
+  task_history = lead.activities.where(tenant_id: lead.tenant_id, kind: %w[task_completed task_reopened])
+                     .order(created_at: :desc, id: :desc).group_by { |event| event.meta("task_id").to_s }
   sections = [
     ["agenda", "agenda"],
     ["tarefas", "tasks"],
@@ -74,26 +76,8 @@
             </div>
           <% end %>
           <% scheduled_tasks.first([6 - appointments.first(6).size, 0].max).each do |task| %>
-            <div class="lead-operational-row">
-              <% if can?(:manage, :comercial) && task.pendente? %>
-                <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{task.title}" } do %>
-                  <i class="bi bi-circle" aria-hidden="true"></i>
-                <% end %>
-              <% end %>
-              <span class="lead-operational-row__body">
-                <strong><%= task.title %></strong>
-                <span><%= task.kind == "visita" ? "Visita" : "Retorno ao cliente" %> · <%= l(task.due_at, format: :short) %></span>
-              </span>
-              <% if can?(:manage, :comercial) %>
-                <%= render "admin/tasks/form_modal",
-                      modal_id: "#{edit_task_modal_prefix}Schedule#{task.id}",
-                      lead: lead,
-                      task: task,
-                      trigger_label: nil,
-                      trigger_class: "ax-ico-btn",
-                      trigger_title: "Editar tarefa agendada" %>
-              <% end %>
-            </div>
+            <%= render "admin/tasks/activity_card", task: task, lead: lead, scheduled: true,
+                  modal_id: "#{edit_task_modal_prefix}Schedule#{task.id}", history: task_history.fetch(task.id.to_s, []) %>
           <% end %>
         <% else %>
           <p class="<%= empty_class %>">Nada agendado.</p>
@@ -106,6 +90,9 @@
         <span class="lead-operational-section__title"><i class="bi bi-check2-square ax-ico"></i> Tarefas</span>
         <span class="lead-operational-section__actions">
           <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
+          <% if completed_tasks.any? %>
+            <%= ax_badge("#{completed_tasks.size} #{completed_tasks.one? ? "concluída" : "concluídas"}", tone: :green) %>
+          <% end %>
           <% if can?(:manage, :comercial) %>
             <%= render "admin/tasks/form_modal",
                   modal_id: new_task_modal_id,
@@ -119,35 +106,8 @@
       <div class="lead-detail-task-stack">
         <% if open_tasks.any? || completed_tasks.any? %>
           <% (open_tasks.first(6) + completed_tasks).each do |task| %>
-            <% badge = task_badge(task) %>
-            <div class="lead-detail-task-row<%= " lead-detail-task-row--next" if next_task && task.id == next_task.id %><%= " lead-detail-task-row--alert" if badge[:color] == "red" %>">
-              <% if can?(:manage, :comercial) && task.pendente? %>
-                <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{task.title}" } do %>
-                  <i class="bi bi-circle" aria-hidden="true"></i>
-                <% end %>
-              <% else %>
-                <span></span>
-              <% end %>
-              <span class="lead-detail-task-row__body">
-                <strong><%= task.title %></strong>
-                <span><%= task.kind_label %><%= " · #{l(task.due_at, format: :short)}" if task.due_at.present? %></span>
-                <% if task.concluida? && task.description.present? %>
-                  <span class="tw-whitespace-pre-wrap"><%= task.description %></span>
-                <% end %>
-              </span>
-              <span class="tw-inline-flex tw-items-center tw-gap-1">
-                <span class="ax-badge ax-badge--<%= badge[:color] %>"><%= badge[:label] %></span>
-                <% if can?(:manage, :comercial) %>
-                  <%= render "admin/tasks/form_modal",
-                        modal_id: "#{edit_task_modal_prefix}#{task.id}",
-                        lead: lead,
-                        task: task,
-                        trigger_label: nil,
-                        trigger_class: "ax-ico-btn",
-                        trigger_title: "Editar tarefa" %>
-                <% end %>
-              </span>
-            </div>
+            <%= render "admin/tasks/activity_card", task: task, lead: lead, scheduled: false,
+                  modal_id: "#{edit_task_modal_prefix}#{task.id}", history: task_history.fetch(task.id.to_s, []) %>
           <% end %>
         <% else %>
           <p class="<%= empty_class %>">Nenhuma tarefa pendente.</p>

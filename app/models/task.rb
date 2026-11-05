@@ -64,11 +64,49 @@ class Task < ApplicationRecord
   def external_legacy? = source == "external_legacy" || title == LEGACY_EXTERNAL_TITLE || external_scheduled_activity_linked?
 
   def complete!(by: nil)
-    update!(status: "concluida", completed_at: Time.current)
-    LeadActivity.log!(lead: lead, kind: "task_completed", metadata: { task_id: id, title: title, by: by&.name }.compact) if lead_id
+    change_completion!("concluida", by: by)
+  end
+
+  def reopen!(by:, reason:)
+    reason = reason.to_s.strip
+    if reason.blank? || reason.length > 500 || lead_id.blank?
+      errors.add(:base, "Informe um motivo de até 500 caracteres para reabrir uma tarefa vinculada.")
+      raise ActiveRecord::RecordInvalid, self
+    end
+
+    change_completion!("pendente", by: by, reason: reason)
   end
 
   private
+
+  def change_completion!(new_status, by:, reason: nil)
+    transaction do
+      expected_lead_id = lead_id
+      linked_lead = lead
+      linked_lead&.lock!
+      lock!
+      if lead_id != expected_lead_id
+        errors.add(:base, "O vínculo da tarefa mudou. Atualize a página e tente novamente.")
+        raise ActiveRecord::RecordInvalid, self
+      end
+      next if status == new_status
+
+      completing = new_status == "concluida"
+      unless completing ? pendente? : concluida?
+        errors.add(:base, "O status atual não permite esta ação.")
+        raise ActiveRecord::RecordInvalid, self
+      end
+
+      update!(status: new_status, completed_at: completing ? Time.current : nil)
+      if linked_lead
+        linked_lead.activities.create!(
+          tenant_id: tenant_id,
+          kind: completing ? "task_completed" : "task_reopened",
+          metadata: { task_id: id, title: title, by: by&.name, actor_id: by&.id, reason: reason }.compact
+        )
+      end
+    end
+  end
 
   def assign_source
     self.source = "external_legacy" if source.blank? && title == LEGACY_EXTERNAL_TITLE

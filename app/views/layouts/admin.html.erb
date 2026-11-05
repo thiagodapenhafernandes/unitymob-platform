@@ -348,7 +348,7 @@
     <!-- Content -->
     <main class="ax-main">
       <%# Aviso de impersonação vive no topo do menu lateral (ax-nav__impersonation). %>
-      <%= render 'shared/flash_messages', toast: true if flash.any? %>
+      <div id="admin-operational-feedback"><%= render "shared/flash_messages", toast: true if flash.any? %></div>
       <%= yield %>
     </main>
 

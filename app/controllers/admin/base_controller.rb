@@ -90,14 +90,17 @@ class Admin::BaseController < ApplicationController
     flash.now[:notice] = notice if notice.present?
     flash.now[:alert] = alert if alert.present?
 
-    render(
-      turbo_stream: turbo_stream.replace(
-        view_context.dom_id(lead, :pwa_operational_panel),
-        partial: "admin/leads/pwa_operational_panel",
-        locals: { lead: lead }
-      ),
-      status: status
-    )
+    streams = [turbo_stream.update("admin-operational-feedback", partial: "shared/flash_messages", locals: { toast: true })]
+    if status == :ok
+      { pwa_operational_panel: false, desktop_operational_panel: true }.each do |prefix, desktop|
+        streams << turbo_stream.replace(
+          view_context.dom_id(lead, prefix),
+          partial: "admin/leads/pwa_operational_panel",
+          locals: { lead: lead, desktop: desktop }
+        )
+      end
+    end
+    render turbo_stream: streams, status: status
   end
 
   def handle_invalid_admin_session

@@ -1,0 +1,93 @@
+<%# locals: task, lead, scheduled, modal_id, history %>
+<%
+  badge = if scheduled
+    { label: "Pendente", color: "amber" }
+  elsif task.status == "cancelada"
+    { label: "Cancelada", color: "gray" }
+  else
+    task_badge(task)
+  end
+  manage = can?(:manage, :comercial)
+%>
+<% header = capture do %>
+  <span class="ax-activity-card__header">
+    <span class="tw-min-w-0 tw-break-words">
+      <strong><%= task.title %></strong>
+      <span class="ax-page-subtitle ax-activity-card__date">
+        <% if task.due_at.present? %>
+          <i class="bi bi-calendar3" aria-hidden="true"></i> <%= l(task.due_at, format: :short) %>
+        <% else %>
+          <%= task.kind_label %>
+        <% end %>
+      </span>
+    </span>
+    <%= ax_badge(badge[:label], tone: badge[:color].to_sym) %>
+  </span>
+<% end %>
+
+<% actions = capture do %>
+  <% if manage && !task.concluida? %>
+    <div class="ax-activity-card__actions">
+      <% if task.pendente? %>
+        <%= button_to complete_admin_task_path(task), method: :patch, form: { data: { turbo: false } }, class: "ax-btn ax-btn--primary" do %>
+          <i class="bi bi-check-lg" aria-hidden="true"></i> Concluir atividade
+        <% end %>
+      <% end %>
+      <%= render "admin/tasks/form_modal", modal_id: modal_id, lead: lead, task: task,
+            trigger_label: "Editar", trigger_class: "ax-btn ax-btn--secondary" %>
+    </div>
+  <% end %>
+<% end %>
+
+<article class="ax-card ax-activity-card <%= scheduled ? "ax-activity-card--scheduled" : "ax-activity-card--compact" %>">
+  <% if scheduled %><%= header %><%= actions %><% end %>
+
+  <% if !scheduled || task.description.present? || history.any? %>
+  <details class="ax-activity-card__details">
+    <summary><%= scheduled ? "Ver detalhes" : header %></summary>
+    <div class="ax-activity-card__body">
+      <%= actions unless scheduled %>
+      <% if task.description.present? %>
+        <p class="tw-m-0 tw-whitespace-pre-wrap tw-break-words"><%= task.description %></p>
+      <% end %>
+      <div class="ax-activity-card__links">
+      <% if manage && task.concluida? %>
+        <details>
+          <summary class="ax-btn ax-btn--secondary"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reabrir atividade</summary>
+        <%= form_with url: reopen_admin_task_path(task), method: :patch, data: { turbo: false }, class: "tw-grid tw-gap-2" do |form| %>
+          <%= form.label :reason, "Motivo da reabertura", for: "#{modal_id}Reason", class: "ax-label" %>
+          <%= form.text_area :reason, id: "#{modal_id}Reason", required: true, maxlength: 500, rows: 2, class: "ax-control" %>
+          <%= form.submit "Confirmar reabertura", class: "ax-btn ax-btn--secondary tw-justify-self-start" %>
+        <% end %>
+        </details>
+      <% end %>
+      <details>
+        <summary class="ax-btn ax-btn--secondary"><i class="bi bi-clock-history" aria-hidden="true"></i> Ver histórico</summary>
+        <% if history.any? %>
+          <ul class="tw-m-0 tw-grid tw-gap-2 tw-pt-2">
+            <% history.each do |event| %>
+              <li class="tw-break-words">
+                <strong><%= event.kind == "task_reopened" ? "Reaberta" : "Concluída" %></strong>
+                · <%= l(event.created_at, format: :short) %> · <%= event.meta("by").presence || "Autor não registrado" %>
+                <% if event.meta("reason").present? %>
+                  <div class="tw-whitespace-pre-wrap"><%= event.meta("reason") %></div>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% elsif task.completed_at.present? %>
+          <p class="ax-page-subtitle">Concluída em <%= l(task.completed_at, format: :short) %> · Autor não registrado</p>
+        <% else %>
+          <p class="ax-page-subtitle">Nenhuma mudança de status registrada.</p>
+        <% end %>
+      </details>
+      </div>
+      <% if task.concluida? && (history.first&.kind == "task_completed" || task.completed_at.present?) %>
+        <p class="ax-activity-card__event"><i class="bi bi-info-circle" aria-hidden="true"></i>
+          Concluída em <%= l(history.first&.kind == "task_completed" ? history.first.created_at : task.completed_at, format: :short) %>
+        </p>
+      <% end %>
+    </div>
+  </details>
+  <% end %>
+</article>

@@ -308,6 +308,7 @@ Rails.application.routes.draw do
     # === Comercial (Tarefas, Agenda, Propostas) ===
     resources :tasks, only: [:index, :create, :update, :destroy] do
       patch :complete, on: :member
+      patch :reopen, on: :member
     end
     resources :appointments, only: [:index, :create, :update, :destroy]
 
