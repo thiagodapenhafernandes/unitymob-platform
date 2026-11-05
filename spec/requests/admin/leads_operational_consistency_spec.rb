@@ -6,6 +6,22 @@ RSpec.describe "Consistência operacional dos leads", type: :request do
   let(:tenant) { admin.tenant }
   before { host! "localhost"; sign_in admin }
 
+  it "mantém tarefas concluídas consultáveis na ficha e preserva os retornos pendentes na agenda" do
+    lead = create(:lead, tenant: tenant, admin_user: admin)
+    create(:task, lead: lead, admin_user: admin, title: "Retorno em aberto")
+    create(:task, lead: lead, admin_user: admin, title: "Retorno finalizado",
+           description: "Passar o fluxo em 120 meses", status: "concluida", completed_at: Time.current)
+
+    get admin_lead_path(lead)
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css("#lead-desktop-agenda").text).to include("Retorno em aberto")
+    tasks = doc.at_css("#lead-desktop-tarefas")
+    expect(tasks.text).to include("Retorno finalizado", "Concluída", "Passar o fluxo em 120 meses")
+    expect(tasks.at_css(".lead-operational-section__actions .ax-badge").text).to eq("0")
+  end
+
   it "não cria colunas legadas vazias e preserva uma coluna antiga com lead" do
     pipeline = LeadPipeline.ensure_default!(tenant: tenant)
     configured = create(:lead_pipeline_stage, lead_pipeline: pipeline, name: "Etapa configurada")

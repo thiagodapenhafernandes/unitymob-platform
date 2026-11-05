@@ -1,4 +1,4 @@
-<%# locals: lead, anchor_prefix, namespace, open_tasks, next_task, appointments, proposals, lead_labels, contact_history_activities, new_proposal, proposal_habitations %>
+<%# locals: lead, anchor_prefix, namespace, open_tasks, completed_tasks, next_task, appointments, proposals, lead_labels, contact_history_activities, new_proposal, proposal_habitations %>
 <%
   section_class = local_assigns[:section_class].to_s
   empty_class = local_assigns[:empty_class].presence || "ax-page-subtitle tw-m-0"
@@ -117,8 +117,8 @@
         </span>
       </div>
       <div class="lead-detail-task-stack">
-        <% if open_tasks.any? %>
-          <% open_tasks.first(6).each do |task| %>
+        <% if open_tasks.any? || completed_tasks.any? %>
+          <% (open_tasks.first(6) + completed_tasks).each do |task| %>
             <% badge = task_badge(task) %>
             <div class="lead-detail-task-row<%= " lead-detail-task-row--next" if next_task && task.id == next_task.id %><%= " lead-detail-task-row--alert" if badge[:color] == "red" %>">
               <% if can?(:manage, :comercial) && task.pendente? %>
@@ -131,6 +131,9 @@
               <span class="lead-detail-task-row__body">
                 <strong><%= task.title %></strong>
                 <span><%= task.kind_label %><%= " · #{l(task.due_at, format: :short)}" if task.due_at.present? %></span>
+                <% if task.concluida? && task.description.present? %>
+                  <span class="tw-whitespace-pre-wrap"><%= task.description %></span>
+                <% end %>
               </span>
               <span class="tw-inline-flex tw-items-center tw-gap-1">
                 <span class="ax-badge ax-badge--<%= badge[:color] %>"><%= badge[:label] %></span>
