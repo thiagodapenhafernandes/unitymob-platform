@@ -60,6 +60,7 @@
     </span>
   </div>
   <div class="lead-pwa-card__body">
+    <div class="lead-pwa-card__line"><span><%= render "admin/shared/ui/lead_entry_date", lead: lead %></span></div>
     <div class="lead-pwa-card__line">
       <% if conversion[:channel] == :linkedin_ads %>
         <span class="ax-record-origin" data-brand="linkedin"><%= ax_brand_icon("linkedin") %></span>

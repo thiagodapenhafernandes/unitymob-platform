@@ -37,6 +37,9 @@ module Leads
       return :locacao if %w[rent rental locacao aluguel].include?(normalized)
       return :ambos if %w[sale_rent ambos].include?(normalized)
 
+      form_type = form_business_type
+      return form_type if form_type
+
       property = @lead.tenant.habitations.find_by(id: @lead.property_id) if @lead.property_id
       if property
         return :diaria if property.daily_rental?
@@ -51,6 +54,26 @@ module Leads
 
     def info
       @lead.other_information.to_h
+    end
+
+    def form_business_type
+      return if @message
+
+      signals = Array(@lead.custom_answers).filter_map do |answer|
+        next unless answer.is_a?(Hash)
+        question = normalize(answer["key"].to_s.tr("_", " "))
+        response = normalize(answer["answer"]).delete_suffix(".").delete_suffix("!")
+        next unless %w[sim yes true].include?(response)
+        next if question.match?(/\b(nao|sem)\b/)
+        next unless question.match?(/\b(interessado|interessada|interesse)\b/) && question.match?(/\b(imoveis|imovel|terrenos|terreno|apartamento|apartamentos)\b/)
+
+        question
+      end.join(" ")
+      return :diaria if signals.match?(DAILY)
+      sale, rent = signals.match?(SALE), signals.match?(RENT)
+      return :ambos if sale && rent
+      return :venda if sale
+      :locacao if rent
     end
 
     def normalize(value)

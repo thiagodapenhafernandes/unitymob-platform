@@ -6,7 +6,8 @@ module Dashboard
     end
 
     def call
-      @scope.where(leads: { created_at: @window }).or(@scope.where(id: pool_acceptances.select(:lead_id)))
+      Leads::EntryPeriodQuery.new(scope: @scope, starts_at: @window.begin, ends_at: @window.end).call
+        .or(@scope.where(id: pool_acceptances.select(:lead_id)))
     end
 
     def pool_acceptances

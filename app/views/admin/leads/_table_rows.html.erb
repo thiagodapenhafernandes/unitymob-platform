@@ -39,7 +39,7 @@
       <%= render "admin/shared/ui/lead_origin", origin: origin %>
     </div>
     <div class="ax-record-list__cell" role="cell"><span class="ax-record-owner"><%= ax_icon("person-badge") %> <%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span></div>
-    <div class="ax-record-list__cell ax-record-date" role="cell"><%= l(lead.created_at, format: "%d/%m/%Y") %><span class="ax-record-sub"><%= l(lead.created_at, format: "%H:%M") %></span></div>
+    <div class="ax-record-list__cell ax-record-date" role="cell"><%= render "admin/shared/ui/lead_entry_date", lead: lead %></div>
     <div class="ax-record-list__cell" role="cell"><%= render "admin/leads/table_actions", lead: lead, lead_return_to_path: lead_return_to_path, phone_href: phone_href %></div>
   </article>
 <% end %>

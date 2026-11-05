@@ -91,7 +91,7 @@
   <% end %>
 
   <div class="ax-board__card-footer">
-    <small class="ax-board__card-date"><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></small>
+    <small class="ax-board__card-date"><%= render "admin/shared/ui/lead_entry_date", lead: lead %></small>
     <div class="tw-flex tw-items-center tw-gap-1">
       <%= render "admin/lead_labels/button", lead: lead, trigger_class: "ax-ico-btn", icon_only: true %>
       <%= ax_icon_button label: "Ver detalhes", icon: "eye",

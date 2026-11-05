@@ -144,8 +144,8 @@ class Admin::LeadsController < Admin::BaseController
     lead_scope = lead_scope_for_tab(common_scope, @desktop_lead_tab)
     list_scope = lead_scope_for_tab(list_filtered_scope, @desktop_lead_tab)
 
-    lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
-    list_scope = list_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
+    lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).reorder(Arel.sql(lead_entry_order))
+    list_scope = list_scope.includes(:admin_user, lead_labelings: :lead_label).reorder(Arel.sql(lead_entry_order))
 
     if @view_mode == "kanban"
       @lead_statuses = lead_statuses_for_kanban(lead_scope)
@@ -153,12 +153,12 @@ class Admin::LeadsController < Admin::BaseController
       # Primeiro lote por coluna DIRETO NO BANCO (janela por status): antes carregava a
       # base inteira de leads na memória a cada visita ao kanban.
       ranked = lead_scope.reorder(nil).select(
-        "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY leads.created_at DESC) AS kanban_rank"
+        "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY #{lead_entry_order}) AS kanban_rank"
       )
       @kanban_leads = Lead.from(ranked, :leads)
                           .where("kanban_rank <= ?", KANBAN_COLUMN_PAGE_SIZE)
                           .includes(:admin_user, lead_labelings: :lead_label, lead_pipeline_stage: :policy)
-                          .order(created_at: :desc)
+                          .reorder(Arel.sql(lead_entry_order))
                           .to_a
       @kanban_leads.each do |lead|
         status = Lead.status_value(lead.status, tenant: current_tenant)
@@ -186,6 +186,7 @@ class Admin::LeadsController < Admin::BaseController
     @leads = list_scope.paginate(page: params[:page], per_page: LEAD_LIST_PAGE_SIZE,
                                  total_entries: @desktop_tab_counts.fetch(@desktop_lead_tab))
     load_pwa_leads_light_context
+    lead_entry_period.load_dates(@kanban_leads + @leads.to_a)
     property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @view_mode == "kanban" ? (@kanban_leads.first || @leads.first) : @leads.first
@@ -284,12 +285,12 @@ class Admin::LeadsController < Admin::BaseController
     # next_offset/has_more/loaded_count).
     fetched = lead_scope
               .includes(:admin_user, lead_labelings: :lead_label, lead_pipeline_stage: :policy)
-              .order(created_at: :desc)
+              .reorder(Arel.sql(lead_entry_order))
               .offset(offset)
               .limit(KANBAN_COLUMN_PAGE_SIZE + 1)
               .to_a
     has_more = fetched.size > KANBAN_COLUMN_PAGE_SIZE
-    leads = fetched.first(KANBAN_COLUMN_PAGE_SIZE)
+    leads = lead_entry_period.load_dates(fetched.first(KANBAN_COLUMN_PAGE_SIZE))
     property_ids = leads.filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     return_to_path = safe_return_path(params[:return_to]) || admin_leads_path(request.query_parameters.except("offset", "return_to").merge(view: "kanban"))
@@ -328,11 +329,12 @@ class Admin::LeadsController < Admin::BaseController
     total = list_scope.reorder(nil).count
     leads = list_scope
             .includes(:admin_user, lead_labelings: :lead_label)
-            .order(created_at: :desc)
+            .reorder(Arel.sql(lead_entry_order))
             .offset(offset)
             .limit(LEAD_LIST_PAGE_SIZE)
             .to_a
 
+    lead_entry_period.load_dates(leads)
     property_ids = leads.filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     html = leads.any? ? render_to_string(partial: "admin/leads/table_rows", formats: [:html], locals: { leads: leads, return_to_path: lead_list_page_return_path }) : ""
@@ -1411,7 +1413,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def commercial_report_csv(scope, include_captacoes:)
-    leads = scope.reorder(nil).includes(:admin_user).to_a
+    leads = lead_entry_period.load_dates(scope.reorder(nil).includes(:admin_user).to_a)
     property_ids = leads.map(&:property_id).compact.uniq
     properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
 
@@ -1419,7 +1421,7 @@ class Admin::LeadsController < Admin::BaseController
       csv << [commercial_report_title(scope)]
       csv << []
 
-      leads.sort_by { |lead| [commercial_report_user_label(lead), lead.created_at || Time.zone.at(0), lead.id] }
+      leads.sort_by { |lead| [commercial_report_user_label(lead), lead.entry_received_at || Time.zone.at(0), lead.id] }
            .group_by { |lead| commercial_report_user_label(lead) }
            .each do |user_label, user_leads|
         csv << ["USUÁRIO: #{user_label}", nil, nil, nil, nil, nil, "Total de leads", user_leads.size]
@@ -1430,7 +1432,7 @@ class Admin::LeadsController < Admin::BaseController
           last_attempt = lead.activities.unsuccessful_contact_attempts.recent.first
           csv << [
             "Lead",
-            report_datetime(lead.created_at),
+            report_datetime(lead.entry_received_at),
             lead.display_name,
             lead.display_phone,
             lead.display_email,
@@ -1452,7 +1454,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def commercial_report_xlsx(scope, include_captacoes:)
-    leads = scope.reorder(nil).includes(:admin_user).to_a
+    leads = lead_entry_period.load_dates(scope.reorder(nil).includes(:admin_user).to_a)
     @commercial_report_pool_lead_ids = Dashboard::LeadPerformancePeriodQuery.new(
       scope: scope, starts_at: nil, ends_at: nil
     ).pool_acceptances.distinct.pluck(:lead_id).to_set
@@ -1506,7 +1508,7 @@ class Admin::LeadsController < Admin::BaseController
     ]
 
     grouped_leads = leads
-      .sort_by { |lead| [commercial_report_user_label(lead), lead.created_at || Time.zone.at(0), lead.id] }
+      .sort_by { |lead| [commercial_report_user_label(lead), lead.entry_received_at || Time.zone.at(0), lead.id] }
       .group_by { |lead| commercial_report_user_label(lead) }
 
     grouped_leads.each_value do |user_leads|
@@ -1988,15 +1990,17 @@ class Admin::LeadsController < Admin::BaseController
       ).call
     end
 
-    if parsed_start_date.present?
-      scope = scope.where("leads.created_at >= ?", parsed_start_date.beginning_of_day)
-    end
+    Leads::EntryPeriodQuery.new(scope: scope,
+      starts_at: parsed_start_date&.beginning_of_day, ends_at: parsed_end_date&.end_of_day).call
+  end
 
-    if parsed_end_date.present?
-      scope = scope.where("leads.created_at <= ?", parsed_end_date.end_of_day)
-    end
+  def lead_entry_period
+    @lead_entry_period ||= Leads::EntryPeriodQuery.new(scope: current_tenant.leads,
+      starts_at: parsed_start_date&.beginning_of_day, ends_at: parsed_end_date&.end_of_day)
+  end
 
-    scope
+  def lead_entry_order
+    "#{lead_entry_period.date_sql} DESC, leads.id DESC"
   end
 
   def apply_closed_at_filter(scope)
@@ -3018,6 +3022,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def load_pwa_lead_activity_context(leads)
+    lead_entry_period.load_dates(leads)
     lead_ids = leads.map(&:id)
     @pwa_contacted_lead_ids = LeadActivity.where(lead_id: lead_ids, kind: CONTACT_ACTIVITY_KINDS).distinct.pluck(:lead_id)
     @pwa_next_tasks_by_lead_id = Task
