@@ -1607,7 +1607,7 @@
 
 <%# ===== Cabeçalho ===== %>
 <% sla = lead_sla(@lead) %>
-<% all_open_tasks = (@actionable_tasks || @tasks).reject(&:concluida?) %>
+<% completed_tasks, all_open_tasks = (@actionable_tasks || @tasks).partition(&:concluida?) %>
 <% scheduled_tasks = future_scheduled_tasks(all_open_tasks) %>
 <% open_tasks = operational_tasks_without_future_schedule(all_open_tasks) %>
 <% next_task = open_tasks.select(&:pendente?).find { |task| task.due_at.present? } || open_tasks.find(&:pendente?) %>
@@ -2164,6 +2164,7 @@
               new_proposal_modal_id: "newProposalLeadSection#{@lead.id}",
               edit_proposal_modal_prefix: "editProposal",
               open_tasks: open_tasks,
+              completed_tasks: completed_tasks,
               next_task: next_task,
               appointments: @appointments,
               scheduled_tasks: scheduled_tasks,
