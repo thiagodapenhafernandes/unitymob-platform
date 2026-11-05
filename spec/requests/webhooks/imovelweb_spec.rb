@@ -68,6 +68,13 @@ RSpec.describe "Imovelweb gateway delivery", type: :request do
     expect(connection.imovelweb_lead_receipts.count).to eq(1)
   end
 
+  it "filters individual SQL bind values without request parameters" do
+    filter = ActiveRecord::Base.inspection_filter
+
+    expect(filter.filter_param("name", "Example")).to eq("Example")
+    expect(filter.filter_param("token", "example-token")).to eq("[FILTERED]")
+  end
+
   it "filters callback PII in request logging" do
     filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
     expect(filter.filter(entry.merge("name" => "Secret Name", "phone" => "11999999999", "message" => "private"))).to include("email" => "[FILTERED]", "message" => "[FILTERED]", "name" => "[FILTERED]", "phone" => "[FILTERED]")

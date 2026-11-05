@@ -16,6 +16,8 @@ Rails.application.config.filter_parameters += [
 
 # Only the normalized Imovelweb callback envelope; do not expose contact data in request logs.
 Rails.application.config.filter_parameters << lambda do |key, value, parameters|
+  next unless parameters
+
   if parameters["event_type"].in?(%w[CONTACTO CONTACTO_MENSAJE]) && parameters.key?("client_code") &&
       %w[name email phone message].include?(key) && value.is_a?(String)
     value.replace("[FILTERED]")
