@@ -1,7 +1,7 @@
 class MetaLeadProcessingJob < ApplicationJob
   queue_as :default
   PROPERTY_CODE_PATTERN = /(?:\bCOD(?:IGO)?\.?)\s*[:#-]?\s*(\d{2,})/i.freeze
-  AMBIGUOUS_PROPERTY_CODE_PATTERN = /(?:\bCOD(?:IGO)?\.?)\s*[:#-]?\s*\d{2,}\s*(?:e|,|\/|\+|&)\s*\d{2,}/i.freeze
+  AMBIGUOUS_PROPERTY_CODE_PATTERN = /(?:\bCOD(?:IGO)?\.?\s*[:#-]?\s*|\A(?:form(?:ulario)?\s*[-:]\s*)?\[?)\d{2,}\]?\s*(?:e|ou|,|\/|\+|&)\s*\[?\d{2,}/i.freeze
 
   # Locais onde o leadgen_id da Meta pode estar guardado: topo (leads criados
   # por este job) e chaves aninhadas dos registros vindos da migração C2S.
@@ -91,7 +91,10 @@ class MetaLeadProcessingJob < ApplicationJob
     text = I18n.transliterate(value.to_s).squish
     return nil if text.blank? || text.match?(AMBIGUOUS_PROPERTY_CODE_PATTERN)
 
-    codes = text.scan(PROPERTY_CODE_PATTERN).flatten.uniq
+    codes = text.scan(PROPERTY_CODE_PATTERN).flatten
+    prefix = text.match(/\A(?:form(?:ulario)?\s*[-:]\s*)?(?:\[(\d{2,})\]|(\d{2,}))\s+(?=[[:alpha:]])(?!mil(?:hao|hoes)?\b|[mk]\b)/i)
+    codes << (prefix[1] || prefix[2]) if prefix
+    codes = codes.uniq
     codes.one? ? codes.first : nil
   end
 

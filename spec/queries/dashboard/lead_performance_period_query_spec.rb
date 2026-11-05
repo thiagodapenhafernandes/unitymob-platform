@@ -56,4 +56,10 @@ RSpec.describe Dashboard::LeadPerformancePeriodQuery do
     accepted(lead, at: "2026-10-12", pool: true)
     expect(ids(admin.tenant.leads.where(admin_user_id: nil))).to be_empty
   end
+
+  it "inclui a nova consulta de um cadastro antigo sem exigir aceite de bolsão" do
+    old = lead_at("2026-02-21")
+    old.activities.create!(kind: "inquiry_complemented", created_at: Time.zone.parse("2026-10-12"))
+    expect(ids).to eq([old.id])
+  end
 end

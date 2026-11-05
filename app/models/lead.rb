@@ -21,6 +21,12 @@ class Lead < ApplicationRecord
   include TenantScoped
   include PhoneNormalizable
 
+  attr_writer :entry_received_at
+
+  def entry_received_at
+    @entry_received_at || created_at
+  end
+
   attr_accessor :data_processing_legal_basis
   validates :data_processing_legal_basis, inclusion: { in: Privacy::LegalBases::OPTIONS.map(&:last) }, allow_nil: true, on: :create
 

@@ -1,0 +1,4 @@
+<%= time_tag lead.entry_received_at, title: "Recebimento da consulta" do %><%= l(lead.entry_received_at, format: "%d/%m/%Y %H:%M") %><% end %>
+<% if lead.entry_received_at != lead.created_at %>
+  <span class="ax-record-sub">Cadastro: <%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></span>
+<% end %>

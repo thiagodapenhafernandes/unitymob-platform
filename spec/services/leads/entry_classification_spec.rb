@@ -70,4 +70,29 @@ RSpec.describe Leads::EntryClassification do
     expect(described_class.new(lead).nature).to eq(:administrative)
   end
 
+  it "classifica a resposta afirmativa à pergunta de interesse sem depender do nome da campanha" do
+    lead.product = "Form - Refuge"
+    lead.custom_answers = [{"key" => "você_está_interessado_em_receber_informações_sobre_terrenos_e_imóveis_à_venda?", "answer" => "sim."}]
+    expect(described_class.new(lead).category).to eq("venda")
+    lead.custom_answers.first["answer"] = "não"
+    expect(described_class.new(lead).category).to eq("triagem")
+    lead.custom_answers.first["answer"] = "talvez"
+    expect(described_class.new(lead).category).to eq("triagem")
+  end
+
+  it "mantém dados explícitos e pedidos administrativos acima da pergunta de interesse" do
+    lead.custom_answers = [{"key" => "Interessado em imóveis à venda?", "answer" => "Sim"}]
+    lead.other_information = {"business_type" => "rental"}
+    expect(described_class.new(lead).business_type).to eq(:locacao)
+    lead.other_information = {"business_type" => "administrativo"}
+    expect(described_class.new(lead).category).to eq("administrativo")
+  end
+
+  it "não usa resposta genérica ou aceite de contato para presumir venda" do
+    lead.custom_answers = [{"key" => "Autoriza receber contato do corretor de venda?", "answer" => "Sim"}]
+    expect(described_class.new(lead).business_type).to be_nil
+    lead.custom_answers = [{"key" => "Não está interessado em imóveis à venda?", "answer" => "Sim"}]
+    expect(described_class.new(lead).business_type).to be_nil
+  end
+
 end

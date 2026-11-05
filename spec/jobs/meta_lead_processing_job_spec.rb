@@ -3,6 +3,18 @@ require "rails_helper"
 RSpec.describe MetaLeadProcessingJob, type: :job do
   before { allow_any_instance_of(Lead).to receive(:route_lead) }
 
+  it "reconhece referência no prefixo do formulário sem confundir preços ou códigos conflitantes" do
+    property = create(:habitation, codigo: "3909", status: "Venda", exibir_no_site_flag: true)
+    expect(described_class.property_from_text(property.tenant, "Form - 3909 Atlântico Shopping Residence")).to eq(property)
+    expect(described_class.property_code_from_text("[3909] Atlântico Shopping")).to eq("3909")
+    expect(described_class.property_code_from_text("Form - Refuge 2 milhões")).to be_nil
+    expect(described_class.property_code_from_text("Form - 500 mil")).to be_nil
+    expect(described_class.property_code_from_text("Form - 3909 e 4000 Atlântico")).to be_nil
+    expect(described_class.property_code_from_text("Form - 3909 Atlântico COD 4000")).to be_nil
+    other = Tenant.create!(name: "Conta teste", slug: "entry-#{SecureRandom.hex(6)}")
+    expect(described_class.property_from_text(other, "Form - 3909 Atlântico Shopping Residence")).to be_nil
+  end
+
   def create_meta_setup(tenant, page_id:)
     admin = create(:admin_user, :admin, tenant: tenant)
     integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "user-token")

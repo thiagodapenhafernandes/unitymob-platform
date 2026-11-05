@@ -24,6 +24,15 @@ RSpec.describe "Recebimento por formulário Meta", type: :service do
       other_information: {"meta_page_id" => page.page_id, "meta_form_id" => form}, **attributes)
   end
 
+  it "distribui a resposta afirmativa de venda preservando o destino exclusivo do formulário" do
+    general.update!(business_type: :venda)
+    specific.update!(business_type: :venda)
+    lead = entry(custom_answers: [{"key" => "Você está interessado em imóveis à venda?", "answer" => "sim."}])
+    Leads::DistributorService.find_and_distribute(lead)
+    expect(lead.reload).to have_attributes(admin_user_id: agent.id, distribution_rule_id: specific.id)
+    expect(lead.activities.find_by!(kind: "distributed").metadata["entry_business_type"]).to eq("venda")
+  end
+
   it "entrega entrada indefinida ao formulário específico e mantém sua classificação" do
     lead = entry
     Leads::DistributorService.find_and_distribute(lead)
