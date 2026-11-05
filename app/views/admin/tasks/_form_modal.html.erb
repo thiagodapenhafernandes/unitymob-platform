@@ -12,6 +12,7 @@
   trigger_icon = local_assigns.fetch(:trigger_icon, task_record.persisted? ? "pencil" : "plus-lg")
   trigger_title = local_assigns[:trigger_title].presence || (task_record.persisted? ? "Editar tarefa" : "Nova tarefa")
   form_url = task_record.persisted? ? admin_task_path(task_record) : admin_tasks_path
+  form_data = { turbo: false }.merge(local_assigns.fetch(:form_data, {}))
   form_method = task_record.persisted? ? :patch : :post
   submit_label = task_record.persisted? ? "Atualizar tarefa" : "Criar tarefa"
 %>
@@ -26,7 +27,7 @@
     <% if trigger_badge.present? %><small><%= trigger_badge %></small><% end %>
   </button>
   <%= ax_quick_modal(id: task_modal_id, title: task_modal_title, size: :sm, class_name: "task-form-modal") do %>
-    <%= form_with url: form_url, method: form_method, local: true, class: "task-form-modal__form", data: local_assigns.fetch(:form_data, {}) do %>
+    <%= form_with url: form_url, method: form_method, local: true, class: "task-form-modal__form", data: form_data do %>
       <% if task_lead %>
         <%= hidden_field_tag "task[lead_id]", task_lead.id %>
         <div class="task-form-modal__lead">

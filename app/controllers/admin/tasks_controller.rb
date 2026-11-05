@@ -1,8 +1,8 @@
 class Admin::TasksController < Admin::BaseController
   requires_permission :view, :comercial, only: [:index]
-  requires_permission :manage, :comercial, only: [:create, :update, :complete, :destroy]
-  before_action :set_task, only: [:update, :complete, :destroy]
-  before_action :authorize_linked_lead!, only: %i[create update complete destroy]
+  requires_permission :manage, :comercial, only: [:create, :update, :complete, :reopen, :destroy]
+  before_action :set_task, only: [:update, :complete, :reopen, :destroy]
+  before_action :authorize_linked_lead!, only: %i[create update complete reopen destroy]
 
   FILTERS = %w[pendentes hoje atrasadas semana concluidas todas legado].freeze
 
@@ -75,6 +75,19 @@ class Admin::TasksController < Admin::BaseController
       end
       format.json { render json: { id: @task.id, status: @task.status } }
     end
+  rescue ActiveRecord::RecordInvalid => error
+    respond_to do |format|
+      format.html { redirect_back fallback_location: admin_tasks_path, alert: error.record.errors.full_messages.to_sentence, status: :see_other }
+      format.turbo_stream { redirect_back fallback_location: admin_tasks_path, alert: error.record.errors.full_messages.to_sentence, status: :see_other }
+      format.json { render json: { errors: error.record.errors.full_messages }, status: :unprocessable_entity }
+    end
+  end
+
+  def reopen
+    @task.reopen!(by: current_admin_user, reason: params.permit(:reason)[:reason])
+    redirect_back fallback_location: admin_tasks_path, notice: "Tarefa reaberta.", status: :see_other
+  rescue ActiveRecord::RecordInvalid => error
+    redirect_back fallback_location: admin_tasks_path, alert: error.record.errors.full_messages.to_sentence, status: :see_other
   end
 
   def destroy
@@ -108,7 +121,7 @@ class Admin::TasksController < Admin::BaseController
   end
 
   def authorize_linked_lead!
-    if @task&.open_activity? && @task.lead_id.present?
+    if @task&.lead_id.present? && (@task.open_activity? || action_name == "reopen")
       accessible_commercial_leads.find(@task.lead_id)
     end
     id = params.dig(:task, :lead_id)

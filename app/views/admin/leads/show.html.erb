@@ -1607,10 +1607,6 @@
 
 <%# ===== Cabeçalho ===== %>
 <% sla = lead_sla(@lead) %>
-<% completed_tasks, all_open_tasks = (@actionable_tasks || @tasks).partition(&:concluida?) %>
-<% scheduled_tasks = future_scheduled_tasks(all_open_tasks) %>
-<% open_tasks = operational_tasks_without_future_schedule(all_open_tasks) %>
-<% next_task = open_tasks.select(&:pendente?).find { |task| task.due_at.present? } || open_tasks.find(&:pendente?) %>
 <%
   detail_conversion = lead_conversion_summary(@lead)
   detail_phone_href = Phones::Normalizer.tel_href(@lead.display_phone)
@@ -2122,61 +2118,7 @@
   <%# ===== Coluna direita ===== %>
   <div>
     <%# ===== Bloco: Operação do lead ===== %>
-    <div class="ax-card lead-next-action-card tw-mb-4">
-      <div class="ax-card__header">
-        <span class="ax-card__title"><i class="bi bi-flag-fill ax-ico"></i> Ações do lead</span>
-      </div>
-      <div class="ax-card__body">
-        <div class="lead-operational-row tw-mb-3">
-          <span class="lead-operational-row__body">
-            <strong>Tentativas sem resposta</strong>
-            <span>Conta contatos operacionais desde a última resposta do cliente nesta etapa.</span>
-          </span>
-          <span class="ax-badge ax-badge--amber"><%= lead_unsuccessful_attempt_count(@lead) %></span>
-        </div>
-        <div class="lead-action-hub">
-          <%= render "admin/leads/action_hub",
-                namespace: "Desktop#{@lead.id}",
-                anchor_prefix: "lead-desktop",
-                lead: @lead,
-                open_tasks: open_tasks,
-                appointments: @appointments,
-                scheduled_tasks: scheduled_tasks,
-                proposals: @proposals,
-                labels_count: @lead.labels_for(current_admin_user).size,
-                next_task: next_task,
-                new_proposal: @new_proposal,
-                proposal_habitations: @proposal_habitations,
-                archive_reason_options: @archive_reason_options,
-                show_tasks: false,
-                close_deal_form_id: "lead_close_deal_desktop_#{@lead.id}" %>
-        </div>
-
-        <%= render "admin/leads/operational_sections",
-              lead: @lead,
-              anchor_prefix: "lead-desktop",
-              namespace: "DesktopSection#{@lead.id}",
-              divider_class: "lead-view-divider",
-              schedule_modal_id: "scheduleActivitySection#{@lead.id}",
-              edit_appointment_modal_prefix: "editAppointmentLead",
-              new_task_modal_id: "newTaskLeadSection#{@lead.id}",
-              edit_task_modal_prefix: "editTaskLead",
-              new_proposal_modal_id: "newProposalLeadSection#{@lead.id}",
-              edit_proposal_modal_prefix: "editProposal",
-              open_tasks: open_tasks,
-              completed_tasks: completed_tasks,
-              next_task: next_task,
-              appointments: @appointments,
-              scheduled_tasks: scheduled_tasks,
-              proposals: @proposals,
-              lead_labels: @lead.labels_for(current_admin_user),
-              contact_history_activities: @contact_history_activities,
-              contact_history_modal_id: "leadLogContactHistoryDesktopSection#{@lead.id}",
-              new_proposal: @new_proposal,
-              proposal_habitations: @proposal_habitations %>
-
-      </div>
-    </div>
+    <%= render "admin/leads/pwa_operational_panel", lead: @lead, desktop: true %>
 
     <%# ===== Bloco: Corretor & observações ===== %>
     <div class="ax-card lead-next-action-card tw-mb-4">

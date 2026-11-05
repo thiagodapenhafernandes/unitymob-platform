@@ -14,8 +14,19 @@
   proposal_habitations = can?(:manage, :comercial) ? current_tenant.habitations.order(updated_at: :desc).limit(500) : []
   new_proposal = lead.proposals.new(habitation_id: lead.property_id, admin_user: current_admin_user, validade: 7.days.from_now.to_date)
   archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered
+  if local_assigns[:desktop]
+    allowed_ids = Array(lead.lead_pipeline_stage&.policy&.allowed_archive_reason_ids)
+    archive_reason_options = archive_reason_options.where(id: allowed_ids) if allowed_ids.present?
+  end
 %>
 
+<% if local_assigns[:desktop] %>
+  <%= render "admin/leads/desktop_operational_panel", lead: lead, open_tasks: open_tasks,
+        completed_tasks: completed_tasks, scheduled_tasks: scheduled_tasks, next_task: next_task,
+        appointments: appointments, proposals: proposals, new_proposal: new_proposal,
+        proposal_habitations: proposal_habitations, archive_reason_options: archive_reason_options,
+        contact_history_activities: contact_history_activities %>
+<% else %>
 <%= turbo_frame_tag dom_id(lead, :pwa_operational_panel) do %>
   <% if next_task.present? || can?(:manage, :comercial) %>
     <section class="lead-pwa-detail__panel">
@@ -70,4 +81,5 @@
         contact_history_modal_id: "leadLogContactHistoryPwaSection#{lead.id}",
         new_proposal: new_proposal,
         proposal_habitations: proposal_habitations %>
+<% end %>
 <% end %>

@@ -1,0 +1,90 @@
+.ax-card.ax-activity-card {
+  display: grid;
+  gap: .75rem;
+  min-width: 0;
+  padding: .8rem;
+}
+
+.ax-card.ax-activity-card--scheduled {
+  background: color-mix(in srgb, var(--admin-primary) 12%, var(--admin-card-bg));
+  border-color: color-mix(in srgb, var(--admin-primary) 34%, var(--admin-card-bg));
+}
+
+
+.ax-activity-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.ax-activity-card__header strong { font-size: 1rem; }
+.ax-activity-card__header .ax-badge { flex-shrink: 0; }
+.ax-activity-card__date { display: block; margin-top: .2rem; }
+.ax-activity-card__date i { margin-inline-end: .25rem; }
+
+.ax-activity-card__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: .5rem;
+}
+
+.ax-activity-card__actions .ax-btn { width: 100%; min-height: 44px; }
+.ax-activity-card summary { cursor: pointer; }
+.ax-activity-card__details:only-child > summary { display: block; }
+.ax-activity-card__details:only-child > summary::-webkit-details-marker { display: none; }
+.ax-activity-card__body {
+  display: grid;
+  gap: .75rem;
+  margin-top: .75rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--admin-border);
+}
+
+.ax-activity-card__links { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .5rem; }
+.ax-activity-card__links details[open] { flex-basis: 100%; }
+.ax-activity-card__links form { margin-top: .5rem; }
+.ax-activity-card__event {
+  margin: 0;
+  padding: .5rem .65rem;
+  border-radius: .45rem;
+  background: color-mix(in srgb, var(--admin-primary) 8%, var(--admin-card-bg));
+}
+
+.ax-card.ax-activity-card--compact {
+  padding: 0;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--admin-border) 16%, var(--admin-card-bg));
+}
+
+.ax-card.ax-activity-card--compact:has(> details[open]) {
+  background: color-mix(in srgb, #19875e 6%, var(--admin-card-bg));
+  border-color: color-mix(in srgb, #19875e 30%, var(--admin-card-bg));
+}
+
+.ax-activity-card--compact > details > summary { padding: .65rem .8rem; }
+.ax-activity-card--compact .ax-activity-card__body { margin: 0 .8rem; padding-bottom: .8rem; }
+.ax-activity-card--scheduled .ax-activity-card__date {
+  display: inline-block;
+  padding: .2rem .45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-card-bg) 58%, transparent);
+}
+
+.ax-activity-card--scheduled .ax-btn--secondary {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+}
+
+@supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ax-activity-card > details::details-content {
+      interpolate-size: allow-keywords;
+      block-size: 0;
+      overflow: clip;
+      transition: block-size 220ms ease, content-visibility 220ms allow-discrete;
+    }
+
+    .ax-activity-card > details[open]::details-content { block-size: auto; }
+  }
+}
