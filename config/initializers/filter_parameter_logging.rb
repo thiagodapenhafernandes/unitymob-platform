@@ -6,6 +6,7 @@
 Rails.application.config.filter_parameters += [
   :oauth_handoff, :oauth_ticket, :nonce,
   :reporting_credentials,
+  :proprietario, :captador, :imovel,
   /\A(?:code|auth_code)\z/,
   :passw, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn,
   :feed_token, :webhook_secret, :account_id, :publisher_id,

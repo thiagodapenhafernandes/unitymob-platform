@@ -1,0 +1,304 @@
+---
+openapi: 3.0.3
+info:
+  title: Unitymob API
+  version: 1.0.0
+  description: |
+    Referência para integrações externas com a Unitymob.
+
+    ## Autenticação
+
+    Use `Authorization: Bearer <TOKEN_DA_INTEGRACAO>` no backend do sistema de origem. A credencial identifica a conta de destino e é emitida pela operação da Unitymob.
+
+    ## Captação de imóveis
+
+    Envie a captação quando o cadastro estiver pronto. O protocolo confirma a entrada na fila administrativa. A publicação depende da revisão.
+
+    ## Reenvios
+
+    Em caso de timeout, repita o mesmo JSON com o mesmo `external_id`. Alterações no conteúdo de um ID já recebido retornam `409`.
+servers:
+- url: "/"
+  description: Ambiente atual
+tags:
+- name: Captações
+  description: Recebimento de imóveis para revisão administrativa.
+paths:
+  "/api/v1/property_intakes":
+    post:
+      operationId: enviarCaptacao
+      tags:
+      - Captações
+      summary: Enviar captação de imóvel
+      description: Envie os valores em centavos. Inclua ao menos um contato do proprietário.
+        Links temporários das fotos precisam estar válidos até o primeiro recebimento
+        bem-sucedido.
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Captacao"
+            example:
+              external_id: CAP-2026-000123
+              captured_at: '2026-11-06T14:30:00-03:00'
+              captador:
+                external_id: CAPTADOR-002
+                nome: Mariana Exemplo
+              imovel:
+                categoria: apartamento
+                modalidade: venda
+                titulo: Apartamento de 3 quartos com varanda
+                descricao: Apartamento com varanda, uma suíte e duas vagas.
+                valor_venda_centavos: 85000000
+                valor_condominio_centavos: 95000
+                valor_iptu_anual_centavos: 180000
+                area_privativa_m2: 92.5
+                quartos: 3
+                suites: 1
+                banheiros: 2
+                vagas: 2
+                endereco:
+                  cep: 90000-000
+                  logradouro: Rua Exemplo
+                  numero: '120'
+                  complemento: Apartamento 302
+                  bairro: Centro
+                  cidade: Porto Alegre
+                  uf: RS
+                fotos:
+                - url: https://midia.example.com/captacoes/sala.jpg
+                  ordem: 1
+              proprietario:
+                nome: Carlos Exemplo
+                telefone: "+5551999990000"
+                email: carlos@example.com
+      responses:
+        '200':
+          description: Reenvio do mesmo conteúdo. Retorna o protocolo original.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReciboCaptacao"
+              example:
+                protocolo: PC-000123
+                external_id: CAP-2026-000123
+                status: pendente_revisao
+        '201':
+          description: Captação recebida para revisão administrativa.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReciboCaptacao"
+              example:
+                protocolo: PC-000123
+                external_id: CAP-2026-000123
+                status: pendente_revisao
+        '400':
+          description: JSON malformado.
+        '401':
+          description: Credencial ausente, inválida ou revogada.
+        '409':
+          description: O ID já foi recebido com conteúdo diferente.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Erro"
+              example:
+                error: external_id já recebido com dados diferentes
+        '413':
+          description: O corpo excede 128 KiB.
+        '415':
+          description: Envie Content-Type application/json.
+        '422':
+          description: Dados inválidos ou foto indisponível.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Erro"
+              example:
+                error: Informe o valor da negociação
+        '429':
+          description: Limite de requisições atingido.
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Token de integração da conta.
+  schemas:
+    Captacao:
+      type: object
+      required:
+      - external_id
+      - captured_at
+      - captador
+      - imovel
+      - proprietario
+      properties:
+        external_id:
+          type: string
+          description: Identificador único da captação no sistema de origem.
+        captured_at:
+          type: string
+          format: date-time
+        captador:
+          "$ref": "#/components/schemas/Captador"
+        imovel:
+          "$ref": "#/components/schemas/Imovel"
+        proprietario:
+          "$ref": "#/components/schemas/Proprietario"
+    Captador:
+      type: object
+      required:
+      - external_id
+      - nome
+      properties:
+        external_id:
+          type: string
+        nome:
+          type: string
+    Imovel:
+      type: object
+      required:
+      - categoria
+      - modalidade
+      - titulo
+      - descricao
+      - endereco
+      properties:
+        categoria:
+          type: string
+          example: apartamento
+          description: Categoria cadastrada na Unitymob.
+        modalidade:
+          type: string
+          enum:
+          - venda
+          - locacao
+        titulo:
+          type: string
+        descricao:
+          type: string
+        endereco:
+          "$ref": "#/components/schemas/Endereco"
+        fotos:
+          type: array
+          maxItems: 10
+          items:
+            "$ref": "#/components/schemas/Foto"
+          description: JPEG, PNG ou WebP, até 8 MB cada. Use HTTPS na porta 443, sem
+            redirecionamento.
+        area_privativa_m2:
+          type: number
+          minimum: 0
+        valor_venda_centavos:
+          type: integer
+          minimum: 0
+          format: int64
+          description: Obrigatório para venda.
+        valor_locacao_centavos:
+          type: integer
+          minimum: 0
+          format: int64
+          description: Valor mensal obrigatório para locação.
+        valor_condominio_centavos:
+          type: integer
+          minimum: 0
+          format: int64
+        valor_iptu_anual_centavos:
+          type: integer
+          minimum: 0
+          format: int64
+        quartos:
+          type: integer
+          minimum: 0
+        suites:
+          type: integer
+          minimum: 0
+        banheiros:
+          type: integer
+          minimum: 0
+        vagas:
+          type: integer
+          minimum: 0
+    Endereco:
+      type: object
+      required:
+      - cep
+      - logradouro
+      - numero
+      - bairro
+      - cidade
+      - uf
+      properties:
+        cep:
+          type: string
+        logradouro:
+          type: string
+        numero:
+          type: string
+        complemento:
+          type: string
+        bairro:
+          type: string
+        cidade:
+          type: string
+        uf:
+          type: string
+    Foto:
+      type: object
+      required:
+      - url
+      - ordem
+      properties:
+        url:
+          type: string
+          format: uri
+        ordem:
+          type: integer
+          minimum: 1
+    Proprietario:
+      type: object
+      required:
+      - nome
+      properties:
+        nome:
+          type: string
+        telefone:
+          type: string
+        email:
+          type: string
+      anyOf:
+      - required:
+        - telefone
+      - required:
+        - email
+    ReciboCaptacao:
+      type: object
+      required:
+      - protocolo
+      - external_id
+      - status
+      properties:
+        protocolo:
+          type: string
+        external_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - pendente_revisao
+    Erro:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+        fields:
+          type: array
+          items:
+            type: string

@@ -503,6 +503,8 @@ Rails.application.routes.draw do
       post :send_test
       get :test_message_status
     end
+    resource :property_intake_token, only: [:show, :create, :update, :destroy]
+
     resource :dwv_integrations, only: [:show, :update] do
       get :status
       post :test_connection
@@ -618,8 +620,12 @@ Rails.application.routes.draw do
   get "selecoes/:token/imoveis/:habitation_id/preview", to: "ai_property_share_collections#preview", as: :preview_ai_property_share_collection
   post "selecoes/:token/interesses", to: "ai_property_share_collections#interest", as: :interest_ai_property_share_collection
 
+  get "/docs/api", to: "api_documentation#show", as: :api_docs
+  get "/docs/openapi.yaml", to: "api_documentation#openapi", as: :api_docs_spec, format: false
+
   namespace :api do
     namespace :v1 do
+      resources :property_intakes, only: :create, defaults: { format: :json }
       namespace :browser_extension, defaults: { format: :json } do
         post "session/terms", to: "sessions#accept_terms"
         resource :session, only: [:create, :show, :destroy], controller: "sessions"

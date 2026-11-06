@@ -28,6 +28,7 @@ module Admin::NavbarHelper
     "lovers_integrations" => "Lovers",
     "whatsapp_integrations" => "WhatsApp",
     "portal_integrations" => "Portais",
+    "property_intake_tokens" => "API de captação",
     "loft_integrations" => "Loft Soft",
     "dwv_integrations" => "DWV",
     "google_integrations" => "Google",

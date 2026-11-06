@@ -195,7 +195,8 @@ class Profile < ApplicationRecord
       { label: "Perfil público", icon: "bi-building-gear", path: "edit_admin_public_site_profile_path", controllers: %w[public_site_profiles] },
       { label: "Desempenho", icon: "bi-speedometer2", path: "admin_site_cache_path", controllers: %w[site_caches] }
     ], description: "SEO, páginas, blog e estrutura do site público" },
-    { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, section: true, sidebar_section: "integrations", sidebar_actions: %w[manage], included_items: ["Portais", "Loft Soft", "DWV", "WhatsApp", "Meta Leads", "TikTok Ads", "LinkedIn", "RD Station", "Lovers", "Google", "Rastreamento", "Migração de Leads", "Armazenamento", "Agendamento", "Webhooks", "IA", "Imóveis sincronizados", "Migração de Imagens"], sidebar_items: [
+    { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, section: true, sidebar_section: "integrations", sidebar_actions: %w[manage], included_items: ["API de captação", "Portais", "Loft Soft", "DWV", "WhatsApp", "Meta Leads", "TikTok Ads", "LinkedIn", "RD Station", "Lovers", "Google", "Rastreamento", "Migração de Leads", "Armazenamento", "Agendamento", "Webhooks", "IA", "Imóveis sincronizados", "Migração de Imagens"], sidebar_items: [
+      { label: "API de captação", icon: "bi-key", path: "admin_property_intake_token_path", controllers: %w[property_intake_tokens], condition: :property_intake_token_admin },
       { label: "Portais", icon: "bi-building", path: "admin_portal_integrations_path", controllers: %w[portal_integrations] },
       { label: "Loft Soft", icon: "loft", path: "admin_loft_integrations_path", controllers: %w[loft_integrations] },
       { label: "DWV", icon: "dwv", path: "admin_dwv_integrations_path", controllers: %w[dwv_integrations] },

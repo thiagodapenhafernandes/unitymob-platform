@@ -123,6 +123,8 @@ module Admin::SidebarHelper
 
   def admin_sidebar_item_visible?(item)
     case item[:condition].to_s
+    when "property_intake_token_admin"
+      return false unless property_intake_token_admin?
     when "whatsapp_service_ready"
       sidebar_tenant = respond_to?(:current_tenant) ? current_tenant : Current.tenant
       return false unless sidebar_tenant.present?
