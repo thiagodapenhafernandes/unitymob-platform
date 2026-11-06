@@ -2197,3 +2197,19 @@ i.spin {
     flex: 0 0 auto;
   }
 }
+
+.ax-app .ax-ts-single-tag.single .ts-control {
+  flex-wrap: nowrap;
+}
+
+.ax-app .ax-ts-single-tag.single .ts-control > .item {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.125rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 0.375rem;
+  background: var(--ax-surface-muted, rgba(100, 116, 139, 0.15));
+}

@@ -3,8 +3,23 @@
     <p role="status">Algumas campanhas não puderam ser carregadas da Meta.</p>
   <% end %>
   <% if @campaign_choices.any? %>
-    <%= render "direct_capture_rule", page: @capture_page, campaign_id: nil, rule: {},
-          title: "Adicionar campanha", campaign_choices: @campaign_choices %>
+    <div data-controller="nested-form" class="tw-grid tw-gap-3">
+      <template data-nested-form-target="template">
+        <div class="nested-fields" data-new-record="true">
+          <%= turbo_frame_tag "direct_capture_rule_#{@capture_page.id}_NEW_RECORD" do %>
+            <%= render "direct_capture_rule", page: @capture_page, campaign_id: nil, rule: {},
+                  title: "Nova campanha", campaign_choices: @campaign_choices, draft_id: "NEW_RECORD" %>
+            <button type="button" class="ax-btn ax-btn--sm ax-btn--secondary" data-action="nested-form#remove">Cancelar</button>
+          <% end %>
+        </div>
+      </template>
+      <div data-nested-form-target="container" class="tw-grid tw-gap-3"></div>
+      <div>
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--secondary" data-action="nested-form#add">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> Adicionar campanha
+        </button>
+      </div>
+    </div>
   <% else %>
     <p class="tw-text-sm">Nenhuma campanha disponível nas contas de anúncios vinculadas ao perfil.</p>
   <% end %>

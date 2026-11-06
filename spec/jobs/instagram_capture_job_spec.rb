@@ -84,6 +84,27 @@ RSpec.describe Instagram::CaptureJob do
     expect(Leads::RoutingService).to have_received(:route!).with(lead).once
   end
 
+  { "maria@example.com" => "maria@example.com", "Pular" => nil }.each do |answer, expected_email|
+    it "libera a distribuição uma vez após a resposta opcional #{answer}" do
+      settings.save(campaign_id: "default", enabled: true, name_prompt: "", phone_prompt: "", ask_email: true)
+      lead = inbound("first", "Olá")
+      described_class.perform_now(tenant.id, lead.id)
+      inbound("name", "Maria Silva")
+      described_class.perform_now(tenant.id, lead.id)
+      inbound("phone", "(47) 99888-7777")
+      described_class.perform_now(tenant.id, lead.id)
+      expect(Instagram::Reply).to have_received(:call).with(
+        lead: lead, body: Instagram::CaptureSettings::DEFAULT_EMAIL_PROMPT, admin_user: nil
+      ).once
+      expect(Leads::RoutingService).not_to have_received(:route!)
+
+      inbound("email", answer)
+      2.times { described_class.perform_now(tenant.id, lead.id) }
+      expect(lead.reload.email.presence).to eq(expected_email)
+      expect(Leads::RoutingService).to have_received(:route!).with(lead).once
+    end
+  end
+
   it "não inicia captação para perfis sem configuração ativa" do
     lead = nil
     expect { lead = inbound("organic", "Olá") }.not_to have_enqueued_job(Instagram::CaptureJob)

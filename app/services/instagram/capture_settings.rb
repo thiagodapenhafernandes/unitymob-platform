@@ -14,9 +14,12 @@ module Instagram
       JSON.parse(Setting.tenant_get(@key, "{}", tenant: @tenant))
     end
 
-    def save(campaign_id:, enabled:, name_prompt:, phone_prompt:, ask_email: false, email_prompt: "")
+    def save(campaign_id:, enabled:, name_prompt:, phone_prompt:, ask_email: false, email_prompt: "", create_only: false)
       @tenant.with_lock do
-        updated = rules.merge(campaign_id => {
+        existing = rules
+        next false if create_only && existing.key?(campaign_id)
+
+        updated = existing.merge(campaign_id => {
           "enabled" => enabled, "name_prompt" => name_prompt, "phone_prompt" => phone_prompt,
           "ask_email" => ask_email, "email_prompt" => email_prompt
         })

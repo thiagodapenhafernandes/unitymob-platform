@@ -40,9 +40,13 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   def instagram_capture
     page = direct_capture_page
     settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt, :ask_email, :email_prompt)
-    campaign_id = settings[:campaign_id].to_s.strip.presence || "default"
+    draft_id = params[:capture_draft_id].to_s.presence
+    return head :bad_request if draft_id && !draft_id.match?(/\A\d{13}\z/)
+
+    campaign_id = settings[:campaign_id].to_s.strip.presence
+    campaign_id ||= "default" unless draft_id
     prompts = settings.values_at(:name_prompt, :phone_prompt, :email_prompt).map { |value| value.to_s.strip }
-    unless (campaign_id == "default" || campaign_id.match?(/\A[0-9]{5,30}\z/)) &&
+    unless (campaign_id == "default" || campaign_id.to_s.match?(/\A[0-9]{5,30}\z/)) &&
         prompts.all? { |prompt| prompt.length <= Instagram::Reply::MAX_CHARS }
       return redirect_to admin_meta_integrations_path(anchor: "meta-direct-capture-tab"),
         alert: "Confira o ID da campanha e o tamanho das mensagens.", status: :see_other
@@ -50,7 +54,14 @@ class Admin::MetaIntegrationsController < Admin::BaseController
 
     saved = Instagram::CaptureSettings.new(page, tenant: current_tenant).save(
       campaign_id: campaign_id, enabled: settings[:enabled] == "1", name_prompt: prompts[0], phone_prompt: prompts[1],
-      ask_email: settings[:ask_email] == "1", email_prompt: prompts[2])
+      ask_email: settings[:ask_email] == "1", email_prompt: prompts[2], create_only: draft_id.present?)
+    if draft_id
+      @capture_rule_frame_id = "direct_capture_rule_#{page.id}_#{draft_id}"
+      @capture_rule_campaign = campaign_id
+      @capture_rule_saved = saved
+      return render :instagram_capture_rule_result, layout: false
+    end
+
     flash[saved ? :notice : :alert] = saved ? "Captação pelo Direct salva." : "Não foi possível salvar a captação."
     redirect_to admin_meta_integrations_path(anchor: "meta-direct-capture-tab"), status: :see_other
   end
