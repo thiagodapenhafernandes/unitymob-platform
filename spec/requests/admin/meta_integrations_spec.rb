@@ -42,6 +42,24 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "salva várias campanhas juntas e preserva regras já configuradas" do
+    page.update!(instagram_id: "12345", instagram_enabled: true)
+    path = instagram_capture_admin_meta_integrations_path(page_id: page.id)
+    draft = { capture_draft_id: "1793978294166" }
+    patch path, params: draft.merge(instagram_capture: {
+      campaign_ids: %w[12345 23456], enabled: "1", name_prompt: "Como posso chamar você?"
+    })
+    expect(response.body).to include("Regra salva para 2 campanhas")
+    settings = Instagram::CaptureSettings.new(page, tenant: admin.tenant)
+    expect(settings.rules.values_at("12345", "23456").map { |rule| rule["name_prompt"] })
+      .to eq(["Como posso chamar você?", "Como posso chamar você?"])
+
+    patch path, params: draft.merge(instagram_capture: { campaign_ids: %w[12345 34567], enabled: "0" })
+    expect(response.body).to include("já tem uma configuração")
+    expect(settings.rules.keys).to match_array(%w[12345 23456])
+    expect(settings.rules.fetch("12345")["enabled"]).to be(true)
+  end
+
   it "busca só formulários novos na ação de formulários e preserva a atualização completa" do
     integration
     expect { post sync_forms_admin_meta_integrations_path, as: :json }

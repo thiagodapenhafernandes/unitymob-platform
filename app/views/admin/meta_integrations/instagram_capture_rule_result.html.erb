@@ -1,7 +1,7 @@
 <%= turbo_frame_tag @capture_rule_frame_id do %>
   <% if @capture_rule_saved %>
-    <p role="status">Regra da campanha <%= @capture_rule_campaign %> salva.</p>
+    <p role="status">Regra salva para <%= @capture_rule_campaigns.size %> <%= @capture_rule_campaigns.one? ? "campanha" : "campanhas" %>.</p>
   <% else %>
-    <p role="alert">A regra não foi salva. Confira se a campanha já tem uma configuração.</p>
+    <p role="alert">Confira os campos e se alguma campanha selecionada já tem uma configuração.</p>
   <% end %>
 <% end %>

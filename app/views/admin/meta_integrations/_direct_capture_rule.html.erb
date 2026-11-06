@@ -2,7 +2,7 @@
 <% draft_id = local_assigns[:draft_id] %>
 <% field_prefix = "instagram_capture_#{page.id}_#{draft_id || campaign_id || 'new'}" %>
 <%= form_with scope: :instagram_capture, url: instagram_capture_admin_meta_integrations_path(page_id: page.id),
-      method: :patch, namespace: field_prefix, class: "tw-grid tw-gap-3 tw-py-3", data: (campaign_id ? { turbo_frame: "_top" } : {
+      method: :patch, namespace: field_prefix, class: "tw-grid tw-gap-3 #{draft_id ? 'ax-card__body' : 'tw-py-3'}", data: (campaign_id ? { turbo_frame: "_top" } : {
         turbo_frame: (draft_id ? "direct_capture_rule_#{page.id}_#{draft_id}" : "_top"), controller: "conditional-reveal", conditional_reveal_kind_value: "select"
       }) do |form| %>
   <h4><%= title %></h4>
@@ -10,11 +10,12 @@
   <% if campaign_id %>
     <%= form.hidden_field :campaign_id, value: campaign_id %>
   <% else %>
-    <%= ax_select_field(form: form, method: :campaign_id, label: "Campanha no Meta Ads", choices: campaign_choices,
-          select_options: { include_blank: "Buscar campanha…" },
-          html_options: { required: true, data: { controller: "tom-select", tom_select_options_value: { wrapperClass: "ts-wrapper p-0 ax-ts-single-tag" },
+    <%= ax_select_field(form: form, method: :campaign_ids, label: "Campanhas no Meta Ads", choices: campaign_choices,
+          select_options: { include_hidden: false },
+          html_options: { required: true, multiple: true, data: { controller: "tom-select", placeholder: "Buscar campanhas…", tom_select_options_value: { wrapperClass: "ts-wrapper p-0 ax-ts-campaign-tags" },
             conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } }) %>
   <% end %>
+  <% if draft_id %><p class="tw-text-sm tw-text-ink-muted">A mesma configuração será aplicada às campanhas selecionadas.</p><% end %>
   <%= tag.div class: "tw-grid tw-gap-3", hidden: !campaign_id,
         data: (campaign_id ? {} : { conditional_reveal_target: "panel", conditional_reveal_values: "*" }) do %>
     <%= ax_switch_field(name: "instagram_capture[enabled]", id: "#{field_prefix}_enabled", checked: rule["enabled"] == true,
@@ -29,6 +30,24 @@
           checked: rule["ask_email"] == true, label: "Pedir e-mail (opcional)") %>
     <%= ax_text_field(form: form, method: :email_prompt, label: "Mensagem para pedir o e-mail",
           value: prompts.fetch("email_prompt"), maxlength: Instagram::Reply::MAX_CHARS) %>
-    <div><%= form.submit "Salvar regra", class: "ax-btn ax-btn--primary ax-btn--sm" %></div>
+    <%= ax_text_field(form: form, method: :thank_you_prompt, label: "Mensagem após a coleta", type: :textarea, rows: 2,
+          value: prompts.fetch("thank_you_prompt"), maxlength: Instagram::Reply::MAX_CHARS, hint: "Use {primeiro_nome} para personalizar.") %>
+    <%= ax_switch_field(name: "instagram_capture[sdr_enabled]", id: "#{field_prefix}_sdr_enabled",
+          checked: rule["sdr_enabled"] == true, label: "Ativar atendimento com IA") %>
+    <%= ax_text_field(form: form, method: :ai_instructions, label: "Instruções da IA", type: :textarea, rows: 4,
+          maxlength: Instagram::CaptureSettings::AI_INSTRUCTIONS_LIMIT,
+          value: rule["ai_instructions"].presence || Instagram::CaptureSettings::DEFAULT_AI_INSTRUCTIONS) %>
+    <% unless campaign_id == "default" %>
+      <%= ax_text_field(form: form, method: :property_code, label: "Código do imóvel público da campanha",
+            value: rule["property_code"], hint: "Quando preenchido, a IA apresenta este imóvel primeiro.") %>
+    <% end %>
   <% end %>
+  <div class="tw-flex tw-flex-wrap tw-justify-end tw-gap-2">
+    <% if draft_id %>
+      <button type="button" class="ax-btn ax-btn--sm ax-btn--secondary" data-action="nested-form#remove">Cancelar</button>
+    <% end %>
+    <%= tag.span hidden: !campaign_id, data: (draft_id ? { conditional_reveal_target: "panel", conditional_reveal_values: "*" } : {}) do %>
+      <%= form.submit "Salvar regra", class: "ax-btn ax-btn--primary ax-btn--sm" %>
+    <% end %>
+  </div>
 <% end %>

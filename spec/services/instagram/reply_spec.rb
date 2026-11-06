@@ -51,6 +51,22 @@ RSpec.describe Instagram::Reply do
     expect(described_class.call(lead:, body: "Seu nome?", admin_user: nil, typing: true).message_id).to eq("mid-fallback")
   end
 
+  it "envia o resumo e o link quando a Meta recusa o cartão" do
+    card = { title: "Apartamento", image_url: "https://catalogo.example/foto.jpg",
+      buttons: [{ type: "web_url", title: "Ver imóvel", url: "https://catalogo.example/imoveis/123" }] }
+    body = "Apartamento\nhttps://catalogo.example/imoveis/123"
+    error = Koala::Facebook::APIError.new(400, { error: { code: 100 } }.to_json)
+    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(message: satisfy { |json|
+      JSON.parse(json).dig("attachment", "payload", "elements") == [card.deep_stringify_keys]
+    })).ordered.and_raise(error)
+    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(message: { text: body }.to_json))
+      .ordered.and_return({ "message_id" => "mid-text" })
+
+    expect(described_class.call(lead:, body:, admin_user: nil, cards: [card])).to have_attributes(
+      message_id: "mid-text", body: body
+    )
+  end
+
   it "barra fora da janela de 24h" do
     lead.instagram_messages.update_all(occurred_at: 25.hours.ago)
     allow(graph).to receive(:put_connections)

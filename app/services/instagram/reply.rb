@@ -8,8 +8,8 @@ module Instagram
     WINDOW = 24.hours
     MAX_CHARS = 1000
 
-    def self.call(lead:, body:, admin_user:, typing: false)
-      new(lead:, body:, admin_user:).call(typing:)
+    def self.call(lead:, body:, admin_user:, typing: false, cards: [])
+      new(lead:, body:, admin_user:).call(typing:, cards:)
     end
 
     def self.window_open?(lead)
@@ -26,7 +26,7 @@ module Instagram
       @admin_user = admin_user
     end
 
-    def call(typing: false)
+    def call(typing: false, cards: [])
       page = reply_page
       raise Error, "Lead sem conversa do Instagram." if @lead.instagram_account_id.blank? || @lead.instagram_scoped_id.blank?
       raise Error, "Página do Instagram desconectada. Verifique a integração Meta." if page.blank? || page.access_token.blank?
@@ -35,7 +35,7 @@ module Instagram
       raise Error, "Janela de 24h encerrada. Aguarde uma nova mensagem do cliente." unless self.class.window_open?(@lead)
 
       graph = Koala::Facebook::API.new(page.access_token)
-      response = send_message(graph, typing:)
+      response = send_message(graph, typing:, cards:)
       message_id = response.is_a?(Hash) ? response["message_id"].presence : nil
 
       @lead.instagram_messages.create!(
@@ -56,10 +56,16 @@ module Instagram
 
     private
 
-    def send_message(graph, typing:)
+    def send_message(graph, typing:, cards:)
       recipient = { id: @lead.instagram_scoped_id }.to_json
       typing_started = typing && sender_action(graph, recipient, "typing_on")
       sleep(1) if typing_started
+
+      if cards.present?
+        attachment = { type: "template", payload: { template_type: "generic", elements: cards } }
+        response = send_cards(graph, recipient, attachment)
+        return response if response
+      end
 
       graph.put_connections(
         @lead.instagram_account_id,
@@ -70,6 +76,14 @@ module Instagram
       )
     ensure
       sender_action(graph, recipient, "typing_off") if typing_started
+    end
+
+    def send_cards(graph, recipient, attachment)
+      graph.put_connections(@lead.instagram_account_id, "messages",
+        recipient: recipient, messaging_type: "RESPONSE", message: { attachment: attachment }.to_json)
+    rescue Koala::Facebook::APIError, Faraday::Error, Timeout::Error, SocketError => error
+      Rails.logger.info("[Instagram Direct] property card unavailable error_class=#{error.class}")
+      nil
     end
 
     def sender_action(graph, recipient, action)

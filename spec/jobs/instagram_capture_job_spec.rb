@@ -43,9 +43,49 @@ RSpec.describe Instagram::CaptureJob do
     inbound("phone", "(47) 99888-7777")
     described_class.perform_now(tenant.id, lead.id)
     described_class.perform_now(tenant.id, lead.id)
+    expect(Instagram::Reply).to have_received(:call).with(
+      lead: lead, body: Instagram::CaptureSettings::DEFAULT_THANK_YOU.gsub("{primeiro_nome}", "Maria"),
+      admin_user: nil, typing: true
+    ).once
     expect(lead.reload.phone).to eq("5547998887777")
     expect(lead).not_to be_instagram_capture_pending
     expect(Leads::RoutingService).to have_received(:route!).with(lead).once
+  end
+
+  it "continua uma captação concluída com SDR ativo sem repetir a resposta" do
+    settings.save_many(campaign_ids: ["default"], create_only: false, rule: { "enabled" => true, "sdr_enabled" => true })
+    lead = inbound("first", "Oi")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("name", "Maria Silva")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("phone", "(47) 99888-7777")
+    described_class.perform_now(tenant.id, lead.id)
+
+    catalog = instance_double(Instagram::CatalogReply)
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
+    expect(catalog).to receive(:call).with(array_including({ role: "cliente", text: "Quero um apartamento" }), first_turn: true).once.and_return("Em qual bairro?")
+    inbound("interest", "Quero um apartamento")
+    2.times { described_class.perform_now(tenant.id, lead.id) }
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Em qual bairro?", admin_user: nil, typing: true).once
+    expect(Leads::RoutingService).to have_received(:route!).with(lead).once
+  end
+
+  it "reutiliza o histórico de um Direct cadastrado antes de ativar o SDR" do
+    lead = inbound("old", "Busco uma casa em Itajaí")
+    lead.instagram_messages.create!(message_id: "old-reply", body: "Qual bairro?", direction: "outbound", occurred_at: Time.current)
+    settings.save_many(campaign_ids: ["default"], create_only: false, rule: { "enabled" => true, "sdr_enabled" => true })
+
+    catalog = instance_double(Instagram::CatalogReply)
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
+    expect(catalog).to receive(:call).with([
+      { role: "cliente", text: "Busco uma casa em Itajaí" },
+      { role: "assistente", text: "Qual bairro?" },
+      { role: "cliente", text: "Centro" }
+    ], first_turn: true).and_return("Qual é sua faixa de preço?")
+    expect(inbound("return", "Centro").id).to eq(lead.id)
+
+    described_class.perform_now(tenant.id, lead.id)
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Qual é sua faixa de preço?", admin_user: nil, typing: true)
   end
 
   it "usa a campanha confirmada em preferência ao padrão do perfil" do

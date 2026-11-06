@@ -580,11 +580,13 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def reply_instagram
-    if @lead.instagram_capture_pending?
-      raise Instagram::Reply::Error, "Assuma o atendimento para responder durante a captação."
-    end
+    @lead.with_lock do
+      if @lead.instagram_capture_pending?
+        raise Instagram::Reply::Error, "Assuma o atendimento para responder durante a captação."
+      end
 
-    Instagram::Reply.call(lead: @lead, body: params[:body], admin_user: current_admin_user)
+      Instagram::Reply.call(lead: @lead, body: params[:body], admin_user: current_admin_user)
+    end
     respond_to do |format|
       format.turbo_stream { render_instagram_reply }
       format.html { redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), notice: "Resposta enviada no Instagram." }

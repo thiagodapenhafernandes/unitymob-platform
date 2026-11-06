@@ -31,7 +31,7 @@ class InstagramDirectJob < ApplicationJob
           end
           lead = Leads::Intake.receive!(lead)
         end
-        next [lead, false] if lead.instagram_messages.exists?(message_id: message["mid"])
+        return if lead.instagram_messages.exists?(message_id: message["mid"])
         context = {}
         referral = message["referral"] || event["referral"]
         context["referral"] = referral.slice("ref", "source", "type", "ad_id").select { |_, value| value.is_a?(String) }.transform_values { |value| value.first(2000) } if referral.is_a?(Hash)
@@ -47,7 +47,9 @@ class InstagramDirectJob < ApplicationJob
         page.update!(instagram_received_at: Time.current)
         [lead, new_lead]
       end
-      Instagram::CaptureJob.perform_later(tenant.id, lead.id) if lead.instagram_capture_pending?
+      if lead.instagram_capture_pending? || (!new_lead && message["text"].present?)
+        Instagram::CaptureJob.perform_later(tenant.id, lead.id)
+      end
       Instagram::ProfileEnrichmentJob.perform_later(tenant.id, lead.id) if new_lead
     end
   end

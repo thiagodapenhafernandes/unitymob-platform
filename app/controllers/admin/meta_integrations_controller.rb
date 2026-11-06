@@ -39,25 +39,26 @@ class Admin::MetaIntegrationsController < Admin::BaseController
 
   def instagram_capture
     page = direct_capture_page
-    settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt, :ask_email, :email_prompt)
+    settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt, :ask_email, :email_prompt, :thank_you_prompt, :ai_instructions, :sdr_enabled, :property_code, campaign_ids: [])
     draft_id = params[:capture_draft_id].to_s.presence
     return head :bad_request if draft_id && !draft_id.match?(/\A\d{13}\z/)
 
-    campaign_id = settings[:campaign_id].to_s.strip.presence
-    campaign_id ||= "default" unless draft_id
-    prompts = settings.values_at(:name_prompt, :phone_prompt, :email_prompt).map { |value| value.to_s.strip }
-    unless (campaign_id == "default" || campaign_id.to_s.match?(/\A[0-9]{5,30}\z/)) &&
-        prompts.all? { |prompt| prompt.length <= Instagram::Reply::MAX_CHARS }
-      return redirect_to admin_meta_integrations_path(anchor: "meta-direct-capture-tab"),
-        alert: "Confira o ID da campanha e o tamanho das mensagens.", status: :see_other
-    end
+    campaign_ids = draft_id ? Array(settings[:campaign_ids]).map { |id| id.to_s.strip }.uniq : [settings[:campaign_id].to_s.strip.presence || "default"]
+    rule = settings.slice(:name_prompt, :phone_prompt, :email_prompt, :thank_you_prompt).to_h.transform_values { |value| value.to_s.strip }
+    valid = campaign_ids.any? && campaign_ids.all? { |id| id.match?(/\A[0-9]{5,30}\z/) || (!draft_id && id == "default") } &&
+      rule.values.all? { |prompt| prompt.length <= Instagram::Reply::MAX_CHARS }
+    instructions = settings[:ai_instructions].to_s.strip
+    code = settings[:property_code].to_s.strip
+    valid &&= instructions.length <= Instagram::CaptureSettings::AI_INSTRUCTIONS_LIMIT
+    valid &&= code.blank? || current_tenant.habitations.public_property_listable.where(codigo: code).exists?
+    rule.merge!("ai_instructions" => instructions, "property_code" => code, "sdr_enabled" => settings[:sdr_enabled] == "1")
+    rule.merge!("enabled" => settings[:enabled] == "1", "ask_email" => settings[:ask_email] == "1")
+    saved = valid && Instagram::CaptureSettings.new(page, tenant: current_tenant)
+      .save_many(campaign_ids: campaign_ids, rule: rule, create_only: draft_id.present?)
 
-    saved = Instagram::CaptureSettings.new(page, tenant: current_tenant).save(
-      campaign_id: campaign_id, enabled: settings[:enabled] == "1", name_prompt: prompts[0], phone_prompt: prompts[1],
-      ask_email: settings[:ask_email] == "1", email_prompt: prompts[2], create_only: draft_id.present?)
     if draft_id
       @capture_rule_frame_id = "direct_capture_rule_#{page.id}_#{draft_id}"
-      @capture_rule_campaign = campaign_id
+      @capture_rule_campaigns = campaign_ids
       @capture_rule_saved = saved
       return render :instagram_capture_rule_result, layout: false
     end
