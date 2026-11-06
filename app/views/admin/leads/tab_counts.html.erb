@@ -1,0 +1,5 @@
+<%= turbo_frame_tag "lead_desktop_tab_counts" do %>
+  <% @desktop_tab_counts.each do |key, count| %>
+    <%= turbo_stream.update("lead_desktop_tab_count_#{key}", number_with_delimiter(count)) %>
+  <% end %>
+<% end %>

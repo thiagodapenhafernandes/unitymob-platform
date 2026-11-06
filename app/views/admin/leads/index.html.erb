@@ -2440,10 +2440,15 @@
                       aria: { label: "#{label}. #{tooltip}", current: (@desktop_lead_tab == key ? "page" : nil) }) do %>
             <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
             <strong><%= label %></strong>
-            <small><%= number_with_delimiter(@desktop_tab_counts.fetch(key, 0)) %></small>
+            <small id="lead_desktop_tab_count_<%= key %>"><%= @desktop_tab_counts.key?(key) ? number_with_delimiter(@desktop_tab_counts.fetch(key)) : "–" %></small>
           <% end %>
         <% end %>
       </nav>
+      <% if @view_mode == "list" %>
+        <%= turbo_frame_tag "lead_desktop_tab_counts", hidden: true,
+              data: { controller: "ax-media-frame", ax_media_frame_media_value: "(min-width: 768px)",
+                      ax_media_frame_src_value: tab_counts_admin_leads_path(lead_query_params.except("page").merge(lead_tab: @desktop_lead_tab)) } %>
+      <% end %>
     </section>
   <% end %>
 

@@ -124,23 +124,21 @@ class Admin::LeadsController < Admin::BaseController
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :instagram_thread]
   before_action :authorize_lead_access!, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :instagram_thread]
-  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
-  before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
+  before_action :load_lead_pipeline_context, only: [:index, :tab_counts, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
+  before_action :authorize_lead_funnel_menu!, only: [:index, :tab_counts, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
 
-  before_action :authorize_archived_list!, only: %i[index pwa_section list_page pwa_leads_page kanban_column report]
+  before_action :authorize_archived_list!, only: %i[index tab_counts pwa_section list_page pwa_leads_page kanban_column report]
 
   def index
     assign_lead_filter_state
     @view_mode = resolve_view_mode
 
-    unfiltered_scope = lead_scope_for_current_user
-    filtered_scope = filtered_lead_scope_for_current_user
-    common_scope = hide_waiting_acceptance_from_common_scope(filtered_scope)
-    common_unfiltered_scope = hide_waiting_acceptance_from_common_scope(unfiltered_scope)
-    @desktop_lead_tab = params[:lead_tab].presence_in(lead_tab_keys) || "all"
+    common_scope = filtered_common_lead_scope
+    @desktop_lead_tab = desktop_lead_tab
     list_filtered_scope = hide_discarded_from_list_scope(common_scope)
-    @desktop_tab_counts = lead_tab_counts_for(list_filtered_scope, only: lead_tab_keys, archive_scope: common_scope)
+    tabs = @view_mode == "list" ? [@desktop_lead_tab] : lead_tab_keys
+    @desktop_tab_counts = lead_tab_counts_for(list_filtered_scope, only: tabs, archive_scope: common_scope)
     lead_scope = lead_scope_for_tab(common_scope, @desktop_lead_tab)
     list_scope = lead_scope_for_tab(list_filtered_scope, @desktop_lead_tab)
 
@@ -191,6 +189,17 @@ class Admin::LeadsController < Admin::BaseController
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @view_mode == "kanban" ? (@kanban_leads.first || @leads.first) : @leads.first
     @page_title = "Gerenciar Leads"
+  end
+
+  def tab_counts
+    assign_lead_filter_state
+    common_scope = filtered_common_lead_scope
+    @desktop_tab_counts = lead_tab_counts_for(
+      hide_discarded_from_list_scope(common_scope),
+      only: lead_tab_keys - [desktop_lead_tab],
+      archive_scope: common_scope
+    )
+    render layout: false
   end
 
   def distribution_queue
@@ -1045,6 +1054,14 @@ class Admin::LeadsController < Admin::BaseController
     @parsed_closed_start_date = nil
     @parsed_closed_end_date = nil
     @lead_filter_habitation_joined = false
+  end
+
+  def desktop_lead_tab
+    params[:lead_tab].presence_in(lead_tab_keys) || "all"
+  end
+
+  def filtered_common_lead_scope
+    hide_waiting_acceptance_from_common_scope(filtered_lead_scope_for_current_user)
   end
 
   def filtered_lead_scope_for_current_user

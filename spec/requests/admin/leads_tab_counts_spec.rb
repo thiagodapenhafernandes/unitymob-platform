@@ -11,6 +11,25 @@ RSpec.describe "Admin leads tab counts", type: :request do
     sign_in admin
   end
 
+  it "renders the active total immediately and applies the search to deferred totals" do
+    matching = create(:lead, tenant: tenant, admin_user: admin, name: "Busca específica")
+    other = create(:lead, tenant: tenant, admin_user: admin, name: "Outro contato")
+    [matching, other].each { |lead| LeadFavorite.create!(tenant: tenant, admin_user: admin, lead: lead) }
+
+    get admin_leads_path(view: "list", q: matching.name)
+    expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body)
+    expect(page.at_css("#lead_desktop_tab_count_all").text.strip).to eq("1")
+    expect(page.at_css("#lead_desktop_tab_count_favorites").text.strip).to eq("–")
+
+    get page.at_css("#lead_desktop_tab_counts")["data-ax-media-frame-src-value"],
+        headers: { "Turbo-Frame" => "lead_desktop_tab_counts" }
+    expect(response).to have_http_status(:ok)
+    counts = Nokogiri::HTML(response.body).at_css("turbo-frame#lead_desktop_tab_counts")
+    expect(counts.at_css('turbo-stream[target="lead_desktop_tab_count_favorites"] template').text.strip).to eq("1")
+    expect(counts.at_css('turbo-stream[target="lead_desktop_tab_count_all"]')).to be_nil
+  end
+
   describe "verify scope index" do
     it "serves unverified_inquiries from the partial index instead of seq-scanning leads" do
       scope = tenant.leads.unverified_inquiries

@@ -273,6 +273,7 @@ Rails.application.routes.draw do
     resources :leads, only: [:index, :new, :create, :show, :update, :destroy] do
       get :kanban_column, on: :collection
       get :list_page, on: :collection
+      get :tab_counts, on: :collection
       get :pwa_leads_page, on: :collection
       get :pwa_section, on: :collection
       get :distribution_queue, on: :collection
