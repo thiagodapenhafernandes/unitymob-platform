@@ -23,6 +23,62 @@ RSpec.describe Instagram::CatalogReply do
     ))
     expect(result.body).not_to include(private_property.titulo_anuncio, other_property.titulo_anuncio, "Rua 1000")
   end
+  describe "pedidos complementares" do
+    let(:lead) { create(:lead) }
+    let(:tenant) { lead.tenant }
+    let(:base) { "https://catalogo.example" }
+    let!(:previous) do
+      create(:habitation, tenant: tenant, titulo_anuncio: "Apartamento frente mar", vista_frente_mar_flag: true)
+    end
+    let(:history) do
+      [{ role: "cliente", text: "Apartamento frente mar" },
+       { role: "assistente", text: "Uma opção: #{base}/imoveis/#{previous.slug}" }]
+    end
+
+    before do
+      allow(tenant).to receive(:public_base_url).and_return(base)
+      result = Ai::PropertySearch::PublicQuery::Result.new({}, nil, nil)
+      allow(Ai::PropertySearch::PublicQuery).to receive(:new).and_return(
+        instance_double(Ai::PropertySearch::PublicQuery, call: result)
+      )
+    end
+
+    it "explica a localização sem reenviar o carrossel mesmo com um novo pedido de busca na frase" do
+      create(:habitation, tenant: tenant, titulo_anuncio: "Apartamento quadra mar", quadra_mar_flag: true)
+      messages = history + [{ role: "cliente", text: "Apartamento frente mar em BC com 4 quartos e me fala um pouco da localização" }]
+
+      result = described_class.new(lead, {}).call(messages, first_turn: false)
+
+      expect(result).to be_a(String)
+      expect(result).to include("Sobre a localização", previous.titulo_anuncio, previous.address.cidade)
+      expect(result).not_to include("quadra mar", previous.address.logradouro)
+    end
+
+    it "usa os imóveis já apresentados quando a pessoa só pergunta onde ficam" do
+      expect(Ai::PropertySearch::PublicQuery).not_to receive(:new)
+
+      result = described_class.new(lead, {}).call(
+        history + [{ role: "cliente", text: "Onde ficam?" }], first_turn: false
+      )
+
+      expect(result).to include(previous.titulo_anuncio, previous.address.cidade)
+    end
+
+    it "oferece opções novas sem trocar frente mar por quadra mar nem repetir as anteriores" do
+      another = create(:habitation, tenant: tenant, titulo_anuncio: "Outra opção", vista_frente_mar_flag: true)
+      create(:habitation, tenant: tenant, titulo_anuncio: "Quadra mar", quadra_mar_flag: true)
+      messages = history + [{ role: "cliente", text: "Tem mais opções?" }]
+
+      result = described_class.new(lead, {}).call(messages, first_turn: false)
+
+      expect(result.body).to include(another.titulo_anuncio)
+      expect(result.body).not_to include(previous.titulo_anuncio, "Quadra mar")
+      another.destroy!
+      expect(described_class.new(lead, {}).call(messages, first_turn: false))
+        .to eq("Não encontrei outras opções com esses critérios. Você quer ampliar a busca?")
+    end
+  end
+
   describe "busca por Rua 3600" do
     let(:lead) { create(:lead) }
     let(:tenant) { lead.tenant }

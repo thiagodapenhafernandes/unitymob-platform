@@ -5,6 +5,10 @@ module Instagram
     MAX_CARDS = 3
     STREET_PATTERN = /\b(rua|avenida|travessa|alameda|estrada|rodovia)\s+([\p{L}\d][\p{L}\d .'-]*?)(?=\s+(?:em|no|na|com|até|perto|bairro)\s|[,;!?]|\z)/i
 
+    LOCATION_REQUEST = /\b(?:localiza[cç][aã]o|onde (?:fica|ficam|est[aá]|est[aã]o)|qual (?:[éo] )?(?:o )?bairro)\b/i
+    LOCATION_FOLLOW_UP = /\A(?:e\s+)?(?:onde (?:fica|ficam|est[aá]|est[aã]o)|(?:qual [éo] a |me fala (?:um pouco )?da |sobre a )?localiza[cç][aã]o)(?: d[eo]s? (?:im[oó]ve(?:l|is)|apartamentos?))?[?.!]*\z/i
+    FRONT_SEA = /\bfrente(?:\s+(?:para\s+)?(?:o\s+)?)?-?\s*mar\b/i
+
     FALLBACK = "Posso ajudar a buscar imóveis publicados. Qual cidade ou bairro você prefere?"
     HANDOFF = "Vou deixar sua mensagem com a equipe para continuar o atendimento."
 
@@ -18,12 +22,29 @@ module Instagram
       return HANDOFF if messages.last.fetch(:text).match?(/\b(corretor|atendente|atendimento humano)\b/i)
 
       customer_messages = messages.filter_map { |message| message[:text] if message[:role] == "cliente" }
+      latest = customer_messages.last.to_s
+      location_requested = latest.match?(LOCATION_REQUEST)
       street = customer_messages.reverse_each.lazy.filter_map { |text| text.match(STREET_PATTERN) }.first
       text = customer_messages.map { |message| message.gsub(STREET_PATTERN, " ") }.join(" ").squish.last(300)
-      properties = catalog_matches(text, first_turn:, street:)
+      prior_replies = messages.select { |message| message[:role] == "assistente" }
+      previous = previously_recommended(prior_replies)
+      if latest.match?(LOCATION_FOLLOW_UP)
+        last_listing = prior_replies.reverse.find { |message| recommendation_references(message).present? }
+        referenced = previously_recommended(Array.wrap(last_listing)).limit(MAX_CARDS).to_a
+        return location_reply(referenced) if referenced.present?
+      end
+
+      properties = catalog_matches(text, first_turn:, street:, previous:, location_requested:)
+      return location_reply(properties) if properties.present? && location_requested
       return recommendations(properties) if properties.present?
-      if street && properties == []
-        return "Não encontrei imóveis na #{street[0].strip} com esses critérios. Você aceita opções próximas?"
+      if properties == []
+        if street
+          return "Não encontrei outras opções na #{street[0].strip} com esses critérios. Você aceita opções próximas?" if previous.exists?
+
+          return "Não encontrei imóveis na #{street[0].strip} com esses critérios. Você aceita opções próximas?"
+        end
+        return "Não encontrei imóveis frente mar com esses critérios. Você aceita opções próximas?" if text.match?(FRONT_SEA) && !previous.exists?
+        return "Não encontrei outras opções com esses critérios. Você quer ampliar a busca?" if previous.exists?
       end
 
       clarify(messages)
@@ -34,10 +55,21 @@ module Instagram
 
     private
 
-    def catalog_matches(text, first_turn:, street:)
+    def previously_recommended(messages)
+      references = messages.flat_map { |message| recommendation_references(message) }
+      scope = @tenant.habitations.public_property_listable
+      scope.where(slug: references).or(scope.where(codigo: references))
+    end
+
+    def recommendation_references(message)
+      prefix = "#{@tenant.public_base_url}/imoveis/"
+      message[:text].split.filter_map { |part| part.delete_prefix(prefix) if part.start_with?(prefix) }
+    end
+
+    def catalog_matches(text, first_turn:, street:, previous:, location_requested:)
       scope = @tenant.habitations.public_property_listable
       code = @rule["property_code"].presence
-      if first_turn && code && !street
+      if first_turn && code && !street && !text.match?(FRONT_SEA)
         property = scope.find_by(codigo: code)
         return [property] if property
       end
@@ -45,7 +77,12 @@ module Instagram
       query = Ai::PropertySearch::PublicQuery.new(tenant: @tenant, text: text).call
       results = @tenant.habitations.public_property_search(query.params.with_indifferent_access)
       results = filter_street(results, street) if street
-      results.limit(MAX_CARDS).to_a
+      results = results.frente_mar if text.match?(FRONT_SEA)
+      if location_requested
+        matching_previous = results.where(id: previous.select(:id)).limit(MAX_CARDS).to_a
+        return matching_previous if matching_previous.present?
+      end
+      results.where.not(id: previous.select(:id)).limit(MAX_CARDS).to_a
     rescue ArgumentError, Ai::PropertySearch::PublicQuery::Unavailable
       nil
     end
@@ -77,12 +114,29 @@ module Instagram
       Recommendation.new(body: summaries.join("\n\n"), cards: cards.all? ? cards : [])
     end
 
-    def public_summary(property, base)
+    def location_reply(properties)
+      details = properties.map do |property|
+        title = property.titulo_anuncio.to_s.squish.first(120).presence || "Imóvel #{property.codigo}"
+        location = public_location(property).presence || "localização não informada no anúncio"
+        ["#{title} — #{location}", public_url(property, @tenant.public_base_url)].compact.join("\n")
+      end
+      "Sobre a localização dos imóveis:\n#{details.join("\n")}".first(Reply::MAX_CHARS)
+    end
 
-      link = Rails.application.routes.url_helpers.habitation_path(property.slug.presence || property.codigo)
+    def public_location(property)
       address = property.address
       neighborhood = address&.bairro_comercial.presence || property.bairro_comercial.presence || address&.bairro.presence || property.bairro
-      location = [neighborhood, address&.cidade.presence || property.cidade].compact_blank.join(", ")
+      [neighborhood, address&.cidade.presence || property.cidade].compact_blank.join(", ")
+    end
+
+    def public_url(property, base)
+      return if base.blank?
+
+      "#{base}#{Rails.application.routes.url_helpers.habitation_path(property.slug.presence || property.codigo)}"
+    end
+
+    def public_summary(property, base)
+      location = public_location(property)
       prices = { "Venda" => property.valor_venda_cents, "Locação" => property.valor_locacao_cents }.filter_map do |label, cents|
         next unless cents.to_i.positive?
 
@@ -90,7 +144,7 @@ module Instagram
         "#{label} #{amount}"
       end
       title = property.titulo_anuncio.to_s.squish.first(120).presence || "Imóvel #{property.codigo}"
-      url = "#{base}#{link}"
+      url = public_url(property, base)
       details = [prices.join(" · ").presence, location.presence].compact
       summary = [title, *details, url].join("\n")
       source = property.public_image_sources.first

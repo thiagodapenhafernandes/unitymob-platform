@@ -164,7 +164,7 @@ module Instagram
 
         history = lead.instagram_messages.where("id <= ?", newest.id).where.not(body: "")
           .order(id: :desc).limit(10).pluck(:direction, :body).reverse.map do |direction, body|
-            text = body.to_s.squish.first(300)
+            text = body.to_s.squish.first(direction == "inbound" ? 300 : Reply::MAX_CHARS)
               .gsub(/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/, "[e-mail]")
               .gsub(/\+?\d[\d ().-]{8,}\d/, "[telefone]")
             { role: direction == "inbound" ? "cliente" : "assistente", text: text }
