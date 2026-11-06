@@ -8,8 +8,8 @@ module Instagram
     WINDOW = 24.hours
     MAX_CHARS = 1000
 
-    def self.call(lead:, body:, admin_user:)
-      new(lead:, body:, admin_user:).call
+    def self.call(lead:, body:, admin_user:, typing: false)
+      new(lead:, body:, admin_user:).call(typing:)
     end
 
     def self.window_open?(lead)
@@ -26,7 +26,7 @@ module Instagram
       @admin_user = admin_user
     end
 
-    def call
+    def call(typing: false)
       page = reply_page
       raise Error, "Lead sem conversa do Instagram." if @lead.instagram_account_id.blank? || @lead.instagram_scoped_id.blank?
       raise Error, "Página do Instagram desconectada. Verifique a integração Meta." if page.blank? || page.access_token.blank?
@@ -34,13 +34,8 @@ module Instagram
       raise Error, "Mensagem limitada a #{MAX_CHARS} caracteres." if @body.length > MAX_CHARS
       raise Error, "Janela de 24h encerrada. Aguarde uma nova mensagem do cliente." unless self.class.window_open?(@lead)
 
-      response = Koala::Facebook::API.new(page.access_token).put_connections(
-        @lead.instagram_account_id,
-        "messages",
-        recipient: { id: @lead.instagram_scoped_id }.to_json,
-        messaging_type: "RESPONSE",
-        message: { text: @body }.to_json
-      )
+      graph = Koala::Facebook::API.new(page.access_token)
+      response = send_message(graph, typing:)
       message_id = response.is_a?(Hash) ? response["message_id"].presence : nil
 
       @lead.instagram_messages.create!(
@@ -60,6 +55,30 @@ module Instagram
     end
 
     private
+
+    def send_message(graph, typing:)
+      recipient = { id: @lead.instagram_scoped_id }.to_json
+      typing_started = typing && sender_action(graph, recipient, "typing_on")
+      sleep(1) if typing_started
+
+      graph.put_connections(
+        @lead.instagram_account_id,
+        "messages",
+        recipient: recipient,
+        messaging_type: "RESPONSE",
+        message: { text: @body }.to_json
+      )
+    ensure
+      sender_action(graph, recipient, "typing_off") if typing_started
+    end
+
+    def sender_action(graph, recipient, action)
+      graph.put_connections(@lead.instagram_account_id, "messages", recipient: recipient, sender_action: action)
+      true
+    rescue Koala::Facebook::APIError, Faraday::Error, Timeout::Error, SocketError => error
+      Rails.logger.info("[Instagram Direct] #{action} unavailable error_class=#{error.class}")
+      false
+    end
 
     def reply_page
       MetaFacebookPage.joins(:user_meta_integration)

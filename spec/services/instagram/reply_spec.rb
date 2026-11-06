@@ -32,6 +32,25 @@ RSpec.describe Instagram::Reply do
     expect(lead.activities.where(kind: "instagram_out")).to exist
   end
 
+  it "mostra o indicador antes da resposta automática e o encerra depois" do
+    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(sender_action: "typing_on")).ordered
+    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(messaging_type: "RESPONSE"))
+      .ordered.and_return({ "message_id" => "mid-auto" })
+    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(sender_action: "typing_off")).ordered
+
+    expect(described_class.call(lead:, body: "Seu nome?", admin_user: nil, typing: true).message_id).to eq("mid-auto")
+  end
+
+  it "envia a resposta automática mesmo quando a Meta recusa o indicador" do
+    api_error = Koala::Facebook::APIError.new(400, { error: { code: 100 } }.to_json)
+    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(sender_action: "typing_on"))
+      .ordered.and_raise(api_error)
+    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(messaging_type: "RESPONSE"))
+      .ordered.and_return({ "message_id" => "mid-fallback" })
+
+    expect(described_class.call(lead:, body: "Seu nome?", admin_user: nil, typing: true).message_id).to eq("mid-fallback")
+  end
+
   it "barra fora da janela de 24h" do
     lead.instagram_messages.update_all(occurred_at: 25.hours.ago)
     allow(graph).to receive(:put_connections)

@@ -30,7 +30,7 @@ RSpec.describe Instagram::CaptureJob do
 
     described_class.perform_now(tenant.id, lead.id)
     described_class.perform_now(tenant.id, lead.id)
-    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Seu nome?", admin_user: nil).once
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Seu nome?", admin_user: nil, typing: true).once
 
     inbound("name", "Maria Silva")
     described_class.perform_now(tenant.id, lead.id)
@@ -59,7 +59,7 @@ RSpec.describe Instagram::CaptureJob do
 
     lead = inbound("ad", "Olá", referral: { "ad_id" => "123456" })
     described_class.perform_now(tenant.id, lead.id)
-    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Nome da campanha?", admin_user: nil)
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Nome da campanha?", admin_user: nil, typing: true)
     expect(lead.reload.other_information["meta_campaign_id"]).to eq("56789")
   end
 
@@ -94,7 +94,7 @@ RSpec.describe Instagram::CaptureJob do
       inbound("phone", "(47) 99888-7777")
       described_class.perform_now(tenant.id, lead.id)
       expect(Instagram::Reply).to have_received(:call).with(
-        lead: lead, body: Instagram::CaptureSettings::DEFAULT_EMAIL_PROMPT, admin_user: nil
+        lead: lead, body: Instagram::CaptureSettings::DEFAULT_EMAIL_PROMPT, admin_user: nil, typing: true
       ).once
       expect(Leads::RoutingService).not_to have_received(:route!)
 

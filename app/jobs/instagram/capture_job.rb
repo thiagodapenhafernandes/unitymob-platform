@@ -132,7 +132,7 @@ module Instagram
 
     def prompt(lead, state, cursor)
       # shortcut: a API não confirma o resultado de um timeout, conciliar com o histórico antes de habilitar retry automático de envio.
-      message = Reply.call(lead: lead, body: state.fetch("#{state.fetch('step')}_prompt"), admin_user: nil)
+      message = Reply.call(lead: lead, body: state.fetch("#{state.fetch('step')}_prompt"), admin_user: nil, typing: true)
       lead.other_information = lead.other_information.merge("instagram_capture" => state.merge(
         "cursor" => cursor, "prompted_at" => message.occurred_at.iso8601(6)
       ))
