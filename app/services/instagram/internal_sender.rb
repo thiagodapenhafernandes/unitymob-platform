@@ -1,5 +1,12 @@
 module Instagram
   class InternalSender
+    def self.exclude_from_leads(scope, tenant:)
+      matching_members = tenant.admin_users.account_members.active.where.not(instagram_username: nil)
+        .where("admin_users.instagram_direct_ids ->> leads.instagram_account_id = leads.instagram_scoped_id")
+        .select(1)
+      scope.where("NOT EXISTS (?)", matching_members)
+    end
+
     def self.match?(tenant:, page:, sender_id:)
       members = tenant.admin_users.account_members.active.where.not(instagram_username: nil)
       return false unless members.exists?

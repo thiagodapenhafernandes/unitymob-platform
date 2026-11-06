@@ -30,6 +30,29 @@ RSpec.describe "Admin leads tab counts", type: :request do
     expect(counts.at_css('turbo-stream[target="lead_desktop_tab_count_all"]')).to be_nil
   end
 
+  it "hides confirmed internal Directs from rows and totals while preserving their history" do
+    admin.update!(instagram_username: "corretor")
+    admin.update_columns(instagram_direct_ids: { "100" => "200" })
+    internal = create(:lead, tenant: tenant, admin_user: admin, name: "Direct interno",
+                      instagram_account_id: "100", instagram_scoped_id: "200")
+    external = create(:lead, tenant: tenant, admin_user: admin, name: "Direct externo",
+                      instagram_account_id: "101", instagram_scoped_id: "200")
+    [internal, external].each { |lead| LeadFavorite.create!(tenant: tenant, admin_user: admin, lead: lead) }
+
+    get admin_leads_path(view: "list")
+    expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body)
+    expect(page.at_css("#lead_#{external.id}")).to be_present
+    expect(page.at_css("#lead_#{internal.id}")).to be_nil
+    expect(page.at_css("#lead_desktop_tab_count_all").text.strip).to eq("1")
+
+    get page.at_css("#lead_desktop_tab_counts")["data-ax-media-frame-src-value"],
+        headers: { "Turbo-Frame" => "lead_desktop_tab_counts" }
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css('turbo-stream[target="lead_desktop_tab_count_favorites"] template').text.strip).to eq("1")
+    expect(internal.reload.instagram_scoped_id).to eq("200")
+  end
+
   describe "verify scope index" do
     it "serves unverified_inquiries from the partial index instead of seq-scanning leads" do
       scope = tenant.leads.unverified_inquiries

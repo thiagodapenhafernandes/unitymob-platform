@@ -2924,6 +2924,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def lead_scope_for_tab(base_scope, tab)
+    base_scope = Instagram::InternalSender.exclude_from_leads(base_scope, tenant: current_tenant)
     if tab == "archived"
       return tenant_owner? ? Leads::OperationalScope.archived(base_scope, tenant: current_tenant) : base_scope.none
     end
