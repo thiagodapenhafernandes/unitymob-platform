@@ -25,7 +25,12 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
   it "salva a regra de campanha apenas para um perfil selecionado da conta" do
     page.update!(instagram_id: "12345", instagram_enabled: true)
     get admin_meta_integrations_path
-    expect(response.body).to include("Captação pelo Direct", "Adicionar campanha")
+    expect(response.body).to include("Captação pelo Direct", "Pedir e-mail")
+    integration.update!(ad_accounts: { "123" => "Conta de anúncios" })
+    graph = instance_double(Facebook::MetaService, campaigns: [{ "id" => "98765", "name" => "Lançamento" }])
+    allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(graph)
+    get instagram_capture_campaigns_admin_meta_integrations_path(page_id: page.id)
+    expect(response.body).to include("Adicionar campanha", "Lançamento", "tom-select")
     attrs = { campaign_id: "98765", enabled: "1", name_prompt: "Qual seu nome?" }
     patch instagram_capture_admin_meta_integrations_path(page_id: page.id), params: { instagram_capture: attrs }
     expect(response).to have_http_status(:see_other)

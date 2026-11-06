@@ -117,6 +117,10 @@ module Facebook
         "meta_adset_id" => adset["id"], "meta_adset_name" => adset["name"] }.compact
     end
 
+    def campaigns(account_id)
+      paginated_connections(@graph, "act_#{account_id}", "campaigns", fields: "id,name")
+    end
+
     def campaign_details(campaign_id)
       @graph.get_object(campaign_id, fields: "id,name,account_id")
     end

@@ -16,12 +16,32 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     @meta_webhook_verify_token = Meta::WebhookConfiguration.verify_token
   end
 
+  def instagram_capture_campaigns
+    page = direct_capture_page
+    integration = page.user_meta_integration
+    rules = Instagram::CaptureSettings.new(page, tenant: current_tenant).rules
+    campaigns = []
+    unless integration.expired? || integration.access_token.blank?
+      graph = Facebook::MetaService.new(integration.access_token)
+      integration.ad_account_ids.each do |account_id|
+        campaigns.concat(graph.campaigns(account_id))
+      rescue Koala::Facebook::APIError, Faraday::Error, Timeout::Error
+        @campaigns_unavailable = true
+      end
+    end
+    @campaign_choices = campaigns.uniq { |campaign| campaign["id"] }
+      .reject { |campaign| rules.key?(campaign["id"].to_s) }
+      .sort_by { |campaign| campaign["name"].to_s.downcase }
+      .map { |campaign| ["#{campaign['name']} · #{campaign['id']}", campaign["id"]] }
+    @capture_page = page
+    render layout: false
+  end
+
   def instagram_capture
-    page = MetaFacebookPage.available_for_distribution(current_tenant.id)
-      .where(instagram_enabled: true).find(params[:page_id])
-    settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt)
+    page = direct_capture_page
+    settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt, :ask_email, :email_prompt)
     campaign_id = settings[:campaign_id].to_s.strip.presence || "default"
-    prompts = settings.values_at(:name_prompt, :phone_prompt).map { |value| value.to_s.strip }
+    prompts = settings.values_at(:name_prompt, :phone_prompt, :email_prompt).map { |value| value.to_s.strip }
     unless (campaign_id == "default" || campaign_id.match?(/\A[0-9]{5,30}\z/)) &&
         prompts.all? { |prompt| prompt.length <= Instagram::Reply::MAX_CHARS }
       return redirect_to admin_meta_integrations_path(anchor: "meta-direct-capture-tab"),
@@ -29,7 +49,8 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     end
 
     saved = Instagram::CaptureSettings.new(page, tenant: current_tenant).save(
-      campaign_id: campaign_id, enabled: settings[:enabled] == "1", name_prompt: prompts.first, phone_prompt: prompts.last)
+      campaign_id: campaign_id, enabled: settings[:enabled] == "1", name_prompt: prompts[0], phone_prompt: prompts[1],
+      ask_email: settings[:ask_email] == "1", email_prompt: prompts[2])
     flash[saved ? :notice : :alert] = saved ? "Captação pelo Direct salva." : "Não foi possível salvar a captação."
     redirect_to admin_meta_integrations_path(anchor: "meta-direct-capture-tab"), status: :see_other
   end
@@ -198,6 +219,11 @@ class Admin::MetaIntegrationsController < Admin::BaseController
 
   def require_meta_impersonation!
     head :forbidden unless impersonating_admin_user?
+  end
+
+  def direct_capture_page
+    MetaFacebookPage.available_for_distribution(current_tenant.id)
+      .where(instagram_enabled: true).find(params[:page_id])
   end
 
   def set_integration

@@ -1,0 +1,11 @@
+<%= turbo_frame_tag "direct_capture_campaigns_#{@capture_page.id}" do %>
+  <% if @campaigns_unavailable %>
+    <p role="status">Algumas campanhas não puderam ser carregadas da Meta.</p>
+  <% end %>
+  <% if @campaign_choices.any? %>
+    <%= render "direct_capture_rule", page: @capture_page, campaign_id: nil, rule: {},
+          title: "Adicionar campanha", campaign_choices: @campaign_choices %>
+  <% else %>
+    <p class="tw-text-sm">Nenhuma campanha disponível nas contas de anúncios vinculadas ao perfil.</p>
+  <% end %>
+<% end %>

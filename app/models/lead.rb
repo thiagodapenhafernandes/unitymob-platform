@@ -342,7 +342,7 @@ class Lead < ApplicationRecord
   attr_writer :skip_automatic_routing
 
   def instagram_capture_pending?
-    other_information.to_h.dig("instagram_capture", "step").in?(%w[start name phone])
+    other_information.to_h.dig("instagram_capture", "step").in?(%w[start name phone email])
   end
 
   def skip_automatic_routing?

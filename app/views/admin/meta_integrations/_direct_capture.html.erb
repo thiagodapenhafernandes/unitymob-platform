@@ -13,7 +13,10 @@
       <% rules.except("default").each do |campaign_id, rule| %>
         <%= render "direct_capture_rule", page: page, campaign_id: campaign_id, rule: rule, title: "Campanha #{campaign_id}" %>
       <% end %>
-      <%= render "direct_capture_rule", page: page, campaign_id: nil, rule: {}, title: "Adicionar campanha" %>
+      <%= turbo_frame_tag "direct_capture_campaigns_#{page.id}",
+            src: instagram_capture_campaigns_admin_meta_integrations_path(page_id: page.id), loading: :lazy do %>
+        <p role="status">Buscando campanhas…</p>
+      <% end %>
     <% end %>
   <% end %>
 <% end %>

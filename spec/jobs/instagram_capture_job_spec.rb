@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Instagram::CaptureJob do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:integration) { create(:user_meta_integration) }
   let(:tenant) { integration.tenant }
   let(:page) { create(:meta_facebook_page, user_meta_integration: integration, instagram_id: "12345", instagram_enabled: true) }
@@ -59,6 +61,27 @@ RSpec.describe Instagram::CaptureJob do
     described_class.perform_now(tenant.id, lead.id)
     expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Nome da campanha?", admin_user: nil)
     expect(lead.reload.other_information["meta_campaign_id"]).to eq("56789")
+  end
+
+  it "libera após o prazo do e-mail opcional sem resposta" do
+    settings.save(campaign_id: "default", enabled: true, name_prompt: "", phone_prompt: "", ask_email: true)
+    lead = inbound("first", "Olá")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("name", "Maria Silva")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("phone", "(47) 99888-7777")
+    expect { described_class.perform_now(tenant.id, lead.id) }
+      .to have_enqueued_job(described_class).with(tenant.id, lead.id)
+    expect(lead.reload).to be_instagram_capture_pending
+    expect(lead.phone).to eq("5547998887777")
+
+    travel described_class::EMAIL_WAIT + 1.second do
+      described_class.perform_now(tenant.id, lead.id)
+      described_class.perform_now(tenant.id, lead.id)
+    end
+    expect(lead.reload).not_to be_instagram_capture_pending
+    expect(lead.email).to be_blank
+    expect(Leads::RoutingService).to have_received(:route!).with(lead).once
   end
 
   it "não inicia captação para perfis sem configuração ativa" do

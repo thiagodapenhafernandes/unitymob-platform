@@ -454,6 +454,7 @@ Rails.application.routes.draw do
         post :sync_pages
         patch :selected_pages
         patch :conversion_config
+        get :instagram_capture_campaigns
         patch :instagram_capture
         get :conversion_config_form
         post :sync_forms
