@@ -8,11 +8,30 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   def index
     # Show status and link to Facebook Login if not integrated
     @pages = @integration ? @integration.meta_facebook_pages.enabled.where(page_id: @integration.selected_page_ids) : []
+    @direct_capture_pages = MetaFacebookPage.available_for_distribution(current_tenant.id).where(instagram_enabled: true)
     @conversion_config = MetaConversionConfig.instance(tenant: current_tenant)
     @meta_webhook_mode = Meta::WebhookConfiguration.mode
     @meta_webhook_mode_description = Meta::WebhookConfiguration.description
     @meta_webhook_callback_url = Meta::WebhookConfiguration.callback_url
     @meta_webhook_verify_token = Meta::WebhookConfiguration.verify_token
+  end
+
+  def instagram_capture
+    page = MetaFacebookPage.available_for_distribution(current_tenant.id)
+      .where(instagram_enabled: true).find(params[:page_id])
+    settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt)
+    campaign_id = settings[:campaign_id].to_s.strip.presence || "default"
+    prompts = settings.values_at(:name_prompt, :phone_prompt).map { |value| value.to_s.strip }
+    unless (campaign_id == "default" || campaign_id.match?(/\A[0-9]{5,30}\z/)) &&
+        prompts.all? { |prompt| prompt.length <= Instagram::Reply::MAX_CHARS }
+      return redirect_to admin_meta_integrations_path(anchor: "meta-direct-capture-tab"),
+        alert: "Confira o ID da campanha e o tamanho das mensagens.", status: :see_other
+    end
+
+    saved = Instagram::CaptureSettings.new(page, tenant: current_tenant).save(
+      campaign_id: campaign_id, enabled: settings[:enabled] == "1", name_prompt: prompts.first, phone_prompt: prompts.last)
+    flash[saved ? :notice : :alert] = saved ? "Captação pelo Direct salva." : "Não foi possível salvar a captação."
+    redirect_to admin_meta_integrations_path(anchor: "meta-direct-capture-tab"), status: :see_other
   end
 
   def permissions

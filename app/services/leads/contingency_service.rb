@@ -2,13 +2,15 @@ module Leads
   class ContingencyService
     def self.try_forward!(lead, rule:, reason:)
       Current.set(tenant: lead.tenant) do
-        lead.with_lock { new(lead).try_forward!(rule, reason.to_s) }
+        lead.with_lock { new(lead).try_forward!(rule, reason.to_s) unless lead.instagram_capture_pending? }
       end
     end
 
     def self.default!(lead)
       Current.set(tenant: lead.tenant) do
         lead.with_lock do
+          next if lead.instagram_capture_pending?
+
           target = LeadSetting.instance(tenant: lead.tenant).default_distribution_rule
           target && new(lead).forward!(nil, target, "no_matching_rule")
         end
@@ -24,6 +26,7 @@ module Leads
     end
 
     def check!
+      return if @lead.instagram_capture_pending?
       return if Lead.non_operational_status_values(tenant: @lead.tenant).include?(@lead.status) || @lead.archived_at.present?
       if @lead.contingency_pending?
         return @lead.update!(contingency_pending: false) if @lead.admin_user_id.present?

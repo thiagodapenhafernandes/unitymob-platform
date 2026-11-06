@@ -296,6 +296,7 @@ Rails.application.routes.draw do
       post :schedule_activity, on: :member
       get :instagram_thread, on: :member
       post :reply_instagram, on: :member
+      post :take_over_instagram_capture, on: :member
       resources :proposals, only: [:new, :create]
       resources :lead_labels, only: [:index, :create, :update, :destroy] do
         post :toggle, on: :member
@@ -453,6 +454,7 @@ Rails.application.routes.draw do
         post :sync_pages
         patch :selected_pages
         patch :conversion_config
+        patch :instagram_capture
         get :conversion_config_form
         post :sync_forms
         get :ad_accounts

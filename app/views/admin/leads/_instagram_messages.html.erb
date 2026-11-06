@@ -2,18 +2,27 @@
 <% window_open = Instagram::Reply.window_open?(lead) %>
     <div class="lead-ig-thread__head" data-thread-reply-open="<%= window_open %>" data-thread-read-cursor="<%= messages.map(&:id).max.to_i %>">
       <i class="bi bi-instagram"></i>
-      <strong>Instagram Direct</strong>
+      <strong>Instagram Direct<%= " · @#{lead.instagram_username}" if lead.instagram_username %></strong>
       <span class="lead-ig-thread__window lead-ig-thread__window--<%= window_open ? "open" : "closed" %>">
         <%= window_open ? "Janela de resposta aberta" : "Janela de 24h encerrada" %>
       </span>
     </div>
+    <% if lead.instagram_capture_pending? && lead.archived_at.blank? %>
+      <div class="tw-flex tw-items-center tw-gap-3 tw-py-2">
+        <span role="status">Em captação</span>
+        <% if can?(:edit, :leads) && lead.admin_user_id.in?([nil, current_admin_user.id]) %>
+          <%= button_to "Assumir atendimento", take_over_instagram_capture_admin_lead_path(lead),
+                class: "ax-btn ax-btn--sm ax-btn--secondary", form: { data: { turbo_frame: "_top" } } %>
+        <% end %>
+      </div>
+    <% end %>
     <div class="lead-ig-thread__messages">
       <% if messages.empty? %>
         <p class="lead-ig-thread__empty">Nenhuma mensagem ainda.</p>
       <% end %>
       <% messages.each do |message| %>
         <div class="lead-ig-thread__msg lead-ig-thread__msg--<%= message.direction %>">
-          <p><%= message.body %></p>
+          <p><%= message.body.presence || (message.context.to_h["story_id"].present? ? "Interação com story" : "Mensagem sem texto") %></p>
           <small>
             <%= message.outbound? ? (message.sent_by_admin_user&.name.presence || "Equipe") : "Cliente" %>
             · <%= l(message.occurred_at, format: :short) %>

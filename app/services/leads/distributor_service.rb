@@ -22,6 +22,8 @@ module Leads
     end
 
     def redistribute(rule = nil)
+      return if @lead.instagram_capture_pending?
+
       if @inquiry.external_lead_integration_id.present? && @inquiry.admin_user.present?
         assignment_rule = @inquiry.distribution_rule || find_matching_rule || DistributionRule.new(tenant: tenant)
         sticky_user = StickyAssignment.corretor_for(@inquiry, assignment_rule, candidates: assignment_rule.candidates_filtered_by_checkin)
@@ -55,6 +57,8 @@ module Leads
     end
 
     def distribute
+      return if @lead.instagram_capture_pending?
+
       complemented = try_complement
       return complemented if complemented
 
@@ -75,6 +79,7 @@ module Leads
 
     def distribute_to(rule)
       return nil unless rule
+      return if @lead.instagram_capture_pending?
       raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id
       if !@inquiry && @lead.contingency_forwarded_at.present?
         rule = @lead.contingency_target_rule
@@ -181,6 +186,7 @@ module Leads
 
     def distribute_to_agent(rule, admin_user)
       return nil unless rule && admin_user
+      return if @lead.instagram_capture_pending?
       raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id
       raise ArgumentError, "Usuário pertence a outro tenant" if admin_user.tenant_id != tenant.id
       return nil unless rule.active?
@@ -245,6 +251,8 @@ module Leads
 
     def try_complement
       return nil if @inquiry || @lead.contingency_forwarded_at.present?
+      # A conversa Direct permanece vinculada ao cadastro que recebeu as mensagens.
+      return nil if @lead.other_information.to_h["instagram_capture"].present?
 
       target = Leads::InquiryComplement.dissolve_into_target!(@lead)
       return nil if target.nil?

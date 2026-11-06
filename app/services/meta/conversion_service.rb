@@ -29,9 +29,10 @@ module Meta
         "custom_data" => build_custom_data(event_name, value)
       }.compact
 
+      payload = { "data" => [event].to_json }
+      payload["test_event_code"] = @config.test_event_code if @config.test_event_code.present?
+
       @config.dataset_list.each do |dataset|
-        payload = { "data" => [event] }
-        payload["test_event_code"] = @config.test_event_code if @config.test_event_code.present?
 
         begin
           response = graph.graph_call("#{dataset["id"]}/events", payload, "post")

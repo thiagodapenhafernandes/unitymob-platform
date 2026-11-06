@@ -25,7 +25,7 @@ RSpec.describe Meta::ConversionService do
     expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post")
     expect(graph).to have_received(:graph_call).with("888/events", kind_of(Hash), "post")
     expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
-      event = payload["data"].first
+      event = JSON.parse(payload.fetch("data")).first
       expect(event["event_name"]).to eq("Schedule")
       expect(event["event_id"]).to eq("evt-1")
       expect(event["event_time"]).to eq(Time.zone.local(2026, 10, 2, 12, 0).to_i)
@@ -47,7 +47,7 @@ RSpec.describe Meta::ConversionService do
     )
 
     expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
-      event = payload["data"].first
+      event = JSON.parse(payload.fetch("data")).first
       expect(event["custom_data"]).to eq({ "event_source" => "crm", "lead_event_source" => "Unitymob", "value" => 850000.0, "currency" => "BRL" })
       expect(payload["test_event_code"]).to eq("TEST123")
     end
@@ -78,7 +78,7 @@ RSpec.describe Meta::ConversionService do
       )).to eq(:sent)
 
       expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
-        expect(payload["data"].first["user_data"]["lead_id"]).to eq("1234567890123456")
+        expect(JSON.parse(payload.fetch("data")).first["user_data"]["lead_id"]).to eq("1234567890123456")
       end
     end
   end
@@ -88,7 +88,7 @@ RSpec.describe Meta::ConversionService do
     described_class.new(config).send_event(lead: lead, event_name: "Schedule", event_id: "evt-meta", occurred_at: Time.current)
 
     expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
-      expect(payload["data"].first["user_data"]["lead_id"]).to eq("1234567890123456")
+      expect(JSON.parse(payload.fetch("data")).first["user_data"]["lead_id"]).to eq("1234567890123456")
     end
   end
 
@@ -125,7 +125,7 @@ RSpec.describe Meta::ConversionService do
     expect(service.send_event(**args)).to eq(:sent)
     %w[999 888].each do |id|
       expect(graph).to have_received(:graph_call).with("#{id}/events", anything, "post").twice do |_, payload, _|
-        expect(payload['data'].first).to include('event_id' => 'evt-retry', 'event_time' => occurred_at.to_i)
+        expect(JSON.parse(payload.fetch('data')).first).to include('event_id' => 'evt-retry', 'event_time' => occurred_at.to_i)
       end
     end
   end

@@ -47,6 +47,18 @@ RSpec.describe "Admin::Leads Instagram reply", type: :request do
     expect(response.body).to include("lead-instagram-thread", "Tenho interesse", "Responder no Instagram")
   end
 
+  it "mostra story sem texto e permite assumir uma captação pendente" do
+    lead.update_columns(other_information: { "instagram_capture" => { "step" => "name" } })
+    lead.instagram_messages.create!(message_id: "story-1", context: { "story_id" => "42" }, occurred_at: Time.current)
+    get admin_lead_path(lead)
+    expect(response.body).to include("Interação com story", "Em captação", "Assumir atendimento")
+
+    post take_over_instagram_capture_admin_lead_path(lead)
+    expect(response).to have_http_status(:see_other)
+    expect(lead.reload.admin_user).to eq(admin)
+    expect(lead).not_to be_instagram_capture_pending
+  end
+
   context "com acesso restrito do analista pelo perfil existente" do
     let(:reviewer) do
       profile = Profile.create!(tenant: admin.tenant, name: "Análise Meta #{SecureRandom.hex(4)}",

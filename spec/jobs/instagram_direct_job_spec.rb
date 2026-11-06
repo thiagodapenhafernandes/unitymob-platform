@@ -5,7 +5,9 @@ RSpec.describe InstagramDirectJob do
   let(:event) { {"sender" => {"id" => "98765"}, "recipient" => {"id" => "12345"}, "timestamp" => 1_789_000_000_000, "message" => {"mid" => "mid-1", "text" => "Olá"}} }
 
   it "recebe sem telefone, vincula pela identidade e deduplica a entrega" do
-    2.times { described_class.perform_now("12345", event) }
+    expect do
+      2.times { described_class.perform_now("12345", event) }
+    end.to have_enqueued_job(Instagram::ProfileEnrichmentJob).once
     lead = integration.tenant.leads.find_by!(instagram_scoped_id: "98765")
     expect(lead.origin).to eq("Instagram Direct")
     expect(lead.phone).to be_blank

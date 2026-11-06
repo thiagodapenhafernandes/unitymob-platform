@@ -16,12 +16,20 @@ class InstagramDirectJob < ApplicationJob
 
     Current.set(tenant: tenant) do
       # ponytail: serialize per profile; use per-contact locks if inbound volume requires it.
-      page.with_lock do
+      lead, new_lead = page.with_lock do
         return unless page.instagram_enabled? && page.instagram_id == profile_id
         lead = tenant.leads.find_or_initialize_by(instagram_account_id: profile_id, instagram_scoped_id: sender)
-        lead.assign_attributes(name: "Contato Instagram", origin: "Instagram Direct", status: Lead.default_status) if lead.new_record?
-        lead = Leads::Intake.receive!(lead) if lead.new_record?
-        return if lead.instagram_messages.exists?(message_id: message["mid"])
+        new_lead = lead.new_record?
+        if new_lead
+          lead.assign_attributes(name: Instagram::ProfileEnrichmentJob::DEFAULT_NAME, origin: "Instagram Direct", status: Lead.default_status)
+          rules = Instagram::CaptureSettings.new(page, tenant: tenant).rules
+          if rules.values.any? { |rule| rule["enabled"] } &&
+              MetaFacebookPage.available_for_distribution(tenant.id).exists?(id: page.id)
+            lead.other_information = lead.other_information.to_h.merge("instagram_capture" => { "step" => "start" })
+          end
+          lead = Leads::Intake.receive!(lead)
+        end
+        next [lead, false] if lead.instagram_messages.exists?(message_id: message["mid"])
         context = {}
         referral = message["referral"] || event["referral"]
         context["referral"] = referral.slice("ref", "source", "type", "ad_id").select { |_, value| value.is_a?(String) }.transform_values { |value| value.first(2000) } if referral.is_a?(Hash)
@@ -35,7 +43,10 @@ class InstagramDirectJob < ApplicationJob
           lead.update!(other_information: lead.other_information.to_h.merge("instagram_entry" => context.merge("message_id" => message["mid"])))
         end
         page.update!(instagram_received_at: Time.current)
+        [lead, new_lead]
       end
+      Instagram::CaptureJob.perform_later(tenant.id, lead.id) if lead.instagram_capture_pending?
+      Instagram::ProfileEnrichmentJob.perform_later(tenant.id, lead.id) if new_lead
     end
   end
 end

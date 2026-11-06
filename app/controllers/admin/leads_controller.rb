@@ -119,11 +119,11 @@ class Admin::LeadsController < Admin::BaseController
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
   # registro, então quem enxergasse o lead podia alterá-lo (inclusive arrastar
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
-  requires_permission :edit, :leads, only: [:update, :reply_instagram, :share_properties, :suggest_properties, :reconcile_inquiry]
+  requires_permission :edit, :leads, only: [:update, :reply_instagram, :take_over_instagram_capture, :share_properties, :suggest_properties, :reconcile_inquiry]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :instagram_thread]
-  before_action :authorize_lead_access!, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :instagram_thread]
+  before_action :set_lead, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :take_over_instagram_capture, :instagram_thread]
+  before_action :authorize_lead_access!, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :take_over_instagram_capture, :instagram_thread]
   before_action :load_lead_pipeline_context, only: [:index, :tab_counts, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :tab_counts, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -567,7 +567,23 @@ class Admin::LeadsController < Admin::BaseController
     render partial: "admin/leads/instagram_messages_frame", locals: { lead: @lead, source: nil }
   end
 
+  def take_over_instagram_capture
+    taken = @lead.with_lock do
+      next false unless @lead.instagram_capture_pending? && @lead.archived_at.blank? &&
+        @lead.admin_user_id.in?([nil, current_admin_user.id])
+
+      Instagram::CaptureJob.release!(@lead, owner: current_admin_user)
+      true
+    end
+    flash[taken ? :notice : :alert] = taken ? "Você assumiu o atendimento pelo Direct." : "Esta captação não está disponível para assumir."
+    redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), status: :see_other
+  end
+
   def reply_instagram
+    if @lead.instagram_capture_pending?
+      raise Instagram::Reply::Error, "Assuma o atendimento para responder durante a captação."
+    end
+
     Instagram::Reply.call(lead: @lead, body: params[:body], admin_user: current_admin_user)
     respond_to do |format|
       format.turbo_stream { render_instagram_reply }

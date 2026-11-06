@@ -29,6 +29,7 @@
           {id: "meta-pages-tab", icon: "facebook", label: "Páginas e formulários"},
           {id: "meta-ads-tab", icon: "megaphone", label: "Contas de anúncios"},
           {id: "meta-results-tab", icon: "graph-up-arrow", label: "Resultados dos anúncios"},
+          {id: "meta-direct-capture-tab", icon: "instagram", label: "Captação pelo Direct"},
           {id: "meta-access-tab", icon: "shield-check", label: "Acesso e suporte"}
         ], panels_selector: "#meta-integration-panels", label: "Áreas da integração Meta", orientation: :horizontal, variant: :underline) %>
     <div id="meta-integration-panels">
@@ -46,6 +47,9 @@
     </section>
     <section id="meta-results-tab" class="ax-form-tabs__panel" hidden>
     <%= render "admin/meta_integrations/conversion_config", config: @conversion_config %>
+    </section>
+    <section id="meta-direct-capture-tab" class="ax-form-tabs__panel" hidden>
+      <%= render "direct_capture", pages: @direct_capture_pages %>
     </section>
     <section id="meta-access-tab" class="ax-form-tabs__panel" hidden>
     <div class="ax-integration-sections">

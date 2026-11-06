@@ -341,8 +341,12 @@ class Lead < ApplicationRecord
   attr_accessor :intake_reused
   attr_writer :skip_automatic_routing
 
+  def instagram_capture_pending?
+    other_information.to_h.dig("instagram_capture", "step").in?(%w[start name phone])
+  end
+
   def skip_automatic_routing?
-    @skip_automatic_routing == true || whatsapp_service_contact?
+    @skip_automatic_routing == true || whatsapp_service_contact? || instagram_capture_pending?
   end
 
   # Preenchido quando a consulta complementa um lead existente (o registro
@@ -363,6 +367,11 @@ class Lead < ApplicationRecord
 
   def display_name
     client_name.presence || name
+  end
+
+  def instagram_username
+    profile = other_information.to_h["instagram_profile"]
+    profile["username"].presence if profile.is_a?(Hash)
   end
 
   def display_email

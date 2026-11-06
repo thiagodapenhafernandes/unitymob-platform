@@ -22,6 +22,21 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     sign_in admin
   end
 
+  it "salva a regra de campanha apenas para um perfil selecionado da conta" do
+    page.update!(instagram_id: "12345", instagram_enabled: true)
+    get admin_meta_integrations_path
+    expect(response.body).to include("Captação pelo Direct", "Adicionar campanha")
+    attrs = { campaign_id: "98765", enabled: "1", name_prompt: "Qual seu nome?" }
+    patch instagram_capture_admin_meta_integrations_path(page_id: page.id), params: { instagram_capture: attrs }
+    expect(response).to have_http_status(:see_other)
+    rules = Instagram::CaptureSettings.new(page, tenant: admin.tenant).rules
+    expect(rules.fetch("98765")).to include("enabled" => true, "name_prompt" => "Qual seu nome?")
+
+    other = create(:meta_facebook_page, instagram_id: "45678", instagram_enabled: true)
+    patch instagram_capture_admin_meta_integrations_path(page_id: other.id), params: { instagram_capture: attrs }
+    expect(response).to have_http_status(:not_found)
+  end
+
   it "busca só formulários novos na ação de formulários e preserva a atualização completa" do
     integration
     expect { post sync_forms_admin_meta_integrations_path, as: :json }
@@ -251,8 +266,8 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("ax-integration-sections", "meta-integration-avatar--page")
     document = Nokogiri::HTML(response.body)
-    expect(document.css("[data-ax-tabs-target='tab']").map(&:text).map(&:strip)).to eq(["Páginas e formulários", "Contas de anúncios", "Resultados dos anúncios", "Acesso e suporte"])
-    expect(document.css("#meta-integration-panels > section[hidden]").size).to eq(3)
+    expect(document.css("[data-ax-tabs-target='tab']").map(&:text).map(&:strip)).to eq(["Páginas e formulários", "Contas de anúncios", "Resultados dos anúncios", "Captação pelo Direct", "Acesso e suporte"])
+    expect(document.css("#meta-integration-panels > section[hidden]").size).to eq(4)
     expect(document.at_css("#meta-pages-tab #meta_pages")).to be_present
     expect(response.body).to include("ax-workspace-heading--plain", "ax-disclosure-card")
     expect(response.body).not_to include("ax-integration-hero", "ax-integration-section--")

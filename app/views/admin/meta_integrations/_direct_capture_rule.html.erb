@@ -1,0 +1,21 @@
+<% prompts = Instagram::CaptureSettings.prompts(rule) %>
+<% field_prefix = "instagram_capture_#{page.id}_#{campaign_id || 'new'}" %>
+<%= form_with scope: :instagram_capture, url: instagram_capture_admin_meta_integrations_path(page_id: page.id),
+      method: :patch, namespace: field_prefix, class: "tw-grid tw-gap-3 tw-py-3" do |form| %>
+  <h4><%= title %></h4>
+  <% if campaign_id %>
+    <%= form.hidden_field :campaign_id, value: campaign_id %>
+  <% else %>
+    <%= ax_text_field(form: form, method: :campaign_id, label: "ID da campanha no Meta Ads",
+          required: true, inputmode: "numeric", pattern: "[0-9]{5,30}") %>
+  <% end %>
+  <%= ax_switch_field(name: "instagram_capture[enabled]", id: "#{field_prefix}_enabled", checked: rule["enabled"] == true,
+        label: "Ativar captação", description: (campaign_id == "default" ? nil : "Desativar esta regra dispensa a captação nesta campanha.")) %>
+  <%= ax_field_grid do %>
+    <%= ax_text_field(form: form, method: :name_prompt, label: "Mensagem para pedir o nome",
+          value: prompts.fetch("name_prompt"), maxlength: Instagram::Reply::MAX_CHARS, class_name: "tw-col-span-12 md:tw-col-span-6") %>
+    <%= ax_text_field(form: form, method: :phone_prompt, label: "Mensagem para pedir o telefone",
+          value: prompts.fetch("phone_prompt"), maxlength: Instagram::Reply::MAX_CHARS, class_name: "tw-col-span-12 md:tw-col-span-6") %>
+  <% end %>
+  <div><%= form.submit "Salvar regra", class: "ax-btn ax-btn--primary ax-btn--sm" %></div>
+<% end %>
