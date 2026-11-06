@@ -812,6 +812,8 @@ CREATE TABLE public.admin_users (
     admin_theme_mode character varying DEFAULT 'light'::character varying NOT NULL,
     jti character varying NOT NULL,
     session_revoked_at timestamp(6) without time zone,
+    instagram_username character varying(30),
+    instagram_direct_ids jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT admin_users_system_admin_outside_tenant CHECK (((super_admin = false) OR ((tenant_id IS NULL) AND (profile_id IS NULL) AND (horizontal_profile_id IS NULL) AND (manager_id IS NULL)))),
     CONSTRAINT admin_users_tenant_required_unless_system_admin CHECK (((super_admin = true) OR (tenant_id IS NOT NULL))),
     CONSTRAINT chk_admin_users_mirror_not_super_admin CHECK (((primary_admin_user_id IS NULL) OR (super_admin = false)))
@@ -13042,6 +13044,13 @@ CREATE INDEX index_admin_users_on_tenant_id ON public.admin_users USING btree (t
 
 
 --
+-- Name: index_admin_users_on_tenant_id_and_instagram_username; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_admin_users_on_tenant_id_and_instagram_username ON public.admin_users USING btree (tenant_id, instagram_username) WHERE (instagram_username IS NOT NULL);
+
+
+--
 -- Name: index_admin_users_on_tenant_id_and_manager_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -21661,6 +21670,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261106160000'),
 ('20261104190100'),
 ('20261104190000'),
 ('20261103180100'),

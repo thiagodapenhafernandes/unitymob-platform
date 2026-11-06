@@ -20,6 +20,28 @@ RSpec.describe InstagramDirectJob do
     expect(lead.instagram_messages.count).to eq(2)
   end
 
+  it "bloqueia remetente interno antes de criar lead, inclusive após mudar o @ na Meta" do
+    member = integration.admin_user
+    member.update!(instagram_username: " @Corretor.BC ")
+    graph = instance_double(Koala::Facebook::API)
+    allow(Koala::Facebook::API).to receive(:new).with(page.access_token).and_return(graph)
+    allow(graph).to receive(:get_object).with("98765", fields: "username").and_return("username" => "corretor.bc")
+
+    expect do
+      2.times { described_class.perform_now("12345", event) }
+    end.not_to change(Lead, :count)
+    expect(graph).to have_received(:get_object).once
+    expect(member.reload.instagram_direct_ids).to eq("12345" => "98765")
+    member.update!(instagram_username: "outro.perfil")
+    expect(member.reload.instagram_direct_ids).to be_empty
+  end
+
+  it "não bloqueia um @ cadastrado apenas em outra conta" do
+    create(:admin_user, instagram_username: "corretor.bc")
+
+    expect { described_class.perform_now("12345", event) }.to change { integration.tenant.leads.count }.by(1)
+  end
+
   it "ignora eco, destinatário incorreto e perfil desativado" do
     event["message"]["is_echo"] = true
     expect { described_class.perform_now("12345", event) }.not_to change(InstagramMessage, :count)

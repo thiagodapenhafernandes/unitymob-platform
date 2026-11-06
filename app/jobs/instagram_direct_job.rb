@@ -14,6 +14,8 @@ class InstagramDirectJob < ApplicationJob
     tenant = page.user_meta_integration.tenant
     return unless tenant
 
+    return if Instagram::InternalSender.match?(tenant: tenant, page: page, sender_id: sender)
+
     Current.set(tenant: tenant) do
       # ponytail: serialize per profile; use per-contact locks if inbound volume requires it.
       lead, new_lead = page.with_lock do

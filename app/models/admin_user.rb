@@ -105,6 +105,10 @@ class AdminUser < ApplicationRecord
   def admin_dark_mode?
     effective_admin_theme_mode == "dark"
   end
+  normalizes :instagram_username, with: ->(value) { value.to_s.strip.delete_prefix("@").downcase.presence }
+  validates :instagram_username, format: { with: /\A[a-z0-9._]{1,30}\z/ }, uniqueness: { scope: :tenant_id }, allow_nil: true
+  before_update :reset_instagram_direct_ids, if: :will_save_change_to_instagram_username?
+
   normalize_phone_fields :phone, :secondary_phone
   validates :tenant, presence: true, unless: :super_admin?
   validates :profile, presence: true, unless: :super_admin?
@@ -518,6 +522,11 @@ class AdminUser < ApplicationRecord
 
     vertical_above?(user)
   end
+
+  def reset_instagram_direct_ids
+    self.instagram_direct_ids = {}
+  end
+  private :reset_instagram_direct_ids
 
   private
 

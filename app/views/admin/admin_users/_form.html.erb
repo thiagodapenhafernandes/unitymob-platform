@@ -23,6 +23,11 @@
             <%= ax_text_field(form: f, method: :phone, type: :tel, label: "Celular / WhatsApp", class_name: "ax-span-6", placeholder: "+55 00 00000-0000", autocomplete: "tel", data: { controller: "phone-input" }) %>
             <%= ax_text_field(form: f, method: :secondary_phone, type: :tel, label: "Telefone secundário", class_name: "ax-span-6", placeholder: "+55 00 00000-0000", autocomplete: "tel", data: { controller: "phone-input" }) %>
 
+            <% if current_admin_user.can?(:manage, :corretores) %>
+              <%= ax_text_field(form: f, method: :instagram_username, label: "Usuário do Instagram",
+                    class_name: "ax-span-6", placeholder: "@usuario", maxlength: 31,
+                    hint: "Mensagens desse perfil para o Instagram da imobiliária são tratadas como internas.") %>
+            <% end %>
             <%= ax_text_field(form: f, method: :creci, label: "CRECI", class_name: "ax-span-6", placeholder: "Ex.: 12345SC") %>
             <%= ax_date_field(form: f, method: :birth_date, label: "Data de nascimento", class_name: "ax-span-6") %>
 
