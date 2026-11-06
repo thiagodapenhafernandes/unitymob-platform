@@ -5828,6 +5828,43 @@ ALTER SEQUENCE public.profiles_id_seq OWNED BY public.profiles.id;
 
 
 --
+-- Name: property_intake_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.property_intake_receipts (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    habitation_id bigint,
+    external_id character varying NOT NULL,
+    payload_digest character varying NOT NULL,
+    captador_external_id character varying NOT NULL,
+    captador_nome character varying NOT NULL,
+    captured_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: property_intake_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.property_intake_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: property_intake_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.property_intake_receipts_id_seq OWNED BY public.property_intake_receipts.id;
+
+
+--
 -- Name: property_pages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7783,7 +7820,8 @@ CREATE TABLE public.tenants (
     session_epoch_at timestamp(6) without time zone,
     use_global_whatsapp_fallback boolean DEFAULT false NOT NULL,
     use_global_email_fallback boolean DEFAULT false NOT NULL,
-    public_site_theme character varying DEFAULT 'default'::character varying NOT NULL
+    public_site_theme character varying DEFAULT 'default'::character varying NOT NULL,
+    property_intake_token_digest character varying
 );
 
 
@@ -9544,6 +9582,13 @@ ALTER TABLE ONLY public.profiles ALTER COLUMN id SET DEFAULT nextval('public.pro
 
 
 --
+-- Name: property_intake_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_intake_receipts ALTER COLUMN id SET DEFAULT nextval('public.property_intake_receipts_id_seq'::regclass);
+
+
+--
 -- Name: property_pages id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -11034,6 +11079,14 @@ ALTER TABLE ONLY public.profiles
 
 ALTER TABLE public.profiles
     ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+
+
+--
+-- Name: property_intake_receipts property_intake_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_intake_receipts
+    ADD CONSTRAINT property_intake_receipts_pkey PRIMARY KEY (id);
 
 
 --
@@ -16481,6 +16534,27 @@ CREATE INDEX index_profiles_on_vertical_profile_id ON public.profiles USING btre
 
 
 --
+-- Name: index_property_intake_receipts_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_intake_receipts_on_habitation_id ON public.property_intake_receipts USING btree (habitation_id);
+
+
+--
+-- Name: index_property_intake_receipts_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_intake_receipts_on_tenant_id ON public.property_intake_receipts USING btree (tenant_id);
+
+
+--
+-- Name: index_property_intake_receipts_on_tenant_id_and_external_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_property_intake_receipts_on_tenant_id_and_external_id ON public.property_intake_receipts USING btree (tenant_id, external_id);
+
+
+--
 -- Name: index_property_pages_on_slug; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17633,6 +17707,13 @@ CREATE INDEX index_tenant_domains_on_tenant_id ON public.tenant_domains USING bt
 --
 
 CREATE INDEX index_tenant_domains_on_tenant_id_and_active ON public.tenant_domains USING btree (tenant_id, active);
+
+
+--
+-- Name: index_tenants_on_property_intake_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tenants_on_property_intake_token_digest ON public.tenants USING btree (property_intake_token_digest);
 
 
 --
@@ -19134,6 +19215,14 @@ ALTER TABLE ONLY public.check_ins
 
 
 --
+-- Name: property_intake_receipts fk_rails_387c83176a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_intake_receipts
+    ADD CONSTRAINT fk_rails_387c83176a FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: account_memberships fk_rails_3925c6af0c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20510,6 +20599,14 @@ ALTER TABLE ONLY public.support_access_sessions
 
 
 --
+-- Name: property_intake_receipts fk_rails_a9bea89d4e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_intake_receipts
+    ADD CONSTRAINT fk_rails_a9bea89d4e FOREIGN KEY (habitation_id) REFERENCES public.habitations(id) ON DELETE SET NULL;
+
+
+--
 -- Name: seo_settings fk_rails_aa64cc642d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21670,6 +21767,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261106170000'),
 ('20261106160000'),
 ('20261104190100'),
 ('20261104190000'),

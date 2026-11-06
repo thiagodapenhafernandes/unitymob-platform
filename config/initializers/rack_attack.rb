@@ -9,6 +9,9 @@ require "ipaddr"
 # quando Rails.cache é NullStore, cai num MemoryStore dedicado.
 
 class Rack::Attack
+  throttle("property_intakes/create", limit: 30, period: 1.minute) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/property_intakes(?:\.json)?/?\z})
+  end
   throttle("browser_extension/pairing", limit: 90, period: 5.minutes) do |req|
     req.ip if req.post? && req.path == "/api/v1/browser_extension/session"
   end

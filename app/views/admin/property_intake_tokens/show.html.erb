@@ -1,0 +1,61 @@
+<% status_label = @token_version ? "Token ativo" : "Sem token" %>
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "API de captação", back_path: admin_root_path, status: status_label %>
+<% end %>
+
+<div class="ax-integration-layout">
+  <%= ax_workspace_heading(
+        eyebrow: "Integrações · Imóveis",
+        icon: "key",
+        title: "API de captação",
+        subtitle: "Autorize sistemas externos a enviar imóveis para revisão administrativa nesta conta."
+      ) %>
+
+  <%= ax_operational_panel(title: "Token Bearer da conta",
+        actions: ax_badge(status_label, tone: @token_version ? :green : :gray)) do %>
+    <div class="ax-panel-body tw-space-y-4">
+      <% if @issued_token %>
+        <%= ax_inline_notice(tone: :warning, icon: "key") do %>
+          Copie o token agora. Ele é exibido somente nesta resposta.
+        <% end %>
+        <div class="tw-space-y-2" data-controller="clipboard" data-clipboard-success-content-value="Copiado!">
+          <%= label_tag :issued_property_intake_token, "Novo token Bearer", class: "ax-field__label" %>
+          <%= text_field_tag :issued_property_intake_token, @issued_token, readonly: true, autocomplete: "off",
+                class: "ax-control", data: { clipboard_target: "source" } %>
+          <%= ax_button(variant: :secondary, icon: "clipboard", data: { action: "clipboard#copy" }) do %>
+            <span data-clipboard-target="content">Copiar token</span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <p class="ax-field__hint">
+        Guarde o token no servidor da integração e envie-o no cabeçalho <code>Authorization: Bearer</code>.
+        Ao rotacionar ou revogar, os envios com o token anterior deixam de funcionar.
+      </p>
+
+      <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+        <% if @token_version %>
+          <%= form_with url: admin_property_intake_token_path, method: :patch, id: "rotate-property-intake-token",
+                data: { turbo: false } do %>
+            <%= hidden_field_tag :token_version, @token_version, id: nil %>
+            <%= ax_confirm_submit(form_id: "rotate-property-intake-token",
+                  message: "Rotacionar o token e invalidar a credencial atual?", confirm_label: "Rotacionar") do %>
+              <%= ax_button("Rotacionar token", variant: :primary, data: { action: "click->ax-confirm-submit#request" }) %>
+            <% end %>
+          <% end %>
+          <%= form_with url: admin_property_intake_token_path, method: :delete,
+                data: { turbo_confirm: "Revogar o token e interromper os envios desta integração?" } do %>
+            <%= hidden_field_tag :token_version, @token_version, id: nil %>
+            <%= ax_button("Revogar token", type: :submit, variant: :danger) %>
+          <% end %>
+        <% else %>
+          <%= form_with url: admin_property_intake_token_path, method: :post, data: { turbo: false } do %>
+            <%= ax_button("Gerar token", type: :submit, variant: :primary) %>
+          <% end %>
+        <% end %>
+        <%= ax_button("Documentação da API", api_docs_path, variant: :ghost, icon: "box-arrow-up-right",
+              target: "_blank", rel: "noopener") %>
+      </div>
+    </div>
+  <% end %>
+</div>

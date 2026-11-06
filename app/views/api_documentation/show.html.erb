@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Unitymob API</title>
+    <link rel="stylesheet"
+          href="https://unpkg.com/@stoplight/elements@9.0.29/styles.min.css"
+          integrity="sha384-iVQBHadsD+eV0M5+ubRCEVXrXEBj+BqcuwjUwPoVJc0Pb1fmrhYSAhL+BFProHdV"
+          crossorigin="anonymous">
+    <script defer
+            src="https://unpkg.com/@stoplight/elements@9.0.29/web-components.min.js"
+            integrity="sha384-enyjBaVmV00WFIo0D7AIVgtZ/4x0idVNWHotG8WUpvQo9HXgMSGAAW2YEOpiJTpP"
+            crossorigin="anonymous"></script>
+    <style>
+      body {
+        margin: 0;
+        min-block-size: 100dvh;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        font-family: system-ui, sans-serif;
+        background: #fff;
+      }
+
+      .api-docs-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem 1.5rem;
+        padding: 1rem clamp(1rem, 4vw, 2rem);
+        color: #f1f5f9;
+        background: #0f172a;
+      }
+
+      .api-docs-header h1 { margin: 0; font-size: 1.25rem; }
+      .api-docs-header a { color: #bae6fd; text-underline-offset: .2em; }
+      .api-docs-reference { min-inline-size: 0; }
+      .api-docs-reference > elements-api { display: block; block-size: 100%; }
+      elements-api:defined > .api-docs-fallback { display: none; }
+      .api-docs-fallback { display: block; padding: 1rem; }
+    </style>
+  </head>
+  <body>
+    <header class="api-docs-header">
+      <h1>Unitymob API</h1>
+      <%= link_to "Baixar OpenAPI", api_docs_spec_path, download: "unitymob-openapi.yaml" %>
+    </header>
+    <main class="api-docs-reference" aria-label="Referência da API">
+      <elements-api apiDescriptionUrl="<%= api_docs_spec_path %>" router="hash" layout="sidebar" hideTryItPanel="true">
+        <p class="api-docs-fallback">
+          A especificação também está disponível em <%= link_to "OpenAPI YAML", api_docs_spec_path %>.
+        </p>
+      </elements-api>
+    </main>
+  </body>
+</html>

@@ -10,6 +10,7 @@ class Admin::BaseController < ApplicationController
 
   SENSITIVE_ACCESS_AUDIT_CONTROLLERS = %w[
     admin/access_security
+    admin/property_intake_tokens
     admin/two_factor_settings
     admin/admin_users
     admin/profiles
@@ -311,6 +312,11 @@ class Admin::BaseController < ApplicationController
   end
   helper_method :tenant_owner?
 
+  def property_intake_token_admin?
+    tenant_owner? && current_tenant.present? && current_admin_user.tenant_id == current_tenant.id
+  end
+  helper_method :property_intake_token_admin?
+
   def admin_or_administrative_user?
     return false unless current_admin_user
     return true if current_admin_user.admin? || tenant_owner?
@@ -408,6 +414,8 @@ class Admin::BaseController < ApplicationController
 
   def sidebar_catalog_item_permitted?(item)
     case item[:condition].to_s
+    when "property_intake_token_admin"
+      return false unless property_intake_token_admin?
     when "whatsapp_service_ready"
       return false unless current_tenant.present?
       return false unless WhatsappBusinessIntegration.current(current_tenant)&.messaging_ready?
