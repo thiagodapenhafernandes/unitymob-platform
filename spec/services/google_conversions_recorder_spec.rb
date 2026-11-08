@@ -114,4 +114,45 @@ RSpec.describe GoogleConversions::Recorder do
     expect(GoogleStageConversionEvent.where(lead_id: foreign_lead.id)).not_to exist
   end
 
+  context "com contexto ampliado habilitado apenas na conta" do
+    before do
+      Setting.set("tracking.structured_events_enabled", "true", tenant: lead.tenant)
+      TrackingIntegrationSetting.clear_cache(tenant: lead.tenant)
+    end
+
+    it "normaliza locação, mantém IDs e devolve contexto original com data ISO" do
+      property = create(:habitation, tenant: lead.tenant, status: "Aluguel", valor_locacao_cents: 490_000)
+      lead.update!(property_id: property.id, google_business_type: "aluguel", attribution_data: {
+        "tracking_uid" => "UID_Ab%2F+", "utm_source" => "google", "utm_medium" => "cpc",
+        "utm_campaign" => "locacao", "analytics_consent" => "granted",
+        "client_ip_address" => "192.0.2.1", "client_user_agent" => "Synthetic Browser",
+        "landing_url" => "https://example.test/imoveis?email=private@example.test", "fbp" => "fb.1.test"
+      })
+      described_class.record(lead, setting, "visit", occurred_at: Time.zone.parse("2026-11-08 10:00:00"))
+      payload = GoogleStageConversionEvent.where(lead: lead).sole.payload_data
+      expect(payload).to include("business_type"=>"locacao", "transaction_id"=>"#{lead.id}_visita",
+        "lead_stage"=>"visita_realizada", "property_id"=>property.id.to_s, "property_code"=>property.codigo,
+        "property_price"=>4900.0, "utm_source"=>"google", "utm_content"=>"UID_Ab%2F+")
+      expect(payload['conversion_datetime']).to include('T')
+      expect(payload.dig('user_data','external_id')).to eq(lead.id.to_s)
+      expect(payload.dig('visitor','landing_url')).to eq('https://example.test/imoveis')
+      expect(payload).not_to have_key('value')
+      expect(lead.reload.google_business_type).to eq('aluguel')
+    end
+
+    it "aceita telefone original válido sem e-mail e omite dados de navegação sem consentimento" do
+      other = create(:lead, email: nil, phone: '+5547991234567', google_business_type: 'venda',
+        attribution_data: {'client_ip_address'=>'192.0.2.1','fbp'=>'private-cookie'})
+      other.update_column(:google_business_type,'venda')
+      described_class.record(other, setting, 'qualify_lead')
+      event = GoogleStageConversionEvent.where(lead: other).sole
+      expect(event.status).to eq('pending'), {reason:event.skip_reason,payload:event.payload_data}.inspect
+      expect(event.payload_data).not_to have_key('visitor')
+      expect(event.payload_data.fetch('user_data')).not_to have_key('email_address')
+      expect(event.payload_data.dig('user_data','phone_number')).to eq('+5547991234567')
+      foreign = Tenant.create!(name:'Outra',slug:"tracking-default-#{SecureRandom.hex(4)}")
+      expect(TrackingIntegrationSetting.current(tenant:foreign).structured_events_enabled?).to be(false)
+    end
+  end
+
 end

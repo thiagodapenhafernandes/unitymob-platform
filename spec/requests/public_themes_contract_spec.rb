@@ -26,6 +26,17 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
     context "tema #{theme_key} (variante #{variant})" do
       before { tenant.update_columns(public_site_theme: theme_key) }
 
+      it "compartilha o contexto estruturado de rastreamento sem depender do tema" do
+        Setting.set('tracking.structured_events_enabled','true',tenant:tenant)
+        TrackingIntegrationSetting.clear_cache(tenant:tenant)
+        property=create(:habitation,tenant:tenant,exibir_no_site_flag:true,address_attributes:address)
+        get habitation_path(property)
+        expect(response).to have_http_status(:ok)
+        context=JSON.parse(html.at_css('#unitymob-tracking-context').text)
+        expect(context).to include('page_type'=>'property','business_type'=>'venda','property_id'=>property.id.to_s)
+        expect(context.dig('ecommerce','items',0,'item_id')).to eq(property.codigo)
+      end
+
       it "usa o título Corporate configurado pela conta" do
         HomeSetting.instance(tenant: tenant).update!(corporate_title: "Salute Corporate")
         create(:habitation, tenant: tenant, status: "Aluguel", valor_locacao_cents: 100_000,

@@ -94,4 +94,19 @@ RSpec.describe "Lead attribution capture", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig("analytics_event", "property_code")).to eq("")
   end
+  it "retorna o contrato ampliado somente com a opção ativa e depois da captura confirmada" do
+    tenant=Tenant.default
+    Setting.set('tracking.structured_events_enabled','true',tenant:tenant)
+    TrackingIntegrationSetting.clear_cache(tenant:tenant)
+    property=create(:habitation,tenant:tenant)
+    post leads_path, params:{lead:{name:'Maria Silva',phone:'47991234567',property_id:property.id,lead_type:'whatsapp_modal'}},as: :json
+    expect(response).to have_http_status(:ok)
+    event=response.parsed_body.fetch('analytics_event')
+    expect(event['transaction_id']).to eq(event['event_id'])
+    expect(event).to include('lead_channel'=>'site_modal','property_id'=>property.id.to_s)
+    expect(event.dig('user_data','external_id')).to eq(event['lead_id'])
+    expect(event.dig('ecommerce','items',0,'item_id')).to eq(property.codigo)
+    expect(event['ecommerce']['items'].first['price']).to be_a(Numeric)
+  end
+
 end

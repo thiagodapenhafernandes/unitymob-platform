@@ -2,6 +2,7 @@
   except = Array(local_assigns.fetch(:except, [])).map(&:to_sym)
   setting = local_assigns.fetch(:setting)
   fields = {
+    structured_events_enabled: setting.structured_events_enabled? ? "true" : "false",
     google_tag_manager_enabled: setting.google_tag_manager_enabled? ? "true" : "false",
     google_tag_manager_container_id: setting.google_tag_manager_container_id,
     meta_pixel_enabled: setting.meta_pixel_enabled? ? "true" : "false",

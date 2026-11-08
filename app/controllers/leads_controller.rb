@@ -109,6 +109,16 @@ class LeadsController < ApplicationController
         form_id: "whatsapp_modal"
       }
     end
+    if created && TrackingIntegrationSetting.current(tenant: public_tenant).structured_events_enabled?
+      context = Tracking::EventContext.property(habitation, business_type: Leads::Attribution.business_type(business_type))
+      response[:analytics_event].merge!(context).merge!(
+        transaction_id: response[:analytics_event][:event_id], lead_id: @lead.id.to_s,
+        lead_channel: "site_modal", currency: "BRL",
+        user_data: Tracking::EventContext.user_data(@lead.attributes, external_id: @lead.id),
+        ecommerce: Tracking::EventContext.ecommerce(context, business_type: Leads::Attribution.business_type(business_type))
+      )
+      response[:analytics_event].compact_blank!
+    end
     return response unless integration.redirect_after_capture_for?(business_type)
 
     whatsapp_message = contact_setting.property_whatsapp_message_for(business_type, lead: @lead, habitation:, fallback: lead_whatsapp_message)

@@ -66,7 +66,7 @@ RSpec.describe "Admin::WebhookSettings workspace", type: :request do
     allow(WebhookService).to receive(:deliver).and_return(success: true, status: 202)
     post test_admin_webhook_setting_path(webhook), params: { webhook_test: {
       event_name: "lead_crm", event_id: "edited-event", transaction_id: "edited-transaction",
-      first_name: "Pessoa", last_name: "Teste", value: "350.50", property_code: "AP42", gclid: "edited-click",
+      first_name: "Pessoa", last_name: "Teste", value: "350.50", property_code: "AP42", gclid: "edited-click", utm_content: "UID_Ab%2F+",
       diagnostic: false, webhook_url: "https://other.test/hook"
     } }, as: :json
     expect(response).to have_http_status(:ok)
@@ -76,6 +76,8 @@ RSpec.describe "Admin::WebhookSettings workspace", type: :request do
       "transaction_id" => "edited-transaction", "diagnostic" => true, "value" => 350.5, "property_id" => "AP42", "gclid" => "edited-click")
     expect(body["payload"].dig("user_data", "address")).to include("first_name" => "Pessoa")
     expect(body["payload"].dig("data", "property_code")).to eq("AP42")
+    expect(body['payload']['utm_content']).to eq('UID_Ab%2F+')
+    expect(body['payload'].dig('source','utm','utm_content')).to eq('UID_Ab%2F+')
     expect(WebhookService).to have_received(:deliver).with("https://example.test/hook", anything)
   end
 

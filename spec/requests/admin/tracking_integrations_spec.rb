@@ -125,4 +125,14 @@ RSpec.describe "Admin::TrackingIntegrations", type: :request do
     expect(Setting.get("tracking.stape_enabled", "false", tenant: admin.tenant)).to eq("false")
   end
 
+  it "habilita contexto ampliado apenas para a conta e preserva a opção nas outras abas" do
+    patch admin_tracking_integration_path,params:{tracking:{structured_events_enabled:'true'}}
+    expect(response).to have_http_status(:redirect)
+    expect(TrackingIntegrationSetting.current(tenant:admin.tenant).structured_events_enabled?).to be(true)
+    other=Tenant.create!(name:'Outra',slug:"tracking-structured-#{SecureRandom.hex(4)}")
+    expect(TrackingIntegrationSetting.current(tenant:other).structured_events_enabled?).to be(false)
+    get admin_tracking_integration_path(tab:'google_ads')
+    expect(Nokogiri::HTML(response.body).css('input[name="tracking[structured_events_enabled]"][value="true"]')).to be_present
+  end
+
 end

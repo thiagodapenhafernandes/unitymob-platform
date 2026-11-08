@@ -4,7 +4,7 @@ class WebhookTestForm
   FIELDS = %w[event_name event_id transaction_id event_timestamp lead_id business_type value currency
               email_address phone_number first_name last_name property_code placement pais pais_iso
               gclid gbraid wbraid fbc fbp client_id client_ip_address client_user_agent
-              utm_source utm_medium utm_campaign].freeze
+              utm_source utm_medium utm_campaign utm_content].freeze
   attr_accessor(*FIELDS)
 
   validates :event_name, :event_id, :transaction_id, :lead_id, presence: true, length: { maximum: 200 }
@@ -35,7 +35,8 @@ class WebhookTestForm
       business_type: business_type == "venda" ? "sale" : "rent", value: result[:value], currency: currency, property_code: property_code,
       placement: placement, **result.slice(*Leads::Attribution::TRACKING_KEYS, :client_ip_address, :client_user_agent).symbolize_keys
     )
-    result[:source] = { utm: result.slice(*Leads::Attribution::TRACKING_KEYS) }
+    result.delete(:utm_content) if result[:utm_content].blank?
+    result[:source] = { utm: result.slice(*Leads::Attribution::TRACKING_KEYS).compact_blank }
     result.except(:email_address, :phone_number, :first_name, :last_name).merge(diagnostic: true, origin_form: "test_webhook")
   end
 
