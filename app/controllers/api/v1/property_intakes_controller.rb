@@ -1,17 +1,14 @@
 module Api
   module V1
-    class PropertyIntakesController < ActionController::API
-      def create
-        token = request.authorization.to_s[/\ABearer ([a-f0-9]{64})\z/i, 1]
-        tenant = Tenant.active.find_by(property_intake_token_digest: Digest::SHA256.hexdigest(token)) if token
-        return head :unauthorized unless tenant
+    class PropertyIntakesController < PropertyIntakeIntegrationController
 
+      def create
         return head :unsupported_media_type unless request.media_type == "application/json"
         return head :payload_too_large if request.raw_post.bytesize > 128.kilobytes
 
         payload = JSON.parse(request.raw_post)
-        receipt, created = Current.set(tenant: tenant) do
-          Habitations::ExternalIntake.new(tenant, payload).call
+        receipt, created = Current.set(tenant: @intake_tenant) do
+          Habitations::ExternalIntake.new(@intake_tenant, payload).call
         end
         render json: { protocolo: receipt.protocol, external_id: receipt.external_id, status: "pendente_revisao" },
                status: created ? :created : :ok

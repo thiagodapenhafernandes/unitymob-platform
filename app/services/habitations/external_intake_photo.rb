@@ -7,18 +7,19 @@ module Habitations
     MAX_BYTES = 8.megabytes
     EXTENSIONS = { "image/jpeg" => "jpg", "image/png" => "png", "image/webp" => "webp" }.freeze
 
-    def self.download(url)
+    def self.download(url, document: false)
+      label = document ? "Documento" : "Foto"
       policy = Automation::WebhookUrlPolicy
       uri = policy.parse(url)
       unless uri.is_a?(URI::HTTPS) && uri.hostname.present? && uri.port == 443 && uri.userinfo.nil?
-        raise ExternalIntake::Invalid, "URL de foto inválida"
+        raise ExternalIntake::Invalid, "URL de arquivo inválida"
       end
 
       file = Tempfile.new("property-intake-photo", binmode: true)
       Timeout.timeout(10) do
         addresses = policy.resolve(uri.hostname)
         if addresses.empty? || addresses.any? { |ip| policy.blocked_ip?(ip) }
-          raise ExternalIntake::Invalid, "Destino de foto inválido"
+          raise ExternalIntake::Invalid, "Destino de arquivo inválido"
         end
 
         http = Net::HTTP.new(uri.hostname, uri.port, nil)
@@ -29,11 +30,11 @@ module Habitations
         http.max_retries = 0
         http.request(Net::HTTP::Get.new(uri.request_uri, "Accept-Encoding" => "identity")) do |response|
           unless response.is_a?(Net::HTTPOK)
-            raise ExternalIntake::Invalid, "Foto indisponível"
+            raise ExternalIntake::Invalid, "#{label} indisponível"
           end
 
           response.read_body do |chunk|
-            raise ExternalIntake::Invalid, "Foto excede 8 MB" if file.size + chunk.bytesize > MAX_BYTES
+            raise ExternalIntake::Invalid, "#{label} excede 8 MB" if file.size + chunk.bytesize > MAX_BYTES
 
             file.write(chunk)
           end
@@ -42,13 +43,13 @@ module Habitations
 
       file.rewind
       type = Marcel::MimeType.for(file)
-      extension = EXTENSIONS[type]
-      raise ExternalIntake::Invalid, "Envie fotos JPEG, PNG ou WebP" unless extension
+      extension = document && type == "application/pdf" ? "pdf" : EXTENSIONS[type]
+      raise ExternalIntake::Invalid, document ? "Envie documentos PDF, JPEG, PNG ou WebP" : "Envie fotos JPEG, PNG ou WebP" unless extension
 
       file.rewind
-      upload = ActionDispatch::Http::UploadedFile.new(tempfile: file, filename: "foto.#{extension}", type: type)
+      upload = ActionDispatch::Http::UploadedFile.new(tempfile: file, filename: "#{document ? "documento" : "foto"}.#{extension}", type: type)
     rescue Timeout::Error, SocketError, SystemCallError, IOError, OpenSSL::SSL::SSLError, Net::HTTPBadResponse
-      raise ExternalIntake::Invalid, "Foto indisponível"
+      raise ExternalIntake::Invalid, "#{label} indisponível"
     ensure
       file&.close! unless upload
     end
