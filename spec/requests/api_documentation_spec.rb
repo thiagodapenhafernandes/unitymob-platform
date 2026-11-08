@@ -26,4 +26,20 @@ RSpec.describe "Referência da API", type: :request do
     expect(operation.dig("requestBody", "content", "application/json", "example"))
       .to include("captador", "imovel", "proprietario")
   end
+  it "documenta todos os campos de captação e a busca autenticada" do
+    get "/docs/openapi.yaml"
+    contract = YAML.safe_load(response.body)
+    property = contract.dig("components", "schemas", "Imovel")
+    expect(property.fetch("required")).not_to include("titulo", "descricao")
+    expect(property.dig("properties", "categoria", "enum")).to match_array(
+      Habitation::CATEGORIES.map { |category| category.parameterize(separator: "_") }
+    )
+    expect(property.fetch("properties")).to include("torre", "demi_suites", "nome_condominio",
+      "area_total_m2", "tipo_vaga", "box", "onde_estao_as_chaves", "permuta", "parcelamento",
+      "administracao_locacao", "tipo_cadastro", "observacoes_internas", "observacoes_restritas")
+    expect(contract.dig("components", "schemas", "Captador", "properties")).to include("email")
+    expect(contract.dig("components", "schemas", "Captacao", "properties")).to include("documentos")
+    expect(contract.dig("paths", "/api/v1/properties/search", "get", "security")).to eq([{ "BearerAuth" => [] }])
+  end
+
 end

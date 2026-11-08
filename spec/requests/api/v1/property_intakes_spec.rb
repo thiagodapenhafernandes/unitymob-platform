@@ -93,4 +93,121 @@ RSpec.describe "API de captação de imóveis", type: :request do
     expect { send_intake }.not_to change(Habitation, :count)
     expect(response).to have_http_status(:unprocessable_entity)
   end
+  it "recebe os campos adicionais sem título e descrição e vincula o captador da conta" do
+    user = create(:admin_user, tenant: tenant, email: "captador@example.com")
+    payload[:captador][:email] = " CAPTADOR@example.com "
+    payload[:imovel].except!(:titulo, :descricao)
+    payload[:imovel].merge!(categoria: "casa_em_condominio", torre: "B", demi_suites: 2,
+      nome_condominio: "Condomínio Exemplo", area_total_m2: 120.5, tipo_vaga: "Privativa",
+      box: "12", onde_estao_as_chaves: "Portaria", permuta: true, parcelamento: false,
+      administracao_locacao: true, tipo_cadastro: "Unitário", observacoes_internas: "Interna",
+      observacoes_restritas: "Restrita")
+    send_intake
+    expect(response).to have_http_status(:created)
+    property = PropertyIntakeReceipt.for_tenant(tenant).sole.habitation
+    expect(property).to have_attributes(bloco: "B", demi_suites_qtd: 2,
+      nome_empreendimento: "Condomínio Exemplo", area_total_m2: 120.5,
+      tipo_vaga: "Privativa", numero_box: "12", key_location: "Portaria",
+      aceita_permuta_flag: true, aceita_parcelamento_flag: false,
+      rental_management_flag: true, tipo: "Unitário", descricao_interna: "Interna",
+      observacoes: "Restrita", intake_status: "submitted_for_admin_review", exibir_no_site_flag: false)
+    expect(property.broker_assignments.sole).to have_attributes(admin_user_id: user.id, role: "captador")
+  end
+
+  it "não vincula captador de outra conta nem inativo" do
+    other = Tenant.create!(name: "Outra", slug: "outra-captador")
+    user = create(:admin_user, tenant: other)
+    payload[:captador][:email] = user.email
+    expect { send_intake }.not_to change(Habitation, :count)
+    expect(response).to have_http_status(:unprocessable_entity)
+    user = create(:admin_user, tenant: tenant, active: false)
+    payload[:captador][:email] = user.email
+    expect { send_intake }.not_to change(Habitation, :count)
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "rejeita booleanos ambíguos e tipos de documento desconhecidos" do
+    payload[:imovel][:permuta] = "false"
+    expect { send_intake }.not_to change(Habitation, :count)
+    expect(response).to have_http_status(:unprocessable_entity)
+    payload[:imovel].delete(:permuta)
+    payload[:documentos] = [{ tipo: "publico", url: "https://example.com/doc.pdf" }]
+    expect { send_intake }.not_to change(Habitation, :count)
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "anexa autorização e documentos nas coleções internas e preserva a idempotência" do
+    payload[:documentos] = [{ tipo: "autorizacao", url: "https://example.com/autorizacao.pdf" },
+                            { tipo: "documento", url: "https://example.com/documento.pdf" }]
+    payload[:documentos].each do |doc|
+      file = Tempfile.new(["intake", ".pdf"], binmode: true)
+      file.write("%PDF-1.4\nDocumento de teste")
+      file.rewind
+      upload = ActionDispatch::Http::UploadedFile.new(tempfile: file, filename: "documento.pdf", type: "application/pdf")
+      expect(Habitations::ExternalIntakePhoto).to receive(:download).with(doc[:url], document: true).once.and_return(upload)
+    end
+    send_intake
+    expect(response).to have_http_status(:created)
+    property = PropertyIntakeReceipt.for_tenant(tenant).sole.habitation
+    expect(property.autorizacoes_venda.count).to eq(1)
+    expect(property.documentos.count).to eq(1)
+    expect(property.photos).not_to be_attached
+    expect(property.documentos.first.blob.metadata["tenant_id"]).to eq(tenant.id)
+    send_intake
+    expect(response).to have_http_status(:ok)
+    expect(property.reload.documentos.count).to eq(1)
+  end
+
+  it "consulta por endereço incluindo revisão, sem expor outra conta ou dados internos" do
+    send_intake
+    property = PropertyIntakeReceipt.for_tenant(tenant).sole.habitation
+    other_token = SecureRandom.hex(32)
+    other = Tenant.create!(name: "Outra", slug: "outra-busca",
+      property_intake_token_digest: Digest::SHA256.hexdigest(other_token))
+    send_intake(payload, credential: other_token)
+    get "/api/v1/properties/search", params: { cep: "90000000", numero: "120", logradouro: "rua exemplo" },
+      headers: { "Authorization" => "Bearer #{token}" }
+    expect(response).to have_http_status(:ok)
+    items = response.parsed_body.fetch("imoveis")
+    expect(items.size).to eq(1)
+    expect(items.first).to include("codigo" => property.codigo, "status" => "em_revisao", "modalidade" => "venda")
+    expect(items.first.keys).to match_array(%w[codigo endereco torre categoria modalidade status])
+    get "/api/v1/properties/search", params: { cep: "90000-000", numero: "121" },
+      headers: { "Authorization" => "Bearer #{token}" }
+    expect(response.parsed_body).to eq("imoveis" => [])
+  end
+
+  it "exige token válido e filtros suficientes para consultar" do
+    get "/api/v1/properties/search"
+    expect(response).to have_http_status(:unauthorized)
+    get "/api/v1/properties/search", headers: { "Authorization" => "Bearer #{token}" }
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "não grava captação nem anexos quando um documento falha" do
+    payload[:documentos] = [{ tipo: "autorizacao", url: "https://127.0.0.1/autorizacao.pdf" }]
+    expect { send_intake }.not_to change(Habitation, :count)
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(PropertyIntakeReceipt.for_tenant(tenant)).to be_empty
+  end
+
+  it "distingue complemento, torre e status comercial na busca" do
+    send_intake
+    property = PropertyIntakeReceipt.for_tenant(tenant).sole.habitation
+    property.update!(bloco: "A", status: "Suspenso", motivo_suspensao: "Teste")
+    property.address.update!(complemento: "Apto 10")
+    headers = { "Authorization" => "Bearer #{token}" }
+    filters = { numero: "120", logradouro: "RUA EXEMPLO", cidade: "Porto Alegre", uf: "rs", torre: "a", complemento: "apto 10" }
+    get "/api/v1/properties/search", params: filters, headers: headers
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("imoveis").size).to eq(1)
+    property.update!(intake_status: "internal")
+    get "/api/v1/properties/search", params: filters, headers: headers
+    expect(response.parsed_body.fetch("imoveis").sole.fetch("status")).to eq("inativo")
+    get "/api/v1/properties/search", params: filters.merge(complemento: ""), headers: headers
+    expect(response.parsed_body).to eq("imoveis" => [])
+    get "/api/v1/properties/search", params: filters.merge(torre: "B"), headers: headers
+    expect(response.parsed_body).to eq("imoveis" => [])
+  end
+
 end

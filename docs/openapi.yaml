@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: Unitymob API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Referência para integrações externas com a Unitymob.
 
@@ -122,6 +122,99 @@ paths:
                 error: Informe o valor da negociação
         '429':
           description: Limite de requisições atingido.
+  "/api/v1/properties/search":
+    get:
+      operationId: consultarImoveisPorEndereco
+      tags:
+      - Captações
+      summary: Consultar possíveis duplicados na mesma conta
+      description: Informe número e CEP, ou número, logradouro, cidade e UF. Comparação
+        exata, sem diferenciar maiúsculas e acentos; CEP aceita hífen. Complemento
+        e torre são opcionais; complemento vazio procura unidades sem complemento.
+        Inclui imóveis ativos, inativos e em revisão; retorna até 50 resultados ordenados
+        por ID. Se atingir o limite, refine os filtros. Use somente no backend.
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: cep
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 255
+      - name: logradouro
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 255
+      - name: numero
+        in: query
+        required: true
+        schema:
+          type: string
+          maxLength: 255
+      - name: complemento
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 255
+      - name: cidade
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 255
+      - name: uf
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 255
+      - name: torre
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 255
+      responses:
+        '200':
+          description: Possíveis duplicados; lista vazia quando não há correspondência.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imoveis:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      properties:
+                        codigo:
+                          type: string
+                        endereco:
+                          "$ref": "#/components/schemas/Endereco"
+                        torre:
+                          type: string
+                          nullable: true
+                        categoria:
+                          type: string
+                        modalidade:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                          - ativo
+                          - inativo
+                          - em_revisao
+        '401':
+          description: Credencial ausente, inválida ou revogada.
+        '422':
+          description: Filtros inválidos ou insuficientes.
+        '429':
+          description: Limite de requisições atingido.
 components:
   securitySchemes:
     BearerAuth:
@@ -150,6 +243,15 @@ components:
           "$ref": "#/components/schemas/Imovel"
         proprietario:
           "$ref": "#/components/schemas/Proprietario"
+        documentos:
+          type: array
+          maxItems: 10
+          items:
+            "$ref": "#/components/schemas/Documento"
+          description: Documentos internos PDF, JPEG, PNG ou WebP, até 8 MB cada.
+            HTTPS público na porta 443, sem redirecionamento. Autorização vai para
+            autorizações de venda; documento vai para documentos internos. Nunca vira
+            foto.
     Captador:
       type: object
       required:
@@ -160,19 +262,46 @@ components:
           type: string
         nome:
           type: string
+        email:
+          type: string
+          format: email
+          description: Opcional. Vincula o Captador a um usuário ativo da mesma conta;
+            e-mail sem correspondência retorna 422.
     Imovel:
       type: object
       required:
       - categoria
       - modalidade
-      - titulo
-      - descricao
       - endereco
       properties:
         categoria:
           type: string
           example: apartamento
-          description: Categoria cadastrada na Unitymob.
+          description: Aceita os valores listados, seus equivalentes com hífen ou
+            os nomes acentuados do cadastro.
+          enum:
+          - apartamento
+          - cobertura
+          - loft
+          - casa
+          - casa_em_condominio
+          - sobrado
+          - chacara
+          - sitio
+          - diferenciado
+          - casa_comercial
+          - condominio_industrial
+          - galpao
+          - galpao_em_condominio
+          - loja
+          - ponto_comercial
+          - predio_comercial
+          - sala_comercial
+          - area
+          - terreno
+          - terreno_em_condominio
+          - condominio
+          - empreendimento
         modalidade:
           type: string
           enum:
@@ -224,6 +353,49 @@ components:
         vagas:
           type: integer
           minimum: 0
+        torre:
+          type: string
+        nome_condominio:
+          type: string
+        tipo_vaga:
+          type: string
+        box:
+          type: string
+        observacoes_chaves:
+          type: string
+        observacoes_internas:
+          type: string
+        observacoes_restritas:
+          type: string
+        onde_estao_as_chaves:
+          type: string
+          enum:
+          - Imobiliária
+          - Corretor(a)
+          - Proprietário
+          - Zelador
+          - Portaria
+          - Inquilino
+          - Construtora
+          - Outro
+        tipo_cadastro:
+          type: string
+          enum:
+          - Unitário
+          - Empreendimento
+        area_total_m2:
+          type: number
+          minimum: 0
+          maximum: 99999999.99
+        demi_suites:
+          type: integer
+          minimum: 0
+        permuta:
+          type: boolean
+        parcelamento:
+          type: boolean
+        administracao_locacao:
+          type: boolean
     Endereco:
       type: object
       required:
@@ -302,3 +474,17 @@ components:
           type: array
           items:
             type: string
+    Documento:
+      type: object
+      required:
+      - url
+      - tipo
+      properties:
+        url:
+          type: string
+          format: uri
+        tipo:
+          type: string
+          enum:
+          - autorizacao
+          - documento
