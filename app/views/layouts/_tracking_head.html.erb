@@ -17,9 +17,34 @@
 <% if has_gtm || has_meta_pixel || has_google_ads || has_rd_station %>
   <script>
     (function(w,d){
+      if (<%= tracking_setting.structured_events_enabled? ? "true" : "false" %> && w.UnitymobTracking) return;
       var COOKIE_KEY = "unitymob_lgpd_consent";
       var ACCEPTED_VALUE = "accepted";
       var loaded = false;
+      var structuredEvents = <%= tracking_setting.structured_events_enabled? ? "true" : "false" %>;
+      var lastPageContext = "";
+      var initialContext = <%= raw json_escape((tracking_setting.structured_events_enabled? ? public_tracking_page_context : {}).to_json) %>;
+
+      function pageContext() {
+        var element = d.getElementById("unitymob-tracking-context");
+        if (element) { try { return JSON.parse(element.textContent); } catch (_) {} }
+        return initialContext;
+      }
+
+      function trackPageContext() {
+        if (!structuredEvents || !consentAccepted()) return;
+        var context = pageContext();
+        var signature = w.location.pathname + JSON.stringify(context);
+        if (lastPageContext === signature) return;
+        lastPageContext = signature;
+        w.dataLayer = w.dataLayer || [];
+        var reset = { ecommerce: null, user_data: null, search_filters: null, results_count: null };
+        ["property_id", "property_code", "property_type", "property_price", "property_bedrooms", "property_suites", "property_parking", "property_area_m2", "property_neighborhood", "property_city", "property_state"].forEach(function(key) { reset[key] = null; });
+        w.dataLayer.push(reset);
+        w.dataLayer.push(context);
+        if (context.page_type === "property") track("view_item", context);
+      }
+
 
       function consentAccepted() {
         if (w.UnitymobLgpdConsent) return w.UnitymobLgpdConsent.accepted();
@@ -41,7 +66,7 @@
         var businessType = data.business_type || data.negotiation_type || "general";
         var propertyCode = data.property_code || "";
 
-        return {
+        var result = {
           event: eventName,
           event_name: eventName,
           event_id: data.event_id || "",
@@ -58,6 +83,13 @@
           habitation_id: data.habitation_id || "",
           negotiation_type: data.negotiation_type || Object.keys(businessTypes).find(function(key) { return businessTypes[key] === businessType; }) || businessType
         };
+        if (structuredEvents) {
+          ["transaction_id", "lead_id", "lead_channel", "currency", "user_data", "ecommerce", "property_id", "property_type", "property_price", "property_bedrooms", "property_suites", "property_parking", "property_area_m2", "property_neighborhood", "property_city", "property_state", "page_type", "site_language"].forEach(function(key) {
+            if (data[key] != null && data[key] !== "") result[key] = data[key];
+          });
+          Object.keys(result).forEach(function(key) { if (result[key] == null || result[key] === "") delete result[key]; });
+        }
+        return result;
       }
 
       function track(eventName, payload, options) {
@@ -70,10 +102,13 @@
           layerData.eventCallback = options.onComplete;
           layerData.eventTimeout = 500;
         }
+        if (structuredEvents && eventName === "generate_lead") w.dataLayer.push({ ecommerce: null, user_data: null });
         w.dataLayer.push(layerData);
 
         if (typeof w.fbq === "function") {
-          w.fbq("trackCustom", eventName, data);
+          var pixelData = Object.assign({}, data);
+          delete pixelData.user_data;
+          w.fbq("trackCustom", eventName, pixelData);
         }
 
         return true;
@@ -163,6 +198,10 @@
       }
 
       w.UnitymobTracking = { load: loadTracking, track: track };
+      trackPageContext();
+      d.addEventListener("turbo:load", trackPageContext);
+      w.addEventListener("unitymob:lgpd-consent-accepted", trackPageContext);
+      w.addEventListener("unitymob:lgpd-consent-rejected", function() { lastPageContext = ""; });
       loadTracking();
       d.addEventListener("click", trackPublicClick, true);
       w.addEventListener("unitymob:lgpd-consent-accepted", loadTracking);

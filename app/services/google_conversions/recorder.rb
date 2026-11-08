@@ -43,6 +43,15 @@ module GoogleConversions
             address: { first_name: first.presence, last_name: last.presence }.compact.presence }.compact,
           diagnostic: Rails.env.production? ? nil : true
         }.compact.merge(Leads::TrackingUid.payload(lead.attribution_data))
+        if TrackingIntegrationSetting.current(tenant: lead.tenant).structured_events_enabled?
+          payload.merge!(Tracking::EventContext.offline(lead, event: event, identity: original.transform_values { |value| value["after"] }, occurred_at: occurred_at, business_type: type))
+          identity = payload[:user_data]
+          reason = if type.blank?
+            "business_type_missing"
+          elsif identity[:email_address].blank? && identity[:phone_number].blank?
+            "original_identity_missing"
+          end
+        end
         if event == "closed" && lead.closing_commission_cents.present?
           payload[:value] = BigDecimal(lead.closing_commission_cents.to_s) / 100
           payload[:currency] = "BRL"

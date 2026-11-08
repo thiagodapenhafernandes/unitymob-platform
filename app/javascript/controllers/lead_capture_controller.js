@@ -180,6 +180,11 @@ export default class extends Controller {
       try {
         const tracked = window.UnitymobTracking.track("generate_lead", {
           event_id: confirmed.event_id,
+          ...Object.fromEntries([
+            "transaction_id", "lead_id", "lead_channel", "currency", "user_data", "ecommerce",
+            "property_id", "property_type", "property_price", "property_bedrooms", "property_suites",
+            "property_parking", "property_area_m2", "property_neighborhood", "property_city", "property_state"
+          ].filter(key => confirmed[key] != null).map(key => [key, confirmed[key]])),
           phone_e164: confirmed.phone_e164,
           business_type: confirmed.business_type,
           property_code: confirmed.property_code,

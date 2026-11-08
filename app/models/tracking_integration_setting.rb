@@ -44,6 +44,12 @@ class TrackingIntegrationSetting
   attribute :rd_station_enabled, :boolean, default: false
   attribute :rd_station_loader_url, :string
 
+  attribute :structured_events_enabled, :boolean, default: false
+
+  def structured_events_enabled?
+    !!structured_events_enabled
+  end
+
   attribute :stape_enabled, :boolean, default: false
   attribute :stape_domain, :string
   attribute :stape_loader_domain, :string
@@ -74,6 +80,7 @@ class TrackingIntegrationSetting
 
   def self.build_current(tenant: Current.tenant)
     new({
+      structured_events_enabled: Setting.tenant_get("tracking.structured_events_enabled", "false", tenant: tenant) == "true",
       google_tag_manager_enabled: Setting.tenant_get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true",
       google_tag_manager_container_id: Setting.tenant_get(GTM_CONTAINER_ID_KEY, "", tenant: tenant),
       meta_pixel_enabled: Setting.tenant_get(META_PIXEL_ENABLED_KEY, "false", tenant: tenant) == "true",
@@ -149,6 +156,7 @@ class TrackingIntegrationSetting
   def save
     return false unless valid?
 
+    Setting.set("tracking.structured_events_enabled", structured_events_enabled? ? "true" : "false", "Contexto ampliado de eventos do site e CRM", tenant: tenant)
     STAPE_FIELDS.each do |field|
       Setting.set("tracking.#{field}", public_send(field).to_s.strip, "Configuração Stape", tenant: tenant)
     end

@@ -24,6 +24,7 @@ class Admin::TrackingIntegrationsController < Admin::BaseController
   def tracking_params
     params.require(:tracking).permit(
       *TrackingIntegrationSetting::STAPE_FIELDS,
+      :structured_events_enabled,
       :google_tag_manager_enabled,
       :google_tag_manager_container_id,
       :meta_pixel_enabled,
