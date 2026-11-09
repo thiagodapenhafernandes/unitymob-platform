@@ -374,4 +374,11 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
       "Campanha: [KD] Refuge [Leads]", "Conversão: Form - Refuge"
     )
   end
+  it "preserva os nomes das origens físicas e a apresentação existente de showroom" do
+    {"Placa" => "Placa", "Vitrine" => "Vitrine", "Showroom Atlântica" => "Showroom"}.each do |raw, label|
+      lead = build_stubbed(:lead, tenant: tenant, origin: raw)
+      expect(origin(lead)[:label]).to eq(label)
+    end
+  end
+
 end

@@ -57,6 +57,19 @@ RSpec.describe "Admin lead creation", type: :request do
     tenant.leads.order(:id).last
   end
 
+  %w[Placa Vitrine].each do |origin|
+    it "oferece e salva a origem #{origin} no cadastro manual" do
+      user = create(:admin_user, profile: build_profile(leads_permissions(create: true, scope: "own"), position: 799))
+      sign_in user
+      get new_admin_lead_path
+      options = Nokogiri::HTML(response.body).css('select[name="lead[origin]"] option').map { |option| option['value'] }
+      expect(options).to include(origin)
+      post admin_leads_path, params: valid_params(origin: origin)
+      expect(response).to have_http_status(:redirect)
+      expect(last_tenant_lead).to have_attributes(origin: origin, admin_user_id: user.id)
+    end
+  end
+
   describe "permissão" do
     it "bloqueia o cadastro para perfil sem create" do
       user = create(:admin_user, profile: build_profile(leads_permissions(create: false, scope: "own"), position: 800))
