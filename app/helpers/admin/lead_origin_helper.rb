@@ -295,7 +295,7 @@ module Admin::LeadOriginHelper
     elsif normalized.match?(/\A(?:lead_?)?lovers\z/)
       ["lovers", "Lovers", nil]
     elsif normalized.match?(/showroom|vitrine/)
-      ["shop", "Showroom", nil]
+      ["shop", normalized == "vitrine" ? "Vitrine" : "Showroom", nil]
     elsif normalized == "cadastro_manual"
       ["person-plus", "Cadastro manual", nil]
     elsif normalized.match?(/\Achaves_na_mao\z/)
