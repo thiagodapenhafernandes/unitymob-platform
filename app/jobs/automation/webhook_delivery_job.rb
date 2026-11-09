@@ -13,6 +13,7 @@ module Automation
       delivery = AutomationWebhookDelivery.find_by(id: delivery_id)
       return unless delivery
       return if delivery.status == "success"
+      return if delivery.lead && !delivery.lead.notifications_allowed?
 
       Automation::WebhookDeliveryService.call(delivery)
     end

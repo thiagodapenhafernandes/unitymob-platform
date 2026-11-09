@@ -76,26 +76,27 @@ module Leads
       push_to(previous_corretor,
               title: "Você perdeu o lead #{lead.display_name}",
               body:  "Não atendido no prazo — foi redistribuído para outro corretor.",
-              url:   "/admin/leads", event: "lead_lost_turn")
+              url:   "/admin/leads", lead: lead, event: "lead_lost_turn")
     end
 
     def self.push_to(corretor, title:, body:, url:, notification_context: "general", lead: nil, event: nil)
+      return if lead && !lead.notifications_allowed?
       return unless corretor&.active?
       return unless corretor.notification_delivery_allowed?
 
-      if lead && event
-        InAppNotification.notify_lead!(lead, corretor, event: event, title: title, body: body)
-      elsif event == "lead_lost_turn"
+      if event == "lead_lost_turn"
         # O antigo dono pode ter perdido acesso: não carregue nome nem link do lead no sino.
         InAppNotification.notify!(admin_user: corretor, kind: "lead_notice", title: "Prazo de atendimento expirado",
           body: body, url: "/admin/leads", metadata: { event: event })
+      elsif lead && event
+        InAppNotification.notify_lead!(lead, corretor, event: event, title: title, body: body)
       end
 
       # high: com urgency normal o Android em Doze (aparelho parado) segura a
       # entrega — exatamente o "push parou de chegar" com o celular na mesa.
       # Async: o deliver faz HTTPS síncrono por subscription.
       Notifications::PushDeliveryJob.perform_later(
-        admin_user_id: corretor.id, title: title, body: body, url: url, notification_context: notification_context
+        admin_user_id: corretor.id, title: title, body: body, url: url, notification_context: notification_context, lead_id: lead&.id
       )
     rescue => e
       Rails.logger.warn("[LeadNotify] push de evento falhou pro corretor #{corretor&.id}: #{e.message}")
@@ -157,6 +158,7 @@ module Leads
     end
 
     def deliver_channels
+      return unless @lead.notifications_allowed?
       # O pool mantém seu fluxo de aceite e mascaramento; só avisamos o dono já definido.
       unless pool_push?
         event = @sticky ? "lead_returned" : (redistribution? ? "lead_redistributed" : "lead_new")

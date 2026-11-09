@@ -1,0 +1,21 @@
+<div class="nested-fields tw-grid tw-gap-3 tw-py-3" data-new-record="true">
+  <% prefix = "instagram_capture[conditions][#{index}]" %>
+  <% namespace = "#{field_prefix}_condition_#{index}" %>
+  <%= hidden_field_tag "#{prefix}[position]", index == "NEW_CONDITION" ? 99 : index.to_i + 1 %>
+  <%= fields_for prefix, nil, namespace: namespace do |condition_form| %>
+    <%= ax_text_field(form: condition_form, method: :title, label: "Condição / intenção do cliente", value: condition["title"], maxlength: 300,
+          hint: "Ex.: cliente quer visitar ou procura outro imóvel. Avaliada a cada mensagem, em qualquer etapa.") %>
+    <%= ax_select_field(form: condition_form, method: :match, label: "Como identificar", choices: [["Entender o contexto com IA", "context"], ["Palavras ou expressões", "keywords"], ["Pedido de corretor", "handoff"], ["Qualquer mensagem (use por último)", "always"]], select_options: {selected: condition["match"] || "context"}) %>
+    <%= ax_text_field(form: condition_form, method: :keywords, label: "Expressões alternativas (separe por ;)", value: condition["keywords"], maxlength: 500) %>
+    <%= ax_select_field(form: condition_form, method: :action, label: "Ação", choices: Instagram::CaptureSettings::ACTIONS.map { |key, label| [label, key] }, select_options: {selected: condition["action"] || "ai"}) %>
+    <%= ax_text_field(form: condition_form, method: :response, label: "Texto da resposta fixa", type: :textarea, rows: 2, value: condition["response"], maxlength: Instagram::Reply::MAX_CHARS) %>
+  <% end %>
+  <%= ax_switch_field(name: "#{prefix}[enabled]", id: "#{namespace}_enabled", checked: condition.fetch("enabled", true), label: "Condição ativa") %>
+  <%= ax_switch_field(name: "#{prefix}[ai_enabled]", id: "#{namespace}_ai", checked: condition.fetch("ai_enabled", true), label: "Permitir que a IA identifique e responda nesta condição", description: "Sem IA, use expressões para identificar a condição e selecione resposta fixa ou encaminhamento.") %>
+  <%= ax_switch_field(name: "#{prefix}[require_contact]", id: "#{namespace}_contact", checked: condition.fetch("require_contact", true), label: "Exigir nome e telefone antes da resposta", description: "O encaminhamento ao corretor sempre exige os dados de contato.") %>
+  <div class="tw-flex tw-flex-wrap tw-gap-2">
+    <button type="button" class="ax-btn ax-btn--secondary ax-btn--sm" data-action="nested-form#moveUp" aria-label="Aumentar prioridade">Subir</button>
+    <button type="button" class="ax-btn ax-btn--secondary ax-btn--sm" data-action="nested-form#moveDown" aria-label="Diminuir prioridade">Descer</button>
+    <button type="button" class="ax-btn ax-btn--secondary ax-btn--sm" data-action="nested-form#remove">Remover condição</button>
+  </div>
+</div>

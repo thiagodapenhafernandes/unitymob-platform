@@ -43,6 +43,9 @@ module Automation
 
     def execute(action)
       action = action.with_indifferent_access
+      if action[:type].to_s.in?(%w[send_whatsapp send_whatsapp_template send_webhook send_whatsapp_buttons send_whatsapp_list notify_broker_interest_opportunity])
+        return if @lead && !@lead.notifications_allowed?
+      end
 
       case action[:type]
       when "create_task"            then act_create_task(action)

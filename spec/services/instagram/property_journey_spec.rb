@@ -85,4 +85,13 @@ RSpec.describe Instagram::PropertyJourney do
     expect(lead.reload).to have_attributes(phone: '5547991112233', client_name: 'Original')
     expect(lead.property_interests).to be_empty
   end
+  it 'completa dados pelo site sem distribuir enquanto o atendimento automático estiver ativo' do
+    lead.update_columns(other_information: {'instagram_capture' => {'step' => 'phone', 'cursor' => 0}})
+    expect(Leads::RoutingService).not_to receive(:route!)
+    expect { described_class.receive!(inquiry, token: token) }.to have_enqueued_job(Instagram::CaptureJob).with(tenant.id, lead.id)
+    expect(lead.reload).to be_instagram_automation_holding
+    expect(lead.admin_user_id).to be_nil
+    expect(Instagram::CaptureAnswer.complete?(lead)).to be(true)
+  end
+
 end

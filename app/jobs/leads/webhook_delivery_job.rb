@@ -7,6 +7,12 @@ module Leads
 
     def perform(url, payload)
       return if url.blank?
+      data = payload.to_h.deep_stringify_keys
+      lead_data = data["lead"].to_h
+      if lead_data["id"].present?
+        lead = Lead.where(tenant_id: lead_data["tenant_id"]).find_by(id: lead_data["id"])
+        return unless lead&.notifications_allowed?
+      end
       corretor_id = payload.to_h.dig("corretor", "id") || payload.to_h.dig(:corretor, :id)
       if corretor_id.present?
         corretor = AdminUser.find_by(id: corretor_id)

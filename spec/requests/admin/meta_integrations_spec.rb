@@ -42,6 +42,45 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "vincula somente imóvel público da conta e oferece busca de imóveis da campanha" do
+    page.update!(instagram_id: "12345", instagram_enabled: true)
+    property = create(:habitation, tenant: admin.tenant, titulo_anuncio: "Apartamento da campanha")
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Outra", slug: "ig-property-#{SecureRandom.hex(3)}"), titulo_anuncio: "Apartamento privado de outra conta")
+    get instagram_capture_properties_admin_meta_integrations_path, params: {q: 'Apartamento'}
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.map { |row| row['value'] }).to include(property.codigo)
+    expect(response.parsed_body.map { |row| row['value'] }).not_to include(foreign.codigo)
+    path = instagram_capture_admin_meta_integrations_path(page_id: page.id)
+    patch path, params: {instagram_capture: {campaign_id: "12345", enabled: "1", sdr_enabled: "1", property_code: property.codigo}}
+    settings = Instagram::CaptureSettings.new(page, tenant: admin.tenant)
+    expect(settings.rules.dig('12345', 'property_code')).to eq(property.codigo)
+    get admin_meta_integrations_path
+    expect(response.body).to include('Imóvel da campanha', property.codigo)
+    patch path, params: {instagram_capture: {campaign_id: "12345", enabled: "1", property_code: foreign.codigo}}
+    expect(settings.rules.dig('12345', 'property_code')).to eq(property.codigo)
+    property.update!(status: "Suspenso", motivo_suspensao: "Indisponível")
+    get instagram_capture_properties_admin_meta_integrations_path, params: {q: property.codigo}
+    expect(response.parsed_body).to be_empty
+  end
+
+  it "exige autorização para liberar o texto interno e preserva a aprovação em atualizações antigas" do
+    page.update!(instagram_id: "12345", instagram_enabled: true)
+    property = create(:habitation, tenant: admin.tenant)
+    path = instagram_capture_admin_meta_integrations_path(page_id: page.id)
+    attrs = {campaign_id: "12345", enabled: "1", property_code: property.codigo, use_registered_payment_conditions: "0"}
+    patch path, params: {instagram_capture: attrs}
+    settings = Instagram::CaptureSettings.new(page, tenant: admin.tenant)
+    allow_any_instance_of(Admin::MetaIntegrationsController).to receive(:instagram_payment_conditions_allowed?).and_return(false)
+    patch path, params: {instagram_capture: attrs.merge(use_registered_payment_conditions: "1")}
+    expect(settings.rules.dig('12345', 'use_registered_payment_conditions')).to be(false)
+    allow_any_instance_of(Admin::MetaIntegrationsController).to receive(:instagram_payment_conditions_allowed?).and_return(true)
+    patch path, params: {instagram_capture: attrs.merge(use_registered_payment_conditions: "1")}
+    expect(settings.rules.dig('12345', 'use_registered_payment_conditions')).to be(true)
+    allow_any_instance_of(Admin::MetaIntegrationsController).to receive(:instagram_payment_conditions_allowed?).and_return(false)
+    patch path, params: {instagram_capture: attrs.except(:use_registered_payment_conditions)}
+    expect(settings.rules.dig('12345', 'use_registered_payment_conditions')).to be(true)
+  end
+
   it "salva várias campanhas juntas e preserva regras já configuradas" do
     page.update!(instagram_id: "12345", instagram_enabled: true)
     path = instagram_capture_admin_meta_integrations_path(page_id: page.id)
@@ -56,7 +95,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
     patch path, params: draft.merge(instagram_capture: { campaign_ids: %w[12345 34567], enabled: "0" })
     expect(response.body).to include("já tem uma configuração")
-    expect(settings.rules.keys).to match_array(%w[12345 23456])
+    expect(settings.rules.keys).to match_array(%w[default 12345 23456])
     expect(settings.rules.fetch("12345")["enabled"]).to be(true)
   end
 
@@ -413,4 +452,24 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(document.at_css('progress[value="37.0"][max="100"][aria-label]')).to be_present
     expect(response.body).not_to include("fa-spin")
   end
+  it "salva condições dinâmicas, mensagens, dados e digitação com validação" do
+    page.update!(instagram_id: '12345', instagram_enabled: true)
+    path = instagram_capture_admin_meta_integrations_path(page_id: page.id)
+    attrs = {campaign_id: 'default', enabled: '1', sdr_enabled: '1', typing_enabled: '0', typing_seconds: '3',
+      data_access: ['', 'location', 'details'], missing_phone: 'Qual seu telefone com DDD?', conditions_present: '1',
+      conditions: {'0' => {title: 'Agendamento', match: 'keywords', keywords: 'visitar;visita', action: 'fixed',
+        response: 'Vamos agendar!', enabled: '1', ai_enabled: '0', require_contact: '1', position: '1'}}}
+    patch path, params: {instagram_capture: attrs}
+    settings = Instagram::CaptureSettings.new(page, tenant: admin.tenant)
+    rule = settings.rules.fetch('default')
+    expect(rule).to include('typing_enabled' => false, 'typing_seconds' => 3, 'data_access' => %w[location details], 'missing_phone' => 'Qual seu telefone com DDD?')
+    expect(rule.fetch('conditions').first).to include('title' => 'Agendamento', 'action' => 'fixed', 'ai_enabled' => false, 'require_contact' => true)
+    get admin_meta_integrations_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('Adicionar condição', 'Agendamento', 'Dados que a IA pode consultar')
+    expect(response.body).to include('instagram_capture[conditions][0][title]')
+    patch path, params: {instagram_capture: attrs.merge(data_access: ['owner_phone'], typing_seconds: '90')}
+    expect(settings.rules.fetch('default')).to eq(rule)
+  end
+
 end

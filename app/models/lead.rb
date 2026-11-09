@@ -345,12 +345,24 @@ class Lead < ApplicationRecord
   attr_accessor :intake_reused
   attr_writer :skip_automatic_routing
 
+  def notifications_allowed?
+    archived_at.nil? && self.class.where(tenant_id: tenant_id, id: id, archived_at: nil).exists?
+  end
+
   def instagram_capture_pending?
     other_information.to_h.dig("instagram_capture", "step").in?(%w[start name phone email])
   end
 
+  def instagram_automation_active?
+    admin_user_id.nil? && (instagram_capture_pending? || other_information.to_h.dig("instagram_capture", "step").in?(%w[serving handoff_pending]))
+  end
+
+  def instagram_automation_holding?
+    instagram_automation_active? && other_information.to_h.dig("instagram_capture", "step") != "handoff_pending"
+  end
+
   def skip_automatic_routing?
-    @skip_automatic_routing == true || whatsapp_service_contact? || instagram_capture_pending?
+    @skip_automatic_routing == true || whatsapp_service_contact? || instagram_automation_holding?
   end
 
   # Preenchido quando a consulta complementa um lead existente (o registro

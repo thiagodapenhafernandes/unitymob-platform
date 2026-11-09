@@ -11,7 +11,7 @@ module Notifications
       Errno::ECONNRESET, Errno::ECONNREFUSED, EOFError, IOError,
       wait: :polynomially_longer, attempts: 3
 
-    def perform(admin_user_id:, title:, body:, url:, notification_context: "general")
+    def perform(admin_user_id:, title:, body:, url:, notification_context: "general", lead_id: nil)
       PushDispatcher.deliver(
         admin_user_id: admin_user_id,
         title: title,
@@ -19,6 +19,7 @@ module Notifications
         url: url,
         urgency: "high",
         ttl: 3600,
+        lead_id: lead_id,
         metadata: { notification_context: notification_context }
       )
     end

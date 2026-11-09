@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["template", "container"]
+  static values = { placeholder: { type: String, default: "NEW_RECORD" } }
 
   connect() {
     this.updatePositions()
@@ -9,7 +10,7 @@ export default class extends Controller {
 
   add(event) {
     event.preventDefault()
-    const content = this.templateTarget.innerHTML.replace(/NEW_RECORD/g, new Date().getTime())
+    const content = this.templateTarget.innerHTML.split(this.placeholderValue).join(new Date().getTime())
     this.containerTarget.insertAdjacentHTML('beforeend', content)
     this.updatePositions()
   }
@@ -50,14 +51,16 @@ export default class extends Controller {
   }
 
   updatePositions() {
-    const fields = this.containerTarget.querySelectorAll(".nested-fields:not([style*='display: none'])")
+    const fields = Array.from(this.containerTarget.querySelectorAll(".nested-fields:not([style*='display: none'])"))
+      .filter(field => field.closest('[data-controller~="nested-form"]') === this.element)
     fields.forEach((field, index) => {
       const positionLabel = field.querySelector("[data-position-label]")
       if (positionLabel) {
         positionLabel.textContent = index + 1
       }
 
-      const positionInput = field.querySelector("input[name*='position'], input[name*='display_order']")
+      const positionInput = Array.from(field.querySelectorAll("input[name*='position'], input[name*='display_order']"))
+        .find(input => input.closest(".nested-fields") === field)
       if (positionInput) {
         positionInput.value = index + 1
       }

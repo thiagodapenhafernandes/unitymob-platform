@@ -7,13 +7,27 @@ module Instagram
     def perform(tenant_id, lead_id)
       tenant = Tenant.find_by(id: tenant_id)
       lead = tenant&.leads&.find_by(id: lead_id)
-      return unless lead
+      return unless lead && lead.admin_user_id.nil? && lead.archived_at.blank?
+      page = MetaFacebookPage.available_for_distribution(tenant_id).find_by(instagram_id: lead.instagram_account_id, instagram_enabled: true)
+      return unless page
+      rules = CaptureSettings.new(page, tenant: tenant).rules
+      rule = rules.fetch(lead.other_information.dig("instagram_capture", "rule_key") || lead.other_information["meta_campaign_id"].to_s, rules.fetch("default"))
+      cursor = lead.other_information.dig("instagram_capture", lead.instagram_capture_pending? ? "cursor" : "sdr_cursor")
+      return if cursor && !lead.instagram_messages.inbound.where("id > ?", cursor).exists? && lead.other_information.dig("instagram_capture", "step") != "email" && !(lead.instagram_capture_pending? && CaptureAnswer.complete?(lead))
+      return if lead.other_information.fetch("instagram_capture", {}).key?("sdr_cursor") && cursor.nil? && !lead.instagram_capture_pending?
+      Reply.with_typing(lead, rule) { process_capture(lead, tenant_id) }
+    rescue Instagram::Reply::Error, Faraday::Error, Timeout::Error
+      Rails.logger.warn("[Instagram capture] prompt unavailable lead_id=#{lead_id}")
+    end
+
+    def process_capture(lead, tenant_id)
+      tenant = lead.tenant
       return continue_sdr(lead) unless lead.instagram_capture_pending?
 
       if lead.other_information.dig("instagram_capture", "step") == "email"
         lead.with_lock do
           state = lead.other_information.fetch("instagram_capture")
-          if state["step"] == "email" && lead.archived_at.blank? && lead.admin_user_id.nil? &&
+          if state["step"] == "email" && CaptureAnswer.complete?(lead) && lead.archived_at.blank? && lead.admin_user_id.nil? &&
               Time.iso8601(state.fetch("email_deadline")) <= Time.current
             finish_capture(lead)
             return
@@ -31,6 +45,7 @@ module Instagram
         return unless lead.instagram_capture_pending? && lead.archived_at.blank? && lead.admin_user_id.nil?
 
         state = lead.other_information.fetch("instagram_capture")
+        state = state.merge("step" => lead.client_name.present? ? "phone" : "name") if state["step"] == "email" && !CaptureAnswer.complete?(lead)
         if lead.client_name.present? && lead.client_name.match?(/\A(?:sobre|como|qual|quero|quanto)\b/i) && CaptureAnswer.new(lead.client_name).name.nil?
           lead.client_name = nil
         end
@@ -40,15 +55,20 @@ module Instagram
           rules = CaptureSettings.new(page, tenant: tenant).rules
           start_capture(lead, rules, attribution)
         else
-          advance_capture(lead, state.merge(CaptureSettings.prompts(state)), page)
+          state = state.merge(CaptureSettings.prompts(current_rule(lead)))
+          if CaptureAnswer.complete?(lead) && state["step"] != "email" && !lead.instagram_messages.inbound.where("id > ?", state["cursor"]).exists?
+            finish_capture(lead, through: state["cursor"])
+          else
+            advance_capture(lead, state, page)
+          end
         end
       end
     rescue Instagram::Reply::Error, Faraday::Error, Timeout::Error
-      Rails.logger.warn("[Instagram capture] prompt unavailable lead_id=#{lead_id}")
+      Rails.logger.warn("[Instagram capture] prompt unavailable lead_id=#{lead.id}")
     end
 
     def self.release!(lead, owner: nil)
-      return unless lead.instagram_capture_pending?
+      return unless lead.instagram_automation_active?
 
       state = lead.other_information.fetch("instagram_capture")
       if owner
@@ -96,10 +116,11 @@ module Instagram
       step = lead.client_name.present? ? "phone" : "name"
       state = CaptureSettings.prompts(rule).merge("step" => step, "ask_email" => rule["ask_email"] == true, "rule_key" => (rules.key?(campaign_id) ? campaign_id : "default"))
       lead.other_information = lead.other_information.merge("instagram_capture" => state)
-      if capture_phone(lead.display_phone.to_s)
+      if CaptureAnswer.complete?(lead)
         return ask_for_email(lead, state, cursor) if state["ask_email"] && lead.display_email.blank?
         return finish_capture(lead, through: cursor)
       end
+      return if respond_before_contact(lead, state, cursor)
       prompt(lead, state, cursor)
     end
 
@@ -116,46 +137,45 @@ module Instagram
           lead.email = answer if lead.display_email.blank?
           return finish_capture(lead, through: message.id)
         end
+        state = state.merge("pending_question_id" => message.id) if parsed.request?
+        lead.other_information = lead.other_information.deep_merge("instagram_capture" => state)
+        return finish_capture(lead, through: message.id)
       else
-        if parsed.declined?
-          Reply.call(lead: lead, body: "Claro, podemos continuar pelo Instagram.", admin_user: nil, typing: true)
-          return finish_capture(lead, thank_you: false, through: message.id)
-        end
         messages.each do |entry|
           data = CaptureAnswer.new(entry.body)
           lead.client_name = data.name if lead.client_name.blank? && data.name
           lead.phone = data.phone if data.phone && !capture_phone(lead.display_phone.to_s)
+          if data.request?
+            state = state.merge("pending_question_id" => entry.id)
+          end
         end
-        if capture_phone(lead.display_phone.to_s)
+        lead.other_information = lead.other_information.deep_merge("instagram_capture" => state)
+        if CaptureAnswer.complete?(lead)
           return ask_for_email(lead, state, message.id) if state["ask_email"] && lead.display_email.blank?
           return finish_capture(lead, through: message.id)
         end
+        return if respond_before_contact(lead, state, message.id)
         if lead.client_name.present? && state["step"] == "name"
           return prompt(lead, state.merge("step" => "phone"), message.id)
         end
       end
+      remind_missing_contact(lead, state, message)
+    end
 
-      # Consome a resposta mesmo sem dados pessoais; nunca reenvia a pergunta do cadastro.
-      rules = CaptureSettings.new(page, tenant: lead.tenant).rules
-      rule = rules.fetch(state["rule_key"], rules.fetch("default", {}))
-      history = conversation_history(lead, message.id)
-      response = if answer.match?(/\A[\d() .+-]+\z/) && state["phone_guidance"] != true
-        state = state.merge("phone_guidance" => true)
-        "Para usar o WhatsApp, o número precisa incluir o DDD. Se preferir, podemos continuar pelo Instagram."
-      elsif rule["sdr_enabled"]
-        CatalogReply.new(lead, rule).call(history, first_turn: state["contextual_turns"].to_i.zero?)
-      else
-        CatalogReply::HANDOFF
-      end
-      response = CatalogReply::HANDOFF if response.is_a?(String) && lead.instagram_messages.outbound.order(:id).last&.body == response
-      send_catalog_reply(lead, response)
-      state = state.merge("cursor" => message.id, "contextual_turns" => state["contextual_turns"].to_i + 1)
-      lead.other_information = lead.other_information.deep_merge("instagram_capture" => state)
+    def remind_missing_contact(lead, state, message)
+      missing_name = CaptureAnswer.new(lead.client_name).name.blank?
+      missing_phone = capture_phone(lead.display_phone.to_s).blank?
+      step = missing_name ? "name" : "phone"
+      count = state["contact_reminders"].to_i
+      rule = current_rule(lead)
+      key = count.positive? ? "waiting_contact" : (missing_name && missing_phone ? "missing_both" : (missing_name ? "missing_name" : "missing_phone"))
+      body = CaptureSettings.message(rule, key, lead)
+      # Uma mensagem nova pode receber orientação; jobs repetidos não reenviam o pedido.
+      send_catalog_reply(lead, body) unless lead.instagram_messages.outbound.order(:id).last&.body == body
+      lead.other_information = lead.other_information.deep_merge("instagram_capture" => state.merge(
+        "step" => step, "cursor" => message.id, "contact_reminders" => count + 1
+      ))
       lead.update_columns(lead.changes.transform_values(&:last).slice("client_name", "phone", "other_information"))
-      if response == CatalogReply::HANDOFF
-        finish_capture(lead, thank_you: false, through: message.id)
-        lead.update_columns(other_information: lead.other_information.deep_merge("instagram_capture" => { "sdr_cursor" => nil }))
-      end
     end
 
     def ask_for_email(lead, state, cursor)
@@ -167,27 +187,42 @@ module Instagram
     end
 
     def finish_capture(lead, thank_you: true, through: nil)
+      return unless CaptureAnswer.complete?(lead)
       state = lead.other_information.fetch("instagram_capture")
       cursor = through || lead.instagram_messages.inbound.maximum(:id)
       if lead.client_name.present? && (lead.name.blank? || lead.name == ProfileEnrichmentJob::DEFAULT_NAME || lead.name.start_with?("@"))
         lead.name = lead.client_name
       end
-      self.class.release!(lead)
-      lead.update_columns(other_information: lead.other_information.deep_merge(
-        "instagram_capture" => { "sdr_cursor" => cursor, "sdr_started_after" => cursor }
-      ))
+      lead.other_information = lead.other_information.deep_merge("instagram_capture" => {
+        "step" => "serving", "sdr_cursor" => cursor, "sdr_started_after" => cursor
+      })
+      lead.update_columns(lead.changes.transform_values(&:last).slice("name", "client_name", "phone", "email", "other_information"))
+      page = MetaFacebookPage.available_for_distribution(lead.tenant_id).find_by(instagram_id: lead.instagram_account_id, instagram_enabled: true)
+      rules = page ? CaptureSettings.new(page, tenant: lead.tenant).rules : {}
+      rule = rules.fetch(state["rule_key"], rules.fetch("default", {}))
+      question = lead.instagram_messages.inbound.find_by(id: state["pending_question_id"]) if state["pending_question_id"]
+      question ||= lead.instagram_messages.inbound.order(id: :desc).limit(20).detect do |message|
+        data = CaptureAnswer.new(message.body)
+        data.request?
+      end
+      if rule["sdr_enabled"] && question
+        response = contextual_response(lead, rule, conversation_history(lead, question.id), first_turn: true)
+        send_catalog_reply(lead, response, handoff_cursor: cursor)
+        return
+      end
+      handoff_to_team(lead, cursor) unless rule["sdr_enabled"]
       return unless thank_you && state["thank_you_prompt"].present?
 
       name = lead.client_name.to_s.split.first.presence || "por enviar seus dados"
       body = state.fetch("thank_you_prompt").gsub("{primeiro_nome}") { name }.first(Reply::MAX_CHARS)
-      Reply.call(lead: lead, body: body, admin_user: nil, typing: true)
+      Reply.call(lead: lead, body: body, admin_user: nil, typing: false)
     rescue Reply::Error, Faraday::Error, Timeout::Error
       Rails.logger.warn("[Instagram capture] completion reply unavailable lead_id=#{lead.id}")
     end
 
     def continue_sdr(lead)
       lead.with_lock do
-        return if lead.archived_at.present? || !Reply.window_open?(lead)
+        return if lead.admin_user_id.present? || lead.archived_at.present? || !Reply.window_open?(lead)
         return if lead.instagram_messages.where.not(sent_by_admin_user_id: nil).exists?
 
         state = lead.other_information.fetch("instagram_capture", {})
@@ -207,6 +242,10 @@ module Instagram
         newest = messages.first
         return if newest&.body.blank?
 
+        unless CaptureAnswer.complete?(lead)
+          state = state.merge("step" => lead.client_name.present? ? "phone" : "name", "cursor" => newest.id - 1)
+          return advance_capture(lead, state, page)
+        end
         parsed = CaptureAnswer.new(newest.body)
         lead.client_name = parsed.name(explicit_only: true) if lead.client_name.blank? && parsed.name(explicit_only: true)
         lead.phone = parsed.phone if parsed.phone && !capture_phone(lead.display_phone.to_s)
@@ -216,11 +255,34 @@ module Instagram
         lead.update_columns(lead.changes.transform_values(&:last).slice("name", "client_name", "phone")) if lead.changed?
         history = conversation_history(lead, newest.id)
         first_turn = state["sdr_cursor"] == state["sdr_started_after"]
-        answer = CatalogReply.new(lead, rule).call(history, first_turn: first_turn)
-        send_catalog_reply(lead, answer)
+        answer = contextual_response(lead, rule, history, first_turn: first_turn)
+        send_catalog_reply(lead, answer, handoff_cursor: newest.id)
         updates = { "sdr_cursor" => newest.id }
-        updates["sdr_cursor"] = nil if answer == CatalogReply::HANDOFF
+        if answer == CatalogReply::HANDOFF
+          updates["sdr_cursor"] = lead.admin_user_id.present? ? nil : newest.id
+        end
         lead.update_columns(other_information: lead.other_information.deep_merge("instagram_capture" => updates))
+      end
+    end
+
+    def handoff_to_team(lead, cursor)
+      return unless CaptureAnswer.complete?(lead)
+      lead.update_columns(other_information: lead.other_information.deep_merge("instagram_capture" => {"step" => "completed", "sdr_cursor" => nil}))
+      key = lead.activities.where(kind: "note").where("metadata ->> 'instagram_handoff_cursor' = ?", cursor.to_s)
+      unless key.exists?
+        lead.activities.create!(kind: "note", source_category: "automation", metadata: {
+          "body" => "A IA encaminhou uma dúvida ao corretor por solicitação do cliente ou falta de informação confirmada no cadastro.", "instagram_handoff_cursor" => cursor
+        })
+        Leads::RoutingService.route!(lead) if lead.admin_user_id.blank?
+        if lead.admin_user
+          Leads::NotificationDispatcher.push_to(lead.admin_user, title: "Cliente aguarda resposta no Instagram",
+            body: "Há uma dúvida que precisa de confirmação do corretor.", url: "/admin/leads/#{lead.id}#lead-instagram-thread", lead: lead, event: "instagram_handoff")
+        end
+      end
+      if lead.admin_user_id.nil?
+        lead.update_columns(other_information: lead.other_information.deep_merge("instagram_capture" => {
+          "step" => "handoff_pending", "sdr_cursor" => cursor
+        }))
       end
     end
 
@@ -234,12 +296,50 @@ module Instagram
         end
     end
 
-    def send_catalog_reply(lead, answer)
-      if answer.is_a?(CatalogReply::Recommendation)
-        Reply.call(lead: lead, body: answer.body, admin_user: nil, typing: true, cards: answer.cards)
-      else
-        Reply.call(lead: lead, body: answer.first(Reply::MAX_CHARS), admin_user: nil, typing: true)
+    def respond_before_contact(lead, state, cursor)
+      return false unless cursor
+      rule = current_rule(lead)
+      history = conversation_history(lead, cursor)
+      condition = ConversationCondition.match(lead, rule, history)
+      return false unless condition && condition['require_contact'] == false && condition['action'] != 'handoff'
+      response = contextual_response(lead, rule.merge('allow_incomplete_contact' => true), history, first_turn: state['cursor'].nil?, condition: condition)
+      return false if response.blank? || response == CatalogReply::HANDOFF
+      send_catalog_reply(lead, response)
+      lead.other_information = lead.other_information.deep_merge("instagram_capture" => state.merge("cursor" => cursor))
+      lead.update_columns(lead.changes.transform_values(&:last).slice("client_name", "phone", "other_information"))
+      true
+    end
+
+    def current_rule(lead)
+      page = MetaFacebookPage.available_for_distribution(lead.tenant_id).find_by(instagram_id: lead.instagram_account_id, instagram_enabled: true)
+      return CaptureSettings.defaults unless page
+      rules = CaptureSettings.new(page, tenant: lead.tenant).rules
+      rules.fetch(lead.other_information.dig("instagram_capture", "rule_key"), rules.fetch("default"))
+    end
+
+    def contextual_response(lead, rule, history, first_turn:, condition: nil)
+      condition ||= ConversationCondition.match(lead, rule, history)
+      return unless condition
+      case condition['action']
+      when 'fixed' then condition['response'].to_s
+      when 'handoff' then CatalogReply::HANDOFF
+      when 'ai'
+        CatalogReply.new(lead, rule).call(history, first_turn: first_turn) if condition['ai_enabled'] == true
+      else CatalogReply::HANDOFF
       end
+    end
+
+    def send_catalog_reply(lead, answer, handoff_cursor: nil)
+      handoff = answer == CatalogReply::HANDOFF
+      return if lead.admin_user_id.present? || answer.blank?
+      answer = CaptureSettings.message(current_rule(lead), "handoff", lead) if handoff
+      if answer.is_a?(CatalogReply::Recommendation)
+        Reply.call(lead: lead, body: answer.body, admin_user: nil, typing: false, cards: answer.cards)
+      else
+        Reply.call(lead: lead, body: answer.first(Reply::MAX_CHARS), admin_user: nil, typing: false)
+      end
+    ensure
+      handoff_to_team(lead, handoff_cursor) if handoff && handoff_cursor
     end
 
     def capture_phone(answer)
@@ -248,7 +348,7 @@ module Instagram
 
     def prompt(lead, state, cursor)
       # shortcut: a API não confirma o resultado de um timeout, conciliar com o histórico antes de habilitar retry automático de envio.
-      message = Reply.call(lead: lead, body: state.fetch("#{state.fetch('step')}_prompt"), admin_user: nil, typing: true)
+      message = Reply.call(lead: lead, body: state.fetch("#{state.fetch('step')}_prompt"), admin_user: nil, typing: false)
       lead.other_information = lead.other_information.merge("instagram_capture" => state.merge(
         "cursor" => cursor, "prompted_at" => message.occurred_at.iso8601(6)
       ))

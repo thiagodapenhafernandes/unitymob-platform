@@ -23,6 +23,7 @@ module Appointments
 
     def due_appointments_for(tenant, now)
       tenant.appointments
+            .left_joins(:lead).where(leads: { archived_at: nil })
             .where(status: "agendado")
             .where.not(admin_user_id: nil, starts_at: nil)
             .where("starts_at <= ?", now + @reminder_setting.reminder_first_minutes.minutes)

@@ -50,6 +50,7 @@ module Activities
       return false unless @activity.tenant_id == @activity.admin_user.tenant_id
       lead = @activity.lead
       if lead
+        return false unless lead.notifications_allowed?
         return false unless lead.tenant_id == @activity.tenant_id && lead.admin_user_id == @activity.admin_user_id
         if @activity.is_a?(Task)
           return false if Lead.non_operational_status_values(tenant: @activity.tenant).include?(Lead.status_value(lead.status, tenant: @activity.tenant))

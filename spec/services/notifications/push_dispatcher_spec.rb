@@ -49,6 +49,7 @@ RSpec.describe Notifications::PushDispatcher do
   end
 
   it "nao envia quando o canal push esta desativado" do
+    lead = create(:lead, tenant: admin_user.tenant, admin_user: admin_user)
     PushSetting.instance.update!(enabled: false)
     allow(Rails.logger).to receive(:warn)
 
@@ -56,7 +57,7 @@ RSpec.describe Notifications::PushDispatcher do
       admin_user_id: admin_user.id,
       title: "Novo lead",
       body: "Teste",
-      url: "/admin/leads/1/attend"
+      url: "/admin/leads/#{lead.id}/attend"
     )
 
     expect(result).to eq(0)

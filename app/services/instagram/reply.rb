@@ -12,6 +12,22 @@ module Instagram
       new(lead:, body:, admin_user:).call(typing:, cards:)
     end
 
+    def self.with_typing(lead, rule)
+      return yield unless rule.fetch("typing_enabled", true) && lead.admin_user_id.nil? && window_open?(lead)
+      reply = new(lead: lead, body: "", admin_user: nil)
+      page = reply.send(:reply_page)
+      return yield if page&.access_token.blank?
+      graph = Koala::Facebook::API.new(page.access_token)
+      recipient = {id: lead.instagram_scoped_id}.to_json
+      started = reply.send(:sender_action, graph, recipient, "typing_on")
+      sleep(rule.fetch("typing_seconds", 2).to_i.clamp(0, 5)) if started
+      yield
+    ensure
+      if started
+        reply.send(:sender_action, graph, recipient, "typing_off")
+      end
+    end
+
     def self.window_open?(lead)
       last_inbound_at(lead).present? && last_inbound_at(lead) >= WINDOW.ago
     end
@@ -34,6 +50,7 @@ module Instagram
       raise Error, "Mensagem limitada a #{MAX_CHARS} caracteres." if @body.length > MAX_CHARS
       raise Error, "Janela de 24h encerrada. Aguarde uma nova mensagem do cliente." unless self.class.window_open?(@lead)
 
+      raise Error, "Atendimento já atribuído a um corretor." if @admin_user.nil? && @lead.admin_user_id.present?
       graph = Koala::Facebook::API.new(page.access_token)
       response = send_message(graph, typing:, cards:)
       message_id = response.is_a?(Hash) ? response["message_id"].presence : nil
@@ -58,8 +75,10 @@ module Instagram
 
     def send_message(graph, typing:, cards:)
       recipient = { id: @lead.instagram_scoped_id }.to_json
-      typing_started = typing && sender_action(graph, recipient, "typing_on")
-      sleep(1) if typing_started
+      rules = CaptureSettings.new(reply_page, tenant: @lead.tenant).rules
+      rule = rules.fetch(@lead.other_information.dig("instagram_capture", "rule_key"), rules.fetch("default"))
+      typing_started = typing && rule.fetch("typing_enabled", true) && sender_action(graph, recipient, "typing_on")
+      sleep(rule.fetch("typing_seconds", 2).to_i.clamp(0, 5)) if typing_started
 
       if cards.present?
         attachment = { type: "template", payload: { template_type: "generic", elements: cards } }
@@ -87,10 +106,11 @@ module Instagram
     end
 
     def sender_action(graph, recipient, action)
-      graph.put_connections(@lead.instagram_account_id, "messages", recipient: recipient, sender_action: action)
+      # Facebook Login usa o ID da página e seu token para sender actions.
+      graph.put_connections(reply_page.page_id, "messages", recipient: recipient, sender_action: action)
       true
     rescue Koala::Facebook::APIError, Faraday::Error, Timeout::Error, SocketError => error
-      Rails.logger.info("[Instagram Direct] #{action} unavailable error_class=#{error.class}")
+      Rails.logger.info("[Instagram Direct] #{action} unavailable error_class=#{error.class} code=#{error.respond_to?(:fb_error_code) ? error.fb_error_code : nil}")
       false
     end
 

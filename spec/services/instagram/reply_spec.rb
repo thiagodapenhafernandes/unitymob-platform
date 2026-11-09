@@ -45,17 +45,17 @@ RSpec.describe Instagram::Reply do
   end
 
   it "mostra o indicador antes da resposta automática e o encerra depois" do
-    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(sender_action: "typing_on")).ordered
+    expect(graph).to receive(:put_connections).with(page.page_id, "messages", hash_including(sender_action: "typing_on")).ordered
     expect(graph).to receive(:put_connections).with("555", "messages", hash_including(messaging_type: "RESPONSE"))
       .ordered.and_return({ "message_id" => "mid-auto" })
-    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(sender_action: "typing_off")).ordered
+    expect(graph).to receive(:put_connections).with(page.page_id, "messages", hash_including(sender_action: "typing_off")).ordered
 
     expect(described_class.call(lead:, body: "Seu nome?", admin_user: nil, typing: true).message_id).to eq("mid-auto")
   end
 
   it "envia a resposta automática mesmo quando a Meta recusa o indicador" do
     api_error = Koala::Facebook::APIError.new(400, { error: { code: 100 } }.to_json)
-    expect(graph).to receive(:put_connections).with("555", "messages", hash_including(sender_action: "typing_on"))
+    expect(graph).to receive(:put_connections).with(page.page_id, "messages", hash_including(sender_action: "typing_on"))
       .ordered.and_raise(api_error)
     expect(graph).to receive(:put_connections).with("555", "messages", hash_including(messaging_type: "RESPONSE"))
       .ordered.and_return({ "message_id" => "mid-fallback" })
@@ -115,4 +115,19 @@ RSpec.describe Instagram::Reply do
     expect { described_class.call(lead:, body: "Oi", admin_user: broker) }
       .to raise_error(described_class::Error, /permissão/)
   end
+  it 'sinaliza digitação antes do trabalho e encerra mesmo quando a geração falha' do
+    allow(described_class).to receive(:sleep)
+    expect(graph).to receive(:put_connections).with(page.page_id, 'messages', recipient: {id: '777'}.to_json, sender_action: 'typing_on').ordered
+    expect(graph).to receive(:put_connections).with(page.page_id, 'messages', recipient: {id: '777'}.to_json, sender_action: 'typing_off').ordered
+    expect { described_class.with_typing(lead, {'typing_enabled' => true, 'typing_seconds' => 2}) { raise 'generation failed' } }.to raise_error('generation failed')
+    expect(described_class).to have_received(:sleep).with(2)
+  end
+
+  it 'respeita a desativação de digitação e bloqueia envio automático após atribuição' do
+    expect(graph).not_to receive(:put_connections)
+    expect(described_class.with_typing(lead, {'typing_enabled' => false}) { 'ok' }).to eq('ok')
+    lead.update_columns(admin_user_id: broker.id)
+    expect { described_class.call(lead: lead, body: 'Automática', admin_user: nil) }.to raise_error(described_class::Error, /atribuído/)
+  end
+
 end

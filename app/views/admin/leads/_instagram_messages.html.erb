@@ -7,9 +7,9 @@
         <%= window_open ? "Janela de resposta aberta" : "Janela de 24h encerrada" %>
       </span>
     </div>
-    <% if lead.instagram_capture_pending? && lead.archived_at.blank? %>
+    <% if lead.instagram_automation_active? && lead.archived_at.blank? %>
       <div class="tw-flex tw-items-center tw-gap-3 tw-py-2">
-        <span role="status">Em captação</span>
+        <span role="status"><%= lead.instagram_capture_pending? ? "Em captação" : "Em atendimento com IA" %></span>
         <% if can?(:edit, :leads) && lead.admin_user_id.in?([nil, current_admin_user.id]) %>
           <%= button_to "Assumir atendimento", take_over_instagram_capture_admin_lead_path(lead),
                 class: "ax-btn ax-btn--sm ax-btn--secondary", form: { data: { turbo_frame: "_top" } } %>

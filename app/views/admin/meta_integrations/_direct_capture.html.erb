@@ -1,6 +1,6 @@
 <%= ax_form_section(title: "Captação pelo Direct", icon: "instagram") do %>
   <p class="tw-text-sm tw-text-ink-muted">
-    Quando ativada, a captação pede o nome e o telefone antes de distribuir novos contatos.
+    A IA coleta nome e telefone e atende enquanto não houver corretor. O encaminhamento distribui o lead e pausa a IA após a atribuição.
     A regra da campanha tem prioridade quando a Meta identifica o anúncio. Nos demais casos, vale a regra do perfil.
   </p>
   <% if pages.empty? %>
@@ -9,7 +9,7 @@
   <% pages.each do |page| %>
     <% rules = Instagram::CaptureSettings.new(page, tenant: current_tenant).rules %>
     <%= ax_field_group(title: page.instagram_username.present? ? "@#{page.instagram_username}" : page.name) do %>
-      <%= render "direct_capture_rule", page: page, campaign_id: "default", rule: rules.fetch("default", {}), title: "Padrão do perfil" %>
+      <%= render "direct_capture_rule", page: page, campaign_id: "default", rule: rules.fetch("default", {}), title: "Atendimento orgânico e padrão do perfil" %>
       <% rules.except("default").each do |campaign_id, rule| %>
         <%= render "direct_capture_rule", page: page, campaign_id: campaign_id, rule: rule, title: "Campanha #{campaign_id}" %>
       <% end %>

@@ -14,6 +14,9 @@ RSpec.describe Instagram::CaptureAnswer do
     expect(text.name).to eq('Edna')
     expect(text.phone).to eq('5547998887777')
     expect(described_class.new('Sou Edna').name).to eq('Edna')
+    combined = described_class.new('Edna Azevedo (47) 99888-7777')
+    expect(combined.name).to eq('Edna Azevedo')
+    expect(combined.phone).to eq('5547998887777')
     expect(described_class.new('Itajaí').name(explicit_only: true)).to be_nil
     expect(described_class.new('Valor R$ 47998887777').phone).to be_nil
     expect(described_class.new('Quero o imóvel 47998887777').phone).to be_nil
