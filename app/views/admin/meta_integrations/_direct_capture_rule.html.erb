@@ -1,3 +1,4 @@
+<% rule = Instagram::CaptureSettings.defaults.merge(rule) %>
 <% prompts = Instagram::CaptureSettings.prompts(rule) %>
 <% draft_id = local_assigns[:draft_id] %>
 <% field_prefix = "instagram_capture_#{page.id}_#{draft_id || campaign_id || 'new'}" %>
@@ -18,6 +19,7 @@
   <% if draft_id %><p class="tw-text-sm tw-text-ink-muted">A mesma configuração será aplicada às campanhas selecionadas.</p><% end %>
   <%= tag.div class: "tw-grid tw-gap-3", hidden: !campaign_id,
         data: (campaign_id ? {} : { conditional_reveal_target: "panel", conditional_reveal_values: "*" }) do %>
+    <p class="tw-text-sm tw-text-ink-muted">Nome confirmado e telefone com DDD são necessários antes de respostas sobre imóveis ou encaminhamento automático. O @ identifica o contato provisoriamente.</p>
     <%= ax_switch_field(name: "instagram_capture[enabled]", id: "#{field_prefix}_enabled", checked: rule["enabled"] == true,
           label: "Ativar captação", description: (campaign_id == "default" ? nil : "Desativar esta regra dispensa a captação nesta campanha.")) %>
     <%= ax_field_grid do %>
@@ -37,9 +39,50 @@
     <%= ax_text_field(form: form, method: :ai_instructions, label: "Instruções da IA", type: :textarea, rows: 4,
           maxlength: Instagram::CaptureSettings::AI_INSTRUCTIONS_LIMIT,
           value: rule["ai_instructions"].presence || Instagram::CaptureSettings::DEFAULT_AI_INSTRUCTIONS) %>
+    <%= ax_panel(title: "Configurações avançadas de atendimento", collapsible: true, collapsed: true, collapse_id: "#{field_prefix}_advanced") do %>
+    <%= ax_field_group(title: "Mensagens e indicador de digitação") do %>
+      <%= ax_switch_field(name: "instagram_capture[typing_enabled]", id: "#{field_prefix}_typing", checked: rule.fetch("typing_enabled", true), label: "Mostrar digitando antes de responder") %>
+      <%= ax_select_field(form: form, method: :typing_seconds, label: "Tempo mínimo de digitação", choices: (0..5).map { |seconds| ["#{seconds} segundos", seconds] }, select_options: {selected: rule.fetch("typing_seconds", 2)}) %>
+      <% labels = {"missing_both" => "Faltam nome e telefone", "missing_name" => "Falta o nome", "missing_phone" => "Falta o telefone", "waiting_contact" => "Lembrete de dados pendentes", "identify_property" => "Pedir identificação do imóvel", "handoff" => "Encaminhar ao corretor"} %>
+      <% Instagram::CaptureSettings::MESSAGES.each do |key, default| %>
+        <%= ax_text_field(form: form, method: key, label: labels.fetch(key), type: :textarea, rows: 2, value: rule[key].presence || default, maxlength: Instagram::Reply::MAX_CHARS, hint: "Variáveis: {primeiro_nome}, {dados_faltantes}, {site_url}.") %>
+      <% end %>
+    <% end %>
+    <%= ax_field_group(title: "Dados que a IA pode consultar e compartilhar") do %>
+      <%= hidden_field_tag "instagram_capture[data_access][]", "", id: "#{field_prefix}_data_access_empty" %>
+      <% Instagram::CaptureSettings::DATA_ACCESS.each do |key, label| %>
+        <%= ax_check_field(name: "instagram_capture[data_access][]", id: "#{field_prefix}_access_#{key}", value: key, checked: Instagram::CaptureSettings.allowed?(rule, key), label: label) %>
+      <% end %>
+      <p class="tw-text-sm tw-text-ink-muted">Somente imóveis publicados desta conta. A campanha é o contexto inicial; o cliente pode consultar outros imóveis. Dados privados de proprietários e documentos não são disponibilizados.</p>
+    <% end %>
+    <%= ax_field_group(title: "Condições de atendimento (por ordem de prioridade)") do %>
+      <p class="tw-text-sm tw-text-ink-muted">A primeira condição identificada será aplicada. A IA atende sem corretor; o encaminhamento distribui o lead e a atribuição pausa a IA. Sem condições ativas, a IA não responde.</p>
+      <%= form.hidden_field :conditions_present, value: "1" %>
+      <div data-controller="nested-form" data-nested-form-placeholder-value="NEW_CONDITION">
+        <template data-nested-form-target="template">
+          <%= render "direct_capture_condition", condition: {}, index: "NEW_CONDITION", field_prefix: field_prefix %>
+        </template>
+        <div data-nested-form-target="container">
+          <% rule.fetch("conditions", Instagram::CaptureSettings::DEFAULT_CONDITIONS).each_with_index do |condition, index| %>
+            <%= render "direct_capture_condition", condition: condition, index: index, field_prefix: field_prefix %>
+          <% end %>
+        </div>
+        <button type="button" class="ax-btn ax-btn--secondary ax-btn--sm" data-action="nested-form#add">Adicionar condição</button>
+      </div>
+    <% end %>
+    <% end %>
     <% unless campaign_id == "default" %>
-      <%= ax_text_field(form: form, method: :property_code, label: "Código do imóvel público da campanha",
-            value: rule["property_code"], hint: "Quando preenchido, a IA apresenta este imóvel primeiro.") %>
+      <% linked_property = current_tenant.habitations.public_property_listable.find_by(codigo: rule["property_code"]) if rule["property_code"].present? %>
+      <%= ax_autocomplete_select_field(form: form, method: :property_code, label: "Imóvel da campanha",
+            choices: linked_property ? [["#{linked_property.codigo} · #{linked_property.titulo_anuncio}", linked_property.codigo]] : [],
+            select_options: {selected: rule["property_code"], include_blank: "Sem imóvel vinculado"},
+            url: instagram_capture_properties_admin_meta_integrations_path, min_length: 2, placeholder: "Busque pelo código ou título", clearable: true,
+            tooltip: "A IA consulta este imóvel para responder. Sem vínculo ou referência segura, pede o código ou link do anúncio.") %>
+      <% if instagram_payment_conditions_allowed? %>
+      <%= ax_switch_field(name: "instagram_capture[use_registered_payment_conditions]", id: "#{field_prefix}_use_terms",
+            checked: rule["use_registered_payment_conditions"] == true, label: "Autorizar uso das condições de negociação deste imóvel",
+            description: "O texto de Condições de negociação do cadastro poderá ser enviado aos clientes. Autorize apenas se contiver informações comerciais que podem ser compartilhadas. Não inclua neste texto valores mínimos internos, dados do proprietário ou saldo devedor.") %>
+      <% end %>
     <% end %>
   <% end %>
   <div class="tw-flex tw-flex-wrap tw-justify-end tw-gap-2">

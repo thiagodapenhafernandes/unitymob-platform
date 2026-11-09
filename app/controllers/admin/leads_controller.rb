@@ -569,7 +569,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def take_over_instagram_capture
     taken = @lead.with_lock do
-      next false unless @lead.instagram_capture_pending? && @lead.archived_at.blank? &&
+      next false unless @lead.instagram_automation_active? && @lead.archived_at.blank? &&
         @lead.admin_user_id.in?([nil, current_admin_user.id])
 
       Instagram::CaptureJob.release!(@lead, owner: current_admin_user)
@@ -581,7 +581,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def reply_instagram
     @lead.with_lock do
-      if @lead.instagram_capture_pending?
+      if @lead.instagram_automation_active?
         raise Instagram::Reply::Error, "Assuma o atendimento para responder durante a captação."
       end
 

@@ -149,7 +149,7 @@ module Whatsapp
       Whatsapp::ThreadBroadcaster.message_created(message)
       # Som no navegador do atendente responsável (evento efêmero, sem entrada no sino).
       InAppNotification.broadcast_event!(conversation.alert_recipient_id,
-                                         event: "whatsapp_message", conversation_id: conversation.id)
+                                         event: "whatsapp_message", conversation_id: conversation.id) unless conversation.lead && !conversation.lead.notifications_allowed?
 
       InAppNotification.notify_whatsapp_message!(conversation, message)
 

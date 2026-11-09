@@ -117,17 +117,10 @@ module Instagram
             target.email = inquiry.email if target.display_email.blank?
             Leads::InquiryComplement.complement!(target, inquiry, notify: false)
             target.attribution_data = target.attribution_data.to_h.merge('instagram_site_conversion' => true)
-            if pending
-              target.other_information = target.other_information.deep_merge('instagram_capture' => {
-                'step' => 'completed', 'sdr_cursor' => target.instagram_messages.inbound.maximum(:id)
-              })
-            end
             target.save!
             target.intake_reused = true
             reused = true
-            if pending
-              distribution_rule ? Leads::DistributorService.distribute_to(target, distribution_rule) : Leads::RoutingService.route!(target)
-            end
+            CaptureJob.perform_later(target.tenant_id, target.id) if pending && CaptureAnswer.complete?(target)
             target
           end
         end

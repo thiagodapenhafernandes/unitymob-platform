@@ -1,4 +1,5 @@
 class LeadMailer < ApplicationMailer
+  before_deliver { throw :abort unless params[:lead]&.notifications_allowed? }
 
   # Subject can be set in your I18n file at config/locales/en.yml
   # with the following lookup:
@@ -7,6 +8,7 @@ class LeadMailer < ApplicationMailer
   #
   def new_lead_notification
     @lead = params[:lead]
+    return unless @lead.notifications_allowed?
     @property = lead_tenant.habitations.find_by(id: @lead.property_id)
     
     admin_email = ContactSetting.instance(tenant: lead_tenant).email_primary
@@ -20,6 +22,7 @@ class LeadMailer < ApplicationMailer
 
   def welcome_lead
     @lead = params[:lead]
+    return unless @lead.notifications_allowed?
     return if @lead.email.blank?
 
     @property = lead_tenant.habitations.find_by(id: @lead.property_id)
@@ -40,6 +43,7 @@ class LeadMailer < ApplicationMailer
   # Aviso ao corretor recém-atribuído a um lead (disparado pela distribuição).
   def lead_assigned
     @lead = params[:lead]
+    return unless @lead.notifications_allowed?
     @corretor = params[:corretor]
     return unless @corretor&.active?
     return unless @corretor.notification_delivery_allowed?

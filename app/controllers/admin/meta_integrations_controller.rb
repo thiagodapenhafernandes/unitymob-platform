@@ -1,5 +1,6 @@
 class Admin::MetaIntegrationsController < Admin::BaseController
   requires_permission :manage, :integracoes
+  helper_method :instagram_payment_conditions_allowed?
   before_action :set_integration
   before_action :require_meta_impersonation!, only: [:selected_pages]
   before_action :set_page, only: [:list_forms]
@@ -37,9 +38,25 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     render layout: false
   end
 
+  def instagram_payment_conditions_allowed?
+    tenant_owner? || (can?(:view, :imoveis) && owns_all_resource?(:imoveis))
+  end
+
+  def instagram_capture_properties
+    term = params[:q].to_s.strip.first(100)
+    return render json: [] if term.length < 2
+    pattern = "%#{ActiveRecord::Base.sanitize_sql_like(term)}%"
+    rows = current_tenant.habitations.public_property_listable
+      .where("habitations.codigo ILIKE :q OR unaccent(habitations.titulo_anuncio) ILIKE unaccent(:q)", q: pattern)
+      .order(:codigo).limit(30).pluck(:codigo, :titulo_anuncio)
+    render json: rows.map { |code, title| {value: code, text: "#{code} · #{title}"} }
+  end
+
   def instagram_capture
     page = direct_capture_page
-    settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt, :ask_email, :email_prompt, :thank_you_prompt, :ai_instructions, :sdr_enabled, :property_code, campaign_ids: [])
+    settings = params.require(:instagram_capture).permit(:campaign_id, :enabled, :name_prompt, :phone_prompt, :ask_email, :email_prompt, :thank_you_prompt, :ai_instructions, :sdr_enabled, :property_code, :use_registered_payment_conditions, :typing_enabled, :typing_seconds, :conditions_present,
+      *Instagram::CaptureSettings::MESSAGES.keys, campaign_ids: [], data_access: [],
+      conditions: [:title, :match, :keywords, :action, :response, :enabled, :ai_enabled, :require_contact, :position, :_destroy])
     draft_id = params[:capture_draft_id].to_s.presence
     return head :bad_request if draft_id && !draft_id.match?(/\A\d{13}\z/)
 
@@ -51,8 +68,19 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     code = settings[:property_code].to_s.strip
     valid &&= instructions.length <= Instagram::CaptureSettings::AI_INSTRUCTIONS_LIMIT
     valid &&= code.blank? || current_tenant.habitations.public_property_listable.where(codigo: code).exists?
-    rule.merge!("ai_instructions" => instructions, "property_code" => code, "sdr_enabled" => settings[:sdr_enabled] == "1")
+    if settings.key?(:use_registered_payment_conditions)
+      publish_terms = settings[:use_registered_payment_conditions] == "1"
+      valid &&= code.present? && instagram_payment_conditions_allowed? if publish_terms
+    else
+      previous = Instagram::CaptureSettings.new(page, tenant: current_tenant).rules[campaign_ids.first].to_h
+      publish_terms = !draft_id && code.present? && previous["property_code"] == code && previous["use_registered_payment_conditions"] == true
+    end
+    rule.merge!("ai_instructions" => instructions, "property_code" => code, "sdr_enabled" => settings[:sdr_enabled] == "1",
+      "use_registered_payment_conditions" => publish_terms)
     rule.merge!("enabled" => settings[:enabled] == "1", "ask_email" => settings[:ask_email] == "1")
+    interaction, interaction_valid = Instagram::CaptureSettings.interaction_options(settings)
+    rule.merge!(interaction)
+    valid &&= interaction_valid
     saved = valid && Instagram::CaptureSettings.new(page, tenant: current_tenant)
       .save_many(campaign_ids: campaign_ids, rule: rule, create_only: draft_id.present?)
 

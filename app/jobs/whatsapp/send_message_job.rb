@@ -43,6 +43,9 @@ module Whatsapp
 
       conversation = message.whatsapp_conversation
       return unless message.tenant_id == conversation.tenant_id
+      if message.admin_user_id.nil? && conversation.lead && !conversation.lead.notifications_allowed?
+        return update_message_status!(message, status: "failed", error_message: "Lead arquivado: envio automático cancelado.")
+      end
 
       Current.set(tenant: conversation.tenant) do
         recipient = conversation.cloud_recipient # telefone ou BSUID

@@ -23,6 +23,7 @@ module Tasks
 
     def due_tasks_for(tenant, now)
       tenant.tasks
+            .left_joins(:lead).where(leads: { archived_at: nil })
             .operational_current
             .pendentes
             .where.not(admin_user_id: nil, due_at: nil)

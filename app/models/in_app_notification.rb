@@ -62,6 +62,15 @@ class InAppNotification < ApplicationRecord
 
   def self.notify!(admin_user:, kind:, title:, body: nil, url: nil, metadata: {})
     return if admin_user.blank?
+    context = metadata.to_h.with_indifferent_access
+    lead_id = context[:lead_id]
+    if lead_id.blank? && context[:conversation_id].present?
+      lead_id = admin_user.tenant.whatsapp_conversations.where(id: context[:conversation_id]).pick(:lead_id)
+    end
+    if lead_id.present?
+      lead = admin_user.tenant.leads.find_by(id: lead_id)
+      return unless lead&.notifications_allowed?
+    end
 
     notification = create!(tenant_id: admin_user.tenant_id, admin_user: admin_user, kind: kind, title: title, body: body, url: url, metadata: metadata)
     ActionCable.server.broadcast(stream_name(admin_user.id), notification.broadcast_payload)

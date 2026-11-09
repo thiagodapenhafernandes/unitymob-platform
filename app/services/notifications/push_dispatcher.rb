@@ -26,6 +26,11 @@ module Notifications
     # clique para registrar o "aceite", abrindo o `url` (ex.: WhatsApp do lead)
     # direto, sem passar por tela do sistema.
     def deliver(title:, body:, url:, icon:, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false, lead_id: nil, metadata: {})
+      lead_id ||= url.to_s[%r{\A/admin/leads/(\d+)(?:[/?#]|\z)}, 1]
+      if lead_id.present?
+        lead = admin_user&.tenant&.leads&.find_by(id: lead_id)
+        return 0 unless lead&.notifications_allowed?
+      end
       unless admin_user&.active?
         Rails.logger.warn("[PushDispatcher] usuario inativo para admin_user_id=#{@admin_user_id}")
         record_delivery_event("admin_user_inactive", tag: tag, urgency: urgency, ttl: ttl, lead_id: lead_id, metadata: metadata)

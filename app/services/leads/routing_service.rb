@@ -30,7 +30,7 @@ module Leads
     end
 
     def route!
-      return if @lead.instagram_capture_pending?
+      return if @lead.instagram_automation_holding?
 
       @lead.activities.create(kind: "received", metadata: { origin: @lead.origin })
 
