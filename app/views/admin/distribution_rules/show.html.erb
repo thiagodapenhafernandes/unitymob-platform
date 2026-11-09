@@ -171,6 +171,7 @@
                         <% if @next_agent_user_id == dra.admin_user_id %><%= ax_badge("Próximo", tone: :green, dot: true) %><% end %>
                       </div>
                       <span><%= dra.admin_user&.email %></span>
+                      <span><%= dra.allowed_meta_campaign_ids.empty? ? "Todas as campanhas" : "Campanhas Meta permitidas: #{dra.allowed_meta_campaign_ids.join(', ')} · sem campanha não recebe" %></span>
                     </div>
                     <div class="distribution-rule-show__queue-meta">
                       <span>Leads recebidos</span>

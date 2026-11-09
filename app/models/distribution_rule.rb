@@ -244,6 +244,22 @@ class DistributionRule < ApplicationRecord
     end
   end
 
+  def candidates_for(entry, candidates: candidates_filtered_by_checkin)
+    return candidates.respond_to?(:none) ? candidates.none : [] if entry && entry.tenant_id != tenant_id
+
+    campaign_id = DistributionRuleAgent.campaign_id_for(entry)
+    if candidates.respond_to?(:where)
+      candidates.where("distribution_rule_agents.allowed_meta_campaign_ids = '[]'::jsonb OR distribution_rule_agents.allowed_meta_campaign_ids @> ?::jsonb", [campaign_id].to_json)
+    else
+      candidates.select { |agent| agent.allows_campaign?(entry) }
+    end
+  end
+
+  def campaign_allowed_for?(admin_user_id, entry)
+    agent = distribution_rule_agents.find_by(tenant_id: tenant_id, admin_user_id: admin_user_id)
+    agent.nil? || agent.allows_campaign?(entry)
+  end
+
   # ---- Gate de canal de notificação (a regra só marca canal DISPONÍVEL) -------
   # Disponível = tenant tem o PRÓPRIO configurado OU (tenant opt-in E global
   # configurado). Usa o TransportResolver/EmailSetting.for pra não duplicar a

@@ -47,7 +47,7 @@ module Leads
         now = Time.current
         next if last_round_at + rule.pool_renotify_minutes_value.minutes > now
 
-        candidates = rule.candidates_filtered_by_checkin
+        candidates = rule.candidates_for(lead)
         next if candidates.empty?
 
         Leads::NotificationDispatcher.notify_pool(lead, rule, candidates: candidates, context: "pool_renotify")

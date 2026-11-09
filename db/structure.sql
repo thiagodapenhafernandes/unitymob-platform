@@ -2461,7 +2461,9 @@ CREATE TABLE public.distribution_rule_agents (
     "position" integer,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    allowed_meta_campaign_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT distribution_agents_campaigns_array CHECK ((jsonb_typeof(allowed_meta_campaign_ids) = 'array'::text))
 );
 
 
@@ -21767,6 +21769,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261109120000'),
 ('20261106170000'),
 ('20261106160000'),
 ('20261104190100'),

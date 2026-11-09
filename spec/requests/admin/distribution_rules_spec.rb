@@ -10,6 +10,38 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "edita campanhas por corretor, conserva seleção ao reabrir e volta a todas ao limpar" do
+    rule = create(:distribution_rule, tenant: admin.tenant)
+    user = create(:admin_user, :field_agent, tenant: admin.tenant)
+    agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: user)
+    MetaCampaignInsight.create!(tenant: admin.tenant, campaign_id: "12345", campaign_name: "Gralha Azul", date: Date.current)
+    foreign = Tenant.create!(name: "Outra", slug: "campaign-ui-#{SecureRandom.hex(4)}")
+    MetaCampaignInsight.create!(tenant: foreign, campaign_id: "99999", campaign_name: "Campanha privada", date: Date.current)
+    get edit_admin_distribution_rule_path(rule)
+    expect(response.body).to include("Campanhas Meta permitidas", "Gralha Azul", "Todas as campanhas")
+    expect(response.body).not_to include("Campanha privada")
+    payload = {agent_select: [user.id], distribution_rule: {distribution_rule_agents_attributes: {
+      "0" => {admin_user_id: user.id, weight: 2, position: 1, allowed_meta_campaign_ids: ["", "12345"]}
+    }}}
+    patch admin_distribution_rule_path(rule), params: payload
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(agent.reload.allowed_meta_campaign_ids).to eq(["12345"])
+    get edit_admin_distribution_rule_path(rule)
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.css('select[name*="allowed_meta_campaign_ids"] option[selected]').map { |option| option['value'] }).to eq(["12345"])
+    # Atualização antiga que não envia o novo campo conserva a restrição.
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {name: "Atualizada"}, agent_select: [user.id]}
+    expect(agent.reload.allowed_meta_campaign_ids).to eq(["12345"])
+    payload[:distribution_rule][:distribution_rule_agents_attributes]["0"][:allowed_meta_campaign_ids] = ["99999"]
+    patch admin_distribution_rule_path(rule), params: payload
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(agent.reload.allowed_meta_campaign_ids).to eq(["12345"])
+    payload[:distribution_rule][:distribution_rule_agents_attributes]["0"][:allowed_meta_campaign_ids] = [""]
+    patch admin_distribution_rule_path(rule), params: payload
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(agent.reload.allowed_meta_campaign_ids).to eq([])
+  end
+
   it "arquiva preservando leads, esconde da lista e restaura inativa" do
     rule = create(:distribution_rule, tenant: admin.tenant, name: "Fila histórica")
     lead = create(:lead, tenant: admin.tenant, distribution_rule: rule, skip_automatic_routing: true)

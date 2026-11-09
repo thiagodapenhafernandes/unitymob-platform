@@ -103,6 +103,10 @@ class Lead < ApplicationRecord
     transaction do
       scope = where(id: lead_id, tenant_id: user.tenant_id, admin_user_id: nil, status: statuses)
       scope = scope.where(distribution_rule_id: rule_ids) if rule_ids
+      candidate = scope.lock.first
+      return false unless candidate
+      return false if candidate.distribution_rule && !candidate.distribution_rule.campaign_allowed_for?(user.id, candidate)
+
       claimed = scope.update_all(admin_user_id: user.id, status: status_value(:em_atendimento), updated_at: Time.current) == 1
       where(id: lead_id, tenant_id: user.tenant_id).find(lead_id).sync_open_activity_owners! if claimed
       claimed
