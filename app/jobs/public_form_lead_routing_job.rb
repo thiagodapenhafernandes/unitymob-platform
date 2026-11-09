@@ -14,7 +14,8 @@ class PublicFormLeadRoutingJob < ApplicationJob
 
       form = submission.public_form
       rule = form.distribution_rule
-      return if rule.nil?
+      instagram_target = Instagram::PropertyJourney.resolve(submission.tenant, submission.source["instagram_reference"])
+      return if rule.nil? && instagram_target.nil?
 
       if submission.normalized_phone.blank?
         Rails.logger.warn("[PublicFormLeadRoutingJob] Submissão #{submission.id} sem telefone — lead não criado.")
@@ -30,7 +31,13 @@ class PublicFormLeadRoutingJob < ApplicationJob
         )
         lead.attribution_data = Leads::TrackingUid.merge({}, submission.source.slice("tracking_uid"))
         lead.skip_automatic_routing = true
-        lead = Leads::Intake.receive!(lead, distribution_rule: rule)
+        if instagram_target
+          page_url = submission.source["page_url"]
+          lead.property_id = Instagram::PropertyJourney.properties_in(submission.tenant, page_url).first&.id
+          lead = Instagram::PropertyJourney.receive!(lead, token: submission.source["instagram_reference"], distribution_rule: rule)
+        else
+          lead = Leads::Intake.receive!(lead, distribution_rule: rule)
+        end
         if lead.intake_reused
           submission.update!(lead_id: lead.id)
           return

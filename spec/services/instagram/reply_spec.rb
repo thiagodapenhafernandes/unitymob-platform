@@ -32,6 +32,18 @@ RSpec.describe Instagram::Reply do
     expect(lead.activities.where(kind: "instagram_out")).to exist
   end
 
+  it "identifica links próprios enviados manualmente e só registra o imóvel após o envio" do
+    property = create(:habitation, tenant: tenant)
+    allow_any_instance_of(Tenant).to receive(:public_base_url).and_return("https://catalogo.example")
+    allow(graph).to receive(:put_connections).and_return({"message_id" => "mid-property"})
+    message = described_class.call(lead: lead, body: "Veja https://catalogo.example/imoveis/#{property.slug}", admin_user: broker)
+    url = message.body.split.last
+    token = Instagram::PropertyJourney.token_from_url(url)
+    expect(Instagram::PropertyJourney.resolve(tenant, token)).to eq(lead)
+    expect(lead.activities.where(kind: "instagram_property_event").last.metadata).to include("event" => "sent", "habitation_id" => property.id)
+    expect(lead.property_interests).to be_empty
+  end
+
   it "mostra o indicador antes da resposta automática e o encerra depois" do
     expect(graph).to receive(:put_connections).with("555", "messages", hash_including(sender_action: "typing_on")).ordered
     expect(graph).to receive(:put_connections).with("555", "messages", hash_including(messaging_type: "RESPONSE"))

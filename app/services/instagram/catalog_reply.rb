@@ -19,6 +19,9 @@ module Instagram
     end
 
     def call(messages, first_turn:)
+      if messages.last.fetch(:text).match?(/\b(?:pagamento|parcelamento|financiamento|entrada|negocia[cç][aã]o)\b/i)
+        return "As condições de pagamento dependem do imóvel e da análise da proposta. Vou deixar sua dúvida registrada para a equipe confirmar, sem te passar uma condição incorreta."
+      end
       return HANDOFF if messages.last.fetch(:text).match?(/\b(corretor|atendente|atendimento humano)\b/i)
 
       customer_messages = messages.filter_map { |message| message[:text] if message[:role] == "cliente" }
@@ -63,7 +66,7 @@ module Instagram
 
     def recommendation_references(message)
       prefix = "#{@tenant.public_base_url}/imoveis/"
-      message[:text].split.filter_map { |part| part.delete_prefix(prefix) if part.start_with?(prefix) }
+      message[:text].split.filter_map { |part| part.delete_prefix(prefix).split("?").first if part.start_with?(prefix) }
     end
 
     def catalog_matches(text, first_turn:, street:, previous:, location_requested:)
@@ -132,7 +135,9 @@ module Instagram
     def public_url(property, base)
       return if base.blank?
 
-      "#{base}#{Rails.application.routes.url_helpers.habitation_path(property.slug.presence || property.codigo)}"
+      url = "#{base}#{Rails.application.routes.url_helpers.habitation_path(property.slug.presence || property.codigo)}"
+      token = PropertyJourney.reference(@lead)
+      token ? "#{url}?#{ { ig_ref: token }.to_query }" : url
     end
 
     def public_summary(property, base)

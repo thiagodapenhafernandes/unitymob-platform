@@ -22,7 +22,7 @@ module Instagram
 
     def initialize(lead:, body:, admin_user:)
       @lead = lead
-      @body = body.to_s.strip
+      @body = PropertyJourney.track_links(lead, body.to_s.strip)
       @admin_user = admin_user
     end
 

@@ -22,7 +22,9 @@ class PublicFormSubmissionsController < ApplicationController
         ),
         webhook_options
       )
-      PublicFormLeadRoutingJob.perform_later(submission.id) if @public_form.routes_to_distribution?
+      if @public_form.routes_to_distribution? || Instagram::PropertyJourney.resolve(public_tenant, submission.source["instagram_reference"])
+        PublicFormLeadRoutingJob.perform_later(submission.id)
+      end
 
       respond_to_success(submission)
     else
@@ -117,6 +119,7 @@ class PublicFormSubmissionsController < ApplicationController
     {
       page_url: params[:page_url].presence || request.referer,
       request_url: request.original_url,
+      instagram_reference: instagram_reference_token(params[:page_url]),
       referrer_url: request.referer,
       user_agent: request.user_agent,
       remote_ip: request.remote_ip,

@@ -2,6 +2,7 @@ module Admin::ComercialHelper
   # --- Timeline unificada ---------------------------------------------------
   # Mapeia um LeadActivity em ícone + cor + texto para o feed cronológico.
   TIMELINE_MAP = {
+    "instagram_property_event" => { icon: "bi-instagram", color: "blue", label: "Imóvel na jornada do Instagram" },
     "created"            => { icon: "bi-stars",            color: "blue",  label: "Lead criado" },
     "received"           => { icon: "bi-inbox",            color: "gray",  label: "Lead recebido" },
     "assigned_directly"  => { icon: "bi-person-check",     color: "blue",  label: "Atribuído diretamente" },
@@ -50,6 +51,7 @@ module Admin::ComercialHelper
   ]).freeze
 
   SUMMARY_TIMELINE_KINDS = %w[
+    instagram_property_event
     created
     received
     assigned_directly
@@ -607,6 +609,9 @@ module Admin::ComercialHelper
       [meta["source_rule_name"].presence || "Entrada sem destino", meta["target_rule_name"], reason].compact.join(" → ")
     when "contingency_pending"
       [meta["target_rule_name"], "Destino sem disponibilidade; novas tentativas automáticas"].compact.join(" · ")
+    when "instagram_property_event"
+      event = { "sent" => "Apresentado no Direct", "opened" => "Link aberto no site", "interest" => "Interesse manifestado no Direct", "converted" => "Conversão no site a partir do Instagram" }[meta["event"]]
+      [event, ("Imóvel #{meta['property_code']}" if meta['property_code'].present?)].compact.join(" · ")
     when "interest_reprocessed" then "#{meta['matches_count'].to_i} imóvel(is) compatível(is), #{meta['confidence'].to_i}% de confiança"
     when "inquiry_complemented"
       property = meta["property_code"].present? ? "Imóvel #{meta['property_code']}" : "Novo contato"

@@ -2,6 +2,8 @@ class ApplicationController < ActionController::Base
   before_action :apply_seo_redirect
   before_action :set_current_request_context
   before_action :set_current_public_tenant, unless: :administrative_request?
+  before_action :capture_instagram_reference, unless: :administrative_request?
+  after_action :protect_instagram_reference_cache, unless: :administrative_request?
   before_action :set_admin_robots_header
   before_action :load_layout_settings
   helper_method :current_public_seo_setting, :lgpd_consent_accepted?, :admin_page_render_metrics, :admin_context_items,
@@ -60,6 +62,33 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def protect_instagram_reference_cache
+    return unless params[:ig_ref].present?
+    response.cache_control.replace(no_store: true)
+    response.headers['Referrer-Policy'] = 'same-origin'
+  end
+
+  def capture_instagram_reference
+    return unless request.get? && params[:ig_ref].is_a?(String)
+    lead = Instagram::PropertyJourney.resolve(public_tenant, params[:ig_ref])
+    return unless lead
+    @public_page_canonical_url = "#{request.base_url}#{request.path}"
+    return if cookies[LGPD_CONSENT_COOKIE] == "rejected"
+
+    cookies.signed[Instagram::PropertyJourney::COOKIE_KEY] = {
+      value: params[:ig_ref], expires: 30.days.from_now, httponly: true, secure: request.ssl?, same_site: :lax
+    }
+    if lgpd_consent_accepted? && controller_name == "habitations" && action_name == "show"
+      Instagram::PropertyJourney.properties_in(public_tenant, request.original_url).each do |property|
+        Instagram::PropertyJourney.record!(lead, property, 'opened')
+      end
+    end
+  end
+
+  def instagram_reference_token(page_url = nil)
+    Instagram::PropertyJourney.token_from_url(page_url || request.referer).presence || cookies.signed[Instagram::PropertyJourney::COOKIE_KEY]
+  end
 
   def set_current_public_tenant
     Current.tenant = public_tenant

@@ -37,7 +37,7 @@ class LeadsController < ApplicationController
     end
 
     begin
-      @lead = Leads::Intake.receive!(@lead)
+      @lead = Instagram::PropertyJourney.receive!(@lead, token: instagram_reference_token(source_page_url))
       saved_new_lead = !@lead.intake_reused
     rescue ActiveRecord::RecordInvalid => error
       @lead = error.record

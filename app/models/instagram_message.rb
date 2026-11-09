@@ -4,6 +4,7 @@ class InstagramMessage < ApplicationRecord
 
   after_create_commit :notify_conversation
   after_create_commit :enqueue_ad_enrichment
+  after_create_commit :record_property_journey
 
   validates :message_id, :occurred_at, presence: true
   validates :direction, inclusion: { in: %w[inbound outbound] }
@@ -16,6 +17,12 @@ class InstagramMessage < ApplicationRecord
 
   def outbound? = direction == "outbound"
   private
+
+  def record_property_journey
+    Instagram::PropertyJourney.record_message(self)
+  rescue StandardError => error
+    Rails.logger.warn("[Instagram journey] record unavailable message_id=#{id} class=#{error.class}")
+  end
 
   def enqueue_ad_enrichment
     referral = context.to_h["referral"]

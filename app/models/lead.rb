@@ -370,7 +370,9 @@ class Lead < ApplicationRecord
   end
 
   def display_name
-    client_name.presence || name
+    provisional_instagram_name = instagram_scoped_id.present? && instagram_username.present? &&
+      (name.blank? || name == Instagram::ProfileEnrichmentJob::DEFAULT_NAME || name.start_with?("@"))
+    client_name.presence || ("@#{instagram_username}" if provisional_instagram_name) || name
   end
 
   def instagram_username

@@ -13,7 +13,7 @@ module Seo
 
     TRACKING_PARAMS = /\A(utm_(source|medium|campaign|term|content|id)|fbclid|gclid|msclkid|_gl|gbraid|wbraid|gad_source|gad_campaignid|ttclid)\z/
 
-    IGNORED_PARAMS = Regexp.union(TRACKING_PARAMS, /\A(utm_.*|commit|authenticity_token|controller|action|class|style|v)\z/, /\Adata(?:\[|\z)/)
+    IGNORED_PARAMS = Regexp.union(TRACKING_PARAMS, /\A(utm_.*|commit|authenticity_token|controller|action|class|style|v|ig_ref)\z/, /\Adata(?:\[|\z)/)
 
     # Mesma normalização para descoberta, registros antigos e HTML sem descoberta.
     def self.sanitize_path(value)
