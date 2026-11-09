@@ -63,7 +63,8 @@ module Leads
     end
 
     def keeps_owner?(candidate)
-      candidate.archived_at.blank? &&
+      (candidate.distribution_rule.nil? || candidate.distribution_rule.campaign_allowed_for?(candidate.admin_user_id, @lead)) &&
+        candidate.archived_at.blank? &&
         !Lead.non_operational_status_values(tenant: candidate.tenant).include?(candidate.status) &&
         !setting.non_fidelizing_stage_for_stickiness?(candidate.lead_pipeline_stage_id) && within_pocket?(candidate)
     end

@@ -12,7 +12,7 @@ module Whatsapp
     class << self
       def open!(conversation:, lead:, flow:, action:)
         tenant = conversation.tenant
-        rule, owner, pool = resolve(tenant, action)
+        rule, owner, pool = resolve(tenant, action, lead: lead)
         unless owner && assign(lead, rule, owner)
           # Sem atendente elegível (check-in, perfil, regra inativa): não deixa a falha silenciosa.
           LeadActivity.log!(lead: lead, kind: "whatsapp_attendance_unassigned", metadata: {
@@ -50,7 +50,7 @@ module Whatsapp
         rule = attendance.distribution_rule
         return unless attendance.open? && rule
 
-        new_owner = pick_agent(rule, attendance.agent_ids, exclude: [attendance.admin_user_id])
+        new_owner = pick_agent(rule, attendance.agent_ids, lead: attendance.whatsapp_conversation.lead, exclude: [attendance.admin_user_id])
         switch_owner!(attendance, new_owner, reason: reason) if new_owner
       end
 
@@ -86,7 +86,7 @@ module Whatsapp
       def ensure_owner_available!(attendance)
         owner = attendance.admin_user
         rule = attendance.distribution_rule
-        available = owner&.active? && (rule.nil? || rule.candidates_filtered_by_checkin.exists?(admin_user_id: owner.id))
+        available = owner&.active? && (rule.nil? || rule.candidates_for(attendance.whatsapp_conversation.lead).exists?(admin_user_id: owner.id))
         reassign!(attendance, reason: "unavailable") unless available
       end
 
@@ -154,20 +154,20 @@ module Whatsapp
 
       private
 
-      def resolve(tenant, action)
+      def resolve(tenant, action, lead:)
         if action["action"] == "send_to_user"
           owner = tenant.admin_users.active.find_by(id: action["target_user_id"])
           [nil, owner, [owner&.id].compact]
         else
           rule = tenant.distribution_rules.active.find_by(id: action["distribution_rule_id"])
           pool = Array(action["target_admin_user_ids"].presence || action["target_admin_user_id"]).compact_blank.map(&:to_i)
-          [rule, (pick_agent(rule, pool) if rule), pool]
+          [rule, (pick_agent(rule, pool, lead: lead) if rule), pool]
         end
       end
 
       # Rodízio dentro do pool: quem recebeu há mais tempo (nunca recebeu = primeiro).
-      def pick_agent(rule, pool, exclude: [])
-        candidates = rule.candidates_filtered_by_checkin
+      def pick_agent(rule, pool, lead:, exclude: [])
+        candidates = rule.candidates_for(lead)
         candidates = candidates.where(admin_user_id: pool) if pool.present?
         candidates = candidates.where.not(admin_user_id: exclude) if exclude.compact.any?
         candidates.reorder(Arel.sql("distribution_rule_agents.last_lead_received_at ASC NULLS FIRST"), :position).first&.admin_user

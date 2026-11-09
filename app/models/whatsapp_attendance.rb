@@ -33,7 +33,7 @@ class WhatsappAttendance < ApplicationRecord
     users = tenant.admin_users.active.where.not(id: admin_user_id)
     return users.order(:name) unless distribution_rule
 
-    eligible = distribution_rule.eligible_distribution_rule_agents
+    eligible = distribution_rule.candidates_for(whatsapp_conversation.lead, candidates: distribution_rule.eligible_distribution_rule_agents)
     eligible = eligible.where(admin_user_id: agent_ids) if agent_ids.present?
     users.where(id: eligible.select(:admin_user_id)).order(:name)
   end

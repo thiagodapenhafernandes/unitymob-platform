@@ -189,6 +189,10 @@ class Admin::DistributionRulesController < Admin::BaseController
       @meta_form_options_by_page[page.page_id] = forms.map { |form| [ "#{form.name} · #{page.name}", form.form_id ] }
     end
 
+    @meta_campaign_options = MetaCampaignInsight.where(tenant_id: current_tenant.id)
+      .select("DISTINCT ON (campaign_id) campaign_id, campaign_name").order(:campaign_id, date: :desc)
+      .map { |campaign| ["#{campaign.campaign_name.presence || 'Campanha Meta'} · #{campaign.campaign_id}", campaign.campaign_id] }
+      .sort_by { |label, _| label.downcase }
     @all_page_options = active_pages.map { |page| [ page.name, page.page_id ] }
   end
 
@@ -259,6 +263,7 @@ class Admin::DistributionRulesController < Admin::BaseController
       meta = metadata[admin_user_id] || {}
       agent.position = (meta[:position].presence || index + 1).to_i
       agent.weight = (meta[:weight].presence || agent.weight.presence || 1).to_i
+      agent.allowed_meta_campaign_ids = meta[:allowed_meta_campaign_ids] if meta.key?(:allowed_meta_campaign_ids)
     end
   end
 
@@ -329,6 +334,9 @@ class Admin::DistributionRulesController < Admin::BaseController
       next if ActiveModel::Type::Boolean.new.cast(row[:_destroy])
 
       acc[admin_user_id] = { weight: row[:weight], position: row[:position] }
+      if row.key?(:allowed_meta_campaign_ids)
+        acc[admin_user_id][:allowed_meta_campaign_ids] = Array(row[:allowed_meta_campaign_ids]).select { |id| id.is_a?(String) }
+      end
     end
   end
 

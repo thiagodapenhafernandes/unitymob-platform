@@ -86,6 +86,7 @@ module Leads
 
     def eligible?(user)
       return false unless user&.active?
+      return false unless @rule.campaign_allowed_for?(user.id, @lead)
 
       if @setting.fallback_in_rule?
         candidate_ids.include?(user.id)

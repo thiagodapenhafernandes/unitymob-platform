@@ -4,7 +4,7 @@
   <%= f.hidden_field :position, class: "position-field" %>
 
   <%
-    user = AdminUser.find_by(id: f.object.admin_user_id)
+    user = current_tenant.admin_users.find_by(id: f.object.admin_user_id)
     user_name = user&.name || "Novo Corretor"
     user_initial = user_name&.first&.upcase || "?"
     user_email = user&.email || ""
@@ -14,6 +14,11 @@
   <div class="ax-record-item__copy distribution-rule-agent__main">
     <strong><%= user_name %></strong>
     <span><%= user_email %></span>
+    <%= ax_autocomplete_select_field(form: f, method: :allowed_meta_campaign_ids,
+          label: "Campanhas Meta permitidas", choices: (@meta_campaign_options || []) +
+            (f.object.allowed_meta_campaign_ids - (@meta_campaign_options || []).map(&:last)).map { |id| ["Campanha Meta · #{id}", id] },
+          multiple: true, placeholder: "Todas as campanhas",
+          tooltip: "Sem seleção, recebe todas as campanhas e origens. Com seleção, recebe somente as campanhas escolhidas e não recebe leads sem campanha identificada.") %>
   </div>
 
   <div class="ax-record-item__actions distribution-rule-agent__actions">

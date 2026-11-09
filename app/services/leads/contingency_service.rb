@@ -46,12 +46,12 @@ module Leads
 
       initialize_cycle!
       return try_forward!(rule, "deactivated") unless rule.active?
-      if !rule.outside_represamento_hours? && rule.candidates_filtered_by_checkin.exists? && @lead.admin_user_id.nil? &&
+      if !rule.outside_represamento_hours? && rule.candidates_for(@lead).exists? && @lead.admin_user_id.nil? &&
           Lead.status_value(@lead.status) != Lead.status_value(:waiting_acceptance)
         return DistributorService.distribute_to(@lead, rule)
       end
       return true if rule.outside_represamento_hours? && try_forward!(rule, "outside_hours")
-      return true if rule.candidates_filtered_by_checkin.empty? && try_forward!(rule, "unavailable")
+      return true if rule.candidates_for(@lead).empty? && try_forward!(rule, "unavailable")
       if Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance)
         return true if try_forward!(rule, "acceptance_timeout")
         return true if @lead.admin_user_id.nil? && rule.pool_mode? && try_forward!(rule, "pool_timeout")
@@ -134,7 +134,7 @@ module Leads
     def deliver_to_target!
       target = @lead.contingency_target_rule
       ready = target&.terminal_destination_for?(@lead.tenant) && !target.outside_represamento_hours? &&
-        target.candidates_filtered_by_checkin.exists?
+        target.candidates_for(@lead).exists?
       if ready
         result = DistributorService.distribute_to(@lead, target)
         if @lead.admin_user_id.present? || (result && target.shark_tank?)

@@ -115,7 +115,7 @@ module Leads
       rule = lead.distribution_rule
       return :pool_ready unless rule
 
-      Leads::NotificationDispatcher.notify_pool(lead, rule, candidates: rule.candidates_filtered_by_checkin, context: "pocket_pool")
+      Leads::NotificationDispatcher.notify_pool(lead, rule, candidates: rule.candidates_for(lead), context: "pocket_pool")
       :pool_ready
     end
   end

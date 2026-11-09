@@ -25,7 +25,7 @@ module Leads
       return unless rule
 
       dispatcher = new(lead)
-      scope = rule.eligible_distribution_rule_agents(candidates || rule.distribution_rule_agents)
+      scope = rule.candidates_for(lead, candidates: rule.eligible_distribution_rule_agents(candidates || rule.distribution_rule_agents))
       agents = scope.respond_to?(:includes) ? scope.includes(:admin_user) : scope
       agents.each do |dra|
         agent = dra.admin_user

@@ -26,7 +26,7 @@ module Leads
 
       if @inquiry.external_lead_integration_id.present? && @inquiry.admin_user.present?
         assignment_rule = @inquiry.distribution_rule || find_matching_rule || DistributionRule.new(tenant: tenant)
-        sticky_user = StickyAssignment.corretor_for(@inquiry, assignment_rule, candidates: assignment_rule.candidates_filtered_by_checkin)
+        sticky_user = StickyAssignment.corretor_for(@inquiry, assignment_rule, candidates: assignment_rule.candidates_for(@inquiry))
         if operational? && @lead.admin_user&.active? &&
             (sticky_user&.id == @lead.admin_user_id || InquiryComplement.keeps_owner?(@lead, @inquiry))
           return :kept
@@ -92,13 +92,14 @@ module Leads
       complemented = try_complement
       return complemented if complemented
 
-      candidates = rule.candidates_filtered_by_checkin
+      checkin_candidates = rule.candidates_filtered_by_checkin
+      candidates = rule.candidates_for(routing_lead, candidates: checkin_candidates)
       sticky_user = Leads::StickyAssignment.corretor_for(@inquiry || @lead, rule, candidates: candidates) unless @lead.contingency_forwarded_at.present? && !@inquiry
       # Inquiry duplicada dentro do pocket: o dono mantém o lead qualquer que
       # seja o stickiness global — a consulta complementa, nunca gira a fila
       # (girar aqui tomava o lead do corretor segundos depois de entregar).
       # Fidelização segue intacta: lead velho está fora do pocket e redistribui.
-      if @inquiry && (!rule.require_active_checkin? || candidates.present?) && operational? && @lead.admin_user&.active? &&
+      if @inquiry && rule.campaign_allowed_for?(@lead.admin_user_id, routing_lead) && (!rule.require_active_checkin? || candidates.present?) && operational? && @lead.admin_user&.active? &&
           ((sticky_user&.id == @lead.admin_user_id) || InquiryComplement.keeps_owner?(@lead, @inquiry))
         return :kept
       end
@@ -108,6 +109,16 @@ module Leads
       snapshot_entry_context! if @automatic_entry || @inquiry
       @lead.distribution_cycle_started_at ||= Time.current
       @lead.save! if @lead.changed? && (!@inquiry || rule.contingency_enabled? || rule.represamento_active? || candidates.empty?)
+
+      if candidates.empty? && checkin_candidates.exists?
+        return rule if ContingencyService.try_forward!(@lead, rule: rule, reason: "unavailable")
+        @lead.update!(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
+        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: {
+          reason: "no_eligible_agent_for_campaign", rule_id: rule.id,
+          meta_campaign_id: DistributionRuleAgent.campaign_id_for(routing_lead)
+        }.compact)
+        return nil
+      end
 
       if rule.represamento_active? && inside_holding_hours?(rule)
         return rule if ContingencyService.try_forward!(@lead, rule: rule, reason: "outside_hours")
@@ -191,7 +202,7 @@ module Leads
       raise ArgumentError, "Usuário pertence a outro tenant" if admin_user.tenant_id != tenant.id
       return nil unless rule.active?
 
-      agent = rule.eligible_distribution_rule_agents.find_by(admin_user_id: admin_user.id)
+      agent = rule.candidates_for(routing_lead, candidates: rule.eligible_distribution_rule_agents).find_by(admin_user_id: admin_user.id)
       return nil unless agent
 
       finalize_sticky_assignment(rule, admin_user_id: admin_user.id, admin_user_name: admin_user.name)
@@ -232,6 +243,7 @@ module Leads
       @lead.other_information = @lead.other_information.to_h.merge("distribution_entry" => {
         "category" => entry_classification.category,
         "meta_form_id" => routing_lead.other_information.to_h["meta_form_id"],
+        "meta_campaign_id" => DistributionRuleAgent.campaign_id_for(routing_lead),
         "captured_at" => Time.current.iso8601
       })
     end
