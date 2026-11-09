@@ -30,8 +30,8 @@ module Instagram
         if username.present? && existing_profile["username"].blank?
           lead.other_information = info.merge("instagram_profile" => existing_profile.merge("username" => username))
         end
-        if name.present? && lead.client_name.blank? && (lead.name.blank? || lead.name == DEFAULT_NAME)
-          lead.name = name
+        if lead.client_name.blank? && (lead.name.blank? || lead.name == DEFAULT_NAME || lead.name.start_with?("@"))
+          lead.name = username.present? ? "@#{username}" : (name || DEFAULT_NAME)
         end
         changes = lead.changes.transform_values(&:last).slice("name", "other_information")
         # Atualizar a identificação não deve disparar webhooks comerciais do lead.

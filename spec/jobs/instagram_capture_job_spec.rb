@@ -22,6 +22,66 @@ RSpec.describe Instagram::CaptureJob do
     tenant.leads.find_by!(instagram_scoped_id: "98765")
   end
 
+  it "mantém o @ provisório e responde ao contexto sem tratar perguntas como nome ou repetir o pedido" do
+    settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
+    lead = inbound("first", "Oi")
+    lead.update_columns(other_information: lead.other_information.deep_merge("instagram_profile" => {"username" => "ednadgazevedo"}))
+    described_class.perform_now(tenant.id, lead.id)
+    catalog = instance_double(Instagram::CatalogReply, call: "A equipe confirma as condições deste imóvel.")
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
+    inbound("question", "Sobre esse apto do anúncio em cima do shopping.")
+    2.times { described_class.perform_now(tenant.id, lead.id) }
+    expect(lead.reload.client_name).to be_blank
+    expect(lead.display_name).to eq("@ednadgazevedo")
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_NAME_PROMPT, admin_user: nil, typing: true).once
+    expect(Instagram::Reply).not_to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_PHONE_PROMPT, admin_user: nil, typing: true)
+    expect(catalog).to have_received(:call).once
+  end
+
+  it "aproveita nome e telefone de mensagens em sequência sem perder dados nem repetir o cadastro" do
+    settings.save(campaign_id: "default", enabled: true, name_prompt: "", phone_prompt: "")
+    lead = inbound("first", "Oi")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("name", "Me chamo Edna")
+    inbound("phone", "Meu WhatsApp é (47) 99888-7777")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload).to have_attributes(client_name: "Edna", phone: "5547998887777")
+    expect(lead).not_to be_instagram_capture_pending
+    expect(Instagram::Reply).not_to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_PHONE_PROMPT, admin_user: nil, typing: true)
+  end
+
+  it "respeita a opção de continuar no Instagram sem telefone e não reprocessa a recusa" do
+    settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
+    lead = inbound("first", "Oi")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("skip", "Prefiro continuar por aqui")
+    2.times { described_class.perform_now(tenant.id, lead.id) }
+    expect(lead.reload.client_name).to be_blank
+    expect(lead.phone).to be_blank
+    expect(lead).not_to be_instagram_capture_pending
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Claro, podemos continuar pelo Instagram.", admin_user: nil, typing: true).once
+  end
+
+  it "não perde a resposta que chega durante o envio da pergunta" do
+    settings.save(campaign_id: "default", enabled: true, name_prompt: "", phone_prompt: "")
+    lead = inbound("first", "Oi")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("name", "Edna")
+    # Timestamp do cliente pode anteceder a confirmação de envio da pergunta.
+    lead.instagram_messages.inbound.order(:id).last.update!(occurred_at: 2.seconds.ago)
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.client_name).to eq("Edna")
+  end
+
+  it "não pede novamente os dados já fornecidos na primeira mensagem" do
+    settings.save(campaign_id: "default", enabled: true, name_prompt: "", phone_prompt: "")
+    lead = inbound("first", "Me chamo Edna, meu WhatsApp é (47) 99888-7777")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload).to have_attributes(client_name: "Edna", name: "Edna", phone: "5547998887777")
+    expect(lead).not_to be_instagram_capture_pending
+    expect(Instagram::Reply).not_to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_NAME_PROMPT, admin_user: nil, typing: true)
+  end
+
   it "retém até confirmar nome e telefone com DDD e libera uma única vez" do
     settings.save(campaign_id: "default", enabled: true, name_prompt: "Seu nome?", phone_prompt: "Seu telefone?")
     lead = inbound("first", "Quero saber mais")

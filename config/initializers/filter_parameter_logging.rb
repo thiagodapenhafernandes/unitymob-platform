@@ -4,7 +4,7 @@
 # Use this to limit dissemination of sensitive information.
 # See the ActiveSupport::ParameterFilter documentation for supported notations and behaviors.
 Rails.application.config.filter_parameters += [
-  :oauth_handoff, :oauth_ticket, :nonce,
+  :oauth_handoff, :oauth_ticket, :nonce, :ig_ref, :instagram_reference,
   :reporting_credentials,
   :proprietario, :captador, :imovel,
   /\A(?:code|auth_code)\z/,

@@ -1,7 +1,7 @@
 module Instagram
   class CaptureSettings
-    DEFAULT_NAME_PROMPT = "Olá! Como posso chamar você?".freeze
-    DEFAULT_PHONE_PROMPT = "Qual é o seu telefone com DDD para nossa equipe continuar o atendimento?".freeze
+    DEFAULT_NAME_PROMPT = "Olá! Vou te ajudar com o imóvel 😊 Como posso te chamar?".freeze
+    DEFAULT_PHONE_PROMPT = "Qual é o seu WhatsApp com DDD? Se preferir, podemos continuar por aqui.".freeze
 
     DEFAULT_EMAIL_PROMPT = "Se quiser, informe seu e-mail ou responda Pular.".freeze
 
@@ -35,9 +35,14 @@ module Instagram
     end
 
     def self.prompts(rule)
+      name = rule["name_prompt"].presence
+      phone = rule["phone_prompt"].presence
+      # Atualiza apenas os antigos padrões; textos personalizados da conta são preservados.
+      name = nil if name == "Olá! Como posso chamar você?"
+      phone = nil if phone == "Qual é o seu telefone com DDD para nossa equipe continuar o atendimento?"
       {
-        "name_prompt" => rule["name_prompt"].presence || DEFAULT_NAME_PROMPT,
-        "phone_prompt" => rule["phone_prompt"].presence || DEFAULT_PHONE_PROMPT,
+        "name_prompt" => name || DEFAULT_NAME_PROMPT,
+        "phone_prompt" => phone || DEFAULT_PHONE_PROMPT,
         "email_prompt" => rule["email_prompt"].presence || DEFAULT_EMAIL_PROMPT,
         "thank_you_prompt" => rule["thank_you_prompt"].presence || DEFAULT_THANK_YOU
       }

@@ -20,7 +20,7 @@ RSpec.describe Instagram::ProfileEnrichmentJob do
   it "completa o perfil genérico preservando o restante do cadastro" do
     lead.update_columns(email: "cliente@example.com", other_information: { "instagram_entry" => { "story_id" => "123" } })
     described_class.perform_now(tenant.id, lead.id)
-    expect(lead.reload).to have_attributes(name: "Nome da Meta", instagram_username: "perfil.teste", email: "cliente@example.com")
+    expect(lead.reload).to have_attributes(name: "@perfil.teste", instagram_username: "perfil.teste", email: "cliente@example.com")
     expect(lead.other_information.dig("instagram_entry", "story_id")).to eq("123")
   end
 

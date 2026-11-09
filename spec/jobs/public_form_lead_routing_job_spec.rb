@@ -20,6 +20,23 @@ RSpec.describe PublicFormLeadRoutingJob do
     form.submissions.create!(payload: payload, source: { "page_url" => "https://site.example.com/" })
   end
 
+  it "vincula formulário originado no Direct ao contato original mesmo sem regra própria" do
+    tenant = Tenant.default
+    allow_any_instance_of(Tenant).to receive(:public_base_url).and_return("https://site.example.com")
+    original = create(:lead, tenant: tenant, name: "@edna", phone: nil, email: nil,
+      instagram_account_id: "12345", instagram_scoped_id: "98765", skip_automatic_routing: true)
+    property = create(:habitation, tenant: tenant)
+    form = build_form(tenant)
+    submission = build_submission(form)
+    submission.update!(source: {"instagram_reference" => Instagram::PropertyJourney.reference(original),
+      "page_url" => "https://site.example.com/imoveis/#{property.slug}"})
+    expect { described_class.perform_now(submission.id) }.not_to change(Lead, :count)
+    expect(submission.reload.lead_id).to eq(original.id)
+    expect(original.reload.client_name).to eq("Maria Cliente")
+    expect(original.property_interests.pluck(:habitation_id)).to eq([property.id])
+    expect { described_class.perform_now(submission.id) }.not_to change { original.activities.count }
+  end
+
   it "cria o lead e distribui pela regra do formulário uma única vez" do
     tenant = Tenant.default
     agent = create(:admin_user, :field_agent)
