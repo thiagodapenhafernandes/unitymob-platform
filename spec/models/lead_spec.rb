@@ -158,7 +158,7 @@ RSpec.describe Lead, type: :model do
       create(:lead, origin: "Google Ads")
       create(:lead, origin: "Site")
 
-      expect(described_class.origin_options).to eq(["Google Ads", "Instagram", "Placa", "Site", "Vitrine"])
+      expect(described_class.origin_options).to eq(["Google Ads", "Indicação", "Instagram", "Placa", "Site", "Vitrine"])
     end
 
     it "respeita o scope informado para origens gravadas" do

@@ -57,7 +57,7 @@ RSpec.describe "Admin lead creation", type: :request do
     tenant.leads.order(:id).last
   end
 
-  %w[Placa Vitrine].each do |origin|
+  %w[Placa Vitrine Indicação].each do |origin|
     it "oferece e salva a origem #{origin} no cadastro manual" do
       user = create(:admin_user, profile: build_profile(leads_permissions(create: true, scope: "own"), position: 799))
       sign_in user
