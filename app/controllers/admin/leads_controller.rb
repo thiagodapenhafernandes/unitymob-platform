@@ -25,9 +25,15 @@ class Admin::LeadsController < Admin::BaseController
     "Canal/Fonte",
     "Usuário responsável atual",
     "Lead atendido pelo bolsão?",
-    "Título do imóvel"
+    "Título do imóvel",
+    "Data de entrada original",
+    "Recebido pelo corretor atual em",
+    "Primeiro atendimento do corretor atual",
+    "Visitas realizadas no período",
+    "Origem",
+    "Canal"
   ].freeze
-  REPORT_XLSX_COLUMN_WIDTHS = [22.55, 20, 17.89, 12, 18, 11, 30].freeze
+  REPORT_XLSX_COLUMN_WIDTHS = [22.55, 20, 17.89, 12, 18, 11, 30, 22, 25, 28, 20, 20, 20].freeze
   EXTERNAL_SCHEDULE_KIND = "external_scheduled_action".freeze
   EXTERNAL_SCHEDULE_DATE_SQL = <<~SQL.squish.freeze
     NULLIF(COALESCE(
@@ -1449,6 +1455,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def commercial_report_csv(scope, include_captacoes:)
     leads = lead_entry_period.load_dates(scope.reorder(nil).includes(:admin_user).to_a)
+    load_commercial_report_facts(leads)
     property_ids = leads.map(&:property_id).compact.uniq
     properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
 
@@ -1467,7 +1474,7 @@ class Admin::LeadsController < Admin::BaseController
           last_attempt = lead.activities.unsuccessful_contact_attempts.recent.first
           csv << [
             "Lead",
-            report_datetime(lead.entry_received_at),
+            report_datetime(lead.created_at),
             lead.display_name,
             lead.display_phone,
             lead.display_email,
@@ -1478,7 +1485,12 @@ class Admin::LeadsController < Admin::BaseController
             report_datetime(last_attempt&.created_at),
             commercial_report_archive_reason(lead),
             property&.display_title || lead.product,
-            report_property_city(property, lead:)
+            report_property_city(property, lead:),
+            report_datetime(@commercial_report_facts.fetch(lead.id)[:received_at]),
+            report_datetime(@commercial_report_facts.fetch(lead.id)[:first_attended_at]),
+            @commercial_report_facts.fetch(lead.id)[:visits],
+            commercial_report_pool_attendance_label(lead),
+            *commercial_report_origin_channels(lead)
           ]
         end
         csv << []
@@ -1490,9 +1502,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def commercial_report_xlsx(scope, include_captacoes:)
     leads = lead_entry_period.load_dates(scope.reorder(nil).includes(:admin_user).to_a)
-    @commercial_report_pool_lead_ids = Dashboard::LeadPerformancePeriodQuery.new(
-      scope: scope, starts_at: nil, ends_at: nil
-    ).pool_acceptances.distinct.pluck(:lead_id).to_set
+    load_commercial_report_facts(leads)
     property_ids = leads.map(&:property_id).compact.uniq
     properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     rows = commercial_report_xlsx_rows(scope, leads, properties_by_id)
@@ -1517,7 +1527,7 @@ class Admin::LeadsController < Admin::BaseController
             captacao.admin_user&.name || captacao.corretor_nome || "Sem corretor",
             "Não",
             captacao.display_title
-          ]
+          ] + Array.new(6)
         }
       end
     end
@@ -1579,12 +1589,17 @@ class Admin::LeadsController < Admin::BaseController
       commercial_report_source_label(lead),
       lead.admin_user&.name || "Sem corretor",
       commercial_report_pool_attendance_label(lead),
-      property&.display_title || lead.product
+      property&.display_title || lead.product,
+      report_datetime(lead.created_at),
+      report_datetime(@commercial_report_facts.fetch(lead.id)[:received_at]),
+      report_datetime(@commercial_report_facts.fetch(lead.id)[:first_attended_at]),
+      @commercial_report_facts.fetch(lead.id)[:visits],
+      *commercial_report_origin_channels(lead)
     ]
   end
 
   def commercial_report_pool_attendance_label(lead)
-    return "Sim" if @commercial_report_pool_lead_ids.include?(lead.id)
+    return "Sim" if @commercial_report_facts.fetch(lead.id)[:pool]
 
     values = [
       lead.attribution_data.is_a?(Hash) ? lead.attribution_data["from_hierarchy_company"] : nil,
@@ -1599,7 +1614,7 @@ class Admin::LeadsController < Admin::BaseController
     <<~XML
       <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-        <dimension ref="A1:G#{rows.size}"/>
+        <dimension ref="A1:#{xlsx_column_name(REPORT_XLSX_HEADERS.size)}#{rows.size}"/>
         <sheetViews><sheetView workbookViewId="0"/></sheetViews>
         <sheetFormatPr defaultRowHeight="15"/>
         <cols>
@@ -1608,7 +1623,7 @@ class Admin::LeadsController < Admin::BaseController
         <sheetData>
           #{rows.each_with_index.map { |row, index| xlsx_row_xml(index + 1, row) }.join}
         </sheetData>
-        <mergeCells count="1"><mergeCell ref="A2:G3"/></mergeCells>
+        <mergeCells count="1"><mergeCell ref="A2:#{xlsx_column_name(REPORT_XLSX_HEADERS.size)}3"/></mergeCells>
         <pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
       </worksheet>
     XML
@@ -1627,6 +1642,7 @@ class Admin::LeadsController < Admin::BaseController
   def xlsx_cell_xml(row_index, column_index, value, style_id)
     reference = "#{xlsx_column_name(column_index)}#{row_index}"
     return %(<c r="#{reference}" s="#{style_id}"/>) if value.blank?
+    return %(<c r="#{reference}" s="#{style_id}"><v>#{value}</v></c>) if value.is_a?(Integer)
 
     %(<c r="#{reference}" s="#{style_id}" t="inlineStr"><is><t>#{CGI.escapeHTML(value.to_s)}</t></is></c>)
   end
@@ -1779,7 +1795,7 @@ class Admin::LeadsController < Admin::BaseController
   def commercial_report_headers
     [
       "Tipo",
-      "Data de entrada",
+      "Data de entrada original",
       "Cliente",
       "Telefone",
       "E-mail",
@@ -1790,7 +1806,13 @@ class Admin::LeadsController < Admin::BaseController
       "Última tentativa",
       "Motivo de arquivamento",
       "Imóvel/Captação",
-      "Cidade"
+      "Cidade",
+      "Recebido pelo corretor atual em",
+      "Primeiro atendimento do corretor atual",
+      "Visitas realizadas no período",
+      "Lead atendido pelo bolsão?",
+      "Origem",
+      "Canal"
     ]
   end
 
@@ -1833,7 +1855,7 @@ class Admin::LeadsController < Admin::BaseController
       nil,
       captacao.display_title,
       captacao.cidade
-    ]
+    ] + Array.new(6)
   end
 
   def commercial_report_property_count_rows
@@ -1907,6 +1929,18 @@ class Admin::LeadsController < Admin::BaseController
 
   def report_datetime(value)
     value.present? ? I18n.l(value.in_time_zone, format: "%d/%m/%Y %H:%M") : nil
+  end
+
+  def load_commercial_report_facts(leads)
+    @commercial_report_facts = Leads::CommercialReportFactsQuery.new(
+      tenant: current_tenant, leads: leads,
+      starts_at: parsed_start_date&.beginning_of_day, ends_at: parsed_end_date&.end_of_day
+    ).call
+  end
+
+  def commercial_report_origin_channels(lead)
+    summary = helpers.lead_conversion_summary(lead, include_whatsapp_campaign: false)
+    [summary[:origin].presence || lead.origin, summary[:channel_label].presence || lead.attribution_channel]
   end
 
   def commercial_report_source_label(lead)

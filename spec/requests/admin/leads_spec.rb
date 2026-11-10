@@ -1656,6 +1656,43 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads/report" do
+    it "exporta três datas, visitas realizadas, origem, canal e bolsão em CSV e Excel" do
+      travel_to Time.zone.local(2026, 11, 9, 12) do
+        original = Time.zone.local(2026, 10, 1, 10)
+        received = Time.zone.local(2026, 11, 3, 9)
+        attended = Time.zone.local(2026, 11, 3, 10)
+        lead = create(:lead, tenant: admin.tenant, admin_user: nil, name: "Datas semanais", origin: "Instagram Direct", created_at: original)
+        lead.update_columns(admin_user_id: admin.id)
+        lead.activities.create!(kind: "accepted", metadata: {shark_tank: true, admin_user_id: admin.id}, created_at: received)
+        lead.activities.create!(kind: "note", metadata: {contact_kind: "ligacao", admin_user_id: admin.id}, created_at: attended)
+        create(:appointment, tenant: admin.tenant, lead: lead, admin_user: admin, kind: "visita", status: "realizado", starts_at: Time.zone.local(2026, 11, 4, 14))
+        create(:appointment, tenant: admin.tenant, lead: lead, admin_user: admin, kind: "visita", status: "agendado", starts_at: Time.zone.local(2026, 11, 5, 14))
+        filters = {start_date: "2026-11-02", end_date: "2026-11-08"}
+        get report_admin_leads_path(filters.merge(format: :csv))
+        rows = CSV.parse(response.body, col_sep: ";")
+        headers = rows.find { |row| row.first == "Tipo" }
+        row = rows.find { |value| value[2] == lead.name }
+        expect(row[1]).to eq("01/10/2026 10:00")
+        expect(row[headers.index("Recebido pelo corretor atual em")]).to eq("03/11/2026 09:00")
+        expect(row[headers.index("Primeiro atendimento do corretor atual")]).to eq("03/11/2026 10:00")
+        expect(row[headers.index("Visitas realizadas no período")]).to eq("1")
+        expect(row[headers.index("Lead atendido pelo bolsão?")]).to eq("Sim")
+        expect(row[headers.index("Origem")]).to be_present
+        expect(row[headers.index("Canal")]).to be_present
+        get report_admin_leads_path(filters.merge(format: :xlsx))
+        xml = response.body.b[/<worksheet .*?<\/worksheet>/mn].force_encoding("UTF-8")
+        sheet_rows = Nokogiri::XML(xml).remove_namespaces!.css("sheetData row").map { |value| value.css("c").map(&:text) }
+        cells = sheet_rows.find { |value| value.first == lead.name }
+        expect(cells[7..10]).to eq(["01/10/2026 10:00", "03/11/2026 09:00", "03/11/2026 10:00", "1"])
+        expect(cells[5]).to eq("Sim")
+        numeric_visits = Nokogiri::XML(xml).remove_namespaces!.css("sheetData row").find { |value| value.css("c").first&.text == lead.name }.css("c")[10]
+        expect(numeric_visits.at_css("v").text).to eq("1")
+        expect(numeric_visits["t"]).to be_nil
+        expect(lead.reload.created_at).to eq(original)
+        expect(lead.origin).to eq("Instagram Direct")
+      end
+    end
+
     it "inclui capturas de leads antigos no período em CSV e Excel sem alterar a listagem" do
       travel_to Time.zone.local(2026, 11, 2, 12) do
         old = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Antigo capturado na semana", status: "Em Atendimento", created_at: 1.year.ago)
@@ -1959,7 +1996,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body.b).to start_with("PK".b)
       body = response.body.dup.force_encoding(Encoding::UTF_8)
       expect(body).to include("xl/worksheets/sheet1.xml")
-      expect(body).to include("A2:G3")
+      expect(body).to include("A2:M3")
       expect(body).to include("RELATÓRIO LEADS")
       expect(body).to include("Nome do cliente")
       expect(body).to include("Cliente Excel")

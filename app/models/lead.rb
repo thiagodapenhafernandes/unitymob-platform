@@ -511,7 +511,7 @@ class Lead < ApplicationRecord
       .distinct
       .pluck(:origin)
 
-    (catalog_options + recorded_origins + %w[Placa Vitrine])
+    (catalog_options + recorded_origins + %w[Placa Vitrine Indicação])
       .map { |origin| origin.to_s.strip }
       .reject(&:blank?)
       .uniq
