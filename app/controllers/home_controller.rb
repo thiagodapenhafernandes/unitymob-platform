@@ -69,8 +69,8 @@ class HomeController < ApplicationController
   def sobre
     load_public_identity
     @page_name = 'sobre'
-    @page_title = "Sobre Nós | #{@public_identity.name}"
-    @page_description = "Conheça a #{@public_identity.name}, sua imobiliária de confiança."
+    @page_title = "Sobre a #{@public_identity.name}#{" | Imobiliária em #{@public_identity.primary_city}" if @public_identity.primary_city.present?}"
+    @page_description = "Conheça a #{@public_identity.name}#{" em #{@public_identity.primary_city}" if @public_identity.primary_city.present?}. Explore imóveis por cidade e bairro e fale com nossa equipe sobre compra, venda e locação."
   end
   
   def contato

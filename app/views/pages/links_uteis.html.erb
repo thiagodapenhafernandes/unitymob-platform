@@ -1,32 +1,16 @@
-<!-- Links Úteis - Modern Design -->
-
-<!-- Hero -->
-<section class="relative h-[400px] flex items-center justify-center bg-cover bg-center" 
-         style="background-image: linear-gradient(rgba(30, 64, 175, 0.8), rgba(30, 64, 175, 0.8)), url('<%= asset_path 'hero_05.jpeg' %>');">
-  <div class="container-custom relative z-10 text-center text-white">
-    <h1 class="text-4xl lg:text-5xl font-bold mb-4" data-aos="fade-up">Links Úteis</h1>
-    <p class="text-xl" data-aos="fade-up" data-aos-delay="100">Recursos importantes para você</p>
-  </div>
-</section>
-
-<!-- Links Grid -->
-<section class="py-16 bg-gray-50">
+<%= render "public_theme/components/institutional_head", eyebrow: "Orientação", title: "Links úteis para sua jornada imobiliária", lead: "Recursos selecionados pela #{@public_identity.name} para consultar informações antes de comprar, vender ou alugar um imóvel." %>
+<section class="public-theme-institutional public-theme-institutional--<%= theme_variant %>">
   <div class="container-custom">
-    <% if @useful_links.any? %>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <% @useful_links.each do |link| %>
-          <a href="<%= link[:url] %>" target="_blank" rel="noopener" class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
-            <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
-              <i class="bi bi-<%= link[:icon] %> text-3xl text-blue-three"></i>
-            </div>
-            <h3 class="text-xl font-bold text-blue-three mb-2"><%= link[:label] %></h3>
-            <% if link[:description].present? %><p class="text-gray-600 mb-4"><%= link[:description] %></p><% end %>
-            <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
-          </a>
-        <% end %>
-      </div>
-    <% else %>
-      <div class="bg-white rounded-xl p-8 text-center text-gray-600 shadow-sm">Nenhum link útil publicado por esta imobiliária.</div>
-    <% end %>
+    <h2>Informação para preparar sua negociação</h2>
+    <p>Use os canais abaixo para consultar os serviços e as informações indicados em cada descrição. Confira a origem das informações e converse com nossa equipe sobre os documentos e procedimentos aplicáveis ao imóvel de seu interesse.</p>
+    <div class="public-theme-institutional__grid">
+      <% @useful_links.each do |link| %>
+        <article class="public-theme-institutional__panel">
+          <h3><%= link[:label] %></h3>
+          <% if link[:description].present? %><p><%= link[:description] %></p><% end %>
+          <%= link_to "Acessar #{link[:label]} (nova aba)", link[:url], target: "_blank", rel: "noopener", class: "public-theme-institutional__link" %>
+        </article>
+      <% end %>
+    </div>
   </div>
 </section>

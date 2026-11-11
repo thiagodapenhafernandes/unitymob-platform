@@ -3,6 +3,8 @@ class PagesController < ApplicationController
 
   def trabalhe_conosco
     @page_name = 'trabalhe_conosco'
+    @page_title = "Trabalhe conosco | #{@public_identity.name}"
+    @page_description = "Apresente seu perfil à #{@public_identity.name} e converse sobre oportunidades no mercado imobiliário#{" de #{@public_identity.primary_city}" if @public_identity.primary_city.present?}."
     @work_with_us_form = public_tenant.public_forms.active.find_by(slug: PublicForm::DEFAULT_WORK_WITH_US_SLUG) if PublicForm.table_exists?
     # Página "Trabalhe Conosco" / "Seja um Corretor Parceiro"
   end
@@ -58,6 +60,8 @@ class PagesController < ApplicationController
   end
 
   def links_uteis
+    @page_title = "Links úteis | #{@public_identity.name}"
+    @page_description = "Consulte os recursos selecionados pela #{@public_identity.name} para preparar a compra, venda ou locação de um imóvel."
     @useful_links = PublicSiteProfile.current(tenant: public_tenant).useful_link_options
     # Página vazia não se sustenta: volta para a home (302, pode ganhar links depois).
     redirect_to root_path if @useful_links.empty?

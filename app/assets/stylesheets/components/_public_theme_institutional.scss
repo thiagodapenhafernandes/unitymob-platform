@@ -1,0 +1,25 @@
+// Estrutura compartilhada; aparência definida por variante abaixo.
+.public-theme-institutional { padding: clamp(2.5rem, 6vw, 5rem) 0; }
+.public-theme-institutional__intro { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: clamp(2rem, 5vw, 5rem); align-items: start; }
+.public-theme-institutional__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 2rem; }
+.public-theme-institutional__section { margin-top: 4rem; }
+.public-theme-institutional__panel { padding: 2rem; }
+.public-theme-institutional__link { display: block; padding: 1rem 0; text-decoration: underline; text-underline-offset: .3em; }
+.public-theme-institutional p { max-width: 75ch; line-height: 1.85; margin: 1rem 0 1.5rem; }
+.public-theme-institutional h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.25; margin-bottom: 1.5rem; }
+.public-theme-institutional h3 { font-size: 1.25rem; margin-bottom: 1rem; }
+.public-theme-institutional--default { background: #fff; color: #334155; }
+.public-theme-institutional--default h2,
+.public-theme-institutional--default h3,
+.public-theme-institutional--default .public-theme-institutional__link { color: var(--color-primary, #022b3a); }
+.public-theme-institutional--default .public-theme-institutional__panel { background: #f8fafc; border-top: 3px solid var(--color-accent, #a47b42); }
+.public-theme-institutional a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+@media (max-width: 767px) { .public-theme-institutional__intro { grid-template-columns: 1fr; } }
+
+.public-theme-institutional-page--default .public-theme-institutional__surface { background: #fff; }
+.public-theme-institutional-page--default .public-theme-institutional__muted { background: #f8fafc; }
+.public-theme-institutional-page--default .public-theme-institutional__heading { color: var(--color-primary, #022b3a); }
+.public-theme-institutional-page--default .public-theme-institutional__accent { color: var(--color-accent, #a47b42); }
+.public-theme-institutional-page--default .public-theme-institutional__dark { background: var(--color-primary, #022b3a); }
+.public-theme-institutional-page--default .public-theme-institutional__button { background: var(--color-primary, #022b3a); }
+.public-theme-institutional-page--default .public-theme-institutional__button.public-theme-institutional__heading { color: #fff; }

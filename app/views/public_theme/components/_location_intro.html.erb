@@ -1,0 +1,21 @@
+<% selected = Array(params[:city]).reject(&:blank?) %>
+<% if selected.one? %>
+  <% city = public_tenant.habitations.public_city_link_groups(cities: 100, neighborhoods: 6).find { |group| group[:value] == selected.first } %>
+  <% if city %>
+    <section class="public-theme-institutional public-theme-institutional--<%= theme_variant %>">
+      <h2>Encontre seu imóvel em <%= city[:label] %></h2>
+      <p>A <%= Tenants::PublicIdentity.new(public_tenant).name %> reúne opções de imóveis em <%= city[:label] %> para você comparar localização, área, dormitórios e condições de negociação. Use os filtros para explorar apartamentos, casas e outras categorias disponíveis no catálogo.</p>
+      <p>Antes de escolher um imóvel em <%= city[:label] %>, considere os deslocamentos da sua rotina, os serviços do bairro e os custos de condomínio e manutenção. Para comprar, confirme a documentação e as condições da proposta; para alugar, confira os encargos e as garantias exigidas. Nossa equipe pode esclarecer os anúncios e orientar o agendamento de visitas.</p>
+      <% if city[:neighborhoods].any? %>
+        <h3>Bairros com imóveis em <%= city[:label] %></h3>
+        <p>Consulte os anúncios em <%= city[:neighborhoods].map { |neighborhood| neighborhood[:label] }.to_sentence %>. Compare os endereços e os imóveis de cada bairro para encontrar uma opção alinhada à sua rotina.</p>
+        <ul>
+          <% city[:neighborhoods].each do |neighborhood| %>
+            <li><%= link_to "Imóveis em #{neighborhood[:label]}, #{city[:label]}", habitations_path(city: [neighborhood[:value]], v: "2"), class: "public-theme-institutional__link" %></li>
+          <% end %>
+        </ul>
+      <% end %>
+      <%= link_to "Converse sobre imóveis em #{city[:label]}", contato_path, class: "public-theme-institutional__link" %>
+    </section>
+  <% end %>
+<% end %>

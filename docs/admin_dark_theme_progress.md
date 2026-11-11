@@ -89,6 +89,7 @@ Legenda:
 
 | Componente | Contrato principal | Camada CSS | Protegido | Visual registrado | Próximo gate |
 | --- | --- | --- | --- | --- | --- |
+| Atividades | `activity_card.css` | Sim | Sim | Cards de agenda e tarefas usam tokens compartilhados; sem homologação visual completa | Dark/light + tarefas pendentes/concluídas + agenda + histórico expandido |
 | Alertas | `alert.css` | Sim | Sim | Resumo de validação adotado em mais de 30 formulários; anúncio assertivo, foco, conteúdo longo, danger/warning e compacto protegidos, sem homologação após o refinamento | Dark/light + danger/warning + foco + conteúdo longo + compacto |
 | Agenda/compromissos | `appointment_card.css` | Sim | Sim | Contrato automatizado para status visível, botões por ícone acessíveis, hover/foco, dark e movimento reduzido; sem homologação após o refinamento | Dark/light + agendado/realizado/cancelado + hover/foco + compacto |
 | Aside/inspector contextual | `aside_panel.css` | Sim | Sim | Evidências anteriores em filtros/editores | Dark/light + recolher/expandir + foco + compacto |

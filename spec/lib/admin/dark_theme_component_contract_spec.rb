@@ -2,6 +2,7 @@ require "spec_helper"
 
 RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   COMPONENT_ROOT_SELECTORS = {
+    "activity_card" => "ax-activity-card",
     "admin_user_form" => "au-form",
     "alert" => "ax-alert",
     "appointment_card" => "ax-appointment-card",

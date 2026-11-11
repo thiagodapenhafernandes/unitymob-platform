@@ -5746,3 +5746,17 @@ body.no-scroll { overflow: hidden; }
   .sl-detail .public-theme-property-contact-box--daily .public-habitations-show__price-card,
   .sl-detail .public-theme-property-contact-box--daily .public-theme-property-contact-box__actions { display: block; }
 }
+
+/* Páginas institucionais: mesma estrutura, identidade luxury. */
+.public-theme-institutional--salute-luxury { background: var(--sl-paper, #f7f4ee); color: var(--sl-ink, #12202f); font-family: var(--sl-sans); }
+.public-theme-institutional--salute-luxury h2,
+.public-theme-institutional--salute-luxury h3 { font-family: var(--sl-serif); color: inherit; }
+.public-theme-institutional--salute-luxury .public-theme-institutional__panel { border: 1px solid currentColor; }
+.public-theme-institutional--salute-luxury .public-theme-institutional__link { color: var(--color-accent, #c9a96e); }
+.public-theme-institutional-page--salute-luxury .public-theme-institutional__surface { background: #fff; }
+.public-theme-institutional-page--salute-luxury .public-theme-institutional__muted { background: var(--sl-paper); }
+.public-theme-institutional-page--salute-luxury .public-theme-institutional__heading { color: var(--sl-ink); font-family: var(--sl-serif); }
+.public-theme-institutional-page--salute-luxury .public-theme-institutional__accent { color: var(--sl-gold); }
+.public-theme-institutional-page--salute-luxury .public-theme-institutional__dark { background: var(--sl-navy-900); }
+.public-theme-institutional-page--salute-luxury .public-theme-institutional__button { background: var(--sl-navy-900); }
+.public-theme-institutional-page--salute-luxury .public-theme-institutional__button.public-theme-institutional__heading { color: #fff; }
