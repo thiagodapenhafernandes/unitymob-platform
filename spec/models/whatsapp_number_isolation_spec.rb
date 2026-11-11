@@ -25,6 +25,18 @@ RSpec.describe WhatsappConversation do
     expect(described_class.contact_scope(tenant: tenant, sender_number: notifications).find_by(contact_phone: conversation.contact_phone)).to eq(conversation)
   end
 
+  it "não libera número dedicado mesmo com histórico administrativo encerrado" do
+    owner = create(:admin_user, :admin, tenant: tenant)
+    lead = create(:lead, tenant: tenant, admin_user: owner)
+    conversation = described_class.contact_scope(tenant: tenant, sender_number: notifications).create!(
+      lead: lead, contact_phone: "5547999998888", assigned_admin_user: owner)
+    conversation.attendances.create!(tenant: tenant, lead: lead, admin_user: owner,
+      status: "closed", opened_at: 1.day.ago, closed_at: 1.hour.ago)
+
+    expect(conversation.administrative_inbox?).to be(false)
+    expect(tenant.whatsapp_conversations.administrative_inbox).not_to include(conversation)
+  end
+
   it "não usa outro remetente nem gera alerta administrativo para número dedicado" do
     conversation = described_class.contact_scope(tenant: tenant, sender_number: notifications).create!(
       contact_phone: "5547999997777", assigned_admin_user: create(:admin_user, tenant: tenant))

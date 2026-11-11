@@ -41,6 +41,11 @@ class WhatsappAttendance < ApplicationRecord
   def open? = status == "open"
   def closed? = status == "closed"
 
+  def administrative?
+    distribution_rule_id.nil? && admin_user.present? &&
+      (admin_user.horizontal_profile_id.present? || admin_user.profile&.horizontal? || admin_user.profile&.key == "tenant_owner")
+  end
+
   def close_reason_label
     label = CLOSE_REASONS.fetch(close_reason.to_s, "Encerrado")
     close_reason == "finished" && closed_by ? "#{label} por #{closed_by.name}" : label
