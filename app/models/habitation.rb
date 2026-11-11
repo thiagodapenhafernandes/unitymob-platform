@@ -387,6 +387,12 @@ class Habitation < ApplicationRecord
     REGISTRATION_CATEGORY_ALIASES.fetch(key, raw)
   end
 
+  def self.registration_category(value)
+    return unless value.is_a?(String) && value.bytesize <= 255
+
+    CATEGORIES.find { |name| name.parameterize == value.tr("_", "-").parameterize }
+  end
+
   def self.highest_numeric_codigo
     where(NUMERIC_CODIGO_SQL).maximum("codigo::bigint").to_i
   end

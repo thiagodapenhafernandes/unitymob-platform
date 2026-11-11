@@ -243,6 +243,24 @@ module Habitation::CategoryDetails
     end
   end
 
+  def available_checklist_options(category, catalog:)
+    selected = category == "feature" ? property_features_for_display : leisure_features_for_display
+    standard = category_checklist_options(category)
+    unless standard.nil?
+      normalizer = AttributeOptions::HabitationFeatureNormalizer
+      known = category_known_checklist_options + normalizer::FEATURE_LABELS.values + normalizer::INFRASTRUCTURE_LABELS.values
+      custom = normalizer.normalize_list(catalog, category: category) - normalizer.normalize_list(known, category: category)
+      return (standard + custom + selected).compact_blank.uniq.sort_by { |value| I18n.transliterate(value.to_s).downcase }
+    end
+    standard = category == "feature" ? standard_feature_options : standard_infrastructure_options
+    known_labels = AttributeOptions::HabitationFeatureNormalizer::INFRASTRUCTURE_LABELS.values +
+      self.class::CORPORATE_FEATURE_OPTIONS + self.class::CORPORATE_INFRASTRUCTURE_OPTIONS +
+      self.class::COMMERCIAL_FEATURE_OPTIONS + self.class::COMMERCIAL_INFRASTRUCTURE_OPTIONS +
+      self.class::LAND_FEATURE_OPTIONS + self.class::LAND_INFRASTRUCTURE_OPTIONS
+    options = standard.present? && registration_group != "imoveis_residenciais" ? standard + (Array(catalog) - known_labels) : standard + Array(catalog)
+    AttributeOptions::HabitationFeatureNormalizer.normalize_list(options + selected, category: category).sort_by { |value| I18n.transliterate(value.to_s).downcase }
+  end
+
   def category_known_checklist_options
     INTERNAL_EQUIPMENT_OPTIONS + [EV_CHARGING_OPTION] + WAREHOUSE_FEATURES + WAREHOUSE_INFRA + [OTHER_OPERATION, "Energia monofásica", "Energia bifásica", "Cobertura com previsão fotovoltaica"] + COMMERCIAL_FEATURES + LAND_FEATURES + LAND_INFRA +
       self.class::CORPORATE_FEATURE_OPTIONS + self.class::CORPORATE_INFRASTRUCTURE_OPTIONS +

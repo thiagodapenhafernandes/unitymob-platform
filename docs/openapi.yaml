@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: Unitymob API
-  version: 1.2.0
+  version: 1.3.0
   description: |
     Referência para integrações externas com a Unitymob.
 
@@ -128,13 +128,26 @@ paths:
       tags:
       - Captações
       summary: Consultar características internas e infraestrutura/lazer da conta
-      description: Retorna as opções atuais gerenciadas na conta identificada pelo token,
-        ordenadas por nome. Listas sem opções retornam arrays vazios. Não cria opções nem
-        inclui automaticamente sugestões fixas por categoria de imóvel. IDs pertencem
-        à conta e à categoria e permanecem iguais após renomeação. Consulte novamente
-        após inclusões, renomeações ou exclusões. Use somente no backend.
+      description: Sem categoria, retorna somente as opções cadastradas na conta,
+        preservando o comportamento anterior. Informe categoria para consultar o mesmo
+        checklist do cadastro no CRM, incluindo opções padrão residenciais, comerciais,
+        industriais e de terrenos e opções personalizadas da conta. Por exemplo,
+        categoria=galpao, categoria=sala_comercial ou categoria=terreno. Não altera o banco.
+        Opções cadastradas retornam seu ID real; opções padrão sem cadastro retornam
+        id=null e devem ser enviadas pelo nome na captação da mesma categoria. As listas
+        são ordenadas por nome. IDs pertencem à conta e ao tipo de lista, permanecendo
+        iguais após renomeação. Consulte novamente após alterações no Gerenciar.
+        Use somente no backend.
       security:
       - BearerAuth: []
+      parameters:
+      - in: query
+        name: categoria
+        required: false
+        description: Categoria do imóvel, usando os mesmos valores aceitos em imovel.categoria
+          na captação. Omitir consulta somente o catálogo cadastrado da conta.
+        schema:
+          "$ref": "#/components/schemas/Imovel/properties/categoria"
       responses:
         '200':
           description: Catálogo atual da conta, sem dados de outras contas.
@@ -161,6 +174,12 @@ paths:
                   nome: Piscina
         '401':
           description: Credencial ausente, inválida, revogada ou de conta inativa.
+        '422':
+          description: Categoria vazia, desconhecida ou com formato inválido.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Erro"
   "/api/v1/properties/search":
     get:
       operationId: consultarImoveisPorEndereco
@@ -313,7 +332,9 @@ components:
         id:
           type: integer
           format: int64
-          description: ID real da opção nesta conta e categoria.
+          nullable: true
+          description: ID real da opção nesta conta e tipo de lista. Null identifica
+            uma opção padrão sem cadastro; nesse caso, envie nome na captação.
         nome:
           type: string
     ListaCaracteristicas:
@@ -321,7 +342,9 @@ components:
       description: Opcional. Aceita IDs inteiros, strings numéricas ou nomes do catálogo
         GET /api/v1/property_features, inclusive misturados. Nomes ignoram maiúsculas
         e acentos; guarda o nome atual e elimina repetições. Prefira IDs para suportar
-        renomeações. Array vazio é válido; null, itens inválidos e opções desconhecidas,
+        renomeações nas opções cadastradas. Para opções padrão com id=null, envie o nome
+        retornado pela consulta com a mesma categoria do imóvel. Array vazio é válido;
+        null, itens inválidos e opções desconhecidas,
         removidas, de outra conta ou categoria retornam 422 sem criar a captação.
         Não cria opções. Omitir mantém a compatibilidade com integrações anteriores.
       items:

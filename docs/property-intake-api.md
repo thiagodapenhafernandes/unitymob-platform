@@ -131,11 +131,34 @@ Resposta `200 OK` (IDs ilustrativos; consulte os IDs reais de cada conta):
 }
 ```
 
-Cada lista retorna apenas `id` e `nome`, ordenada por nome; sem opções cadastradas,
-retorna `[]`. Não retorna opções de outras contas ou de outras categorias.
+Sem parâmetros, cada lista retorna apenas as opções cadastradas na conta, com
+`id` e `nome`, ordenada por nome; sem opções cadastradas, retorna `[]`.
 Credencial ausente, inválida, revogada ou de conta inativa retorna `401`.
 A consulta reflete inclusões, renomeações e exclusões feitas no catálogo da conta.
-Não cria opções nem inclui automaticamente sugestões fixas de outras categorias de imóvel.
+
+Para consultar o checklist completo de um tipo de imóvel, incluindo as opções
+padrão do CRM e as personalizadas da conta, informe `categoria`:
+
+```http
+GET /api/v1/property_features?categoria=galpao
+GET /api/v1/property_features?categoria=sala_comercial
+GET /api/v1/property_features?categoria=terreno
+GET /api/v1/property_features?categoria=terreno_em_condominio
+GET /api/v1/property_features?categoria=apartamento
+```
+
+Use os mesmos valores de `imovel.categoria` da captação, listados na referência
+OpenAPI. Cada categoria usa o checklist do CRM; não há uma lista única misturando
+galpões, salas comerciais e terrenos. As opções personalizadas seguem as mesmas
+regras de exibição do cadastro. A consulta não cadastra opções nem altera imóveis.
+Categoria vazia, desconhecida, array ou objeto retorna `422`.
+
+Uma opção padrão pode não possuir registro no Gerenciar. Nesse caso retorna
+`id: null`, por exemplo `{ "id": null, "nome": "Rede de água" }` para terreno.
+Envie **o nome**, nunca `null`, na lista correspondente da captação. A API valida
+essas opções pela categoria de `imovel`; não aceita um nome padrão exclusivo de
+outro tipo de imóvel. Se a mesma opção estiver cadastrada na conta, retorna seu
+ID real. A consulta sem `categoria` mantém o formato e o conteúdo anteriores.
 
 No `POST /api/v1/property_intakes`, acrescente os campos opcionais:
 
@@ -156,9 +179,11 @@ O trecho acima complementa o exemplo completo; não substitui os demais campos
 obrigatórios. As duas listas aceitam IDs inteiros, IDs em strings numéricas ou
 nomes, inclusive misturados. Nomes são comparados sem distinguir maiúsculas e
 acentos; o cadastro guarda o nome atual da opção e elimina repetições.
-Prefira IDs, que permanecem iguais quando uma opção é renomeada. IDs são
+Para opções cadastradas, prefira IDs, que permanecem iguais quando uma opção é renomeada. IDs são
 específicos da conta e da categoria: não reutilize IDs de outro ambiente/conta.
-Consulte novamente o catálogo após alterações no Gerenciar.
+Consulte novamente o catálogo após alterações no Gerenciar. Para opções padrão
+sem ID, use o nome retornado por `GET /api/v1/property_features?categoria=...`,
+informando a mesma categoria no envio do imóvel.
 
 Listas omitidas preservam a compatibilidade com os envios anteriores; `[]` indica
 nenhuma opção. `null`, valores que não sejam listas, itens inválidos e opções

@@ -261,21 +261,7 @@ module Admin::HabitationsHelper
   end
 
   def habitation_feature_options(habitation, category:, catalog:)
-    selected = category == "feature" ? habitation.property_features_for_display : habitation.leisure_features_for_display
-    standard = habitation.category_checklist_options(category)
-    unless standard.nil?
-      normalizer = AttributeOptions::HabitationFeatureNormalizer
-      known = habitation.category_known_checklist_options + normalizer::FEATURE_LABELS.values + normalizer::INFRASTRUCTURE_LABELS.values
-      custom = normalizer.normalize_list(catalog, category: category) - normalizer.normalize_list(known, category: category)
-      return (standard + custom + selected).compact_blank.uniq.sort_by { |value| I18n.transliterate(value.to_s).downcase }
-    end
-    standard = category == "feature" ? habitation.standard_feature_options : habitation.standard_infrastructure_options
-    known_labels = AttributeOptions::HabitationFeatureNormalizer::INFRASTRUCTURE_LABELS.values +
-      Habitation::CORPORATE_FEATURE_OPTIONS + Habitation::CORPORATE_INFRASTRUCTURE_OPTIONS +
-      Habitation::COMMERCIAL_FEATURE_OPTIONS + Habitation::COMMERCIAL_INFRASTRUCTURE_OPTIONS +
-      Habitation::LAND_FEATURE_OPTIONS + Habitation::LAND_INFRASTRUCTURE_OPTIONS
-    options = standard.present? && habitation.registration_group != "imoveis_residenciais" ? standard + (Array(catalog) - known_labels) : standard + Array(catalog)
-    AttributeOptions::HabitationFeatureNormalizer.normalize_list(options + selected, category: category).sort_by { |value| I18n.transliterate(value.to_s).downcase }
+    habitation.available_checklist_options(category, catalog: catalog)
   end
 
   def habitation_category_checklist(habitation, kind, catalog)
