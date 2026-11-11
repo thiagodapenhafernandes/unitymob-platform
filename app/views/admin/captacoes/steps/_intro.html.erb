@@ -4,34 +4,21 @@
 </p>
 
 <%
-  cadastro_categories = {
-    "apartamentos" => ["Apartamento", "Cobertura", "Loft", "Studio"],
-    "comerciais_industriais" => ["Sala Comercial", "Loja", "Prédio Comercial", "Galpão", "Galpão Industrial", "Área", "Casa comercial", "Condomínio Industrial", "Ponto Comercial", "Salas/Conjuntos"],
-    "empreendimento" => ["Empreendimento"],
-    "imoveis_residenciais" => ["Casa", "Casa em Condomínio", "Sobrado", "Rural", "Condomínio", "Chácara", "Sítio"],
-    "terrenos" => ["Terreno", "Terreno em Condomínio", "Área", "Terreno Comercial", "Terreno Industrial"]
-  }
-  cadastro_type_labels = {
-    "apartamentos" => "Apartamentos",
-    "comerciais_industriais" => "Comerciais e industriais",
-    "empreendimento" => "Empreendimento",
-    "imoveis_residenciais" => "Imóveis residenciais",
-    "terrenos" => "Terrenos"
-  }
-  cadastro_type_icons = {
-    "apartamentos" => "bi-building-fill",
-    "comerciais_industriais" => "bi-shop",
-    "empreendimento" => "bi-buildings-fill",
-    "imoveis_residenciais" => "bi-house-door-fill",
-    "terrenos" => "bi-tree-fill"
-  }
-  inferred_cadastro_type = cadastro_categories.find { |_key, values| values.include?(@captacao.categoria) }&.first || "apartamentos"
+  cadastro_profiles = Habitation::REGISTRATION_PROFILES
+  cadastro_categories = cadastro_profiles.transform_values { |config| config.fetch(:categories) }
+  cadastro_type_labels = cadastro_profiles.transform_values { |config| config.fetch(:label) }
+  cadastro_type_icons = cadastro_profiles.transform_values { |config| config.fetch(:icon) }
+  inferred_cadastro_type = @captacao.registration_group
+  current_category = @captacao.categoria
+  if current_category.present?
+    cadastro_categories[inferred_cadastro_type] = (cadastro_categories.fetch(inferred_cadastro_type) + [current_category]).uniq
+  end
 %>
 
 <div class="wizard-start-grid"
      data-controller="habitation-form"
      data-habitation-form-categories-by-type-value="<%= json_escape(cadastro_categories.to_json) %>"
-     data-habitation-form-tipo-by-type-value="<%= json_escape({ apartamentos: "Unitário", comerciais_industriais: "Unitário", empreendimento: "Empreendimento", imoveis_residenciais: "Unitário", terrenos: "Unitário" }.to_json) %>">
+     data-habitation-form-tipo-by-type-value="<%= json_escape(cadastro_profiles.transform_values { |config| config.fetch(:tipo) }.to_json) %>">
   <div class="wizard-field-group">
     <label class="ax-label">Tipo de cadastro <span class="required-star">*</span></label>
     <div class="wizard-option-grid" data-controller="option-picker">

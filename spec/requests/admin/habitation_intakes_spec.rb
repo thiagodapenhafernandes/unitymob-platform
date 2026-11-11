@@ -51,6 +51,43 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     sign_in admin
   end
 
+  it "usa os mesmos grupos e categorias do cadastro direto na captação" do
+    Habitation::REGISTRATION_PROFILES.each do |group, config|
+      get new_admin_captacao_path, params: { habitation: { categoria: config[:categories].first, tipo: config[:tipo] } }
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      controller = document.at_css('[data-habitation-form-categories-by-type-value]')
+      expect(JSON.parse(controller['data-habitation-form-categories-by-type-value'])).to eq(
+        Habitation::REGISTRATION_PROFILES.transform_values { |profile| profile.fetch(:categories) }
+      )
+      expect(document.css('input[name="habitation[cadastro_type]"]').map { |input| input['value'] }).to eq(Habitation::REGISTRATION_PROFILES.keys)
+      expect(document.css('select[name="habitation[categoria]"] option').map { |option| option['value'] }.reject(&:blank?)).to eq(config[:categories])
+    end
+  end
+
+  ["Galpão", "Galpão em Condomínio", "Galpão Industrial"].each do |category|
+    it "exibe os campos de galpão e preserva os dados ao abrir #{category}" do
+      intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin,
+        categoria: "Galpão", intake_step: "caracteristicas", caracteristicas: ["CFTV"], docas_qtd: 3)
+      intake.update_column(:categoria, category)
+      original = intake.reload.attributes
+
+      get edit_admin_captacao_path(intake, step: "intro")
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('select[name="habitation[categoria]"] option[selected]')['value']).to eq(category)
+      expect(document.at_css('input[name="habitation[cadastro_type]"][checked]')['value']).to eq("comerciais_industriais")
+
+      get edit_admin_captacao_path(intake, step: "caracteristicas")
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('select#captacao_warehouse_type')).to be_present
+      expect(document.at_css('input[name="captacao[extras][frente_metros]"]')).to be_present
+      expect(document.at_css('select[name$="[ocupacao]"]')).to be_present
+      expect(intake.reload.attributes).to eq(original)
+    end
+  end
+
   describe "remoção de captações" do
     def operational_event_for(property, user)
       session = OperationalUserSession.create!(tenant: user.tenant, admin_user: user,
