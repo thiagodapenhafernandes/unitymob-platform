@@ -210,4 +210,101 @@ RSpec.describe "API de captação de imóveis", type: :request do
     expect(response.parsed_body).to eq("imoveis" => [])
   end
 
+  describe "características e tipo de logradouro" do
+    let!(:feature) { tenant.attribute_options.create!(context: "habitation", category: "feature", name: "Área de serviço") }
+    let!(:infrastructure) { tenant.attribute_options.create!(context: "habitation", category: "infrastructure", name: "Piscina") }
+
+    it "recebe nomes e IDs, elimina repetidos, mantém endereço separado e permite reenvio" do
+      payload[:imovel][:caracteristicas_internas] = [feature.id, "area de servico", feature.id.to_s]
+      payload[:imovel][:infraestrutura_lazer] = [infrastructure.name, infrastructure.id]
+      payload[:imovel][:endereco].merge!(tipo_logradouro: "Avenida", logradouro: "Exemplo")
+      send_intake
+      expect(response).to have_http_status(:created)
+      property = PropertyIntakeReceipt.for_tenant(tenant).sole.habitation
+      expect(property.property_features_for_display).to eq([feature.name])
+      expect(property.leisure_features_for_display).to eq([infrastructure.name])
+      expect(property.address).to have_attributes(tipo_endereco: "Avenida", logradouro: "Exemplo")
+      expect(property.tipo_endereco).to eq("Avenida")
+      expect { send_intake }.not_to change(Habitation, :count)
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "aceita listas vazias" do
+      payload[:imovel].merge!(caracteristicas_internas: [], infraestrutura_lazer: [])
+      send_intake
+      expect(response).to have_http_status(:created)
+      property = PropertyIntakeReceipt.for_tenant(tenant).sole.habitation
+      expect(property.property_features_for_display).to eq([])
+      expect(property.leisure_features_for_display).to eq([])
+    end
+
+    it "rejeita opção de outra conta, categoria ou contexto, sem criar captação" do
+      other = Tenant.create!(name: "Outro catálogo", slug: "outro-catalogo")
+      foreign = other.attribute_options.create!(context: "habitation", category: "feature", name: "Adega exclusiva")
+      lead_option = tenant.attribute_options.create!(context: "lead", category: "source", name: "Origem exclusiva")
+      [foreign.id, foreign.name, infrastructure.id, lead_option.id, "Não cadastrada"].each do |value|
+        payload[:imovel][:caracteristicas_internas] = [value]
+        expect { send_intake }.not_to change(Habitation, :count)
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body.fetch("error")).to include("caracteristicas_internas")
+      end
+      expect(PropertyIntakeReceipt.for_tenant(tenant)).to be_empty
+    end
+
+    it "rejeita listas malformadas e tipos de logradouro inválidos" do
+      [nil, "Piscina", {}, [nil], [true], [1.5], [{ id: feature.id }], [""], ["x" * 256], [-1]].each do |value|
+        payload[:imovel][:infraestrutura_lazer] = value
+        expect { send_intake }.not_to change(Habitation, :count)
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+      payload[:imovel].delete(:infraestrutura_lazer)
+      [nil, "", 123, "x" * 256].each do |value|
+        payload[:imovel][:endereco][:tipo_logradouro] = value
+        expect { send_intake }.not_to change(Habitation, :count)
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
+    it "consulta somente IDs e nomes atuais da conta e respeita renomeações e remoções" do
+      other = Tenant.create!(name: "Outro catálogo", slug: "outro-catalogo")
+      other.attribute_options.create!(context: "habitation", category: "feature", name: "Adega exclusiva")
+      tenant.attribute_options.create!(context: "lead", category: "source", name: "Origem exclusiva")
+      headers = { "Authorization" => "Bearer #{token}" }
+      get "/api/v1/property_features", headers: headers
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to eq(
+        "caracteristicas_internas" => [{ "id" => feature.id, "nome" => feature.name }],
+        "infraestrutura_lazer" => [{ "id" => infrastructure.id, "nome" => infrastructure.name }]
+      )
+      feature.update!(name: "Adega")
+      infrastructure.destroy!
+      get "/api/v1/property_features", headers: headers
+      expect(response.parsed_body).to eq(
+        "caracteristicas_internas" => [{ "id" => feature.id, "nome" => "Adega" }],
+        "infraestrutura_lazer" => []
+      )
+      payload[:imovel][:caracteristicas_internas] = [feature.id]
+      send_intake
+      expect(response).to have_http_status(:created)
+      expect(PropertyIntakeReceipt.for_tenant(tenant).sole.habitation.property_features_for_display).to eq(["Adega"])
+      payload[:external_id] = "CAP-REMOVIDA"
+      payload[:imovel][:infraestrutura_lazer] = [infrastructure.id]
+      expect { send_intake }.not_to change(Habitation, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "exige credencial válida e rejeita token revogado ou conta inativa na consulta" do
+      get "/api/v1/property_features"
+      expect(response).to have_http_status(:unauthorized)
+      get "/api/v1/property_features", headers: { "Authorization" => "Bearer #{SecureRandom.hex(32)}" }
+      expect(response).to have_http_status(:unauthorized)
+      tenant.update!(active: false)
+      get "/api/v1/property_features", headers: { "Authorization" => "Bearer #{token}" }
+      expect(response).to have_http_status(:unauthorized)
+      tenant.update!(active: true, property_intake_token_digest: nil)
+      get "/api/v1/property_features", headers: { "Authorization" => "Bearer #{token}" }
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
 end

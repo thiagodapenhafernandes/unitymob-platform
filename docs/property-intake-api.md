@@ -111,6 +111,75 @@ Títulos e descrições podem ser omitidos, nulos ou vazios nesta etapa. As vali
 estruturais, de identidade, endereço e preço continuam ativas; as exigências de
 aprovação/publicação continuam sendo aplicadas pelo fluxo administrativo da conta.
 
+## Características internas, infraestrutura e lazer
+
+Antes de montar o cadastro, consulte as opções gerenciadas em **Gerenciar** na
+conta de destino, usando o mesmo token da captação:
+
+```http
+GET /api/v1/property_features
+Authorization: Bearer <TOKEN_DA_INTEGRACAO>
+Accept: application/json
+```
+
+Resposta `200 OK` (IDs ilustrativos; consulte os IDs reais de cada conta):
+
+```json
+{
+  "caracteristicas_internas": [{ "id": 101, "nome": "Área de serviço" }],
+  "infraestrutura_lazer": [{ "id": 202, "nome": "Piscina" }]
+}
+```
+
+Cada lista retorna apenas `id` e `nome`, ordenada por nome; sem opções cadastradas,
+retorna `[]`. Não retorna opções de outras contas ou de outras categorias.
+Credencial ausente, inválida, revogada ou de conta inativa retorna `401`.
+A consulta reflete inclusões, renomeações e exclusões feitas no catálogo da conta.
+Não cria opções nem inclui automaticamente sugestões fixas de outras categorias de imóvel.
+
+No `POST /api/v1/property_intakes`, acrescente os campos opcionais:
+
+```json
+{
+  "imovel": {
+    "caracteristicas_internas": [101],
+    "infraestrutura_lazer": ["Piscina"],
+    "endereco": {
+      "tipo_logradouro": "Avenida",
+      "logradouro": "Exemplo"
+    }
+  }
+}
+```
+
+O trecho acima complementa o exemplo completo; não substitui os demais campos
+obrigatórios. As duas listas aceitam IDs inteiros, IDs em strings numéricas ou
+nomes, inclusive misturados. Nomes são comparados sem distinguir maiúsculas e
+acentos; o cadastro guarda o nome atual da opção e elimina repetições.
+Prefira IDs, que permanecem iguais quando uma opção é renomeada. IDs são
+específicos da conta e da categoria: não reutilize IDs de outro ambiente/conta.
+Consulte novamente o catálogo após alterações no Gerenciar.
+
+Listas omitidas preservam a compatibilidade com os envios anteriores; `[]` indica
+nenhuma opção. `null`, valores que não sejam listas, itens inválidos e opções
+inexistentes, removidas, de outra conta ou categoria retornam `422`, sem criar a
+captação. A API não cria opções a partir de nomes desconhecidos. Cada nome aceita
+até 255 bytes. Exemplo de erro:
+
+```json
+{ "error": "caracteristicas_internas contém opção desconhecida nesta conta" }
+```
+
+`imovel.endereco.tipo_logradouro` é uma string opcional, não vazia, de até 255
+bytes (ex.: `Rua`, `Avenida`, `Alameda`), gravada em `tipo_endereco` do endereço.
+Quando informado, envie `logradouro` somente com o nome da via. A API mantém esse
+texto como recebido: não remove prefixos automaticamente. Envios antigos sem
+`tipo_logradouro` continuam aceitos com o logradouro completo.
+
+As regras de reenvio continuam iguais: repita exatamente o conteúdo original
+para receber o mesmo protocolo. Acrescentar esses campos a um `external_id` já
+recebido resulta em `409`; este endpoint não atualiza captações existentes.
+
 ## Documentos internos
 
 Envie `documentos` na raiz, separado de `imovel.fotos`:

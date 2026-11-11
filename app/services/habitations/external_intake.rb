@@ -95,6 +95,8 @@ module Habitations
         proprietario: string(owner, "nome"), proprietario_celular: phone, proprietario_email: email
       )
       habitation.build_address(address_attributes(address))
+      habitation.caracteristicas = feature_names(property, "caracteristicas_internas", "feature") if property.key?("caracteristicas_internas")
+      habitation.infra_estrutura = feature_names(property, "infraestrutura_lazer", "infrastructure") if property.key?("infraestrutura_lazer")
       apply_optional_fields(habitation, property)
       assign_captador(habitation, captador)
       COUNTS.each { |key, attribute| habitation[attribute] = integer(property, key, max: 2_147_483_647) if property.key?(key) }
@@ -119,9 +121,36 @@ module Habitations
     end
 
     def address_attributes(address)
-      %w[cep logradouro numero complemento bairro cidade uf].index_with do |key|
+      attributes = %w[cep logradouro numero complemento bairro cidade uf].index_with do |key|
         string(address, key, required: key != "complemento")
       end
+      attributes["tipo_endereco"] = string(address, "tipo_logradouro") if address.key?("tipo_logradouro")
+      attributes
+    end
+
+    def feature_names(property, key, category)
+      values = property[key]
+      valid = values.is_a?(Array) && values.all? do |value|
+        value.is_a?(Integer) ||
+          (value.is_a?(String) && value.present? && value.bytesize <= 255 && !value.include?("\0"))
+      end
+      unless valid
+        raise Invalid, "#{key} deve ser uma lista de nomes ou IDs"
+      end
+
+      options = @tenant.attribute_options.for_context("habitation").for_category(category).select(:id, :name).to_a
+      by_id = options.index_by { |option| option.id.to_s }
+      by_name = options.index_by { |option| AttributeOption.normalized_name_key(option.name) }
+      values.map do |value|
+        option = if value.is_a?(Integer) || value.match?(/\A[0-9]+\z/)
+          by_id[value.to_s]
+        else
+          by_name[AttributeOption.normalized_name_key(value)]
+        end
+        raise Invalid, "#{key} contém opção desconhecida nesta conta" unless option
+
+        option.name
+      end.uniq
     end
 
     def captured_at

@@ -627,6 +627,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :property_intakes, only: :create, defaults: { format: :json }
+      resources :property_features, only: :index, defaults: { format: :json }
       get "properties/search", to: "property_intake_searches#index", defaults: { format: :json }
       namespace :browser_extension, defaults: { format: :json } do
         post "session/terms", to: "sessions#accept_terms"
