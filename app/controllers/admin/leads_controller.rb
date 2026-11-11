@@ -657,13 +657,17 @@ class Admin::LeadsController < Admin::BaseController
       end
     end
 
-    if @lead.update(attributes)
+    if attributes.key?(:admin_user_id) || params[:manual_assignment].present?
+      assignment = Leads::ManualAssignment.new(@lead, actor: current_admin_user, attributes: attributes,
+        options: manual_assignment_options)
+    end
+    if assignment ? assignment.call : @lead.update(attributes)
       if @lead.saved_change_to_status?
         LeadActivity.log!(lead: @lead, kind: "status_change", metadata: { from: previous_status, to: @lead.status, by: current_admin_user&.name })
       end
       log_qualification_change! if @lead.saved_change_to_broker_qualification_status? || @lead.saved_change_to_manager_qualification_status?
-      if @lead.saved_change_to_admin_user_id? && @lead.admin_user_id.present?
-        Leads::NotificationDispatcher.notify_reassignment(@lead, @lead.admin_user)
+      if (assignment ? assignment.owner_changed : @lead.saved_change_to_admin_user_id?) && @lead.admin_user_id.present?
+        Leads::NotificationDispatcher.notify_reassignment(@lead, @lead.admin_user, whatsapp: assignment&.notify_whatsapp == true)
       end
       respond_to do |format|
         format.html { redirect_to admin_lead_path(@lead), notice: "Lead atualizado com sucesso." }
@@ -2661,6 +2665,14 @@ class Admin::LeadsController < Admin::BaseController
     return false unless current_admin_user&.scope_for(:leads) == "own" && @lead&.admin_user_id == current_admin_user.id
 
     current_tenant.admin_users.active.where(id: admin_user_id).exists?
+  end
+
+  def manual_assignment_options
+    options = params[:manual_assignment]
+    return {} if options.nil?
+    raise ActionController::BadRequest, "Opções de atribuição inválidas" unless options.is_a?(ActionController::Parameters)
+
+    options.permit(:notify_whatsapp, :rotate_queue).to_h.symbolize_keys
   end
 
   def lead_params

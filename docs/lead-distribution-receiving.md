@@ -44,3 +44,32 @@ Cada participante tem `allowed_meta_campaign_ids`: vazio significa **Todas as ca
 Com seleção, o participante só concorre se o ID exato de `meta_campaign_id` da entrada estiver autorizado. Nome da campanha, UTM ou anúncio não substituem um ID identificado. Entrada sem campanha identificada não é entregue a participantes restritos. Em reentradas, a campanha é capturada em `distribution_entry` para não reutilizar a atribuição histórica de outra consulta.
 
 O filtro antecede rotativo, ponderado, fidelização e seleção de atendimento, e também se aplica a notificações e reivindicações do bolsão e à contingência. Sem elegíveis por campanha, a distribuição respeita a contingência existente; sem encaminhamento, mantém o lead represado, sem responsável, com `distribution_failed/no_eligible_agent_for_campaign`. Não redistribui leads já atribuídos ao salvar a fila. Ao remover um participante, sua configuração naquela fila também é removida.
+
+
+## Atribuição manual pelo admin (11/11/2026)
+
+No card Corretor e no modal Transferir, o admin da conta pode marcar, de forma
+independente, **Notificar o corretor no WhatsApp** e **Girar a roleta da fila**.
+As duas opções iniciam desmarcadas e só se aplicam quando o responsável muda.
+Reenviar o formulário com o mesmo corretor não reenvia WhatsApp nem gira novamente.
+Corretores continuam podendo transferir seus próprios leads, sem acesso a essas
+opções adicionais. Não há ampliação de acesso entre contas ou perfis.
+
+Com alguma opção marcada, usa a fila atual do lead ou, se ele não tiver fila,
+a única fila compatível encontrada pelo roteamento normal. Exige fila ativa,
+modalidade compatível, participante elegível por campanha/check-in e horário de
+atendimento. Sem uma fila segura, não escolhe outra arbitrariamente: o formulário
+mostra o erro sem salvar a atribuição. WhatsApp exige o canal ligado na fila;
+giro exige fila rotativa e move o corretor escolhido para o fim, sem sorteio.
+Salvar a atribuição e girar usam a mesma transação e o lock compartilhado da
+roleta. A escolha e o responsável anterior ficam registrados no histórico.
+
+O WhatsApp usa o transporte e o template de notificação de leads da conta/fila,
+com as proteções já existentes para corretor inativo, allowlist, telefone e
+arquivamento. É independente do aviso de reatribuição no aplicativo, que mantém
+sua configuração atual. Falhas de entrega são registradas na timeline e não
+desfazem a atribuição já salva. Nenhuma chamada externa ocorre dentro do lock
+da roleta. Atribuir manualmente preserva o status e a etapa do funil.
+
+Sem migrations, alteração automática das configurações das filas ou envios em
+massa. A opção não habilita o WhatsApp em uma fila que o mantenha desligado.

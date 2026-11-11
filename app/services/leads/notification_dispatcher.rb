@@ -46,13 +46,14 @@ module Leads
     end
 
     # Reatribuição manual do corretor pelo admin.
-    def self.notify_reassignment(lead, new_corretor)
-      return unless LeadSetting.instance.notify_on_reassignment?
-
-      push_to(new_corretor,
+    def self.notify_reassignment(lead, new_corretor, whatsapp: false)
+      if LeadSetting.instance(tenant: lead.tenant).notify_on_reassignment?
+        push_to(new_corretor,
               title: "Lead atribuído a você: #{lead.display_name}",
               body:  push_body_for(lead, secure: false),
               url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution", lead: lead, event: "lead_assigned")
+      end
+      new(lead).deliver_manual_whatsapp if whatsapp
     end
 
     # Nova consulta da mesma pessoa dentro do tempo de atendimento: agregada
@@ -120,6 +121,16 @@ module Leads
       return unless distribution_event_enabled?
 
       deliver_channels
+    end
+
+    def deliver_manual_whatsapp
+      return unless @rule&.notify_whatsapp? && @corretor&.active?
+      return unless @lead.notifications_allowed? && @corretor.notification_delivery_allowed?
+
+      deliver_whatsapp
+    rescue => error
+      log_notification(:whatsapp, :failed, error: error.message)
+      Rails.logger.warn("[LeadNotify] WhatsApp de atribuição manual falhou lead_id=#{@lead.id} class=#{error.class}")
     end
 
     # Envia a notificação da regra para um corretor específico (usado no Shark Tank,
