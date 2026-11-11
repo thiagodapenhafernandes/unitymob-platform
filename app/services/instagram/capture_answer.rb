@@ -10,7 +10,7 @@ module Instagram
     end
 
     def name(explicit_only: false)
-      return if declined?
+      return if declined? || business_type.present?
       explicit = @text.match(/\b(?:me chamo|meu nome [ée]|pode me chamar de|sou(?: (?:o|a))?)\s+([^,;.!?\d]+)/i)
       return if explicit_only && !explicit
       plain_name = @text.sub(/[\s,;:]+\(?\+?\d[\d() .-]{8,}\d\)?\z/, '')
@@ -31,6 +31,20 @@ module Instagram
 
       normalized = Phones::Normalizer.call(candidate)
       normalized if normalized && Phonelib.parse("+#{normalized}").valid?
+    end
+
+    def business_type
+      text = I18n.transliterate(@text).downcase
+      return if text.match?(/\?|\b(?:nao|talvez|caso)\b/)
+      return unless text.match?(/\A(?:comprar|compra|venda|alugar|aluguel|locacao|diaria|temporada|venda e locacao)[.!]*\z/) ||
+        text.match?(/\b(?:quero|gostaria de|procuro|busco|pretendo|tenho interesse em)\b/)
+
+      return "diaria" if text.match?(Leads::EntryClassification::DAILY)
+      sale = text.match?(Leads::EntryClassification::SALE)
+      rent = text.match?(Leads::EntryClassification::RENT)
+      return "ambos" if sale && rent
+      return "venda" if sale
+      "locacao" if rent
     end
 
     def request?

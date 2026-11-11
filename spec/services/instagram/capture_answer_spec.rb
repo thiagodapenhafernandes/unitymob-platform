@@ -22,6 +22,18 @@ RSpec.describe Instagram::CaptureAnswer do
     expect(described_class.new('Quero o imóvel 47998887777').phone).to be_nil
     expect(described_class.new('prefiro continuar por aqui').declined?).to be(true)
   end
+  it 'classifica intenção afirmada pelo cliente sem inferir de perguntas ou negativas' do
+    { 'Comprar' => 'venda', 'Quero comprar um lote' => 'venda', 'Alugar' => 'locacao',
+      'Procuro apartamento para alugar' => 'locacao', 'Quero alugar por temporada' => 'diaria',
+      'Quero comprar ou alugar' => 'ambos' }.each do |text, type|
+      expect(described_class.new(text).business_type).to eq(type), text
+      expect(described_class.new(text).name).to be_nil, text
+    end
+    ['Comprar ou alugar?', 'Não quero comprar', 'Talvez comprar', 'Como comprar', 'Refuge', 'Lote', 'Isso'].each do |text|
+      expect(described_class.new(text).business_type).to be_nil, text
+    end
+  end
+
 end
 
 RSpec.describe Instagram::CaptureSettings do

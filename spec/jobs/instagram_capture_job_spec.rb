@@ -340,4 +340,86 @@ RSpec.describe Instagram::CaptureJob do
     expect(Leads::RoutingService).to have_received(:route!).with(lead).once
   end
 
+  it "encaminha compra confirmada à fila da página uma única vez, sem continuar a IA" do
+    settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
+    rule = create(:distribution_rule, tenant: tenant, business_type: :venda,
+      source_site: false, source_meta: true, meta_page_ids: [page.page_id], auto_add_forms: true)
+    agent = create(:admin_user, tenant: tenant)
+    create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent)
+    allow(Leads::NotificationDispatcher).to receive(:push_to)
+    lead = inbound("hello", "Oi")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("contact", "William (47) 99888-7777")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload).to be_instagram_automation_holding
+    expect(Instagram::CatalogReply).not_to receive(:new)
+    inbound("intent", "Comprar")
+    2.times { described_class.perform_now(tenant.id, lead.id) }
+    expect(lead.reload).to have_attributes(admin_user_id: agent.id, distribution_rule_id: rule.id)
+    expect(lead.other_information).to include("meta_page_id" => page.page_id, "business_type" => "venda")
+    expect(lead).not_to be_instagram_automation_holding
+    expect(lead.activities.where(kind: "distributed").count).to eq(1)
+    expect(Leads::RoutingService).to have_received(:route!).with(lead).once
+  end
+
+  it "usa a intenção já informada antes dos dados e preserva o e-mail opcional" do
+    settings.save(campaign_id: "default", enabled: true, name_prompt: "", phone_prompt: "", ask_email: true)
+    lead = inbound("intent", "Quero alugar um apartamento")
+    described_class.perform_now(tenant.id, lead.id)
+    inbound("contact", "Maria Silva (47) 99888-7777")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.other_information.dig("instagram_capture", "step")).to eq("email")
+    expect(Leads::RoutingService).not_to have_received(:route!)
+    inbound("email", "Pular")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.other_information["business_type"]).to eq("locacao")
+    expect(Leads::RoutingService).to have_received(:route!).with(lead).once
+  end
+
+  it "não encaminha intenção comercial sem confirmar o contato" do
+    lead = inbound("intent", "Comprar")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.client_name).to be_blank
+    expect(lead).to be_instagram_capture_pending
+    expect(Leads::RoutingService).not_to have_received(:route!)
+  end
+
+  it "prepara o contexto de um contato antigo ao liberá-lo sem responder no Instagram" do
+    lead = inbound("old", "Comprar")
+    lead.update_columns(client_name: "William", phone: "5547998887777",
+      other_information: {"instagram_capture" => {"step" => "serving", "sdr_cursor" => lead.instagram_messages.maximum(:id)}})
+    described_class.release!(lead)
+    expect(lead.reload.other_information).to include("meta_page_id" => page.page_id, "business_type" => "venda")
+    expect(Leads::RoutingService).to have_received(:route!).with(lead).once
+    expect(Instagram::Reply).not_to have_received(:call)
+  end
+
+  it "preserva a prioridade de resposta personalizada antes do encaminhamento comercial" do
+    settings.save_many(campaign_ids: ['default'], create_only: false, rule: {'enabled' => true, 'sdr_enabled' => true,
+      'conditions' => [
+        {'title' => 'Compra', 'match' => 'keywords', 'keywords' => 'comprar', 'action' => 'fixed',
+          'response' => 'Nossa equipe atende compras nesta região.', 'enabled' => true, 'ai_enabled' => false, 'require_contact' => true},
+        {'title' => 'Busca', 'match' => 'always', 'action' => 'ai', 'enabled' => true, 'ai_enabled' => true, 'require_contact' => true}
+      ]})
+    lead = inbound('interest', 'Quero comprar')
+    described_class.perform_now(tenant.id, lead.id)
+    inbound('contact', 'Maria Silva (47) 99888-7777')
+    described_class.perform_now(tenant.id, lead.id)
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: 'Nossa equipe atende compras nesta região.', admin_user: nil, typing: false)
+    expect(Leads::RoutingService).not_to have_received(:route!)
+  end
+
+  it "mantém a exceção de IA antes da coleta sem encaminhar contato incompleto" do
+    settings.save_many(campaign_ids: ['default'], create_only: false, rule: {'enabled' => true, 'sdr_enabled' => true,
+      'conditions' => [{'title' => 'Busca aberta', 'match' => 'always', 'action' => 'ai',
+        'enabled' => true, 'ai_enabled' => true, 'require_contact' => false}]})
+    catalog = instance_double(Instagram::CatalogReply, call: 'Em qual cidade você procura?')
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
+    lead = inbound('buy', 'Quero comprar')
+    described_class.perform_now(tenant.id, lead.id)
+    expect(catalog).to have_received(:call).once
+    expect(Leads::RoutingService).not_to have_received(:route!)
+    expect(lead.reload).to be_instagram_capture_pending
+  end
+
 end

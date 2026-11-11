@@ -60,4 +60,13 @@ RSpec.describe InstagramDirectJob do
     expect(integration.tenant.leads.where(instagram_scoped_id: "98765").count).to eq(1)
     expect(other.tenant.leads.where(instagram_scoped_id: "98765").count).to eq(1)
   end
+  it "registra a página Meta mesmo no Direct orgânico, antes de receber campanha" do
+    integration.update!(selected_page_ids: [page.page_id])
+    described_class.perform_now("12345", event)
+    lead = integration.tenant.leads.find_by!(instagram_scoped_id: "98765")
+    expect(lead.other_information["meta_page_id"]).to eq(page.page_id)
+    expect(lead.instagram_messages.sole.context["meta_facebook_page_id"]).to eq(page.id)
+    expect(lead.other_information["meta_campaign_id"]).to be_nil
+  end
+
 end
