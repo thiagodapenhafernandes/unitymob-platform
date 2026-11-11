@@ -79,3 +79,7 @@ Cadastro administrativo e captação compartilham as opções Persianas elétric
 A conversão já existente da captação de empreendimento em unidade vinculada é preservada: o controller valida o empreendimento na própria conta e autoriza internamente a mudança de grupo para residencial. Essa autorização não é aceita por parâmetros; o cadastro administrativo continua com grupo fixo.
 
 Validação dos equipamentos e captação: 119 casos aprovados (118 no lote e o caso de isolamento entre contas reexecutado após corrigir sua preparação). Cobertura de renderização, marcação/desmarcação, persistência, herança e permissões; `zeitwerk:check` e `git diff --check` aprovados. Nenhuma migration adicional executada.
+
+## Categorias na abertura da captação
+
+A etapa inicial da captação usa `Habitation::REGISTRATION_PROFILES`, a mesma definição de grupos, categorias, ícones e tipos do cadastro direto. Apartamentos ficam no grupo Imóveis residenciais; galpões usam Galpão ou Galpão em Condomínio. A categoria atual do registro continua disponível ao reabrir uma captação legada, sem regravação na consulta nem alteração das políticas de revisão existentes. Não há backfill ou migration. Os campos existentes de galpão na captação são mantidos para as duas categorias atuais e para Galpão Industrial legado.
