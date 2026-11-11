@@ -282,7 +282,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css(%([data-lead-kanban-status="Aguardando Aceite"]))).to be_nil
       expect(document.at_css(%([data-lead-kanban-status="Concluido"]))).to be_nil
       expect(document.at_css(%([data-lead-kanban-status="#{Lead.default_status(tenant: admin.tenant)}"])).text).to include("Lead Normal Kanban")
-      expect(response.body).not_to include("Lead Represado Kanban", "Lead Aceite Kanban", "Lead Aceite Sem Corretor Kanban", "Lead Concluido Kanban")
+      expect(document.css(".lead-kanban-card").text).not_to include("Lead Represado Kanban", "Lead Aceite Kanban", "Lead Aceite Sem Corretor Kanban", "Lead Concluido Kanban")
+      expect(document.at_css(".ax-notifications").text).to include("Lead Aceite Kanban")
     end
 
     it "carrega o proximo lote de uma coluna do kanban respeitando filtros" do
@@ -356,8 +357,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(table.at_css(".ax-menu .ax-modal-overlay")).to be_nil
       expect(table.at_css(".ax-record-actions > .ax-modal-overlay")).to be_present
       expect(response.body).to include("Cliente Lista")
-      expect(response.body).not_to include(waiting_acceptance.name)
-      expect(response.body).not_to include(unassigned_waiting_acceptance.name)
+      expect(table.text).not_to include(waiting_acceptance.name, unassigned_waiting_acceptance.name)
+      expect(document.at_css(".ax-notifications").text).to include(waiting_acceptance.name)
     end
 
     it "oculta descartados da lista padrao e mostra quando filtrado ou no kanban" do
@@ -1102,9 +1103,10 @@ RSpec.describe "Admin::Leads", type: :request do
       )
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(matching.name)
+      table = Nokogiri::HTML(response.body).at_css(".ax-record-list[role=table]")
+      expect(table.text).to include(matching.name)
       expect(response.body).to include("Natureza", "Canal de origem", "Preço")
-      expect(response.body).not_to include("Lead Locacao Site")
+      expect(table.text).not_to include("Lead Locacao Site")
     end
 
     it "filtra negócio fechado pela data real de fechamento e não pela última edição" do
@@ -1137,9 +1139,10 @@ RSpec.describe "Admin::Leads", type: :request do
       )
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(closed_in_period.name)
+      table = Nokogiri::HTML(response.body).at_css(".ax-record-list[role=table]")
+      expect(table.text).to include(closed_in_period.name)
       expect(response.body).to include("Período")
-      expect(response.body).not_to include(edited_after_close.name)
+      expect(table.text).not_to include(edited_after_close.name)
     end
 
     it "aplica filtros mobile de atividade usando tarefas e visitas reais" do
@@ -1160,14 +1163,16 @@ RSpec.describe "Admin::Leads", type: :request do
       get admin_leads_path(view: "list", activity_filter: ["scheduled_visit"])
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Lead Visita Real")
-      expect(response.body).not_to include("Lead Retorno Real", "Lead Sem Agenda")
+      table = Nokogiri::HTML(response.body).at_css(".ax-record-list[role=table]")
+      expect(table.text).to include("Lead Visita Real")
+      expect(table.text).not_to include("Lead Retorno Real", "Lead Sem Agenda")
 
       get admin_leads_path(view: "list", activity_filter: ["return_customer"])
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Lead Retorno Real")
-      expect(response.body).not_to include("Lead Visita Real", "Lead Sem Agenda")
+      table = Nokogiri::HTML(response.body).at_css(".ax-record-list[role=table]")
+      expect(table.text).to include("Lead Retorno Real")
+      expect(table.text).not_to include("Lead Visita Real", "Lead Sem Agenda")
     end
 
     it "nao filtra por corretor de outro tenant mesmo se houver lead legado inconsistente" do
@@ -1290,7 +1295,9 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_nil
       expect(pwa_detail.at_css(".lead-whatsapp-card")).to be_nil
       expect(document.at_css(".lead-show-workspace .lead-whatsapp-card")).to be_present
-      expect(pwa_detail.at_css("#lead-pwa-tarefas .lead-detail-task-row")).to be_present
+      overdue_task = pwa_detail.at_css("#lead-pwa-tarefas .ax-activity-card--compact")
+      expect(overdue_task.text).to include("Retornar para o cliente", "Concluir atividade")
+      expect(pwa_detail.css("#lead-pwa-agenda .ax-activity-card").text).not_to include("Retornar para o cliente")
       expect(pwa_detail.at_css("form[action='#{log_contact_admin_lead_path(lead)}']")).to be_present
       expect(pwa_detail.text.index("Histórico de contatos")).to be < pwa_detail.text.index("Propostas")
       expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
@@ -1338,8 +1345,10 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(tasks_section.text).to include("Conferir documentação")
       expect(labels_section.to_html).to include("bi-plus-lg")
       expect(proposals_section.to_html).to include("bi-plus-lg")
+      task_forms = operation_card.css("form[action='#{admin_tasks_path}']")
+      expect(task_forms).not_to be_empty
+      expect(task_forms.map { |form| form["data-turbo"] }).to all(eq("false"))
       reactive_form_actions = [
-        admin_tasks_path,
         schedule_activity_admin_lead_path(lead),
         admin_lead_proposals_path(lead)
       ]

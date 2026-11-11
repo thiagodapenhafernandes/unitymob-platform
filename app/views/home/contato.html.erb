@@ -1,74 +1,69 @@
+<div class="public-theme-institutional-page public-theme-institutional-page--<%= theme_variant %>">
 <!-- Contato Page - Modern Design -->
 
 <!-- Hero Section -->
-<section class="relative h-[400px] flex items-center justify-center bg-cover bg-center" 
-         style="background-image: linear-gradient(rgba(30, 64, 175, 0.8), rgba(30, 64, 175, 0.8)), url('<%= asset_path 'hero_05.jpeg' %>');">
-  <div class="container-custom relative z-10 text-center text-white">
-    <h1 class="text-4xl lg:text-5xl font-bold mb-4" data-aos="fade-up">Entre em Contato</h1>
-    <p class="text-xl" data-aos="fade-up" data-aos-delay="100">Estamos prontos para atender você</p>
-  </div>
-</section>
+<%= render "public_theme/components/institutional_head", eyebrow: "Contato", title: "Fale com a #{@public_identity.name}", lead: "Converse sobre compra, venda ou locação#{" em #{@public_identity.primary_city}" if @public_identity.primary_city.present?}. Consulte nossa equipe sobre imóveis, visitas e atendimento." %>
 
 <!-- Contact Content -->
-<section class="py-16 bg-gray-50">
+<section class="py-16 public-theme-institutional__muted">
   <div class="container-custom">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
       
       <!-- Contact Info Cards -->
       <div class="space-y-6" data-aos="fade-right">
-        <h2 class="text-3xl font-bold text-blue-three mb-8">Informações de Contato</h2>
+        <h2 class="text-3xl font-bold public-theme-institutional__heading mb-8">Informações de Contato</h2>
         
         <!-- Address Card -->
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
+        <div class="public-theme-institutional__surface p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
           <div class="flex items-start gap-4">
-            <div class="bg-golden-one/10 p-3 rounded-lg">
-              <i class="bi bi-geo-alt text-2xl text-golden-one"></i>
+            <div class="public-theme-institutional__muted p-3 rounded-lg">
+              <i class="bi bi-geo-alt text-2xl public-theme-institutional__accent"></i>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-blue-three mb-2">Endereço</h3>
+              <h3 class="text-lg font-bold public-theme-institutional__heading mb-2">Endereço</h3>
               <p class="text-gray-600"><%= simple_format(@contact_setting.address) %></p>
             </div>
           </div>
         </div>
 
         <!-- Phone Card -->
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
+        <div class="public-theme-institutional__surface p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
           <div class="flex items-start gap-4">
-            <div class="bg-golden-one/10 p-3 rounded-lg">
-              <i class="bi bi-telephone text-2xl text-golden-one"></i>
+            <div class="public-theme-institutional__muted p-3 rounded-lg">
+              <i class="bi bi-telephone text-2xl public-theme-institutional__accent"></i>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-blue-three mb-2">Telefone</h3>
+              <h3 class="text-lg font-bold public-theme-institutional__heading mb-2">Telefone</h3>
               <p class="text-gray-600"><%= Phones::Normalizer.display(@contact_setting.phone) %></p>
-              <a href="tel:+<%= @contact_setting.phone.to_s.gsub(/\D/, '') %>" class="text-golden-one hover:underline">Ligar agora</a>
+              <a href="tel:+<%= @contact_setting.phone.to_s.gsub(/\D/, '') %>" class="public-theme-institutional__accent hover:underline">Ligar agora</a>
             </div>
           </div>
         </div>
 
         <!-- Email Card -->
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
+        <div class="public-theme-institutional__surface p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
           <div class="flex items-start gap-4">
-            <div class="bg-golden-one/10 p-3 rounded-lg">
-              <i class="bi bi-envelope text-2xl text-golden-one"></i>
+            <div class="public-theme-institutional__muted p-3 rounded-lg">
+              <i class="bi bi-envelope text-2xl public-theme-institutional__accent"></i>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-blue-three mb-2">Email</h3>
+              <h3 class="text-lg font-bold public-theme-institutional__heading mb-2">Email</h3>
               <p class="text-gray-600"><%= @contact_setting.email_primary %></p>
-              <a href="mailto:<%= @contact_setting.email_primary %>" class="text-golden-one hover:underline">Enviar email</a>
+              <a href="mailto:<%= @contact_setting.email_primary %>" class="public-theme-institutional__accent hover:underline">Enviar email</a>
             </div>
           </div>
         </div>
 
         <!-- WhatsApp Card -->
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
+        <div class="public-theme-institutional__surface p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
           <div class="flex items-start gap-4">
-            <div class="bg-golden-one/10 p-3 rounded-lg">
-              <i class="bi bi-whatsapp text-2xl text-golden-one"></i>
+            <div class="public-theme-institutional__muted p-3 rounded-lg">
+              <i class="bi bi-whatsapp text-2xl public-theme-institutional__accent"></i>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-blue-three mb-2">WhatsApp</h3>
+              <h3 class="text-lg font-bold public-theme-institutional__heading mb-2">WhatsApp</h3>
               <p class="text-gray-600"><%= Phones::Normalizer.display(@contact_setting.whatsapp_primary) %></p>
-              <a href="https://wa.me/<%= @contact_setting.whatsapp_primary.to_s.gsub(/\D/, '') %>" target="_blank" rel="noopener" class="text-golden-one hover:underline">
+              <a href="https://wa.me/<%= @contact_setting.whatsapp_primary.to_s.gsub(/\D/, '') %>" target="_blank" rel="noopener" class="public-theme-institutional__accent hover:underline">
                 Enviar mensagem
               </a>
             </div>
@@ -77,7 +72,7 @@
 
         <!-- Business Hours -->
         <% if @business_hours.present? %>
-        <div class="bg-blue-three text-white p-6 rounded-xl shadow-md">
+        <div class="public-theme-institutional__dark text-white p-6 rounded-xl shadow-md">
           <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
             <i class="bi bi-clock"></i>
             Horário de Atendimento
@@ -89,8 +84,8 @@
 
       <!-- Contact Form -->
       <div data-aos="fade-left">
-        <div class="bg-white p-8 rounded-xl shadow-md">
-          <h2 class="text-3xl font-bold text-blue-three mb-6">Envie sua Mensagem</h2>
+        <div class="public-theme-institutional__surface p-8 rounded-xl shadow-md">
+          <h2 class="text-3xl font-bold public-theme-institutional__heading mb-6">Envie sua Mensagem</h2>
           
           <%= form_with url: contacts_path,
                         method: :post,
@@ -125,7 +120,7 @@
               <%= f.select :interest_intent,
                            [["Vender", "vender"], ["Locar", "locar"], ["Ambos", "ambos"]],
                            { selected: "ambos" },
-                           { class: "w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-golden-one focus:border-transparent" } %>
+                           { class: "w-full px-4 py-3 border border-gray-300 rounded-lg public-theme-institutional__surface focus:ring-2 focus:ring-golden-one focus:border-transparent" } %>
             </div>
 
             <div>
@@ -139,7 +134,7 @@
             </div>
 
             <button type="submit"
-                    class="w-full bg-golden-one text-blue-three font-bold py-4 px-8 rounded-lg hover:bg-blue-three hover:text-white transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5">
+                    class="w-full public-theme-institutional__button public-theme-institutional__heading font-bold py-4 px-8 rounded-lg hover:bg-blue-three hover:text-white transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5">
               <i class="bi bi-send mr-2"></i>
               Enviar Mensagem
             </button>
@@ -162,3 +157,7 @@
     loading="lazy">
   </iframe>
 </section>
+
+<%= render "public_theme/components/institutional_regions" %>
+
+</div>

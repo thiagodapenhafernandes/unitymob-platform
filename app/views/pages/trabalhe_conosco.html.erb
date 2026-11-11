@@ -1,73 +1,28 @@
-<!-- Trabalhe Conosco - Modern Design -->
-
-<!-- Hero -->
-<section class="relative h-[400px] flex items-center justify-center bg-cover bg-center" 
-         style="background-image: linear-gradient(rgba(212, 175, 55, 0.9), rgba(30, 64, 175, 0.9)), url('<%= asset_path 'hero_05.jpeg' %>');">
-  <div class="container-custom relative z-10 text-center text-white">
-    <h1 class="text-4xl lg:text-5xl font-bold mb-4" data-aos="fade-up">Trabalhe Conosco</h1>
-    <p class="text-xl" data-aos="fade-up" data-aos-delay="100">Faça parte da nossa equipe de sucesso</p>
-  </div>
-</section>
-
-<!-- Benefits -->
-<section class="py-16 bg-white">
-  <div class="container-custom">
-    <h2 class="text-3xl lg:text-4xl font-bold text-blue-three text-center mb-12">Por que trabalhar na <%= @public_identity.name %>?</h2>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      <div class="text-center p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow" data-aos="fade-up">
-        <i class="bi bi-graph-up-arrow text-5xl text-golden-one mb-4"></i>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Crescimento</h3>
-        <p class="text-gray-600">Oportunidades de desenvolvimento profissional</p>
-      </div>
-      
-      <div class="text-center p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay="100">
-        <i class="bi bi-people text-5xl text-golden-one mb-4"></i>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Equipe</h3>
-        <p class="text-gray-600">Ambiente colaborativo e acolhedor</p>
-      </div>
-      
-      <div class="text-center p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay="200">
-        <i class="bi bi-cash-stack text-5xl text-golden-one mb-4"></i>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Remuneração</h3>
-        <p class="text-gray-600">Salário competitivo e comissões</p>
-      </div>
-      
-      <div class="text-center p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay="300">
-        <i class="bi bi-mortarboard text-5xl text-golden-one mb-4"></i>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Treinamento</h3>
-        <p class="text-gray-600">Capacitação constante</p>
-     </div>
+<%= render "public_theme/components/institutional_head", eyebrow: "Carreira", title: "Trabalhe na #{@public_identity.name}", lead: "Apresente sua experiência e seus objetivos no mercado imobiliário#{" de #{@public_identity.primary_city} e região" if @public_identity.primary_city.present?}." %>
+<section class="public-theme-institutional public-theme-institutional--<%= theme_variant %>">
+  <div class="container-custom public-theme-institutional__intro">
+    <div>
+      <h2>Pessoas que conectam outras pessoas a novos endereços</h2>
+      <p>O trabalho no mercado imobiliário exige escuta, organização e atenção às necessidades de quem deseja comprar, vender ou alugar. Se você se identifica com esse atendimento, conte sua trajetória à <%= @public_identity.name %>.</p>
+      <h3>Conte o que você busca para sua carreira</h3>
+      <p>Apresente sua experiência comercial, as cidades e bairros que conhece e sua disponibilidade. Se atua como corretor de imóveis, informe também seu CRECI e os tipos de imóveis com que trabalha.</p>
+      <p>O envio dos dados permite apresentar seu perfil à equipe. Consulte as oportunidades e as condições de atuação disponíveis no momento do contato.</p>
+      <%= link_to "Conheça a imobiliária", sobre_path, class: "public-theme-institutional__link" %>
     </div>
+    <aside class="public-theme-institutional__panel">
+      <h2>Apresente seu perfil</h2>
+      <p>Compartilhe seus dados de contato e um resumo da sua experiência.</p>
+      <% if @work_with_us_form.present? %>
+        <%= public_form_modal(@work_with_us_form, trigger_label: "Enviar currículo", trigger_class: "public-theme-institutional__link") %>
+      <% elsif @public_identity.email.present? %>
+        <%= mail_to @public_identity.email, "Enviar por e-mail", class: "public-theme-institutional__link" %>
+      <% else %>
+        <%= link_to "Fale com nossa equipe", contato_path, class: "public-theme-institutional__link" %>
+      <% end %>
+      <% if @public_identity.phone.present? %>
+        <%= link_to "Conversar pelo WhatsApp", "https://wa.me/#{@public_identity.phone.to_s.gsub(/\D/, '')}?text=#{ERB::Util.url_encode("Olá, gostaria de trabalhar na #{@public_identity.name}")}", target: "_blank", rel: "noopener", class: "public-theme-institutional__link" %>
+      <% end %>
+    </aside>
   </div>
 </section>
-
-<!-- CTA -->
-<section class="py-16 bg-gradient-to-r from-blue-three to-blue-600">
-  <div class="container-custom">
-    <div class="max-w-3xl mx-auto text-center text-white">
-      <h2 class="text-3xl font-bold mb-6" data-aos="fade-up">Envie seu currículo</h2>
-      <p class="text-lg mb-8" data-aos="fade-up" data-aos-delay="100">
-        Procuramos profissionais comprometidos e apaixonados por imóveis
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="200">
-        <% if @work_with_us_form.present? %>
-          <%= public_form_modal(
-                @work_with_us_form,
-                trigger_label: "Enviar currículo",
-                trigger_class: "inline-flex items-center justify-center gap-2 px-8 py-4 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-white transition-all shadow-xl"
-              ) %>
-        <% else %>
-          <a href="mailto:<%= @public_identity.email %>" class="inline-block px-8 py-4 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-white transition-all shadow-xl">
-            <i class="bi bi-envelope-fill mr-2"></i>
-            Enviar por Email
-          </a>
-        <% end %>
-        <a href="https://wa.me/<%= @public_identity.phone.to_s.gsub(/\D/, '') %>?text=<%= ERB::Util.url_encode("Olá, gostaria de trabalhar na #{@public_identity.name}") %>" target="_blank" rel="noopener" class="inline-block px-8 py-4 bg-white text-blue-three font-bold rounded-lg hover:bg-golden-one transition-all shadow-xl">
-          <i class="bi bi-whatsapp mr-2"></i>
-          WhatsApp
-        </a>
-      </div>
-    </div>
-  </div>
-</section>
+<%= render "public_theme/components/institutional_regions" %>

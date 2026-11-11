@@ -1,0 +1,10 @@
+<% groups = public_tenant.habitations.public_city_link_groups(cities: 12, neighborhoods: 3) %>
+<% if groups.any? %>
+  <section class="public-theme-institutional public-theme-institutional--<%= theme_variant %>" id="regioes-de-atuacao">
+    <div class="container-custom">
+      <h2>Encontre seu próximo endereço nas regiões em que atuamos</h2>
+      <p>A <%= @public_identity.name %> reúne imóveis em <%= groups.map { |group| group[:label] }.to_sentence %>. Explore as opções por cidade e bairro e compare localização, características e condições de negociação. A disponibilidade acompanha o catálogo publicado.</p>
+      <%= render("public_theme/components/property_city_links", variant: theme_variant, groups: groups, title: "Imóveis por cidade e bairro") %>
+    </div>
+  </section>
+<% end %>

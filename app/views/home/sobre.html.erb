@@ -1,170 +1,41 @@
-<!-- Sobre Page - Modern Design -->
-
-<!-- Hero Section -->
-<section class="relative h-[400px] flex items-center justify-center bg-cover bg-center" 
-         style="background-image: linear-gradient(rgba(30, 64, 175, 0.8), rgba(30, 64, 175, 0.8)), url('<%= asset_path 'hero_05.jpeg' %>');">
-  <div class="container-custom relative z-10 text-center text-white">
-    <h1 class="text-4xl lg:text-5xl font-bold mb-4" data-aos="fade-up">Sobre a <%= @public_identity.name %></h1>
-    <p class="text-xl" data-aos="fade-up" data-aos-delay="100">Sua imobiliária de confiança<%= " em #{@public_identity.primary_city}" if @public_identity.primary_city.present? %></p>
-  </div>
-</section>
-
-<!-- Who We Are -->
-<section class="py-16 bg-white">
+<%= render "public_theme/components/institutional_head", eyebrow: @public_identity.name,
+  title: "Sua próxima conexão começa com um lugar",
+  lead: "Conheça a #{@public_identity.name}, imobiliária#{" em #{@public_identity.primary_city}" if @public_identity.primary_city.present?}, e encontre orientação para comprar, vender ou alugar seu imóvel." %>
+<article class="public-theme-institutional public-theme-institutional--<%= theme_variant %>">
   <div class="container-custom">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-      <div data-aos="fade-right">
-        <% if @layout_setting&.logo&.attached? %>
-          <% logo_url = public_image_url({ attachment: @layout_setting.logo }) %>
-          <%= image_tag logo_url, class: "w-full max-w-md mx-auto", alt: @public_identity.name if logo_url.present? %>
-        <% end %>
+    <div class="public-theme-institutional__intro">
+      <div>
+        <h2>Sobre a <%= @public_identity.name %></h2>
+        <%= simple_format(@footer_setting.about_text.presence || "Conectamos pessoas e imóveis com atendimento próximo e informações claras em cada etapa da negociação.") %>
+        <p>Escolher um imóvel é também escolher uma rotina. A localização, o espaço, os serviços do bairro e o orçamento fazem parte dessa decisão. Nosso atendimento começa pela compreensão do que você procura: um endereço para morar, um imóvel para lazer ou uma oportunidade de investimento.</p>
+        <p>Na busca por apartamentos, casas, coberturas e terrenos, compare as características dos anúncios e converse com nossa equipe sobre as opções disponíveis. Para vender ou alugar seu imóvel, entre em contato e conheça o processo de divulgação e atendimento aos interessados.</p>
       </div>
-      <div data-aos="fade-left">
-        <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-6">Quem Somos</h2>
-        <p class="text-gray-700 text-lg leading-relaxed mb-4">
-          <%= @footer_setting.about_text.presence || "A #{@public_identity.name} conecta pessoas às melhores oportunidades do mercado imobiliário, com atendimento próximo e transparente." %>
-        </p>
-        <p class="text-gray-700 text-lg leading-relaxed mb-6">
-          Com uma equipe qualificada e comprometida, trabalhamos para garantir que cada cliente encontre o 
-          imóvel perfeito, seja para moradia, investimento ou lazer.
-        </p>
-        <%= link_to contato_path, class: "inline-block px-8 py-3 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-blue-three hover:text-white transition-all duration-300 shadow-md hover:shadow-xl" do %>
-          <i class="bi bi-envelope mr-2"></i>
-          Entre em Contato
-        <% end %>
-      </div>
+      <aside class="public-theme-institutional__panel">
+        <h2>Uma conversa, o próximo passo</h2>
+        <p>Conte qual cidade você procura, o tipo de imóvel e a faixa de investimento. Essas informações ajudam a direcionar a pesquisa e organizar as visitas.</p>
+        <%= link_to "Fale com nossa equipe", contato_path, class: "public-theme-institutional__link" %>
+        <%= link_to "Explore os imóveis", habitations_path, class: "public-theme-institutional__link" %>
+      </aside>
     </div>
+    <% pillars = [["Missão", @public_site_profile.institutional_mission], ["Visão", @public_site_profile.institutional_vision], ["Valores", @public_site_profile.institutional_values]].select { |_, text| text.present? } %>
+    <% if pillars.any? %>
+      <section class="public-theme-institutional__section">
+        <h2>O que orienta nossa atuação</h2>
+        <div class="public-theme-institutional__grid">
+          <% pillars.each do |title, text| %>
+            <div><h3><%= title %></h3><%= simple_format(text) %></div>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+    <section class="public-theme-institutional__section">
+      <h2>Da pesquisa à negociação: decisões com mais informação</h2>
+      <div class="public-theme-institutional__grid">
+        <div><h3>Comprar um imóvel</h3><p>Defina suas prioridades de localização, dormitórios, vagas e área. Compare imóveis à venda e consulte nossa equipe sobre visitas, documentação e condições apresentadas pelo proprietário.</p></div>
+        <div><h3>Alugar para uma nova fase</h3><p>Além do valor do aluguel, considere condomínio, encargos, garantias e prazo de contrato. Tire suas dúvidas sobre os imóveis para locação e confirme a disponibilidade antes de planejar a mudança.</p></div>
+        <div><h3>Vender com planejamento</h3><p>Apresente as características e a documentação do seu imóvel. Converse sobre divulgação, posicionamento da oferta e acompanhamento dos interessados, de acordo com as condições da contratação.</p></div>
+      </div>
+    </section>
   </div>
-</section>
-
-<!-- Mission, Vision, Values -->
-<section class="py-16 bg-gray-50">
-  <div class="container-custom">
-    <h2 class="text-3xl lg:text-4xl font-bold text-blue-three text-center mb-12" data-aos="fade-up">
-      Nossos Pilares
-    </h2>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <!-- Mission -->
-      <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-shadow text-center" data-aos="fade-up" data-aos-delay="0">
-        <div class="bg-golden-one/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <i class="bi bi-bullseye text-4xl text-golden-one"></i>
-        </div>
-        <h3 class="text-2xl font-bold text-blue-three mb-4">Missão</h3>
-        <p class="text-gray-600 leading-relaxed">
-          <%= @public_site_profile.institutional_mission.presence || "Configure a missão da empresa no Perfil público." %>
-        </p>
-      </div>
-
-      <!-- Vision -->
-      <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-shadow text-center" data-aos="fade-up" data-aos-delay="100">
-        <div class="bg-golden-one/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <i class="bi bi-eye text-4xl text-golden-one"></i>
-        </div>
-        <h3 class="text-2xl font-bold text-blue-three mb-4">Visão</h3>
-        <p class="text-gray-600 leading-relaxed">
-          <%= @public_site_profile.institutional_vision.presence || "Configure a visão da empresa no Perfil público." %>
-        </p>
-      </div>
-
-      <!-- Values -->
-      <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-shadow text-center" data-aos="fade-up" data-aos-delay="200">
-        <div class="bg-golden-one/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <i class="bi bi-gem text-4xl text-golden-one"></i>
-        </div>
-        <h3 class="text-2xl font-bold text-blue-three mb-4">Valores</h3>
-        <p class="text-gray-600 leading-relaxed">
-          <%= @public_site_profile.institutional_values.presence || "Configure os valores da empresa no Perfil público." %>
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Why Choose Us -->
-<section class="py-16 bg-white">
-  <div class="container-custom">
-    <h2 class="text-3xl lg:text-4xl font-bold text-blue-three text-center mb-12" data-aos="fade-up">
-      Por Que Escolher a <%= @public_identity.name %>?
-    </h2>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <!-- Feature 1 -->
-      <div class="flex items-start gap-4" data-aos="fade-right" data-aos-delay="0">
-        <div class="flex-shrink-0">
-          <i class="bi bi-check-circle-fill text-4xl text-golden-one"></i>
-        </div>
-        <div>
-          <h3 class="text-xl font-bold text-blue-three mb-2">Experiência no Mercado</h3>
-          <p class="text-gray-600">
-            Experiência no mercado imobiliário<%= " de #{@public_identity.primary_city} e região" if @public_identity.primary_city.present? %>,
-            com conhecimento profundo do mercado local.
-          </p>
-        </div>
-      </div>
-
-      <!-- Feature 2 -->
-      <div class="flex items-start gap-4" data-aos="fade-left" data-aos-delay="100">
-        <div class="flex-shrink-0">
-          <i class="bi bi-check-circle-fill text-4xl text-golden-one"></i>
-        </div>
-        <div>
-          <h3 class="text-xl font-bold text-blue-three mb-2">Atendimento Personalizado</h3>
-          <p class="text-gray-600">
-            Cada cliente é único e merece um atendimento exclusivo e dedicado às suas necessidades.
-          </p>
-        </div>
-      </div>
-
-      <!-- Feature 3 -->
-      <div class="flex items-start gap-4" data-aos="fade-right" data-aos-delay="200">
-        <div class="flex-shrink-0">
-          <i class="bi bi-check-circle-fill text-4xl text-golden-one"></i>
-        </div>
-        <div>
-          <h3 class="text-xl font-bold text-blue-three mb-2">Portfólio Completo</h3>
-          <p class="text-gray-600">
-            Ampla variedade de imóveis para venda e locação em toda a região, 
-            desde apartamentos até coberturas de alto padrão.
-          </p>
-        </div>
-      </div>
-
-      <!-- Feature 4 -->
-      <div class="flex items-start gap-4" data-aos="fade-left" data-aos-delay="300">
-        <div class="flex-shrink-0">
-          <i class="bi bi-check-circle-fill text-4xl text-golden-one"></i>
-        </div>
-        <div>
-          <h3 class="text-xl font-bold text-blue-three mb-2">Suporte Completo</h3>
-          <p class="text-gray-600">
-            Acompanhamento em todas as etapas do processo de compra, venda ou locação, 
-            garantindo tranquilidade e segurança.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CTA Section -->
-<section class="py-16 bg-gradient-to-r from-blue-three to-blue-600">
-  <div class="container-custom text-center text-white">
-    <h2 class="text-3xl lg:text-4xl font-bold mb-6" data-aos="fade-up">
-      Pronto para encontrar o imóvel dos seus sonhos?
-    </h2>
-    <p class="text-xl mb-8 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
-      Nossa equipe está pronta para ajudá-lo a encontrar o imóvel perfeito
-    </p>
-    <div class="flex flex-wrap gap-4 justify-center" data-aos="fade-up" data-aos-delay="200">
-      <%= link_to habitations_path, class: "inline-block px-8 py-4 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-white transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
-        <i class="bi bi-search mr-2"></i>
-        Ver Imóveis
-      <% end %>
-      <%= link_to contato_path, class: "inline-block px-8 py-4 bg-white text-blue-three font-bold rounded-lg hover:bg-golden-one transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
-        <i class="bi bi-envelope mr-2"></i>
-        Entre em Contato
-      <% end %>
-    </div>
-  </div>
-</section>
+</article>
+<%= render "public_theme/components/institutional_regions" %>

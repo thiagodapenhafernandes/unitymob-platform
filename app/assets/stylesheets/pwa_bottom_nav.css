@@ -35,6 +35,15 @@
     padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Evita um segundo scroller no body, que desloca elementos fixos no WebKit/iOS. */
+  @supports (overflow: clip) {
+    html:has(body.ax-pwa-bottom-nav-body),
+    body.ax-pwa-bottom-nav-body {
+      overflow-x: clip;
+      overflow-y: visible;
+    }
+  }
+
   body.ax-pwa-bottom-nav-body--wizard .wizard-bottom-nav,
   body:has(.ax-pwa-bottom-nav) .wizard-bottom-nav {
     bottom: calc(62px + env(safe-area-inset-bottom, 0px));
@@ -47,6 +56,8 @@
 
   .ax-pwa-bottom-nav {
     position: fixed;
+    /* Mantém a barra em sua própria camada durante a rolagem acelerada do iOS. */
+    transform: translateZ(0);
     right: 0;
     bottom: 0;
     left: 0;

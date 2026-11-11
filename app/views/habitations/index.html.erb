@@ -139,6 +139,8 @@
                 <%= simple_format(listing_seo.intro_text) %>
               </div>
             </section>
+          <% else %>
+            <%= render "public_theme/components/location_intro" %>
           <% end %>
 
           <% related_links = Seo::StrategicLanding.available_property_links %>
