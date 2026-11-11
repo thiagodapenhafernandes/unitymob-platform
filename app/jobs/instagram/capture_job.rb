@@ -70,6 +70,7 @@ module Instagram
     def self.release!(lead, owner: nil)
       return unless lead.instagram_automation_active?
 
+      RoutingContext.apply(lead)
       state = lead.other_information.fetch("instagram_capture")
       if owner
         lead.assign_attributes(admin_user: owner)
@@ -188,6 +189,7 @@ module Instagram
 
     def finish_capture(lead, thank_you: true, through: nil)
       return unless CaptureAnswer.complete?(lead)
+      RoutingContext.apply(lead)
       state = lead.other_information.fetch("instagram_capture")
       cursor = through || lead.instagram_messages.inbound.maximum(:id)
       if lead.client_name.present? && (lead.name.blank? || lead.name == ProfileEnrichmentJob::DEFAULT_NAME || lead.name.start_with?("@"))
@@ -205,8 +207,8 @@ module Instagram
         data = CaptureAnswer.new(message.body)
         data.request?
       end
-      if rule["sdr_enabled"] && question
-        response = contextual_response(lead, rule, conversation_history(lead, question.id), first_turn: true)
+      if rule["sdr_enabled"] && (question || Leads::EntryClassification.new(lead).nature == :commercial)
+        response = contextual_response(lead, rule, conversation_history(lead, question&.id || cursor), first_turn: true)
         send_catalog_reply(lead, response, handoff_cursor: cursor)
         return
       end
@@ -253,6 +255,8 @@ module Instagram
           lead.name = lead.client_name
         end
         lead.update_columns(lead.changes.transform_values(&:last).slice("name", "client_name", "phone")) if lead.changed?
+        RoutingContext.apply(lead)
+        lead.update_columns(other_information: lead.other_information) if lead.will_save_change_to_other_information?
         history = conversation_history(lead, newest.id)
         first_turn = state["sdr_cursor"] == state["sdr_started_after"]
         answer = contextual_response(lead, rule, history, first_turn: first_turn)
@@ -267,16 +271,17 @@ module Instagram
 
     def handoff_to_team(lead, cursor)
       return unless CaptureAnswer.complete?(lead)
+      RoutingContext.apply(lead)
       lead.update_columns(other_information: lead.other_information.deep_merge("instagram_capture" => {"step" => "completed", "sdr_cursor" => nil}))
       key = lead.activities.where(kind: "note").where("metadata ->> 'instagram_handoff_cursor' = ?", cursor.to_s)
       unless key.exists?
         lead.activities.create!(kind: "note", source_category: "automation", metadata: {
-          "body" => "A IA encaminhou uma dúvida ao corretor por solicitação do cliente ou falta de informação confirmada no cadastro.", "instagram_handoff_cursor" => cursor
+          "body" => "A automação encaminhou o contato para atendimento da equipe.", "instagram_handoff_cursor" => cursor
         })
         Leads::RoutingService.route!(lead) if lead.admin_user_id.blank?
         if lead.admin_user
           Leads::NotificationDispatcher.push_to(lead.admin_user, title: "Cliente aguarda resposta no Instagram",
-            body: "Há uma dúvida que precisa de confirmação do corretor.", url: "/admin/leads/#{lead.id}#lead-instagram-thread", lead: lead, event: "instagram_handoff")
+            body: "O cliente aguarda atendimento da equipe no Instagram.", url: "/admin/leads/#{lead.id}#lead-instagram-thread", lead: lead, event: "instagram_handoff")
         end
       end
       if lead.admin_user_id.nil?
@@ -320,6 +325,10 @@ module Instagram
     def contextual_response(lead, rule, history, first_turn:, condition: nil)
       condition ||= ConversationCondition.match(lead, rule, history)
       return unless condition
+      if CaptureAnswer.complete?(lead) && condition['match'] == 'always' && condition['action'] == 'ai' && condition['ai_enabled'] == true &&
+          Leads::EntryClassification.new(lead).nature == :commercial
+        return CatalogReply::HANDOFF
+      end
       case condition['action']
       when 'fixed' then condition['response'].to_s
       when 'handoff' then CatalogReply::HANDOFF

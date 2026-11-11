@@ -47,3 +47,30 @@ Cada condição tem prioridade, identificação por expressões ou contexto com 
 Mensagens de dados pendentes, identificação do imóvel e encaminhamento são editáveis, assim como as instruções de atendimento. A lista de dados públicos autorizados filtra fatos enviados ao modelo e também recomendações/cartões. Condições de negociação continuam exigindo autorização adicional por imóvel; nunca são liberadas por uma permissão genérica. Sem confirmação no cadastro, encaminha ao corretor.
 
 O indicador de digitação é enviado antes da geração da resposta, usando o endpoint da página para Facebook Login, com apenas `recipient` e `sender_action`. Tem ativação e duração mínima de 0–5 segundos configuráveis e encerramento garantido em caso de erro. Falhas da Meta registram apenas classe/código do erro e não impedem a resposta. Validação visual de entrega depende do aplicativo Instagram e não é simulada enviando mensagens a clientes reais.
+
+
+## Encaminhamento comercial do Direct (11/11/2026)
+
+Entradas orgânicas também registram a página Meta autorizada da própria conta,
+sem depender de campanha/anúncio. O contexto é reconstruído ao liberar um contato
+antigo usando a conta Instagram vinculada; não aceita página de outro tenant,
+inativa ou desmarcada na integração. Não inventa campanha para corretores que
+recebem apenas campanhas específicas.
+
+Uma manifestação afirmativa do cliente (por exemplo, `Comprar` ou `Quero alugar`)
+registra `business_type` e o ID da mensagem em
+`instagram_capture.business_type_message_id`. Perguntas, negativas, respostas
+ambíguas, nomes de campanhas e sugestões do bot não identificam modalidade.
+A extração considera até as últimas 20 mensagens recebidas e preserva modalidade
+explícita já cadastrada.
+
+Com nome e telefone válidos e natureza comercial identificada, a condição genérica
+de IA (`always`) encaminha à equipe, em vez de manter a qualificação indefinidamente.
+Condições específicas configuradas pela conta mantêm prioridade. O e-mail opcional
+mantém seu prazo/possibilidade de pular. Contatos incompletos permanecem na captura;
+sem modalidade, o SDR pode continuar a triagem. Após o encaminhamento, as filas
+continuam exigindo página, modalidade, campanha, horários e participantes elegíveis.
+Sem correspondência ou corretor elegível, o contato fica pendente, sem atribuição
+forçada. Assumir manualmente prepara o mesmo contexto de origem e modalidade.
+Não há backfill ou redistribuição em massa, nem ampliação do acesso a leads de
+outros corretores. Sem migrations.

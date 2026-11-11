@@ -24,6 +24,7 @@ class InstagramDirectJob < ApplicationJob
         new_lead = lead.new_record?
         if new_lead
           lead.assign_attributes(name: Instagram::ProfileEnrichmentJob::DEFAULT_NAME, origin: "Instagram Direct", status: Lead.default_status)
+          Instagram::RoutingContext.apply(lead)
           rules = Instagram::CaptureSettings.new(page, tenant: tenant).rules
           if rules.values.any? { |rule| rule["enabled"] } &&
               MetaFacebookPage.available_for_distribution(tenant.id).exists?(id: page.id)
@@ -35,7 +36,7 @@ class InstagramDirectJob < ApplicationJob
         context = {}
         referral = message["referral"] || event["referral"]
         context["referral"] = referral.slice("ref", "source", "type", "ad_id").select { |_, value| value.is_a?(String) }.transform_values { |value| value.first(2000) } if referral.is_a?(Hash)
-        context["meta_facebook_page_id"] = page.id if context.dig("referral", "ad_id").present?
+        context["meta_facebook_page_id"] = page.id
         story = message.dig("reply_to", "story")
         context["story_id"] = story["id"] if story.is_a?(Hash)
         timestamp = Float(event["timestamp"], exception: false)
