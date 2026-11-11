@@ -24,6 +24,8 @@
                 select_options: { selected: lead.admin_user_id },
                 placeholder: "Buscar corretor..."
               ) %>
+          <%= render "admin/shared/ui/lead_assignment_options", lead: lead,
+                id_prefix: "lead-transfer-#{local_assigns[:options_namespace] || 'desktop'}-#{lead.id}" %>
         </div>
         <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">
           <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>

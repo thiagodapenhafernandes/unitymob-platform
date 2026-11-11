@@ -1604,6 +1604,7 @@
 </style>
 
 <div class="lead-show-workspace" data-controller="attribute-manager" data-attribute-manager-modal-id-value="attributeManagerModalLead">
+<%= ax_error_summary(@lead) %>
 
 <%# ===== Cabeçalho ===== %>
 <% sla = lead_sla(@lead) %>
@@ -1624,7 +1625,7 @@
     </div>
     <div class="lead-pwa-detail__top-actions">
       <% if can_transfer_lead?(@lead) %>
-        <%= render "admin/leads/transfer_modal", lead: @lead, broker_options: transfer_broker_options(@lead) %>
+        <%= render "admin/leads/transfer_modal", lead: @lead, broker_options: transfer_broker_options(@lead), options_namespace: "mobile" %>
       <% end %>
       <%= button_to toggle_favorite_admin_lead_path(@lead),
                     method: :patch,
@@ -2138,6 +2139,7 @@
                 <label class="ax-label">Corretor</label>
                 <%= f.select :admin_user_id, transfer_broker_options(@lead), { include_blank: "Sem corretor" }, class: "ax-select" %>
               </div>
+              <%= render "admin/shared/ui/lead_assignment_options", lead: @lead, id_prefix: "lead-owner-#{@lead.id}" %>
             <% else %>
               <div>
                 <span class="ax-label">Corretor</span>

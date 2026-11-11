@@ -473,4 +473,31 @@ RSpec.describe Leads::NotificationDispatcher do
     expect(notices.last.metadata).not_to have_key('lead_id')
   end
 
+  it "envia WhatsApp na atribuição manual somente quando solicitado, usando o template da fila" do
+    rule.update!(notify_whatsapp: true)
+    LeadSetting.instance.update!(notify_on_reassignment: false)
+    sender = create(:whatsapp_business_integration, tenant: lead.tenant, connected_by_admin_user: corretor)
+    transport = Notifications::TransportResolver::Result.new(sender: sender, source: :tenant)
+    client = instance_double(Whatsapp::CloudClient)
+    allow(Notifications::TransportResolver).to receive(:whatsapp).with(lead.tenant).and_return(transport)
+    allow(Whatsapp::CloudClient).to receive(:new).with(sender).and_return(client)
+    allow(client).to receive(:send_template).and_return(ok: true, message_id: "wamid.manual-assignment")
+    described_class.notify_reassignment(lead, corretor)
+    expect(client).not_to have_received(:send_template)
+    described_class.notify_reassignment(lead, corretor, whatsapp: true)
+    expect(client).to have_received(:send_template).with(hash_including(to: corretor.phone, language: "pt_BR")).once
+    event = lead.activities.where(kind: "notification_sent").sole
+    expect(event.metadata).to include("channel" => "whatsapp", "rule_id" => rule.id, "admin_user_id" => corretor.id)
+    expect(Notifications::PushDeliveryJob).not_to have_been_enqueued
+  end
+
+  it "registra falha do WhatsApp manual sem desfazer o responsável salvo" do
+    rule.update!(notify_whatsapp: true)
+    lead
+    allow(Notifications::TransportResolver).to receive(:whatsapp).and_raise(StandardError, "Transporte indisponível")
+    expect { described_class.notify_reassignment(lead, corretor, whatsapp: true) }.not_to raise_error
+    expect(lead.reload.admin_user_id).to eq(corretor.id)
+    expect(lead.activities.where(kind: "notification_failed").last.metadata).to include("channel" => "whatsapp")
+  end
+
 end

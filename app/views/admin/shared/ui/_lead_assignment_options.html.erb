@@ -1,0 +1,19 @@
+<% if current_admin_user&.admin? && can_transfer_lead?(lead) %>
+  <%= ax_field_group(title: "Ao atribuir outro corretor") do %>
+    <div class="tw-grid tw-gap-3">
+      <%= ax_check_field(label: "Notificar o corretor no WhatsApp",
+            name: "manual_assignment[notify_whatsapp]", id: "#{id_prefix}-notify-whatsapp",
+            checked: params.dig(:manual_assignment, :notify_whatsapp) == "1",
+            input_html: { aria: { describedby: "#{id_prefix}-assignment-hint" } }) %>
+      <%= ax_check_field(label: "Girar a roleta da fila",
+            name: "manual_assignment[rotate_queue]", id: "#{id_prefix}-rotate-queue",
+            checked: params.dig(:manual_assignment, :rotate_queue) == "1",
+            input_html: { aria: { describedby: "#{id_prefix}-assignment-hint" } }) %>
+      <p id="<%= id_prefix %>-assignment-hint" class="ax-field__hint">
+        Só se aplicam ao mudar o corretor. O giro move o escolhido para o fim da fila rotativa.
+        Seguem a fila atual ou uma fila compatível, com participantes, campanha, check-in e horário válidos.
+        O WhatsApp precisa estar habilitado nas notificações da fila.
+      </p>
+    </div>
+  <% end %>
+<% end %>
