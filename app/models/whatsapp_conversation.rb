@@ -63,7 +63,7 @@ class WhatsappConversation < ApplicationRecord
     SQL
   }
   scope :administrative_inbox, -> {
-    without_commercial_lead.or(where(id: WhatsappAttendance.open_now.administrative.select(:whatsapp_conversation_id)))
+    without_commercial_lead.or(where(id: WhatsappAttendance.administrative.select(:whatsapp_conversation_id)))
       .inbox_enabled
   }
 
@@ -72,10 +72,7 @@ class WhatsappConversation < ApplicationRecord
 
     return true if lead.nil? || lead.whatsapp_service_contact?
 
-    attendance = attendances.find(&:open?)
-    owner = attendance&.admin_user
-    attendance.present? && attendance.distribution_rule_id.nil? && owner.present? &&
-      !DistributionRule.new(tenant_id: tenant_id).eligible_distribution_agent?(owner)
+    attendances.any?(&:administrative?)
   end
   # Mesma regra de visibilidade do inbox (dono da conversa ou do lead dentro do escopo do usuário; equipe inclui a subárvore).
   scope :visible_to, ->(user) {

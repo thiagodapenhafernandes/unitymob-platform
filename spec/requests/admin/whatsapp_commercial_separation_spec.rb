@@ -94,6 +94,49 @@ RSpec.describe "Separação do atendimento WhatsApp e do comercial", type: :requ
     expect(conversation.reload.open_attendance.admin_user).to eq(admin)
   end
 
+  it "preserva na fila e no tempo real o histórico administrativo encerrado após promoção comercial" do
+    conversation = conversation_for(service_contact)
+    conversation.update!(assigned_admin_user: admin)
+    attendance = conversation.attendances.create!(tenant: tenant, lead: service_contact, admin_user: admin,
+      status: "closed", opened_at: 1.day.ago, closed_at: 1.hour.ago)
+    message = conversation.messages.create!(tenant: tenant, direction: "inbound", status: "delivered", body: "Histórico preservado")
+    service_contact.promote_whatsapp_contact!(admin_user: broker)
+
+    expect(attendance).to be_administrative
+    expect(conversation.reload.administrative_inbox?).to be(true)
+    expect(tenant.whatsapp_conversations.administrative_inbox).to include(conversation)
+    get admin_whatsapp_conversations_path
+    expect(Nokogiri::HTML(response.body).at_css("#wa-inbox-queue [data-conversation-id='#{conversation.id}']")).to be_present
+    get admin_whatsapp_conversations_path(filter: "unlinked")
+    expect(Nokogiri::HTML(response.body).at_css("#wa-inbox-queue [data-conversation-id='#{conversation.id}']")).to be_nil
+    expect(conversation.messages.visible.pluck(:id)).to eq([message.id])
+    expect(attendance.reload).to be_closed
+    expect(service_contact.reload.admin_user).to eq(broker)
+  end
+
+  it "não inclui histórico exclusivamente comercial encerrado no atendimento administrativo" do
+    conversation = conversation_for(customer)
+    attendance = conversation.attendances.create!(tenant: tenant, lead: customer, admin_user: broker,
+      distribution_rule: create(:distribution_rule, tenant: tenant), status: "closed", opened_at: 1.day.ago, closed_at: 1.hour.ago)
+    expect(attendance).not_to be_administrative
+    expect(conversation.administrative_inbox?).to be(false)
+    expect(tenant.whatsapp_conversations.administrative_inbox).not_to include(conversation)
+  end
+
+  it "mantém o escopo do usuário mesmo quando existe histórico administrativo encerrado" do
+    conversation = conversation_for(customer)
+    customer.update!(admin_user: admin)
+    conversation.update!(assigned_admin_user: admin)
+    conversation.attendances.create!(tenant: tenant, lead: customer, admin_user: admin,
+      status: "closed", opened_at: 1.day.ago, closed_at: 1.hour.ago)
+    broker.profile.update!(permissions: broker.profile.permissions.merge("whatsapp_inbox" => { "view" => true, "scope" => "own" }))
+    sign_in broker
+
+    get admin_whatsapp_conversations_path
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css("[data-conversation-id='#{conversation.id}']")).to be_nil
+  end
+
   it "promove contato de atendimento ao encaminhar para um corretor" do
     conversation = conversation_for(service_contact)
     Whatsapp::AttendanceManager.open!(conversation: conversation, lead: service_contact, flow: nil,
