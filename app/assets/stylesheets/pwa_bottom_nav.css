@@ -39,7 +39,7 @@
   @supports (overflow: clip) {
     html:has(body.ax-pwa-bottom-nav-body),
     body.ax-pwa-bottom-nav-body {
-      overflow-x: clip;
+      overflow-x: clip !important;
       overflow-y: visible;
     }
   }
