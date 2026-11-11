@@ -75,7 +75,7 @@ module Habitations
       captador = object(@payload, "captador")
       owner = object(@payload, "proprietario")
       address = object(property, "endereco")
-      category = Habitation::CATEGORIES.find { |name| name.parameterize == string(property, "categoria").tr("_", "-").parameterize }
+      category = Habitation.registration_category(string(property, "categoria"))
       raise Invalid, "categoria inválida" unless category
 
       modality = string(property, "modalidade")
@@ -95,8 +95,8 @@ module Habitations
         proprietario: string(owner, "nome"), proprietario_celular: phone, proprietario_email: email
       )
       habitation.build_address(address_attributes(address))
-      habitation.caracteristicas = feature_names(property, "caracteristicas_internas", "feature") if property.key?("caracteristicas_internas")
-      habitation.infra_estrutura = feature_names(property, "infraestrutura_lazer", "infrastructure") if property.key?("infraestrutura_lazer")
+      habitation.caracteristicas = feature_names(property, "caracteristicas_internas", "feature", habitation) if property.key?("caracteristicas_internas")
+      habitation.infra_estrutura = feature_names(property, "infraestrutura_lazer", "infrastructure", habitation) if property.key?("infraestrutura_lazer")
       apply_optional_fields(habitation, property)
       assign_captador(habitation, captador)
       COUNTS.each { |key, attribute| habitation[attribute] = integer(property, key, max: 2_147_483_647) if property.key?(key) }
@@ -128,7 +128,7 @@ module Habitations
       attributes
     end
 
-    def feature_names(property, key, category)
+    def feature_names(property, key, category, habitation)
       values = property[key]
       valid = values.is_a?(Array) && values.all? do |value|
         value.is_a?(Integer) ||
@@ -141,15 +141,21 @@ module Habitations
       options = @tenant.attribute_options.for_context("habitation").for_category(category).select(:id, :name).to_a
       by_id = options.index_by { |option| option.id.to_s }
       by_name = options.index_by { |option| AttributeOption.normalized_name_key(option.name) }
+      standard_names = habitation.available_checklist_options(category, catalog: [])
+        .index_by { |name| AttributeOption.normalized_name_key(name) }
       values.map do |value|
         option = if value.is_a?(Integer) || value.match?(/\A[0-9]+\z/)
           by_id[value.to_s]
         else
           by_name[AttributeOption.normalized_name_key(value)]
         end
-        raise Invalid, "#{key} contém opção desconhecida nesta conta" unless option
+        name = option&.name
+        if name.nil? && value.is_a?(String) && !value.match?(/\A[0-9]+\z/)
+          name = standard_names[AttributeOption.normalized_name_key(value)]
+        end
+        raise Invalid, "#{key} contém opção desconhecida nesta conta" unless name
 
-        option.name
+        name
       end.uniq
     end
 

@@ -305,6 +305,63 @@ RSpec.describe "API de captação de imóveis", type: :request do
       get "/api/v1/property_features", headers: { "Authorization" => "Bearer #{token}" }
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it "consulta os checklists comerciais e de terrenos com opções próprias da conta sem gravar o catálogo" do
+      custom = tenant.attribute_options.create!(context: "habitation", category: "feature", name: "Selo ambiental da conta")
+      other = Tenant.create!(name: "Outro catálogo tipado", slug: "outro-catalogo-tipado")
+      other.attribute_options.create!(context: "habitation", category: "feature", name: "Selo de outra conta")
+      headers = { "Authorization" => "Bearer #{token}" }
+      { "galpao" => "Operação industrial", "sala_comercial" => "Mezanino", "terreno" => "Topografia plana", "terreno_em_condominio" => "Topografia plana" }.each do |category, expected|
+        expect { get "/api/v1/property_features", params: { categoria: category }, headers: headers }
+          .not_to change(AttributeOption, :count)
+        expect(response).to have_http_status(:ok)
+        features = response.parsed_body.fetch("caracteristicas_internas")
+        expect(features).to include("id" => nil, "nome" => expected)
+        expect(features).to include("id" => custom.id, "nome" => custom.name)
+        expect(features.map { |item| item["nome"] }).not_to include("Selo de outra conta", feature.name)
+      end
+      expect(response.parsed_body.fetch("infraestrutura_lazer")).to include("id" => infrastructure.id, "nome" => infrastructure.name)
+    end
+
+    it "oferece para cada categoria exatamente o checklist compartilhado com o cadastro do CRM" do
+      headers = { "Authorization" => "Bearer #{token}" }
+      Habitation::CATEGORIES.each do |category|
+        get "/api/v1/property_features", params: { categoria: category.parameterize(separator: "_") }, headers: headers
+        expect(response).to have_http_status(:ok)
+        property = tenant.habitations.new(categoria: category)
+        { "caracteristicas_internas" => ["feature", [feature.name]], "infraestrutura_lazer" => ["infrastructure", [infrastructure.name]] }.each do |key, (kind, names)|
+          expect(response.parsed_body.fetch(key).map { |item| item["nome"] })
+            .to eq(property.available_checklist_options(kind, catalog: names))
+        end
+      end
+    end
+
+    it "recebe os nomes padrão consultados para galpão, sala e terreno sem criar opções" do
+      { "galpao" => ["Operação industrial", "Docas"], "sala_comercial" => ["Mezanino", "Elevador"], "terreno" => ["Topografia plana", "Rede de água"] }.each do |category, (name, infrastructure_name)|
+        payload[:external_id] = "CAP-#{category}"
+        payload[:imovel][:categoria] = category
+        payload[:imovel][:caracteristicas_internas] = [name, name]
+        payload[:imovel][:infraestrutura_lazer] = [infrastructure_name]
+        expect { send_intake }.not_to change(AttributeOption, :count)
+        expect(response).to have_http_status(:created)
+        property = PropertyIntakeReceipt.for_tenant(tenant).find_by!(external_id: payload[:external_id]).habitation
+        expect(property.property_features_for_display).to eq([name])
+        expect(property.leisure_features_for_display).to eq([infrastructure_name])
+      end
+    end
+
+    it "rejeita categoria inválida e nomes padrão de outra categoria sem criar captação" do
+      headers = { "Authorization" => "Bearer #{token}" }
+      ["", "inexistente", ["terreno"], { tipo: "galpao" }].each do |category|
+        get "/api/v1/property_features", params: { categoria: category }, headers: headers
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body).to eq("error" => "categoria inválida")
+      end
+      payload[:imovel][:categoria] = "apartamento"
+      payload[:imovel][:caracteristicas_internas] = ["Operação industrial"]
+      expect { send_intake }.not_to change(Habitation, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
   end
 
 end

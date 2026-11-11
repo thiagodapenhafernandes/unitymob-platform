@@ -48,7 +48,12 @@ RSpec.describe "Referência da API", type: :request do
     contract = YAML.safe_load(response.body)
     operation = contract.dig("paths", "/api/v1/property_features", "get")
     expect(operation.fetch("security")).to eq([{ "BearerAuth" => [] }])
-    expect(operation.fetch("responses")).to include("200", "401")
+    expect(operation.fetch("responses")).to include("200", "401", "422")
+    parameter = operation.fetch("parameters").find { |item| item["name"] == "categoria" }
+    expect(parameter).to include("in" => "query", "required" => false)
+    expect(parameter.dig("schema", "$ref")).to eq("#/components/schemas/Imovel/properties/categoria")
+    expect(contract.dig("components", "schemas", "OpcaoCaracteristica", "properties", "id", "nullable")).to eq(true)
+    expect(contract.dig("info", "version")).to eq("1.3.0")
     schema = operation.dig("responses", "200", "content", "application/json", "schema")
     expect(schema.fetch("required")).to match_array(%w[caracteristicas_internas infraestrutura_lazer])
     expect(contract.dig("components", "schemas", "ListaCaracteristicas", "items", "oneOf")
