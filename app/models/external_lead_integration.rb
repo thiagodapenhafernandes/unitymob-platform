@@ -142,6 +142,8 @@ class ExternalLeadIntegration < ApplicationRecord
   def local_user_for_seller(seller)
     seller = seller.to_h
     users = mirror_c2s_owners? ? tenant.admin_users.account_members : tenant.admin_users.active
+    known_seller = Array(sellers_payload).find { |entry| entry["id"].to_s == seller["id"].to_s } if mirror_c2s_owners?
+    users = users.where(active: false) if mirror_c2s_owners? && (seller["active"] == false || known_seller&.dig("active") == false)
     mapped_id = seller_mappings[seller["id"].to_s].presence
     mapped_user = users.find_by(id: mapped_id) if mapped_id
     return mapped_user if mapped_user && mirror_seller_identity_matches?(mapped_user, seller)
