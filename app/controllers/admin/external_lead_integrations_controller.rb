@@ -126,6 +126,7 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       :access_token,
       :webhook_listening_enabled,
       :accept_lead_without_phone,
+      :mirror_c2s_owners,
       :sale_assignment_mode,
       :rental_assignment_mode,
       :export_enabled,

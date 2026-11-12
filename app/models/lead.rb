@@ -787,6 +787,10 @@ class Lead < ApplicationRecord
   def assigned_admin_user_must_be_active
     return unless will_save_change_to_admin_user_id?
     return if admin_user_id.blank? || admin_user&.active?
+    if skip_automatic_routing? && external_lead_integration&.tenant_id == tenant_id && external_lead_integration.mirror_c2s_owners?
+      mirrored_user = external_lead_integration.local_user_for_seller(other_information.to_h["external_lead_seller"])
+      return if mirrored_user&.id == admin_user_id && mirrored_user.tenant_id == tenant_id
+    end
 
     errors.add(:admin_user, "precisa estar ativo para receber leads")
   end

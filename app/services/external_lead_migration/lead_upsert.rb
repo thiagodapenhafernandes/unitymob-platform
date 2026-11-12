@@ -18,10 +18,18 @@ module ExternalLeadMigration
 
       Current.set(tenant: integration.tenant) do
         attrs = mapper.lead_attributes(integration:, historical:)
-        lead = find_existing(mapper)
+        mirror = integration.mirror_c2s_owners?
+        lead = find_existing(mapper, mirror:)
         if lead
           action = :updated
           lead.with_lock do
+            previous_owner_id = lead.admin_user_id
+            previous_source_at = lead.other_information["c2s_owner_source_updated_at"].presence
+            previous_source_at = Time.iso8601(previous_source_at) if previous_source_at
+            if mirror && previous_source_at && (!mapper.source_updated_at || mapper.source_updated_at < previous_source_at)
+              return Result.new(lead:, action: :stale)
+            end
+            mirror_owner = MirrorSeller.call(integration:, seller: mapper.seller) if mirror
             attrs.delete(:created_at)
             attrs.except!(:admin_user, :distribution_rule) unless historical
             if lead.other_information["intake_reconciled"]
@@ -31,13 +39,36 @@ module ExternalLeadMigration
               attrs.except!(:admin_user, :distribution_rule, :status, :lead_pipeline, :lead_pipeline_stage)
               attrs[:other_information] = lead.other_information.merge(attrs[:other_information] || {})
             end
+            if mirror
+              attrs = attrs.slice(:external_last_synced_at, :other_information)
+              attrs[:admin_user] = mirror_owner
+              attrs[:distribution_rule] = nil
+              attrs[:other_information] = lead.other_information.merge(attrs[:other_information] || {})
+              attrs[:other_information]["c2s_owner_source_updated_at"] = mapper.source_updated_at&.iso8601
+            end
             lead.skip_automatic_routing = true
             lead.update!(attrs)
+            if mirror && previous_owner_id != lead.admin_user_id
+              lead.activities.create!(kind: "external_owner_mirrored", source_category: "external_sync", metadata: {
+                previous_admin_user_id: previous_owner_id, admin_user_id: lead.admin_user_id,
+                external_lead_id: mapper.external_lead_id, source_updated_at: mapper.source_updated_at&.iso8601
+              }.compact)
+            end
           end
         else
+          if mirror
+            attrs[:admin_user] = MirrorSeller.call(integration:, seller: mapper.seller)
+            attrs[:distribution_rule] = nil
+          end
           inquiry = integration.tenant.leads.new(attrs)
-          inquiry.skip_automatic_routing = historical
-          lead = Leads::Intake.receive!(inquiry)
+          inquiry.skip_automatic_routing = historical || mirror
+          if mirror
+            inquiry.other_information["c2s_owner_source_updated_at"] = mapper.source_updated_at&.iso8601
+            inquiry.save!
+            lead = inquiry
+          else
+            lead = Leads::Intake.receive!(inquiry)
+          end
           action = lead.intake_reused ? :updated : :created
         end
         lead.reload if should_use_local_assignment_for_enrichment?(lead:, attrs:)
@@ -66,10 +97,12 @@ module ExternalLeadMigration
 
     attr_reader :integration, :payload, :historical
 
-    def find_existing(mapper)
-      integration.tenant.leads.find_by(external_lead_id: mapper.external_lead_id) ||
-        integration.tenant.leads.find_by(c2s_export_external_id: mapper.external_lead_id) ||
-        Leads::Intake.find_received_event(tenant: integration.tenant, reference: "c2s:#{mapper.external_lead_id}")
+    def find_existing(mapper, mirror: false)
+      direct = integration.tenant.leads.find_by(external_lead_id: mapper.external_lead_id) ||
+        integration.tenant.leads.find_by(c2s_export_external_id: mapper.external_lead_id)
+      return direct if direct || mirror
+
+      Leads::Intake.find_received_event(tenant: integration.tenant, reference: "c2s:#{mapper.external_lead_id}")
     end
 
     def should_use_local_assignment_for_enrichment?(lead:, attrs:)

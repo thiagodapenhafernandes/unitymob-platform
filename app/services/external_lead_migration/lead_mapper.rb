@@ -26,7 +26,7 @@ module ExternalLeadMigration
       tags = tags_from(@attributes["tags"])
       status = mapped_status(tenant: integration.tenant)
       owner = integration.eligible_seller(seller, business_type: business_type_for(product:))
-      if owner.blank? && status == Lead.status_value(:em_atendimento, tenant: integration.tenant)
+      if owner.blank? && !integration.mirror_c2s_owners? && status == Lead.status_value(:em_atendimento, tenant: integration.tenant)
         status = Lead.default_status(tenant: integration.tenant, pipeline: pipeline_for(tenant: integration.tenant, product:))
       end
       mapped_stage = integration.mapped_stage_for(external_status_key)
@@ -83,7 +83,7 @@ module ExternalLeadMigration
         attrs[:distribution_rule] = owner && integration.distribution_rule&.active? ? integration.distribution_rule : nil
         attrs[:other_information]["c2s_assignment_decided"] = true
         attrs[:other_information]["c2s_business_type"] = business_type
-        if owner.blank?
+        if owner.blank? && !integration.mirror_c2s_owners?
           attrs[:lead_pipeline_stage] = nil
           attrs[:status] = Lead.default_status(tenant: integration.tenant, pipeline: pipeline)
         end
@@ -155,6 +155,10 @@ module ExternalLeadMigration
 
     def first_message
       message_body(@entry["first_message"]) || message_body(@attributes["first_message"])
+    end
+
+    def source_updated_at
+      parse_time(@attributes["updated_at"])
     end
 
     private

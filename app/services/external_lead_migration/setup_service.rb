@@ -53,7 +53,7 @@ module ExternalLeadMigration
 
       rule.assign_attributes(
         name: ExternalLeadIntegration::SUPPORT_RULE_NAME,
-        active: true,
+        active: !integration.mirror_c2s_owners?,
         business_type: "ambos",
         distribution_mode: "rotary",
         source_site: false,
@@ -67,6 +67,7 @@ module ExternalLeadMigration
         notify_push: true
       )
       rule.tenant = integration.tenant
+      rule.pocket_active = false if integration.mirror_c2s_owners?
       rule.save!
 
       sync_rule_agents!(rule, mappings.values)
