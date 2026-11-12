@@ -261,6 +261,18 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
         expect(lead.tasks.pluck(:id)).to eq(task_ids)
       end
 
+      it "preserva atendimento sem vendedor no C2S sem inventar atribuição" do
+        payload["attributes"]["seller"] = {}
+        payload["attributes"]["funnel_status"] = { "status" => "In attendance" }
+        lead = receive_for("Venda")
+
+        expect(lead.admin_user_id).to be_nil
+        expect(lead.status).to eq("Em Atendimento")
+        expect(lead.activities.where(kind: %w[distributed assigned_directly])).not_to exist
+        local = build(:lead, tenant:, admin_user_id: nil, status: "Em Atendimento", skip_automatic_routing: true)
+        expect(local).not_to be_valid
+      end
+
       it "não desfaz o responsável com um evento antigo entregue depois" do
         lead = receive_for("Venda")
         integration.update!(seller_mappings: { "seller-1" => queue_broker.id })

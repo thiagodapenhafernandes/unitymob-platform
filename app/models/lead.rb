@@ -700,6 +700,7 @@ class Lead < ApplicationRecord
 
   def in_service_requires_owner
     return if admin_user_id.present?
+    return if c2s_owner_mirrored? && skip_automatic_routing?
     return unless status == self.class.status_value(:em_atendimento, tenant: tenant || Current.tenant)
 
     errors.add(:admin_user, "deve ser atribuído antes de colocar o lead em atendimento")
