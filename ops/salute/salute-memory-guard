@@ -102,10 +102,15 @@ if (( queue_bytes > puma_bytes )); then
   target_bytes=$queue_bytes
 fi
 
+action=restart
+if [[ "$target_unit" == "$PUMA_UNIT" ]] && systemctl is-active --quiet "$PUMA_UNIT"; then
+  # USR2 mantém o listener aberto; stop/start derruba requisições durante o boot.
+  action=reload
+fi
 logger -p daemon.crit -t salute-memory-guard \
-  "restarting=${target_unit} available=${available_percent}% target_bytes=${target_bytes} puma_bytes=${puma_bytes} queue_bytes=${queue_bytes}"
-systemctl restart "$target_unit"
+  "action=${action} unit=${target_unit} available=${available_percent}% target_bytes=${target_bytes} puma_bytes=${puma_bytes} queue_bytes=${queue_bytes}"
+systemctl "$action" "$target_unit"
 echo "$now" > "$LAST_ACTION_FILE"
 echo 0 > "$COUNT_FILE"
 logger -p daemon.notice -t salute-memory-guard \
-  "restart complete unit=${target_unit} active=$(systemctl is-active "$target_unit")"
+  "${action} requested unit=${target_unit} active=$(systemctl is-active "$target_unit")"
