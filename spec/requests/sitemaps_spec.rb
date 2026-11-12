@@ -1,6 +1,20 @@
 require "rails_helper"
 
 RSpec.describe "Sitemaps", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  it "reuses the sitemap across requests at different times" do
+    allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+    allow(Seo::SitemapBuilder).to receive(:new).and_call_original
+    host! "localhost"
+    get "/sitemap.xml"
+    travel 2.seconds do
+      get "/sitemap.xml"
+    end
+    expect(response).to have_http_status(:ok)
+    expect(Seo::SitemapBuilder).to have_received(:new).once
+  end
+
   it "returns 304 when the sitemap has not changed" do
     host! "localhost"
     get "/sitemap.xml"
