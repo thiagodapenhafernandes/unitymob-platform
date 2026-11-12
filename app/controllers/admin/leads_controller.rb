@@ -3109,6 +3109,8 @@ class Admin::LeadsController < Admin::BaseController
 
   def load_pwa_lead_activity_context(leads)
     lead_entry_period.load_dates(leads)
+    integration = current_tenant.external_lead_integration
+    @pwa_mirrored_integration_id = integration.id if integration&.mirror_c2s_owners?
     lead_ids = leads.map(&:id)
     @pwa_contacted_lead_ids = LeadActivity.where(lead_id: lead_ids, kind: CONTACT_ACTIVITY_KINDS).distinct.pluck(:lead_id)
     @pwa_next_tasks_by_lead_id = Task
