@@ -44,4 +44,13 @@ RSpec.describe "Datas de reentrada dos leads", type: :request do
     get admin_leads_path, params: filters
     expect(response.body).not_to include("Não pode vazar")
   end
+
+  it "não repete o cadastro quando a diferença da origem é somente de segundos" do
+    integration = create(:external_lead_integration, tenant: admin.tenant, mirror_c2s_owners: true)
+    lead.update!(external_lead_integration: integration, external_lead_id: "receipt-seconds",
+      other_information: { "c2s_source_created_at_epoch" => lead.created_at.to_i + 5 })
+    get admin_leads_path(view: "list")
+    row = Nokogiri::HTML(response.body).at_css("#lead_#{lead.id}")
+    expect(row.text).not_to include("Cadastro:")
+  end
 end
