@@ -31,6 +31,12 @@ module ExternalLeadMigration
     end
 
     def leads(page:, perpage: 50, params: {})
+      params = params.dup
+      if params[:updated_gte].present?
+        # O C2S exige Z literal, mas compara o filtro no horário de Brasília.
+        params[:updated_gte] = Time.iso8601(params[:updated_gte].to_s)
+          .in_time_zone("America/Sao_Paulo").strftime("%Y-%m-%dT%H:%M:%SZ")
+      end
       get("/leads", params: {
         page: page,
         perpage: perpage,
