@@ -27,17 +27,25 @@ RSpec.describe Seo::SitemapCache do
   end
 
   it "builds a cold sitemap once when workers request the same key concurrently" do
+    stored = {}
+    client = double("Redis")
+    allow(client).to receive(:get) { |key| stored[key] }
+    allow(client).to receive(:set) { |key, value, **_options| stored[key] = value; "OK" }
+    redis_cache = ActiveSupport::Cache::RedisCacheStore.new(redis: client, pool: false)
+    allow(Rails).to receive(:cache).and_return(redis_cache)
     ready = Queue.new
     start = Queue.new
     builds = Queue.new
     threads = 3.times.map do
       Thread.new do
-        ready << true
-        start.pop
-        described_class.fetch(tenant_id: 1, key: "sitemap-concurrent") do
-          builds << true
-          sleep 0.03
-          "<urlset/>"
+        redis_cache.with_local_cache do
+          ready << true
+          start.pop
+          described_class.fetch(tenant_id: 1, key: "sitemap-concurrent") do
+            builds << true
+            sleep 0.03
+            "<urlset/>"
+          end
         end
       end
     end
