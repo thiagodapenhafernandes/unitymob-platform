@@ -26,6 +26,11 @@ module ExternalLeadMigration
       integration.increment!(:imported_count, counters[:created])
       integration.increment!(:updated_count, counters[:updated] + counters[:duplicate])
       integration.increment!(:failed_count, counters[:failed])
+      if counters[:filtered].positive?
+        integration.with_lock do
+          integration.update!(filtered_count: integration.filtered_count.to_i + counters[:filtered])
+        end
+      end
 
       if next_page?(page, total, rows.size)
         self.class.perform_later(integration.id, page + 1)

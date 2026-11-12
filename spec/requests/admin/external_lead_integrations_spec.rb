@@ -307,4 +307,25 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     follow_redirect!
     expect(response.body).to include("envio")
   end
+  it "prepara o filtro sem restringir modalidades por padrão e permite salvá-lo sem ativar a distribuição" do
+    integration = create(:external_lead_integration, tenant: admin.tenant, mirror_c2s_owners: true)
+    admin.tenant.distribution_rules.update_all(active: false, pocket_active: false)
+    get admin_external_lead_integration_path
+    select = Nokogiri::HTML(response.body).at_css("select#external_lead_integration_incoming_business_type")
+    expect(select.at_css("option[selected]")["value"]).to eq("all")
+    expect(select.css("option").map { |node| node["value"] }).to eq(%w[all sale rental])
+    patch admin_external_lead_integration_path, params: { external_lead_integration: { incoming_business_type: "sale" } }
+    expect(integration.reload.incoming_business_type).to eq("sale")
+    expect(integration).to be_mirror_c2s_owners
+    expect(admin.tenant.distribution_rules.where("active OR pocket_active")).to be_empty
+  end
+
+  it "mostra o usuário vinculado no espelho mesmo sem participar da fila" do
+    broker = create(:admin_user, tenant: admin.tenant, name: "Corretora Referência", active: false)
+    create(:external_lead_integration, tenant: admin.tenant, mirror_c2s_owners: true,
+      sellers_payload: [{ "id" => "ref", "name" => broker.name, "active" => false }], seller_mappings: { "ref" => broker.id })
+    get admin_external_lead_integration_path
+    expect(response.body).to include("Corretora Referência · sem login")
+  end
+
 end

@@ -2,6 +2,38 @@
 
 A integração Migração de Leads tem escolhas independentes para Venda e Locação:
 
+## Recebimento de novos cadastros por modalidade
+
+`incoming_business_type`, em `operational_mappings`, escolhe `all` (padrão,
+inclusive para contas existentes), `sale` ou `rental`. O filtro vale para IDs
+C2S ainda não cadastrados, em webhook, incremental e importação histórica.
+Registros já importados continuam sincronizando, mesmo fora da modalidade
+selecionada; não são excluídos, transferidos nem deixam de receber agenda.
+Ampliar o filtro não importa retroativamente IDs que não foram recebidos.
+
+Para o filtro, a negociação explícita do C2S tem prioridade sobre o anúncio:
+Compra/Venda corresponde a `sale`, Aluguel/Locação a `rental`. Categorias como
+Captação, Lançamento, Indefinido ou mistas ficam fora de um filtro específico;
+`all` mantém seu recebimento. O funil padrão não é usado para inventar a
+modalidade de um novo cadastro filtrado. O histórico conta registros filtrados
+separadamente, sem tratá-los como importações ou falhas.
+
+O filtro não muda quem atribui o lead. Para receber somente novas vendas do C2S
+com o mesmo corretor de lá, usar `sale` e manter o espelhamento contínuo ativo.
+Entradas diretas da Unitymob continuam seguindo suas configurações locais;
+esse modo não exige desligar o espelhamento para usar regras nativas no futuro.
+Ativar regras locais é uma decisão separada: durante a conferência da Salute,
+elas e seus prazos permanecem desligados. Os campos de atribuição sem
+espelhamento só se aplicam quando o espelhamento estiver desativado.
+
+Eventos parciais no espelho são completados com GET do ID no C2S antes de
+atualizar responsável, modalidade, etapa, favorito ou agenda. Falha nessa
+consulta preserva a carteira atual e segue a retentativa do job, em vez de
+aplicar campos ausentes como se estivessem vazios. Eventos completos evitam
+essa consulta adicional.
+
+## Atribuição e espelhamento
+
 - **Espelhamento contínuo do C2S** (`mirror_c2s_owners`, opção independente antes da virada): o responsável e a etapa informados pelo C2S também prevalecem sobre atribuições locais nas sincronizações seguintes. Reutiliza usuários ativos ou inativos da mesma conta; quando não houver vínculo, cria referência inativa com e-mail técnico não entregável e senha aleatória, sem habilitar login, enviar convites ou reativar usuários antigos. Sem ID de vendedor, mantém sem responsável, sem contingência de fila. Cada ID externo possui cadastro próprio, inclusive quando o contato já existe ou houve unificação anterior. Não envia notificação de atribuição nem gira roleta. Eventos com `updated_at` anterior ao último espelhamento não desfazem o responsável. A opção prevalece sobre os modos por modalidade e cobre também consultas sem modalidade definida. Antes de ativar, desligar regras e prazos de redistribuição da conta e conferir os vínculos de usuários; a seleção não corrige a base existente. A validação da conexão mantém a regra de apoio desativada e sem prazo de redistribuição neste modo. A operação inicial de conciliação deve ser auditada separadamente. Desmarcar a opção encerra o espelhamento sem alterar automaticamente os responsáveis.
 
 Nesse modo, reentradas, links de corretor, distribuição explícita e automações de atribuição não substituem o responsável dos leads vinculados. Automações de etapa também ignoram esses leads, sem consumir o limite de processamento dos demais. A sincronização de conteúdo e agenda é serializada por lead para evitar tarefas duplicadas quando webhook e incremental chegam juntos. Antes da virada, revisar as automações que voltarão a atuar ao desmarcar o espelhamento.

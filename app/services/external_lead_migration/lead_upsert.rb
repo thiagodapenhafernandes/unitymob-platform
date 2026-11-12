@@ -17,9 +17,12 @@ module ExternalLeadMigration
       raise ArgumentError, "Payload externo sem ID do lead" if mapper.external_lead_id.blank?
 
       Current.set(tenant: integration.tenant) do
-        attrs = mapper.lead_attributes(integration:, historical:)
         mirror = integration.mirror_c2s_owners?
         lead = find_existing(mapper, mirror:)
+        if lead.nil? && !integration.receives_new_business_type?(mapper.business_type)
+          return Result.new(lead: nil, action: :filtered)
+        end
+        attrs = mapper.lead_attributes(integration:, historical:)
         if lead
           action = :updated
           lead.with_lock do

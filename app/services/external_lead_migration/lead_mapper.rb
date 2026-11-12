@@ -116,6 +116,23 @@ module ExternalLeadMigration
       parse_time(@attributes["last_activity_date"])
     end
 
+    def business_type
+      product = hash_at("product")
+      negotiation = product.dig("real_estate_detail", "negotiation_name").presence || product["negotiation_name"].presence
+      return business_type_for(product: product) unless negotiation
+
+      case negotiation.to_s.parameterize(separator: "_")
+      when "compra", "comprar", "venda", "sale", "purchase" then "sale"
+      when "aluguel", "alugar", "locacao", "rental" then "rental"
+      when "venda_e_locacao", "venda_e_aluguel", "compra_e_aluguel" then "mixed"
+      end
+    end
+
+    def complete_mirror_payload?
+      %w[customer product seller created_at updated_at lead_status funnel_status archive_details done_details done_deal_at last_activity_date is_favorite].all? { |field| @attributes.key?(field) } &&
+        scheduled_actions_provided? && (@entry.key?("messages") || @attributes.key?("messages"))
+    end
+
     def external_status_name
       @attributes.dig("funnel_status", "name").presence ||
         @attributes.dig("lead_status", "name").presence ||
