@@ -18,6 +18,10 @@ module ExternalLeadMigration
               role: :editor, acting_type: :both
             )
         end
+        if !user.active? && user.email == integration.mirror_seller_reference_email(seller["id"]) &&
+            seller["name"].present? && user.name != seller["name"]
+          user.update!(name: seller["name"])
+        end
         if integration.seller_mappings[seller["id"].to_s].to_i != user.id
           integration.update!(seller_mappings: integration.seller_mappings.merge(seller["id"].to_s => user.id))
         end

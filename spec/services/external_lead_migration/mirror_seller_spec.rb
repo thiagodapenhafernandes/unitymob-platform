@@ -13,6 +13,10 @@ RSpec.describe ExternalLeadMigration::MirrorSeller do
     expect(user.email).to end_with("@reference.invalid")
     expect(user.email).not_to eq(seller["email"])
     expect(integration.reload.seller_mappings[seller["id"]]).to eq(user.id)
+    renamed = described_class.call(integration:, seller: seller.merge("name" => "Nome atual no C2S"))
+    expect(renamed.id).to eq(user.id)
+    expect(renamed.name).to eq("Nome atual no C2S")
+    expect(renamed).not_to be_active_for_authentication
   end
 
   it "não cria usuário se o espelhamento estiver desativado" do
@@ -25,9 +29,9 @@ RSpec.describe ExternalLeadMigration::MirrorSeller do
   end
 
   it "não confunde pessoas diferentes que compartilham e-mail ou telefone no legado" do
-    unrelated = create(:admin_user, tenant:, name: "Outra Pessoa", email: seller["email"], phone: "47999991234")
+    unrelated = create(:admin_user, tenant:, name: "Outra Pessoa", email: seller["email"], phone: "47999991234", vista_id: "reused-code")
     integration.update!(seller_mappings: {seller["id"] => unrelated.id})
-    user = described_class.call(integration:, seller: seller.merge("phone" => unrelated.phone))
+    user = described_class.call(integration:, seller: seller.merge("phone" => unrelated.phone, "external_id" => "reused-code"))
 
     expect(user.id).not_to eq(unrelated.id)
     expect(user.name).to eq(seller["name"])
