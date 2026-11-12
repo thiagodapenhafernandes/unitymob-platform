@@ -340,6 +340,7 @@ module Automation
     end
 
     def act_assign_agent(action)
+      return if @lead.c2s_owner_mirrored?
       agent = @lead.tenant.admin_users.find_by(id: action[:admin_user_id])
       @lead.update(admin_user: agent) if agent
     end
