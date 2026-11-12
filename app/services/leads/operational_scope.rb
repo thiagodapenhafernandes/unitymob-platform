@@ -29,5 +29,16 @@ module Leads
 
       without_archived(scope, tenant: tenant)
     end
+
+    def self.favorites(scope, user:, tenant:)
+      favorites = scope.joins(:lead_favorites).where(lead_favorites: {tenant_id: tenant.id, admin_user_id: user&.id})
+      integration = tenant.external_lead_integration
+      return favorites unless integration&.mirror_c2s_owners?
+
+      # O C2S preserva a estrela no histórico, mas exclui encerrados da aba.
+      closed = tenant.leads.where(external_lead_integration_id: integration.id,
+        status: Lead.non_operational_status_values(tenant: tenant))
+      favorites.where.not(id: closed.select(:id))
+    end
   end
 end

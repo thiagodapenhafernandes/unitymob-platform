@@ -72,6 +72,18 @@ RSpec.describe "Admin leads tab counts", type: :request do
       end
     end
 
+    it "mantém contador e lista de favoritos alinhados ao encerramento C2S" do
+      integration = create(:external_lead_integration, tenant: tenant, connected_by_admin_user: admin,
+        operational_mappings: {"mirror_c2s_owners" => true})
+      active = create(:lead, tenant: tenant, admin_user: admin, external_lead_integration: integration)
+      closed = create(:lead, tenant: tenant, admin_user: admin, external_lead_integration: integration, status: "Negócio fechado")
+      [active, closed].each { |lead| create(:lead_favorite, tenant: tenant, admin_user: admin, lead: lead) }
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "favorites").pluck(:id)).to eq([active.id])
+      expect(controller.send(:lead_tab_counts_for, tenant.leads, only: %w[favorites])).to eq("favorites" => 1)
+      expect(controller.send(:pwa_lead_scope_for_tab, tenant.leads, "favorites").pluck(:id)).to eq([active.id])
+      expect(LeadFavorite.where(tenant: tenant, admin_user: admin).count).to eq(2)
+    end
+
     it "computes only the requested tabs" do
       counts = controller.send(:lead_tab_counts_for, tenant.leads, only: %w[todo visits future favorites all])
 
