@@ -103,8 +103,8 @@ de autorização/ativação em produção antes da homologação com a Salute.
    serviços e **apenas a conexão sandbox autorizada** (`enabled=true`).
    Sincronizar a rota com `TENANT_ID=... CONNECTION_ID=... rake imovelweb:sync_route`.
    Esta tarefa apenas reflete o estado existente e não autoriza/ativa a conexão.
-9. Solicitar eventos sandbox ao suporte (`CONTACTO` e `CONTACTO_MENSAJE`). A API
-   também documenta `/v1/callbacks/generacion/evento`; usar códigos reais de teste.
+9. Solicitar eventos sandbox ao suporte (`CONTACTO` e `CONTACTO_MENSAJE`). A API brasileira
+   documenta `/v1/callbacks/geracao/eventos`; usar códigos reais de teste.
    Conferir telefone, e-mail sem telefone, interesse no imóvel e distribuição.
 10. Reenviar o mesmo evento e provar que recibo, lead e distribuição não duplicam.
     Repetir com nova mensagem do mesmo contato, conta errada, assinatura inválida,
@@ -168,3 +168,20 @@ Não se deve manipular XML para fazer essa habilitação.
 - `zeitwerk:check`, sintaxe Ruby e `git diff --check`.
 - Migrations Rails/Gateway aplicadas, revertidas e reaplicadas em bancos de teste.
 - Não executados: homologação remota, medição real de SLA, deploy ou ativação.
+
+## Revalidação do sandbox brasileiro — 12/11/2026
+
+O Swagger público informado pelo suporte (`api-br.sandbox.open.navent.com`,
+`/v2/api-docs?group=opennavent-realestate`) usa os caminhos brasileiros
+`/v1/configuracao/callbacks`, `/v1/configuracao/callbacks/{evento}` e
+`/v1/imobiliarias/{codigoImobiliaria}/anuncios/{codigoAnuncio}/asociar/{idAnuncio}`.
+O cliente e os testes locais foram alinhados a esse contrato, mantendo HTTPS obrigatório.
+
+A documentação HTTP respondeu, mas HTTPS/443 deu timeout na estação e no servidor.
+Nenhuma credencial foi transmitida por HTTP. Autenticação e geração de eventos remotos
+continuam pendentes da confirmação da origem HTTPS pelo suporte, do vínculo da conta
+e dos identificadores de teste. Não houve deploy nem ativação nesta revalidação.
+
+O chamado SB-129147 recebeu resposta esclarecendo Unitymob como integradora e
+Salute como piloto; callbacks ficam globais no Gateway por ambiente, com roteamento
+por `clientCode` e autorização por conta, inclusive para futuros clientes.
