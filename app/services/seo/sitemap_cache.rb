@@ -7,9 +7,7 @@ module Seo
     end
 
     def self.fetch(tenant_id:, key:, &block)
-      cached = Rails.cache.read(key)
-      return cached if cached
-
+      # Ler só após o lock: o cache local do Redis mantém misses até o fim do request.
       # shortcut: o lock cobre os workers deste host; usar lock distribuído se a conta tiver vários hosts.
       File.open(Rails.root.join("tmp", "sitemap-#{Integer(tenant_id)}.lock"), "a", 0o600) do |lock|
         lock.flock(File::LOCK_EX)
