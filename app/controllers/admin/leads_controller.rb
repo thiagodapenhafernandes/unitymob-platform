@@ -2991,7 +2991,7 @@ class Admin::LeadsController < Admin::BaseController
     when "future"
       pwa_scheduled_leads(base_scope)
     when "favorites"
-      base_scope.joins(:lead_favorites).where(lead_favorites: { admin_user_id: current_admin_user&.id })
+      Leads::OperationalScope.favorites(base_scope, user: current_admin_user, tenant: current_tenant)
     when "verify"
       base_scope.unverified_inquiries
     else
