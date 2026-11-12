@@ -37,4 +37,14 @@ RSpec.describe ExternalLeadMigration::MirrorSeller do
     expect(user.name).to eq(seller["name"])
     expect(user).not_to be_active
   end
+
+  it "representa vendedor inativo no C2S sem desativar um usuário local ativo" do
+    active = create(:admin_user, tenant:, name: seller["name"], email: seller["email"])
+    integration.update!(sellers_payload: [seller.merge("active" => false)], seller_mappings: {seller["id"] => active.id})
+    user = described_class.call(integration:, seller:)
+
+    expect(user.id).not_to eq(active.id)
+    expect(user).not_to be_active_for_authentication
+    expect(active.reload).to be_active
+  end
 end
