@@ -34,12 +34,24 @@ available_percent=$((mem_available_kb * 100 / mem_total_kb))
 puma_master_pid=$(systemctl show "$PUMA_UNIT" -p MainPID --value)
 largest_worker_pid=""
 largest_worker_rss_kb=0
-read -r largest_worker_pid largest_worker_rss_kb < <(
+puma_workers=$(
   ps --ppid "$puma_master_pid" -o pid=,rss=,args= |
     awk '/puma: cluster worker/ {print $1, $2}' |
-    sort -k2,2nr |
-    head -1
-) || true
+    sort -k2,2nr || true
+)
+worker_count=$(printf '%s\n' "$puma_workers" | awk 'NF {count++} END {print count+0}')
+read -r largest_worker_pid largest_worker_rss_kb <<< "$(printf '%s\n' "$puma_workers" | head -1)" || true
+
+recycle_largest_worker() {
+  # Nao sinalizar PID reaproveitado ou pertencente a outro master apos um deploy.
+  [[ "$(systemctl show "$PUMA_UNIT" -p MainPID --value)" == "$puma_master_pid" ]] || return 1
+  local parent_pid
+  parent_pid=$(ps -p "$largest_worker_pid" -o ppid=)
+  (( parent_pid == puma_master_pid )) || return 1
+  kill -TERM "$largest_worker_pid"
+  echo "$now" > "$LAST_WORKER_ACTION_FILE"
+  echo "0 0" > "$WORKER_COUNT_FILE"
+}
 
 worker_pressure_count=0
 if [[ -n "${largest_worker_pid:-}" ]] && (( largest_worker_rss_kb >= MAX_PUMA_WORKER_RSS_KB )); then
@@ -57,13 +69,12 @@ if [[ -n "${largest_worker_pid:-}" ]] && (( largest_worker_rss_kb >= MAX_PUMA_WO
   [[ -f "$LAST_WORKER_ACTION_FILE" ]] && read -r last_worker_action < "$LAST_WORKER_ACTION_FILE"
 
   if (( worker_pressure_count >= WORKER_REQUIRED_SAMPLES )) &&
+     (( worker_count > 1 )) &&
      (( available_percent <= WORKER_MAX_AVAILABLE_PERCENT )) &&
      (( now - last_worker_action >= WORKER_COOLDOWN_SECONDS )); then
     logger -p daemon.warning -t salute-memory-guard \
       "recycling puma_worker_pid=${largest_worker_pid} rss_kb=${largest_worker_rss_kb} limit_kb=${MAX_PUMA_WORKER_RSS_KB} available=${available_percent}%"
-    kill -TERM "$largest_worker_pid"
-    echo "$now" > "$LAST_WORKER_ACTION_FILE"
-    echo "0 0" > "$WORKER_COUNT_FILE"
+    recycle_largest_worker
     exit 0
   fi
 else
@@ -104,7 +115,22 @@ fi
 
 action=restart
 if [[ "$target_unit" == "$PUMA_UNIT" ]] && systemctl is-active --quiet "$PUMA_UNIT"; then
-  # USR2 mantém o listener aberto; stop/start derruba requisições durante o boot.
+  if (( worker_count > 1 )); then
+    last_worker_action=0
+    [[ -f "$LAST_WORKER_ACTION_FILE" ]] && read -r last_worker_action < "$LAST_WORKER_ACTION_FILE"
+    if (( now - last_worker_action < WORKER_COOLDOWN_SECONDS )); then
+      logger -p daemon.warning -t salute-memory-guard "worker cooldown active; preserving remaining HTTP workers"
+      exit 0
+    fi
+    # Os demais workers atendem enquanto o master pre-carregado substitui um so.
+    logger -p daemon.crit -t salute-memory-guard \
+      "action=recycle-worker unit=${PUMA_UNIT} pid=${largest_worker_pid} rss_kb=${largest_worker_rss_kb} available=${available_percent}%"
+    recycle_largest_worker
+    echo "$now" > "$LAST_ACTION_FILE"
+    echo 0 > "$COUNT_FILE"
+    exit 0
+  fi
+  # Sem outro worker para atender, USR2 ao menos preserva o listener.
   action=reload
 fi
 logger -p daemon.crit -t salute-memory-guard \

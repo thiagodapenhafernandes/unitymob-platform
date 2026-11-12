@@ -20,6 +20,8 @@ module Seo
       return if value.blank?
 
       value = value.to_s
+      return value if value.start_with?("/") && !value.include?("?") && !value.include?("#")
+
       uri = URI.parse(value.start_with?("http") ? value : "https://example.com#{value.start_with?("/") ? value : "/#{value}"}")
       path = uri.path.presence || "/"
       pairs = URI.decode_www_form(uri.query.to_s).filter_map do |key, val|

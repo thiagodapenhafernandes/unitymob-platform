@@ -1,4 +1,4 @@
-require "builder"
+require "nokogiri"
 require "set"
 require "uri"
 
@@ -15,22 +15,22 @@ module Seo
     end
 
     def to_xml
-      xml = Builder::XmlMarkup.new(indent: 2)
-      xml.instruct! :xml, version: "1.0", encoding: "UTF-8"
-      xml.urlset(
-        "xmlns" => "http://www.sitemaps.org/schemas/sitemap/0.9",
-        "xmlns:xhtml" => "http://www.w3.org/1999/xhtml"
-      ) do
-        sitemap_entries.first(LIMIT).each do |entry|
-          xml.url do
-            xml.loc entry[:loc]
-            xml.lastmod entry[:lastmod].iso8601 if entry[:lastmod].present?
-            xml.changefreq entry[:changefreq]
-            xml.priority format("%.1f", entry[:priority])
+      document = Nokogiri::XML::Builder.new(encoding: "UTF-8") do |xml|
+        xml.urlset(
+          "xmlns" => "http://www.sitemaps.org/schemas/sitemap/0.9",
+          "xmlns:xhtml" => "http://www.w3.org/1999/xhtml"
+        ) do
+          sitemap_entries.first(LIMIT).each do |entry|
+            xml.url do
+              xml.loc entry[:loc]
+              xml.lastmod entry[:lastmod].iso8601 if entry[:lastmod].present?
+              xml.changefreq entry[:changefreq]
+              xml.priority format("%.1f", entry[:priority])
+            end
           end
         end
       end
-      xml.target!
+      document.to_xml
     end
 
     private
@@ -48,6 +48,7 @@ module Seo
       @tenant.seo_settings.public_inventory
                 .where(active: true, apply_to_public: true, robots_index: true)
                 .where.not(canonical_url: [nil, ""])
+                .select(:id, :canonical_path, :canonical_url, :canonical_key, :page_type, :updated_at)
                 .order(access_count: :desc, updated_at: :desc)
                 .filter_map do |seo|
         url = seo.public_url(@base_url)
