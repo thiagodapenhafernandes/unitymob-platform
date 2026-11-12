@@ -78,6 +78,14 @@ os valores são por processo, não o total de conexões da instância.
 Monitoramento, recuperação limitada e rollback dos guards: [ops/shared/README.md](../ops/shared/README.md).
 O deploy aguarda `/healthz` saudável e aquece home/listagem; o HTML cacheado é separado por release.
 
+O sitemap usa snapshots duráveis em `storage/public_sitemaps` (storage compartilhado
+entre releases). A requisição serve a última versão válida e agenda
+`Seo::SitemapRefreshJob` na fila `default` quando a versão expira ou muda; não gera
+XML no Puma e não depende do cache Redis para servir o arquivo. O job publica a
+nova versão atomicamente, preservando a anterior em caso de falha. Para uma conta
+sem snapshot, preparar a primeira versão fora do HTTP com esse job antes de
+liberar o sitemap; até isso ocorrer, a rota responde 503 com `Retry-After: 30`.
+
 ## Central: Mina próprio
 
 ```bash
