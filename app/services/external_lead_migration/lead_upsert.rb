@@ -43,6 +43,12 @@ module ExternalLeadMigration
               attrs[:distribution_rule] = nil
               attrs[:other_information] = lead.other_information.merge(attrs[:other_information] || {})
               attrs[:other_information]["c2s_owner_source_updated_at"] = mapper.source_updated_at&.iso8601
+              stage_attributes = mapper.mirrored_stage_attributes(integration:, pipeline: lead.lead_pipeline)
+              if stage_attributes
+                attrs.merge!(stage_attributes)
+                closed = Lead.non_operational_status_values(tenant: integration.tenant).include?(attrs[:status]) && attrs[:lead_pipeline_stage]&.stage_type != "won"
+                attrs[:archived_at] = closed ? (lead.archived_at || mapper.source_updated_at || Time.current) : nil
+              end
             end
             lead.skip_automatic_routing = true
             lead.update!(attrs)
@@ -104,6 +110,9 @@ module ExternalLeadMigration
     attr_reader :integration, :payload, :historical
 
     def stale_mirror_payload?(lead, mapper)
+      stored_id = lead.other_information.dig("external_lead_payload", "id")
+      return false if stored_id.present? && stored_id != mapper.external_lead_id
+
       stamp = lead.other_information["c2s_owner_source_updated_at"].presence
       stamp && (!mapper.source_updated_at || mapper.source_updated_at < Time.iso8601(stamp))
     end

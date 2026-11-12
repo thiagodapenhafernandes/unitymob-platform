@@ -91,7 +91,15 @@ module ExternalLeadMigration
 
       created_at = parse_time(@attributes["created_at"])
       attrs[:created_at] = created_at if historical && created_at
+      if integration.mirror_c2s_owners?
+        stage_attributes = FunnelSync.mirrored_stage_attributes(integration:, payload: @payload, pipeline:)
+        attrs.merge!(stage_attributes) if stage_attributes
+      end
       attrs
+    end
+
+    def mirrored_stage_attributes(integration:, pipeline:)
+      FunnelSync.mirrored_stage_attributes(integration:, payload: @payload, pipeline:)
     end
 
     def closable?(tenant: Current.tenant)
@@ -251,7 +259,7 @@ module ExternalLeadMigration
         "webhook_tags" => ([ExternalLeadIntegration::WEBHOOK_TAG] + tags).uniq,
         "source" => PROVIDER_KEY,
         "external_lead_synced_at" => Time.current.iso8601
-      ).compact
+      ).merge("c2s_source_created_at_epoch" => parse_time(@attributes["created_at"])&.to_i).compact
     end
 
     def attribution_data(product:)

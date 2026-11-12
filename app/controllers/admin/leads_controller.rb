@@ -374,7 +374,7 @@ class Admin::LeadsController < Admin::BaseController
     total = lead_scope.reorder(nil).count
     leads = lead_scope
             .includes(:admin_user, lead_labelings: :lead_label)
-            .order(updated_at: :desc, created_at: :desc)
+            .reorder(Arel.sql(pwa_lead_order))
             .offset(offset)
             .limit(PWA_LEAD_LIST_PAGE_SIZE)
             .to_a
@@ -2076,6 +2076,10 @@ class Admin::LeadsController < Admin::BaseController
     "#{lead_entry_period.date_sql} DESC, leads.id DESC"
   end
 
+  def pwa_lead_order
+    "#{lead_entry_period.date_sql(fallback: 'leads.updated_at')} DESC, leads.created_at DESC, leads.id DESC"
+  end
+
   def apply_closed_at_filter(scope)
     return scope if parsed_closed_start_date.blank? && parsed_closed_end_date.blank?
 
@@ -2904,7 +2908,7 @@ class Admin::LeadsController < Admin::BaseController
 
     @pwa_leads = pwa_lead_scope_for_tab(list_base_scope, @pwa_lead_tab)
                  .includes(:admin_user, lead_labelings: :lead_label)
-                 .order(updated_at: :desc, created_at: :desc)
+                 .reorder(Arel.sql(pwa_lead_order))
                  .limit(PWA_LEAD_LIST_PAGE_SIZE)
                  .to_a
     if @view_mode == "kanban"
@@ -2936,12 +2940,12 @@ class Admin::LeadsController < Admin::BaseController
     @pwa_kanban_statuses.each { |status| @pwa_kanban_counts_by_status[status] ||= 0 }
 
     ranked = pwa_tab_scope.reorder(nil).select(
-      "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY leads.updated_at DESC, leads.created_at DESC) AS pwa_kanban_rank"
+      "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY #{pwa_lead_order}) AS pwa_kanban_rank"
     )
     @pwa_kanban_leads = Lead.from(ranked, :leads)
                             .where("pwa_kanban_rank <= ?", PWA_LEAD_KANBAN_COLUMN_SIZE)
                             .includes(:admin_user, lead_labelings: :lead_label)
-                            .order(updated_at: :desc, created_at: :desc)
+                            .reorder(Arel.sql(pwa_lead_order))
                             .to_a
     @pwa_kanban_leads.each do |lead|
       status = Lead.status_value(lead.status, tenant: current_tenant)

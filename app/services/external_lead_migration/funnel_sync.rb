@@ -13,6 +13,57 @@ module ExternalLeadMigration
       "closed" => "Concluido"
     }.freeze
 
+    MIRROR_STAGE_NAMES = {
+      "new_lead" => ["Novo Lead", "Novo"],
+      "in_attendance" => ["Em Atendimento", "Em Atendimento | Qualificado"],
+      "scheduled_visit" => ["Visita agendada", "Agenda | Visita", "Visita/Contato"],
+      "done_visit" => ["Visita Realizada", "Visita/Contato"],
+      "created_offer" => ["Proposta criada", "Proposta"],
+      "archived" => ["Arquivado", "Desqualificado | Arquivar", "Descartado"],
+      "converted" => ["Negócio fechado", "Ganho", "Concluido"]
+    }.freeze
+
+    def self.mirrored_stage_attributes(integration:, payload:, pipeline:)
+      new(tenant: integration.tenant).mirrored_stage_attributes(integration:, payload:, pipeline:)
+    end
+
+    def mirrored_stage_attributes(integration:, payload:, pipeline:)
+      attrs = extract_attributes(payload.to_h.deep_stringify_keys)
+      boolean = ActiveModel::Type::Boolean.new
+      base = attrs.dig("lead_status", "alias").to_s
+      key = if boolean.cast(attrs.dig("archive_details", "archived")) || base.in?(%w[lost archived finished])
+        "archived"
+      elsif boolean.cast(attrs.dig("done_details", "done")) || attrs["done_deal_at"].present? || base.in?(%w[converted business_closed done_deal])
+        "converted"
+      else
+        value = attrs.dig("funnel_status", "status").presence || attrs.dig("funnel_status", "name").presence
+        LeadPipelineStage.normalized_name_key(value.presence || base)
+      end
+      key = { "under_negotiation" => "in_attendance", "em_negociacao" => "in_attendance", "em_atendimento" => "in_attendance", "new" => "new_lead" }.fetch(key, key)
+      key = MIRROR_STAGE_NAMES.find { |_key, values| values.any? { |name| LeadPipelineStage.normalized_name_key(name) == key } }&.first || key
+      names = MIRROR_STAGE_NAMES[key]
+      mapping_keys = [key, attrs.dig("funnel_status", "name"), attrs.dig("funnel_status", "status"), attrs.dig("lead_status", "name"), base]
+      explicit = mapping_keys.compact_blank.filter_map { |value| integration.mapped_stage_for(LeadPipelineStage.normalized_name_key(value)) }.first
+      return unless names || explicit
+
+      stages = pipeline ? tenant.lead_pipeline_stages.active.where(lead_pipeline: pipeline).to_a : []
+      stage = explicit
+      if key.in?(%w[archived converted])
+        type = key == "archived" ? %w[archived lost] : %w[won]
+        stage = nil if stage && !stage.stage_type.in?(type)
+        stages = stages.select { |candidate| candidate.stage_type.in?(type) }
+      else
+        stage = nil if stage && stage.stage_type != "open"
+        stages = stages.select { |candidate| candidate.stage_type == "open" }
+      end
+      stage ||= Array(names).filter_map do |name|
+        stages.find { |candidate| LeadPipelineStage.normalized_name_key(candidate.name) == LeadPipelineStage.normalized_name_key(name) }
+      end.first
+      stage ||= stages.find { |candidate| candidate.name.parameterize(separator: "_").start_with?("em_atendimento_") } if key == "in_attendance"
+      stage ||= stages.first if key.in?(%w[archived converted])
+      { status: stage&.name || names&.first, lead_pipeline: stage&.lead_pipeline || pipeline, lead_pipeline_stage: stage }
+    end
+
     def self.status_for!(tenant:, payload:, fallback: nil, pipeline: nil, auto_create: true)
       new(tenant:).status_for!(payload:, fallback:, pipeline:, auto_create:)
     end
