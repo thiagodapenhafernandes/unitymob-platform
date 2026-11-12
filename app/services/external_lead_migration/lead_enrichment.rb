@@ -367,7 +367,7 @@ module ExternalLeadMigration
     def task_status(action)
       status = [action["status"], action["status_name"], action["done"]].compact.join(" ").parameterize(separator: "_")
       return "concluida" if status.include?("finalizado") || status.include?("concluido") || status.match?(/\Arealizad[oa](?:_|$)/) || status == "true"
-      return "cancelada" if status.include?("cancel") || status.include?("fechada_automaticamente") || status.include?("reagendad")
+      return "cancelada" if status.include?("cancel") || status.include?("fechada_automaticamente") || status.include?("reagendad") || status.include?("nao_realizad")
 
       "pendente"
     end
@@ -375,7 +375,7 @@ module ExternalLeadMigration
     def appointment_status(action)
       status = [action["status"], action["status_name"], action["done"]].compact.join(" ").parameterize(separator: "_")
       return "realizado" if status.include?("finalizado") || status.include?("concluido") || status.match?(/\Arealizad[oa](?:_|$)/) || status == "true"
-      return "cancelado" if status.include?("cancel") || status.include?("fechada_automaticamente") || status.include?("reagendad")
+      return "cancelado" if status.include?("cancel") || status.include?("fechada_automaticamente") || status.include?("reagendad") || status.include?("nao_realizad")
 
       "agendado"
     end

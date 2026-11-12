@@ -149,7 +149,7 @@ RSpec.describe ExternalLeadMigration::ScheduledActionReconciler do
     second = create_external_schedule_activity(lead:, task_id: nil, external_key: "visit-two", date: "2026-09-29T09:00:00-03:00", name: "Visita", alias_name: "scheduled_visit")
     [first, second].each { |activity| activity.update!(kind: "external_appointment", metadata: activity.metadata.merge("appointment_id" => appointment.id)) }
     latest = first.dup
-    latest.metadata = first.metadata.deep_merge("raw" => { "status" => "Reagendada" })
+    latest.metadata = first.metadata.deep_merge("raw" => { "status" => "Não realizada" })
     latest.save!
     second.update!(metadata: second.metadata.deep_merge("raw" => { "status" => "Realizada" }))
     described_class.call(tenant:, execute: true)

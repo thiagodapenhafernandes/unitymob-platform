@@ -779,4 +779,14 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(result.action).to eq(:updated)
     expect(exported.reload.external_lead_id).to eq("lead-c2s-eco")
   end
+  it "normaliza a atividade atual da fonte e limpa a referência quando ela é removida" do
+    event = payload.deep_dup
+    event["attributes"]["last_activity_date"] = "2026-11-13T09:00:00-03:00"
+    lead = described_class.call(integration: integration, payload: event).lead
+    expect(lead.other_information["c2s_current_activity_at_epoch"]).to eq(Time.iso8601("2026-11-13T09:00:00-03:00").to_i)
+    event["attributes"]["last_activity_date"] = nil
+    described_class.call(integration: integration, payload: event)
+    expect(lead.reload.other_information["c2s_current_activity_at_epoch"]).to be_nil
+  end
+
 end
