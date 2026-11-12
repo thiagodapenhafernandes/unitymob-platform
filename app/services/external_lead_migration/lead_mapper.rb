@@ -112,6 +112,10 @@ module ExternalLeadMigration
       end
     end
 
+    def current_activity_at
+      parse_time(@attributes["last_activity_date"])
+    end
+
     def external_status_name
       @attributes.dig("funnel_status", "name").presence ||
         @attributes.dig("lead_status", "name").presence ||
@@ -259,7 +263,9 @@ module ExternalLeadMigration
         "webhook_tags" => ([ExternalLeadIntegration::WEBHOOK_TAG] + tags).uniq,
         "source" => PROVIDER_KEY,
         "external_lead_synced_at" => Time.current.iso8601
-      ).merge("c2s_source_created_at_epoch" => parse_time(@attributes["created_at"])&.to_i).compact
+      ).merge("c2s_source_created_at_epoch" => parse_time(@attributes["created_at"])&.to_i).compact.tap do |info|
+        info["c2s_current_activity_at_epoch"] = current_activity_at&.to_i if @attributes.key?("last_activity_date")
+      end
     end
 
     def attribution_data(product:)

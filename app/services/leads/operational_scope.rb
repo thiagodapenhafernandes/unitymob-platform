@@ -66,6 +66,11 @@ module Leads
       integration&.mirror_c2s_owners? ? scope.where(external_lead_integration_id: integration.id) : scope.none
     end
 
+    def self.due_mirrored(scope, tenant:)
+      epoch = "leads.other_information ->> 'c2s_current_activity_at_epoch'"
+      mirrored(scope, tenant: tenant).where("CASE WHEN (#{epoch}) ~ '^[1-9][0-9]{9}$' THEN (#{epoch})::bigint END <= ?", Time.current.end_of_day.to_i)
+    end
+
     def self.current_external_schedules(scope, tenant:)
       mirrored_ids = mirrored(tenant.leads, tenant: tenant).select(:id)
       local = scope.where.not(lead_id: mirrored_ids)
@@ -78,6 +83,8 @@ module Leads
               THEN leads.other_information #> '{external_lead_payload,attributes,schedulated_actions}' ELSE '[]'::jsonb END
           ) AS action
           WHERE action = lead_activities.metadata -> 'raw'
+            AND (NOT (COALESCE(leads.other_information #> '{external_lead_payload,attributes}', '{}'::jsonb) ? 'last_activity_date')
+              OR action ->> 'schedulated_action_date' = leads.other_information #>> '{external_lead_payload,attributes,last_activity_date}')
         )
       SQL
       scope.where(id: local.select(:id)).or(scope.where(id: current.select('lead_activities.id')))

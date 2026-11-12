@@ -144,6 +144,31 @@ RSpec.describe "Admin leads tab counts", type: :request do
       expect(controller.send(:pwa_external_schedule_records_for, [lead.id]).map(&:title)).to eq(["Visita Agendada"])
     end
 
+    it "segue a atividade atual C2S, incluindo visita futura e acompanhamento vencido sem tarefa aberta" do
+      integration = create(:external_lead_integration, tenant: tenant, connected_by_admin_user: admin,
+        operational_mappings: {"mirror_c2s_owners" => true})
+      future = 2.days.from_now.change(usec: 0)
+      action = {"id" => "current", "status" => "Em aberto", "schedulated_action_name" => "Visita Agendada", "schedulated_action_date" => future.iso8601}
+      old = action.merge("id" => "old", "schedulated_action_date" => 2.days.ago.iso8601)
+      payload = {"attributes" => {"last_activity_date" => future.iso8601}, "schedulated_actions" => [old, action]}
+      lead = create(:lead, tenant: tenant, admin_user: admin, external_lead_integration: integration,
+        other_information: {"external_lead_payload" => payload, "c2s_current_activity_at_epoch" => future.to_i})
+      [old, action].each { |raw| LeadActivity.create!(tenant: tenant, lead: lead, kind: "external_appointment", metadata: {raw: raw}) }
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).not_to include(lead)
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "future")).to include(lead)
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "visits")).to include(lead)
+      action["status"] = "Não realizada"
+      lead.update_columns(other_information: {"external_lead_payload" => payload, "c2s_current_activity_at_epoch" => future.to_i})
+      LeadActivity.create!(tenant: tenant, lead: lead, kind: "external_appointment", metadata: {raw: action})
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "visits")).not_to include(lead)
+      due = Time.current.beginning_of_day + 23.hours
+      lead.update_columns(other_information: {"external_lead_payload" => {"attributes" => {"last_activity_date" => due.iso8601}, "schedulated_actions" => []}, "c2s_current_activity_at_epoch" => due.to_i})
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).to include(lead)
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "future")).not_to include(lead)
+      lead.update_columns(other_information: {"c2s_current_activity_at_epoch" => "invalid timestamp"})
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).not_to include(lead)
+    end
+
     it "computes only the requested tabs" do
       counts = controller.send(:lead_tab_counts_for, tenant.leads, only: %w[todo visits future favorites all])
 
