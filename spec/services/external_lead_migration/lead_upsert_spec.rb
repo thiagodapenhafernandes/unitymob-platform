@@ -76,6 +76,21 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
 
   before { Current.tenant = tenant }
 
+  it "importa textos com bytes nulos sem alterar o payload recebido ou escapes literais" do
+    payload["attributes"]["customer"]["name"] = "Maria\0 Externa"
+    payload["attributes"]["observation"] = "Texto\0 válido"
+    payload["attributes"]["schedulated_actions"].first["description"] = "Retorno\0 comercial"
+    payload["attributes"]["facebook_attributes"]["literal"] = 'texto\u0000literal'
+
+    lead = described_class.call(integration:, payload:, historical: true).lead.reload
+
+    expect(lead.name).to eq("Maria Externa")
+    expect(lead.notes).to include("Texto válido")
+    expect(lead.tasks.sole.description).to eq("Retorno comercial")
+    expect(lead.other_information.dig("external_lead_payload", "attributes", "facebook_attributes", "literal")).to eq('texto\u0000literal')
+    expect(payload.dig("attributes", "customer", "name")).to include("\0")
+  end
+
   it "não atribui importação histórica a um usuário administrativo mapeado" do
     administrative = create(:admin_user, :admin, tenant: tenant)
     integration.update!(seller_mappings: { "seller-1" => administrative.id })
