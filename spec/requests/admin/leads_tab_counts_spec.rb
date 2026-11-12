@@ -90,6 +90,10 @@ RSpec.describe "Admin leads tab counts", type: :request do
       lead = create(:lead, tenant: tenant, admin_user: admin, external_lead_integration: integration,
         other_information: {"external_lead_payload" => {"messages" => [{"sender_type" => "Customer", "read_at" => nil}]}})
       task = create(:task, tenant: tenant, admin_user: admin, lead: lead, due_at: 2.days.from_now, status: "pendente")
+      action = {"id" => "current-return", "schedulated_action_name" => "Retornar para o cliente", "schedulated_action_date" => task.due_at.iso8601, "status" => "Em aberto"}
+      lead.update_columns(other_information: lead.other_information.deep_merge("external_lead_payload" => {"schedulated_actions" => [action]}))
+      LeadActivity.create!(tenant: tenant, lead: lead, kind: "external_scheduled_action", metadata: {raw: action})
+
       expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).to include(lead)
       expect(controller.send(:pwa_lead_scope_for_tab, tenant.leads, "future")).to include(lead)
       expect(controller.send(:lead_tab_counts_for, tenant.leads, only: %w[todo future])).to eq("todo" => 1, "future" => 1)
@@ -113,6 +117,31 @@ RSpec.describe "Admin leads tab counts", type: :request do
         expect(controller.send(:lead_scope_for_tab, tenant.leads, tab)).not_to include(lead)
       end
       expect(controller.send(:lead_scope_for_tab, tenant.leads, "all")).to include(lead)
+    end
+
+    it "ignora agenda antiga e local nas abas espelhadas sem excluir compromissos" do
+      integration = create(:external_lead_integration, tenant: tenant, connected_by_admin_user: admin,
+        operational_mappings: {"mirror_c2s_owners" => true})
+      due = 2.days.from_now.iso8601
+      current = {"id" => "current", "status" => "Em aberto", "schedulated_action_name" => "Retornar para o cliente", "schedulated_action_date" => due}
+      lead = create(:lead, tenant: tenant, admin_user: admin, external_lead_integration: integration,
+        other_information: {"external_lead_payload" => {"schedulated_actions" => [current]}})
+      old = current.merge("id" => "old", "schedulated_action_name" => "Visita Agendada")
+      LeadActivity.create!(tenant: tenant, lead: lead, kind: "external_scheduled_action", metadata: {raw: old, stale_from_external: true})
+      LeadActivity.create!(tenant: tenant, lead: lead, kind: "external_scheduled_action", metadata: {raw: current, stale_from_external: true})
+      visit = create(:appointment, tenant: tenant, admin_user: admin, lead: lead, kind: "visita", status: "agendado")
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "future")).to include(lead)
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "visits")).not_to include(lead)
+      expect(visit.reload.status).to eq("agendado")
+      %w[Realizada Reagendada].each do |status|
+        action = old.merge("status" => status)
+        lead.update_columns(other_information: {"external_lead_payload" => {"schedulated_actions" => [action]}})
+        LeadActivity.create!(tenant: tenant, lead: lead, kind: "external_appointment", metadata: {raw: action})
+        expect(controller.send(:lead_scope_for_tab, tenant.leads, "visits")).not_to include(lead)
+      end
+      lead.update_columns(other_information: {"external_lead_payload" => {"schedulated_actions" => [old]}})
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "visits")).to include(lead)
+      expect(controller.send(:pwa_external_schedule_records_for, [lead.id]).map(&:title)).to eq(["Visita Agendada"])
     end
 
     it "computes only the requested tabs" do
