@@ -113,6 +113,10 @@ class Lead < ApplicationRecord
     end
   end
 
+  def c2s_owner_mirrored?
+    external_lead_integration&.mirror_c2s_owners? == true && external_lead_integration.tenant_id == tenant_id
+  end
+
   # Called inside the ownership transaction, including atomic claims and backfills.
   def sync_open_activity_owners!
     return if admin_user_id.blank? || admin_user&.tenant_id != tenant_id

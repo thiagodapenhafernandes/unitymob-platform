@@ -5,6 +5,7 @@ module Leads
     end
 
     def self.assign_shared_inquiry!(lead, inquiry)
+      return false if lead.c2s_owner_mirrored?
       return false if inquiry.share_token.blank? || inquiry.property_id.blank?
       return false unless inquiry.admin_user_id.present? && inquiry.admin_user_id == inquiry.shared_by_admin_user_id
       link = HabitationShareLink.active.joins(:habitation, :admin_user)
@@ -30,6 +31,7 @@ module Leads
     end
 
     def route!
+      return if @lead.c2s_owner_mirrored?
       return if @lead.instagram_automation_holding?
 
       @lead.activities.create(kind: "received", metadata: { origin: @lead.origin })

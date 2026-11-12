@@ -22,6 +22,7 @@ module Leads
     end
 
     def redistribute(rule = nil)
+      return if @lead.c2s_owner_mirrored?
       return if @lead.instagram_automation_holding?
 
       if @inquiry.external_lead_integration_id.present? && @inquiry.admin_user.present?
@@ -57,6 +58,7 @@ module Leads
     end
 
     def distribute
+      return if @lead.c2s_owner_mirrored?
       return if @lead.instagram_automation_holding?
 
       complemented = try_complement
@@ -78,6 +80,7 @@ module Leads
     end
 
     def distribute_to(rule)
+      return if @lead.c2s_owner_mirrored?
       return nil unless rule
       return if @lead.instagram_automation_holding?
       raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id
@@ -196,6 +199,7 @@ module Leads
     end
 
     def distribute_to_agent(rule, admin_user)
+      return if @lead.c2s_owner_mirrored?
       return nil unless rule && admin_user
       return if @lead.instagram_automation_holding?
       raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id

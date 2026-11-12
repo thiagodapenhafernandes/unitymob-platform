@@ -43,9 +43,10 @@ module Leads
       return if duration.blank?
 
       cutoff = Time.current - duration
-      stage.leads.where(tenant: stage.tenant, lead_pipeline: stage.lead_pipeline, lead_pipeline_stage: stage)
-        .limit(limit)
-        .find_each do |lead|
+      leads = stage.leads.where(tenant: stage.tenant, lead_pipeline: stage.lead_pipeline, lead_pipeline_stage: stage)
+      integration = stage.tenant.external_lead_integration
+      leads = leads.where("external_lead_integration_id IS DISTINCT FROM ?", integration.id) if integration&.mirror_c2s_owners?
+      leads.limit(limit).find_each do |lead|
           entered_at = stage_entered_at(lead) || lead.created_at
           next unless due?(lead, automation, cutoff, entered_at)
 
@@ -101,6 +102,7 @@ module Leads
     end
 
     def execute_once!(lead, automation:, from_stage:, stage_entered_at:)
+      return if lead.c2s_owner_mirrored?
       execution = begin_execution!(lead, automation: automation, from_stage: from_stage, stage_entered_at: stage_entered_at)
       return if execution.blank?
 

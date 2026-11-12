@@ -24,9 +24,7 @@ module ExternalLeadMigration
           action = :updated
           lead.with_lock do
             previous_owner_id = lead.admin_user_id
-            previous_source_at = lead.other_information["c2s_owner_source_updated_at"].presence
-            previous_source_at = Time.iso8601(previous_source_at) if previous_source_at
-            if mirror && previous_source_at && (!mapper.source_updated_at || mapper.source_updated_at < previous_source_at)
+            if mirror && stale_mirror_payload?(lead, mapper)
               return Result.new(lead:, action: :stale)
             end
             mirror_owner = MirrorSeller.call(integration:, seller: mapper.seller) if mirror
@@ -72,7 +70,15 @@ module ExternalLeadMigration
           action = lead.intake_reused ? :updated : :created
         end
         lead.reload if should_use_local_assignment_for_enrichment?(lead:, attrs:)
-        LeadEnrichment.call(lead:, integration:, mapper:, historical:)
+        if mirror
+          lead.with_lock do
+            return Result.new(lead:, action: :stale) if stale_mirror_payload?(lead, mapper)
+
+            LeadEnrichment.call(lead:, integration:, mapper:, historical:)
+          end
+        else
+          LeadEnrichment.call(lead:, integration:, mapper:, historical:)
+        end
 
         LeadActivity.log!(
           lead: lead,
@@ -96,6 +102,11 @@ module ExternalLeadMigration
     private
 
     attr_reader :integration, :payload, :historical
+
+    def stale_mirror_payload?(lead, mapper)
+      stamp = lead.other_information["c2s_owner_source_updated_at"].presence
+      stamp && (!mapper.source_updated_at || mapper.source_updated_at < Time.iso8601(stamp))
+    end
 
     def find_existing(mapper, mirror: false)
       direct = integration.tenant.leads.find_by(external_lead_id: mapper.external_lead_id) ||
