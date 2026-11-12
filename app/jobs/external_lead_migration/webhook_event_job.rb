@@ -21,7 +21,7 @@ module ExternalLeadMigration
         last_webhook_at: Time.current,
         last_cursor_at: Time.current,
         sync_status: "completed",
-        sync_message: "Webhook externo processado para lead ##{result.lead&.id}."
+        sync_message: result.action == :filtered ? "Novo cadastro do C2S fora da modalidade selecionada; nenhuma alteração na carteira existente." : "Webhook externo processado para lead ##{result.lead&.id}."
       )
     end
 
@@ -29,7 +29,12 @@ module ExternalLeadMigration
 
     def enrich_payload_if_needed(integration, payload)
       mapper = ExternalLeadMigration::LeadMapper.new(payload)
-      return payload if mapper.external_lead_id.blank? || payload.dig("data", "attributes").present? || payload.dig("lead", "attributes").present?
+      return payload if mapper.external_lead_id.blank?
+      if integration.mirror_c2s_owners?
+        return payload if mapper.complete_mirror_payload?
+      elsif payload.dig("data", "attributes").present? || payload.dig("lead", "attributes").present?
+        return payload
+      end
 
       ExternalLeadMigration::Client.new(token: integration.access_token).lead(mapper.external_lead_id)
     end

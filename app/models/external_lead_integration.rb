@@ -7,6 +7,7 @@ class ExternalLeadIntegration < ApplicationRecord
   WEBHOOK_TAG = "external_lead_migration".freeze
   LEAD_ORIGIN = "Migração externa".freeze
   ASSIGNMENT_MODES = { "Corretor informado pelo C2S" => "c2s", "Fila de distribuição da Unitymob" => "unitymob" }.freeze
+  INCOMING_BUSINESS_TYPES = { "Venda e Locação (todas as modalidades)" => "all", "Somente Venda" => "sale", "Somente Locação" => "rental" }.freeze
   LEGACY_TRASH_LOCAL_EMAIL = "lixeira@conexaobc.com.br".freeze
   LEGACY_TRASH_SELLER_EMAILS = %w[lixeira_cbc2025@c2sglobal.com].freeze
   LEGACY_TRASH_SELLER_NAMES = ["lixeira conexao bc"].freeze
@@ -20,13 +21,18 @@ class ExternalLeadIntegration < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :sync_status, inclusion: { in: SYNC_STATUSES }
   validates :sale_assignment_mode, :rental_assignment_mode, inclusion: { in: ASSIGNMENT_MODES.values }
+  validates :incoming_business_type, inclusion: { in: INCOMING_BUSINESS_TYPES.values }, allow_nil: true
   validates :tenant_id, uniqueness: true
   validates :webhook_token, presence: true, uniqueness: true
   validates :export_endpoint, format: { with: %r{\A/}, message: "deve começar com /" }, allow_blank: true
 
   scope :enabled, -> { where(enabled: true, status: "connected") }
 
-  store_accessor :operational_mappings, :mirror_c2s_owners
+  store_accessor :operational_mappings, :mirror_c2s_owners, :incoming_business_type, :filtered_count
+
+  def receives_new_business_type?(business_type)
+    incoming_business_type.blank? || incoming_business_type == "all" || incoming_business_type == business_type
+  end
 
   def mirror_c2s_owners?
     ActiveModel::Type::Boolean.new.cast(mirror_c2s_owners) == true

@@ -49,4 +49,37 @@ RSpec.describe ExternalLeadMigration::WebhookEventJob do
     }.not_to raise_error
     expect(Lead.count).to eq(0)
   end
+  it "registra o filtro de nova modalidade sem falha ou cadastro vazio" do
+    integration.update!(incoming_business_type: "sale")
+    payload["data"]["attributes"]["product"] = { "negotiation_name" => "Locação" }
+    expect { described_class.new.perform(integration.id, payload) }.not_to change { tenant.leads.count }
+    expect(integration.reload.sync_message).to include("fora da modalidade")
+    expect(integration.sync_status).to eq("completed")
+  end
+
+  it "completa eventos parciais no espelho antes de aplicar o corretor e a agenda" do
+    integration.update!(mirror_c2s_owners: true)
+    canonical = payload.deep_dup
+    canonical["data"]["attributes"].merge!(
+      "seller" => { "id" => "seller", "name" => broker.name, "email" => broker.email },
+      "created_at" => 1.day.ago.iso8601, "updated_at" => Time.current.iso8601,
+      "lead_status" => { "alias" => "under_negotiation" }, "funnel_status" => nil, "product" => {},
+      "archive_details" => nil, "done_details" => nil, "done_deal_at" => nil, "last_activity_date" => nil, "is_favorite" => false
+    )
+    canonical["data"]["messages"] = []
+    allow(client).to receive(:lead).with("webhook-upsert").and_return(canonical)
+    partial = { "data" => { "id" => "webhook-upsert", "attributes" => { "customer" => { "name" => "Parcial" } } } }
+    described_class.new.perform(integration.id, partial)
+    lead = tenant.leads.find_by!(external_lead_id: "webhook-upsert")
+    expect(lead.admin_user_id).to eq(broker.id)
+    expect(lead.distribution_rule_id).to be_nil
+    task_ids = lead.tasks.pluck(:id)
+    described_class.new.perform(integration.id, canonical)
+    expect(client).to have_received(:lead).once
+    allow(client).to receive(:lead).and_raise(ExternalLeadMigration::Client::Error, "Indisponível")
+    expect { described_class.new.perform(integration.id, partial) }.to raise_error(ExternalLeadMigration::Client::Error)
+    expect(lead.reload.admin_user_id).to eq(broker.id)
+    expect(lead.tasks.reload.pluck(:id)).to eq(task_ids)
+  end
+
 end

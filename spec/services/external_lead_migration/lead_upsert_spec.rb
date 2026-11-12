@@ -789,4 +789,69 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.reload.other_information["c2s_current_activity_at_epoch"]).to be_nil
   end
 
+  context "com filtro de modalidade para novos cadastros" do
+    before { integration.update!(mirror_c2s_owners: true, incoming_business_type: "sale") }
+
+    it "recebe venda com o corretor C2S mesmo sem fila e ignora novas locações, modalidades mistas ou desconhecidas" do
+      rule.update!(active: false)
+      incoming = payload.deep_dup
+      incoming["attributes"]["product"]["negotiation_name"] = "Venda"
+      lead = described_class.call(integration: integration, payload: incoming).lead
+      expect(lead).to have_attributes(admin_user_id: broker.id, distribution_rule_id: nil)
+      ["Locação", "Venda e Locação", nil].each_with_index do |kind, index|
+        excluded = payload.deep_dup
+        excluded["id"] = "excluded-#{index}"
+        excluded["attributes"]["product"]["negotiation_name"] = kind
+        expect {
+          result = described_class.call(integration: integration, payload: excluded)
+          expect(result.action).to eq(:filtered)
+          expect(result.lead).to be_nil
+        }.not_to change { tenant.leads.count }
+      end
+    end
+
+    it "usa Compra como venda e prefere a modalidade declarada no C2S ao texto do anúncio" do
+      incoming = payload.deep_dup
+      incoming["attributes"]["product"]["real_estate_detail"] = { "negotiation_name" => "Compra" }
+      incoming["attributes"]["product"]["description"] = "Imóvel para venda ou aluguel"
+      result = described_class.call(integration: integration, payload: incoming)
+      expect(result.lead.admin_user_id).to eq(broker.id)
+      expect(ExternalLeadMigration::LeadMapper.new(incoming).business_type).to eq("sale")
+      incoming["attributes"]["product"]["real_estate_detail"]["negotiation_name"] = "Captação"
+      expect(ExternalLeadMigration::LeadMapper.new(incoming).business_type).to be_nil
+    end
+
+    it "continua sincronizando uma locação já importada sem trocar IDs de tarefas nem apagar históricos" do
+      integration.update!(incoming_business_type: "all")
+      incoming = payload.deep_dup
+      incoming["attributes"]["product"]["negotiation_name"] = "Locação"
+      lead = described_class.call(integration: integration, payload: incoming).lead
+      task_ids = lead.tasks.pluck(:id)
+      history_ids = lead.activities.pluck(:id)
+      integration.update!(incoming_business_type: "sale")
+      result = described_class.call(integration: integration, payload: incoming)
+      expect(result.lead.id).to eq(lead.id)
+      expect(result.action).not_to eq(:filtered)
+      expect(lead.tasks.reload.pluck(:id)).to eq(task_ids)
+      expect(lead.activities.where(id: history_ids).count).to eq(history_ids.size)
+    end
+
+    it "aplica a seleção a cadastros históricos novos sem criar dados auxiliares da modalidade excluída" do
+      incoming = payload.deep_dup
+      incoming["attributes"]["product"]["negotiation_name"] = "Locação"
+      expect { expect(described_class.call(integration: integration, payload: incoming, historical: true).action).to eq(:filtered) }
+        .not_to change { tenant.leads.count }
+    end
+
+    it "mantém todas as modalidades como padrão e não interfere no roteamento de entradas diretas" do
+      integration.update!(incoming_business_type: "all")
+      native = create(:lead, tenant: tenant, skip_automatic_routing: true)
+      expect(native).not_to be_c2s_owner_mirrored
+      expect(Leads::DistributorService).to receive(:find_and_distribute).with(native)
+      Leads::RoutingService.route!(native)
+      expect(integration.receives_new_business_type?(nil)).to be(true)
+      expect(integration.receives_new_business_type?("mixed")).to be(true)
+    end
+  end
+
 end

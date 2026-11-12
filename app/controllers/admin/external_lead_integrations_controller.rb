@@ -83,14 +83,17 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
 
   def backfill
     ensure_connected!
-    @integration.update!(
-      sync_status: "processing",
-      sync_message: "Importação histórica enfileirada.",
-      imported_count: 0,
-      updated_count: 0,
-      failed_count: 0,
-      current_page: 0
-    )
+    @integration.with_lock do
+      @integration.update!(
+        sync_status: "processing",
+        sync_message: "Importação histórica enfileirada.",
+        imported_count: 0,
+        updated_count: 0,
+        failed_count: 0,
+        current_page: 0,
+        filtered_count: 0
+      )
+    end
     ExternalLeadMigration::BackfillLeadsJob.perform_later(@integration.id)
     redirect_to admin_external_lead_integration_path, notice: "Importação histórica iniciada em segundo plano."
   rescue => e
@@ -127,6 +130,7 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       :webhook_listening_enabled,
       :accept_lead_without_phone,
       :mirror_c2s_owners,
+      :incoming_business_type,
       :sale_assignment_mode,
       :rental_assignment_mode,
       :export_enabled,
