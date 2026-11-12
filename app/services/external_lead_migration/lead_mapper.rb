@@ -3,7 +3,7 @@ module ExternalLeadMigration
     PROVIDER_KEY = "external_lead_migration".freeze
 
     def initialize(payload)
-      @payload = payload.to_h.deep_stringify_keys
+      @payload = strip_null_bytes(payload.to_h.deep_stringify_keys)
       @entry = normalize_entry(@payload)
       @attributes = @entry.fetch("attributes", {}).to_h
     end
@@ -162,6 +162,19 @@ module ExternalLeadMigration
     end
 
     private
+
+    def strip_null_bytes(value)
+      case value
+      when Hash
+        value.to_h { |key, item| [key.delete("\0"), strip_null_bytes(item)] }
+      when Array
+        value.map { |item| strip_null_bytes(item) }
+      when String
+        value.delete("\0")
+      else
+        value
+      end
+    end
 
     def normalize_entry(payload)
       data = payload["data"]
