@@ -17,20 +17,20 @@ module Gateway
     end
 
     def associate_listing(client_code:, reference:, external_id:)
-      request(:put, "/v1/inmobiliarias/#{segment(client_code)}/avisos/#{segment(reference)}/asociar/#{segment(external_id)}")
+      request(:put, "/v1/imobiliarias/#{segment(client_code)}/anuncios/#{segment(reference)}/asociar/#{segment(external_id)}")
     end
 
     def configure_callbacks(url:, token:)
       uri = URI(url)
       raise Error, 'HTTPS callback and dedicated token required' unless uri.scheme == 'https' && uri.host.present? && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil? && token.to_s.length >= 32
-      request(:put, '/v1/configuracion/callbacks', { url: url, authorizationHeaderKey: 'Authorization',
+      request(:put, '/v1/configuracao/callbacks', { url: url, authorizationHeaderKey: 'Authorization',
         authorizationHeaderValue: "Bearer #{token}", lenguajeCallbackBody: 'EN' })
-      %w[CONTACTO CONTACTO_MENSAJE].each { |event| request(:put, "/v1/configuracion/callbacks/#{event}") }
+      %w[CONTACTO CONTACTO_MENSAJE].each { |event| request(:put, "/v1/configuracao/callbacks/#{event}") }
     end
 
     def callbacks
       # Do not print this response: the provider returns the callback credential.
-      request(:get, '/v1/configuracion/callbacks')
+      request(:get, '/v1/configuracao/callbacks')
     end
 
     private
