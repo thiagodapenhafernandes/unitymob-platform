@@ -26,7 +26,15 @@ class ExternalLeadIntegration < ApplicationRecord
 
   scope :enabled, -> { where(enabled: true, status: "connected") }
 
+  store_accessor :operational_mappings, :mirror_c2s_owners
+
+  def mirror_c2s_owners?
+    ActiveModel::Type::Boolean.new.cast(mirror_c2s_owners) == true
+  end
+
   def c2s_assignment?(business_type:)
+    return true if mirror_c2s_owners?
+
     modes = case business_type
     when "sale" then [sale_assignment_mode]
     when "rental" then [rental_assignment_mode]
@@ -133,25 +141,26 @@ class ExternalLeadIntegration < ApplicationRecord
 
   def local_user_for_seller(seller)
     seller = seller.to_h
+    users = mirror_c2s_owners? ? tenant.admin_users.account_members : tenant.admin_users.active
     mapped_id = seller_mappings[seller["id"].to_s].presence
-    mapped_user = tenant.admin_users.active.find_by(id: mapped_id) if mapped_id
+    mapped_user = users.find_by(id: mapped_id) if mapped_id
     return mapped_user if mapped_user
 
     email = seller["email"].to_s.strip.downcase
     if email.present?
-      email_user = tenant.admin_users.active.find_by("lower(email) = ?", email)
+      email_user = users.find_by("lower(email) = ?", email)
       return email_user if email_user
     end
 
     external_id = seller["external_id"].to_s.strip
     if external_id.present?
-      external_id_user = tenant.admin_users.active.find_by(vista_id: external_id)
+      external_id_user = users.find_by(vista_id: external_id)
       return external_id_user if external_id_user
     end
 
     phone = Phones::Normalizer.call(seller["phone"])
     if phone.present?
-      phone_user = tenant.admin_users.active.detect do |admin_user|
+      phone_user = users.detect do |admin_user|
         Phones::Normalizer.call(admin_user.phone) == phone ||
           (admin_user.respond_to?(:secondary_phone) && Phones::Normalizer.call(admin_user.secondary_phone) == phone)
       end

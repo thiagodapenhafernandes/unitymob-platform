@@ -142,6 +142,96 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
       expect(lead.lead_audit_logs.where("changed_fields @> ARRAY['admin_user_id']::text[]").count).to eq(assignments)
     end
 
+    context "com espelhamento contínuo do C2S" do
+      before { integration.update!(mirror_c2s_owners: true) }
+
+      it "atualiza o responsável sem fila, notificações ou nova atribuição em reenvios" do
+        lead = receive_for("Venda")
+        integration.update!(seller_mappings: { "seller-1" => queue_broker.id })
+        2.times { receive_for("Venda") }
+
+        expect(lead.reload).to have_attributes(admin_user_id: queue_broker.id, distribution_rule_id: nil)
+        expect(lead.activities.where(kind: "external_owner_mirrored").count).to eq(1)
+        expect(lead.activities.find_by!(kind: "external_owner_mirrored").source_category).to eq("external_sync")
+        expect(lead.activities.where(kind: %w[distributed assigned_directly])).not_to exist
+        expect(Leads::NotificationDispatcher).not_to have_received(:notify_direct_assignment)
+      end
+
+      it "mantém IDs C2S distintos separados mesmo com o mesmo contato" do
+        first = receive_for("Venda")
+        another = payload.deep_dup
+        another["id"] = "another-c2s-lead"
+        another["internal_id"] = 5534
+        second = described_class.call(integration:, payload: another).lead
+
+        expect(second.id).not_to eq(first.id)
+        expect(second.phone).to eq(first.phone)
+        expect(second.admin_user_id).to eq(broker.id)
+      end
+
+      it "não reutiliza a unificação anterior de outro ID do C2S" do
+        original = create(:lead, tenant:, phone: "47999990000", skip_automatic_routing: true)
+        original.activities.create!(kind: "inquiry_complemented", metadata: { ingress_reference: "c2s:#{payload['id']}" })
+
+        expect(receive_for("Venda").id).not_to eq(original.id)
+      end
+
+      it "cria uma referência inativa para seller sem vínculo sem acionar uma fila ativa" do
+        broker.update!(email: "unmapped@example.test")
+        integration.update!(seller_mappings: {})
+        lead = receive_for("Venda")
+
+        expect(lead.distribution_rule_id).to be_nil
+        expect(lead.admin_user).not_to be_active
+        expect(lead.admin_user).not_to be_active_for_authentication
+        expect(lead.admin_user.email).to end_with("@reference.invalid")
+        expect(receive_for("Venda").admin_user_id).to eq(lead.admin_user_id)
+        expect(lead.activities.where(kind: "distributed")).not_to exist
+      end
+
+      it "não vincula um usuário de outra conta" do
+        other = create(:admin_user, tenant: Tenant.create!(name: "Outra conta", slug: "mirror-#{SecureRandom.hex(4)}"))
+        broker.update!(email: "unmapped@example.test")
+        integration.update!(seller_mappings: { "seller-1" => other.id })
+
+        lead = receive_for("Venda")
+        expect(lead.admin_user_id).not_to eq(other.id)
+        expect(lead.admin_user.tenant_id).to eq(tenant.id)
+        expect(lead.admin_user).not_to be_active
+      end
+
+      it "preserva o usuário inativo vinculado sem reativar seu login" do
+        broker.update!(active: false)
+        lead = receive_for("Venda")
+
+        expect(lead.admin_user_id).to eq(broker.id)
+        expect(broker.reload).not_to be_active_for_authentication
+        expect(broker).not_to be_active
+      end
+
+      it "limita o espelhamento existente ao responsável, sem alterar contato ou status local" do
+        lead = receive_for("Venda")
+        lead.update!(name: "Nome local preservado", status: "Em Atendimento")
+        integration.update!(seller_mappings: { "seller-1" => queue_broker.id })
+        receive_for("Venda")
+
+        expect(lead.reload).to have_attributes(name: "Nome local preservado", status: "Em Atendimento", admin_user_id: queue_broker.id)
+      end
+
+      it "não desfaz o responsável com um evento antigo entregue depois" do
+        lead = receive_for("Venda")
+        integration.update!(seller_mappings: { "seller-1" => queue_broker.id })
+        newer = payload.deep_dup
+        newer["attributes"]["updated_at"] = "2026-08-04T12:00:00Z"
+        described_class.call(integration:, payload: newer)
+        integration.update!(seller_mappings: { "seller-1" => broker.id })
+
+        result = described_class.call(integration:, payload:)
+        expect(result.action).to eq(:stale)
+        expect(lead.reload.admin_user_id).to eq(queue_broker.id)
+      end
+    end
+
     it "usa a fila quando as modalidades divergem e a consulta não informa o tipo" do
       integration.update!(sale_assignment_mode: "c2s", rental_assignment_mode: "unitymob")
       expect(receive_for(nil).admin_user).to eq(queue_broker)

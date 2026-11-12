@@ -4,6 +4,7 @@ class LeadActivity < ApplicationRecord
   EXTERNAL_SYNC_KINDS = %w[
     external_lead_imported
     external_lead_synced
+    external_owner_mirrored
     external_first_message
     external_message
     external_log

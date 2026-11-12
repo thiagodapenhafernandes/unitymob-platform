@@ -51,4 +51,16 @@ RSpec.describe ExternalLeadMigration::SetupService do
     expect(rule.admin_users).to contain_exactly(broker, external_id_broker)
     expect(tenant.attribute_options.where(context: "lead", category: "source", name: ExternalLeadIntegration::LEAD_ORIGIN)).to exist
   end
+
+  it "mantém a regra e os prazos desligados no espelhamento contínuo" do
+    rule = create(:distribution_rule, tenant:, active: false, pocket_active: true)
+    integration.update!(distribution_rule: rule, mirror_c2s_owners: true)
+    broker.update!(active: false)
+
+    described_class.call(integration:)
+
+    expect(rule.reload).to have_attributes(active: false, pocket_active: false)
+    expect(integration.reload.seller_mappings["seller-1"]).to eq(broker.id)
+    expect(broker.reload).not_to be_active
+  end
 end

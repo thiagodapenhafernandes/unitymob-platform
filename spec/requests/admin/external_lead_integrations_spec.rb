@@ -124,6 +124,22 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(flash[:alert]).to include("Falha ao salvar")
   end
 
+  it "permite configurar espelhamento contínuo sem mudar outras contas" do
+    integration = create(:external_lead_integration, tenant: admin.tenant, operational_mappings: { "stages" => { "legacy" => { "stage_id" => 99 } } })
+    another = create(:external_lead_integration, tenant: Tenant.create!(name: "Outra conta", slug: "mirror-#{SecureRandom.hex(4)}"))
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: { enabled: "1", mirror_c2s_owners: "1" }
+    }
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(integration.reload).to be_mirror_c2s_owners
+    expect(integration.operational_mappings.dig("stages", "legacy", "stage_id")).to eq(99)
+    expect(another.reload).not_to be_mirror_c2s_owners
+    get admin_external_lead_integration_path
+    expect(response.body).to include("Espelhamento contínuo do C2S", "Cada ID do C2S")
+    patch admin_external_lead_integration_path, params: { external_lead_integration: { enabled: "1", mirror_c2s_owners: "0" } }
+    expect(integration.reload).not_to be_mirror_c2s_owners
+  end
+
   it "habilita escuta de novos leads ao salvar com checkbox marcado" do
     admin.tenant.tenant_domains.create!(hostname: "conexaobc.com", primary_domain: true)
     admin.tenant.tenant_domains.create!(hostname: "app.conexaobc.com")
