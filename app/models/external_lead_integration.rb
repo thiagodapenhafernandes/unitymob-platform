@@ -144,30 +144,45 @@ class ExternalLeadIntegration < ApplicationRecord
     users = mirror_c2s_owners? ? tenant.admin_users.account_members : tenant.admin_users.active
     mapped_id = seller_mappings[seller["id"].to_s].presence
     mapped_user = users.find_by(id: mapped_id) if mapped_id
-    return mapped_user if mapped_user
+    return mapped_user if mapped_user && mirror_seller_identity_matches?(mapped_user, seller)
 
     email = seller["email"].to_s.strip.downcase
     if email.present?
       email_user = users.find_by("lower(email) = ?", email)
-      return email_user if email_user
+      return email_user if email_user && mirror_seller_identity_matches?(email_user, seller)
     end
 
     external_id = seller["external_id"].to_s.strip
     if external_id.present?
       external_id_user = users.find_by(vista_id: external_id)
-      return external_id_user if external_id_user
+      return external_id_user if external_id_user && mirror_seller_identity_matches?(external_id_user, seller)
     end
 
     phone = Phones::Normalizer.call(seller["phone"])
     if phone.present?
       phone_user = users.detect do |admin_user|
-        Phones::Normalizer.call(admin_user.phone) == phone ||
+        matches_phone = Phones::Normalizer.call(admin_user.phone) == phone ||
           (admin_user.respond_to?(:secondary_phone) && Phones::Normalizer.call(admin_user.secondary_phone) == phone)
+        matches_phone && mirror_seller_identity_matches?(admin_user, seller)
       end
       return phone_user if phone_user
     end
 
     legacy_trash_user_for(seller)
+  end
+
+  def mirror_seller_reference_email(seller_id)
+    "c2s-#{tenant_id}-#{Digest::SHA256.hexdigest(seller_id.to_s)[0, 24]}@reference.invalid"
+  end
+
+  def mirror_seller_identity_matches?(user, seller)
+    return true unless mirror_c2s_owners?
+    return true if seller["id"].present? && user.email == mirror_seller_reference_email(seller["id"])
+    return true if seller["external_id"].present? && user.vista_id.to_s == seller["external_id"].to_s
+
+    external_name = seller["name"].to_s.parameterize.split("-").first
+    local_name = user.name.to_s.parameterize.split("-").first
+    external_name.present? && external_name == local_name
   end
 
   private
