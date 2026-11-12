@@ -31,10 +31,10 @@ RSpec.describe "Datas de reentrada dos leads", type: :request do
     expect(JSON.parse(response.body).fetch("html")).to include("12/10/2026 10:15")
   end
 
-  it "exporta a mesma consulta em CSV e mantém o cadastro intacto" do
+  it "exporta a consulta em CSV mantendo a coluna de entrada original" do
     get report_admin_leads_path, params: filters.merge(format: "csv")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Consulta Guanabara", "12/10/2026 10:15")
+    expect(response.body).to include("Consulta Guanabara", "21/02/2026 16:26")
     expect(lead.reload.created_at).to eq(Time.zone.parse("2026-02-21 16:26"))
   end
 

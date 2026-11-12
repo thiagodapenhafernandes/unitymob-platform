@@ -34,6 +34,25 @@ RSpec.describe "Admin leads PWA section", type: :request do
   end
 
   describe "GET pwa_section" do
+    it "mantém recebimento C2S na lista, no kanban e na paginação mobile" do
+      integration = create(:external_lead_integration, tenant:, mirror_c2s_owners: true)
+      old = create(:lead, tenant:, admin_user: admin, name: "Espelhado antigo", external_lead_integration: integration,
+        external_lead_id: "old-pwa", created_at: 3.months.ago, skip_automatic_routing: true)
+      recent = create(:lead, tenant:, admin_user: admin, name: "Espelhado recente", external_lead_integration: integration,
+        external_lead_id: "new-pwa", created_at: 1.day.ago, skip_automatic_routing: true)
+      old.activities.create!(kind: "inquiry_complemented")
+      old.touch
+
+      %w[list kanban].each do |view|
+        get pwa_section_admin_leads_path(view:, mobile_tab: "all")
+        expect(response).to have_http_status(:ok)
+        expect(response.body.index(recent.name)).to be < response.body.index(old.name)
+      end
+      get pwa_leads_page_admin_leads_path(mobile_tab: "all")
+      html = JSON.parse(response.body).fetch("html")
+      expect(html.index(recent.name)).to be < html.index(old.name)
+    end
+
     it "renders the PWA section standalone with leads and counts" do
       create(:lead, tenant: tenant, name: "PWA Section Lead", status: "Novo")
 

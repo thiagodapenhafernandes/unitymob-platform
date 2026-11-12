@@ -45,4 +45,36 @@ RSpec.describe Leads::EntryPeriodQuery do
     restricted = described_class.new(scope: tenant.leads.where(id: -1), starts_at: window.begin, ends_at: window.end)
     expect(restricted.call).to be_empty
   end
+
+  context "quando o C2S é a referência" do
+    let!(:integration) { create(:external_lead_integration, tenant:, mirror_c2s_owners: true) }
+
+    before do
+      old.update!(external_lead_integration: integration, external_lead_id: "c2s-old",
+        other_information: { "c2s_source_created_at_epoch" => Time.zone.parse("2026-02-20 10:00").to_i })
+      entry(old, "2026-10-12 10:15")
+    end
+
+    it "ordena e filtra pelo recebimento da origem sem promover reentradas antigas" do
+      expect(query.call).to be_empty
+      latest = described_class.new(scope: tenant.leads)
+      latest.load_dates([old])
+      expect(old.entry_received_at).to eq(Time.zone.parse("2026-02-20 10:00"))
+      expect(tenant.leads.pick(Arel.sql(latest.date_sql))).to eq(old.entry_received_at)
+    end
+
+    it "preserva reentradas locais quando o espelhamento é desligado" do
+      integration.update!(mirror_c2s_owners: false)
+      expect(query.call.pluck(:id)).to eq([old.id])
+      query.load_dates([old])
+      expect(old.entry_received_at).to eq(Time.zone.parse("2026-10-12 10:15"))
+    end
+
+    it "tolera data inválida sem falhar a listagem" do
+      old.update!(other_information: { "c2s_source_created_at_epoch" => "2026-99-99" })
+      latest = described_class.new(scope: tenant.leads)
+      latest.load_dates([old])
+      expect(old.entry_received_at).to eq(old.created_at)
+    end
+  end
 end

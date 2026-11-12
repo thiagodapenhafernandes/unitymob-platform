@@ -224,13 +224,41 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
         expect(broker).not_to be_active
       end
 
-      it "limita o espelhamento existente ao responsável, sem alterar contato ou status local" do
+      it "espelha a etapa preservando o contato local" do
         lead = receive_for("Venda")
         lead.update!(name: "Nome local preservado", status: "Em Atendimento")
         integration.update!(seller_mappings: { "seller-1" => queue_broker.id })
         receive_for("Venda")
 
-        expect(lead.reload).to have_attributes(name: "Nome local preservado", status: "Em Atendimento", admin_user_id: queue_broker.id)
+        expect(lead.reload).to have_attributes(name: "Nome local preservado", status: "Visita/Contato", admin_user_id: queue_broker.id)
+      end
+
+      it "corrige o payload de outro ID antes unificado sem comparar seus relógios" do
+        lead = receive_for("Venda")
+        lead.update!(other_information: lead.other_information.merge(
+          "external_lead_payload" => { "id" => "outro-id-c2s" },
+          "c2s_owner_source_updated_at" => "2027-01-01T12:00:00Z"
+        ))
+        result = receive_for("Venda")
+
+        expect(result.reload.other_information.dig("external_lead_payload", "id")).to eq(payload["id"])
+        expect(result.other_information["c2s_source_created_at_epoch"]).to eq(Time.iso8601(payload.dig("attributes", "created_at")).to_i)
+      end
+
+      it "espelha a etapa real do C2S e arquiva sem apagar a agenda" do
+        lead = receive_for("Venda")
+        task_ids = lead.tasks.pluck(:id)
+        changed = payload.deep_dup
+        changed["attributes"]["funnel_status"] = { "status" => "In attendance" }
+        changed["attributes"]["updated_at"] = "2026-08-05T12:00:00Z"
+        described_class.call(integration:, payload: changed)
+        expect(lead.reload.status).to eq("Em Atendimento")
+
+        changed["attributes"]["archive_details"] = { "archived" => true }
+        described_class.call(integration:, payload: changed)
+        expect(lead.reload.status).to eq("Arquivado")
+        expect(lead.archived_at).to be_present
+        expect(lead.tasks.pluck(:id)).to eq(task_ids)
       end
 
       it "não desfaz o responsável com um evento antigo entregue depois" do
