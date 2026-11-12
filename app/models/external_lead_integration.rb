@@ -178,8 +178,6 @@ class ExternalLeadIntegration < ApplicationRecord
   def mirror_seller_identity_matches?(user, seller)
     return true unless mirror_c2s_owners?
     return true if seller["id"].present? && user.email == mirror_seller_reference_email(seller["id"])
-    return true if seller["external_id"].present? && user.vista_id.to_s == seller["external_id"].to_s
-
     external_name = seller["name"].to_s.parameterize.split("-").first
     local_name = user.name.to_s.parameterize.split("-").first
     external_name.present? && external_name == local_name
