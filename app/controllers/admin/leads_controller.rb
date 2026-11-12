@@ -58,7 +58,7 @@ class Admin::LeadsController < Admin::BaseController
   SQL
   EXTERNAL_SCHEDULE_STATUS_SQL = "LOWER(COALESCE(lead_activities.metadata #>> '{raw,status}', lead_activities.metadata #>> '{raw,status_name}', lead_activities.metadata #>> '{raw,done}', ''))".freeze
   EXTERNAL_VISIT_SCHEDULE_SQL = "(#{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%visita%' OR #{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%scheduled_visit%' OR #{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%reuniao%')".freeze
-  EXTERNAL_CLOSED_SCHEDULE_SQL = "(#{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%cancel%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%conclu%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%finalizado%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} = 'true')".freeze
+  EXTERNAL_CLOSED_SCHEDULE_SQL = "(#{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%cancel%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%conclu%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%finalizado%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE 'realizad%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE 'reagendad%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE 'fechada automaticamente%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} = 'true')".freeze
   LEAD_FILTER_TEXT_SQL = <<~SQL.squish.freeze
     LOWER(CONCAT_WS(' ',
       leads.origin,
@@ -3011,9 +3011,11 @@ class Admin::LeadsController < Admin::BaseController
       .pendentes
       .where("tasks.due_at IS NULL OR tasks.due_at <= ?", Time.current)
       .where(lead_id: operational_scope.select(:id))
+      .where.not(lead_id: Leads::OperationalScope.mirrored(operational_scope, tenant: current_tenant).select(:id))
       .select(:lead_id)
 
     untouched_scope = operational_scope
+      .where.not(id: Leads::OperationalScope.mirrored(operational_scope, tenant: current_tenant).select(:id))
       .where.not(id: LeadActivity.where(tenant_id: current_tenant.id, kind: CONTACT_ACTIVITY_KINDS - ["accepted"]).select(:lead_id))
       .where.not(id: Task.where(tenant_id: current_tenant.id).select(:lead_id))
       .where.not(id: Appointment.where(tenant_id: current_tenant.id).select(:lead_id))
@@ -3021,15 +3023,17 @@ class Admin::LeadsController < Admin::BaseController
       .where(id: LeadActivity.where(tenant_id: current_tenant.id, kind: "accepted").select(:lead_id))
 
     unanswered_ids = Leads::OperationalScope.unanswered_mirrored(operational_scope, tenant: current_tenant).select(:id)
-    base_scope.where("leads.id IN (:task_ids) OR leads.id IN (:untouched_ids) OR leads.id IN (:unanswered_ids)",
+    base_scope.where("leads.id IN (:task_ids) OR leads.id IN (:untouched_ids) OR leads.id IN (:unanswered_ids) OR leads.id IN (:external_due_ids)",
       task_ids: task_ids,
       untouched_ids: untouched_scope.select(:id),
-      unanswered_ids: unanswered_ids)
+      unanswered_ids: unanswered_ids,
+      external_due_ids: pwa_external_schedule_lead_ids(Leads::OperationalScope.mirrored(operational_scope, tenant: current_tenant), visits: false, timing: :overdue))
   end
 
   def pwa_future_visit_lead_ids(base_scope)
     appointment_ids = Appointment
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id, kind: "visita", status: "agendado")
+      .where.not(lead_id: Leads::OperationalScope.mirrored(base_scope, tenant: current_tenant).select(:id))
       .select(:lead_id)
 
     base_scope
@@ -3068,6 +3072,7 @@ class Admin::LeadsController < Admin::BaseController
       .pendentes
       .where.not(due_at: nil)
       .where("due_at > ?", Time.current)
+      .where.not(lead_id: Leads::OperationalScope.mirrored(base_scope, tenant: current_tenant).select(:id))
       .select(:lead_id)
 
     base_scope
@@ -3094,6 +3099,8 @@ class Admin::LeadsController < Admin::BaseController
         scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current.end_of_day)
       when :due
         scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} <= ?", Time.current.end_of_day)
+      when :overdue
+        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} <= ?", Time.current)
       when :scheduled
         scope
       else
@@ -3104,9 +3111,10 @@ class Admin::LeadsController < Admin::BaseController
 
   def pwa_external_schedule_scope(base_scope, visits:)
     scope = LeadActivity
-            .where(tenant_id: current_tenant.id, kind: EXTERNAL_SCHEDULE_KIND, lead_id: base_scope.select(:id))
+            .where(tenant_id: current_tenant.id, kind: [EXTERNAL_SCHEDULE_KIND, "external_appointment"], lead_id: base_scope.select(:id))
             .where("NULLIF(COALESCE(lead_activities.metadata #>> '{raw,schedulated_action_date}', lead_activities.metadata #>> '{raw,due_at}', lead_activities.metadata #>> '{raw,scheduled_at}', lead_activities.metadata #>> '{raw,date}', lead_activities.metadata #>> '{raw,datetime}', lead_activities.metadata ->> 'due_at'), '') IS NOT NULL")
             .where("NOT #{EXTERNAL_CLOSED_SCHEDULE_SQL}")
+    scope = Leads::OperationalScope.current_external_schedules(scope, tenant: current_tenant)
     visits ? scope.where(EXTERNAL_VISIT_SCHEDULE_SQL) : scope.where("NOT #{EXTERNAL_VISIT_SCHEDULE_SQL}")
   end
 
@@ -3115,15 +3123,18 @@ class Admin::LeadsController < Admin::BaseController
     integration = current_tenant.external_lead_integration
     @pwa_mirrored_integration_id = integration.id if integration&.mirror_c2s_owners?
     lead_ids = leads.map(&:id)
+    mirrored_ids = Leads::OperationalScope.mirrored(current_tenant.leads.where(id: lead_ids), tenant: current_tenant).select(:id)
     @pwa_contacted_lead_ids = LeadActivity.where(lead_id: lead_ids, kind: CONTACT_ACTIVITY_KINDS).distinct.pluck(:lead_id)
     @pwa_next_tasks_by_lead_id = Task
                                   .where(tenant_id: current_tenant.id, lead_id: lead_ids, admin_user_id: current_admin_user&.id)
+                                  .where.not(lead_id: mirrored_ids)
                                   .pendentes
                                   .order(Arel.sql("due_at ASC NULLS FIRST"), :created_at)
                                   .to_a
                                   .group_by(&:lead_id)
     @pwa_next_visits_by_lead_id = Appointment
                                    .where(tenant_id: current_tenant.id, lead_id: lead_ids, admin_user_id: current_admin_user&.id, kind: "visita", status: "agendado")
+                                   .where.not(lead_id: mirrored_ids)
                                    .ordered
                                    .to_a
                                    .group_by(&:lead_id)
@@ -3143,10 +3154,11 @@ class Admin::LeadsController < Admin::BaseController
   def pwa_external_schedule_records_for(lead_ids)
     return [] if lead_ids.blank?
 
-    LeadActivity
-      .where(kind: EXTERNAL_SCHEDULE_KIND, lead_id: lead_ids)
+    scope = LeadActivity
+      .where(tenant_id: current_tenant.id, kind: [EXTERNAL_SCHEDULE_KIND, "external_appointment"], lead_id: lead_ids)
       .where("NULLIF(COALESCE(lead_activities.metadata #>> '{raw,schedulated_action_date}', lead_activities.metadata #>> '{raw,due_at}', lead_activities.metadata #>> '{raw,scheduled_at}', lead_activities.metadata #>> '{raw,date}', lead_activities.metadata #>> '{raw,datetime}', lead_activities.metadata ->> 'due_at'), '') IS NOT NULL")
       .where("NOT #{EXTERNAL_CLOSED_SCHEDULE_SQL}")
+    Leads::OperationalScope.current_external_schedules(scope, tenant: current_tenant)
       .pluck(:lead_id, :metadata)
       .filter_map { |lead_id, metadata| pwa_external_schedule_record(lead_id, metadata) }
   end

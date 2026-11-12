@@ -60,5 +60,27 @@ module Leads
         )
       SQL
     end
+
+    def self.mirrored(scope, tenant:)
+      integration = tenant.external_lead_integration
+      integration&.mirror_c2s_owners? ? scope.where(external_lead_integration_id: integration.id) : scope.none
+    end
+
+    def self.current_external_schedules(scope, tenant:)
+      mirrored_ids = mirrored(tenant.leads, tenant: tenant).select(:id)
+      local = scope.where.not(lead_id: mirrored_ids)
+      current = scope.where(lead_id: mirrored_ids).joins(:lead).where(<<~SQL.squish)
+        EXISTS (
+          SELECT 1 FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(leads.other_information #> '{external_lead_payload,schedulated_actions}') = 'array'
+              THEN leads.other_information #> '{external_lead_payload,schedulated_actions}'
+              WHEN jsonb_typeof(leads.other_information #> '{external_lead_payload,attributes,schedulated_actions}') = 'array'
+              THEN leads.other_information #> '{external_lead_payload,attributes,schedulated_actions}' ELSE '[]'::jsonb END
+          ) AS action
+          WHERE action = lead_activities.metadata -> 'raw'
+        )
+      SQL
+      scope.where(id: local.select(:id)).or(scope.where(id: current.select('lead_activities.id')))
+    end
   end
 end
