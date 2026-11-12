@@ -10,7 +10,7 @@ module ExternalLeadMigration
         user = integration.local_user_for_seller(seller)
         user = nil if user&.super_admin?
         unless user
-          email = "c2s-#{integration.tenant_id}-#{Digest::SHA256.hexdigest(seller['id'].to_s)[0, 24]}@reference.invalid"
+          email = integration.mirror_seller_reference_email(seller['id'])
           user = integration.tenant.admin_users.account_members.find_by(email: email) ||
             integration.tenant.admin_users.create!(
               name: seller["name"].presence || "Corretor C2S",

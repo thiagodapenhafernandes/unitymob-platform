@@ -23,4 +23,14 @@ RSpec.describe ExternalLeadMigration::MirrorSeller do
   it "não inventa identidade para um seller sem identificador" do
     expect(described_class.call(integration:, seller: { "name" => "Sem ID" })).to be_nil
   end
+
+  it "não confunde pessoas diferentes que compartilham e-mail ou telefone no legado" do
+    unrelated = create(:admin_user, tenant:, name: "Outra Pessoa", email: seller["email"], phone: "47999991234")
+    integration.update!(seller_mappings: {seller["id"] => unrelated.id})
+    user = described_class.call(integration:, seller: seller.merge("phone" => unrelated.phone))
+
+    expect(user.id).not_to eq(unrelated.id)
+    expect(user.name).to eq(seller["name"])
+    expect(user).not_to be_active
+  end
 end

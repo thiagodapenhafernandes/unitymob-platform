@@ -85,7 +85,7 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
   end
 
   describe "atribuição inicial por modalidade" do
-    let(:queue_broker) { create(:admin_user, tenant:) }
+    let(:queue_broker) { create(:admin_user, tenant:, name: "Corretor Externo Sucessor") }
 
     before do
       create(:distribution_rule_agent, tenant:, distribution_rule: rule, admin_user: queue_broker)
