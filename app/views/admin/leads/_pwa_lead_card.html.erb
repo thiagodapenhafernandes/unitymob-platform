@@ -8,7 +8,9 @@
   next_visit = @pwa_next_visits_by_lead_id.fetch(lead.id, []).first
   next_task = @pwa_next_tasks_by_lead_id.fetch(lead.id, []).first
   attention = !contacted || next_task&.atrasada? || Lead.status_value(lead.status) == Lead.status_value(:represado)
-  badge_label = if !contacted
+  badge_label = if lead.external_lead_integration_id.present? && lead.external_lead_integration_id == @pwa_mirrored_integration_id
+                  lead.status.presence || Lead.default_status
+                elsif !contacted
                   "Não interagido"
                 elsif next_task&.atrasada?
                   "Retorno vencido"

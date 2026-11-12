@@ -34,6 +34,20 @@ RSpec.describe "Admin leads PWA section", type: :request do
   end
 
   describe "GET pwa_section" do
+    it "mostra a etapa espelhada sem inferir interação humana local" do
+      integration = create(:external_lead_integration, tenant:, mirror_c2s_owners: true)
+      lead = create(:lead, tenant:, admin_user: admin, external_lead_integration: integration,
+        external_lead_id: "mirrored-badge", status: "Em Atendimento", skip_automatic_routing: true)
+      get pwa_section_admin_leads_path(view: "list", mobile_tab: "all")
+      badge = Nokogiri::HTML(response.body).at_css("#lead_#{lead.id} .lead-pwa-card__badge")
+      expect(badge.text.strip).to eq(lead.status)
+
+      integration.update!(mirror_c2s_owners: false)
+      get pwa_section_admin_leads_path(view: "list", mobile_tab: "all")
+      badge = Nokogiri::HTML(response.body).at_css("#lead_#{lead.id} .lead-pwa-card__badge")
+      expect(badge.text.strip).to eq("Não interagido")
+    end
+
     it "mantém recebimento C2S na lista, no kanban e na paginação mobile" do
       integration = create(:external_lead_integration, tenant:, mirror_c2s_owners: true)
       old = create(:lead, tenant:, admin_user: admin, name: "Espelhado antigo", external_lead_integration: integration,
