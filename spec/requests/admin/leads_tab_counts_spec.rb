@@ -84,6 +84,37 @@ RSpec.describe "Admin leads tab counts", type: :request do
       expect(LeadFavorite.where(tenant: tenant, admin_user: admin).count).to eq(2)
     end
 
+    it "inclui mensagem C2S não respondida em A fazer mesmo com retorno futuro, preservando tarefas" do
+      integration = create(:external_lead_integration, tenant: tenant, connected_by_admin_user: admin,
+        operational_mappings: {"mirror_c2s_owners" => true})
+      lead = create(:lead, tenant: tenant, admin_user: admin, external_lead_integration: integration,
+        other_information: {"external_lead_payload" => {"messages" => [{"sender_type" => "Customer", "read_at" => nil}]}})
+      task = create(:task, tenant: tenant, admin_user: admin, lead: lead, due_at: 2.days.from_now, status: "pendente")
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).to include(lead)
+      expect(controller.send(:pwa_lead_scope_for_tab, tenant.leads, "future")).to include(lead)
+      expect(controller.send(:lead_tab_counts_for, tenant.leads, only: %w[todo future])).to eq("todo" => 1, "future" => 1)
+      expect(task.reload.status).to eq("pendente")
+      lead.update_columns(other_information: {"external_lead_payload" => {"messages" => [{"sender_type" => "Customer", "read_at" => Time.current.iso8601}]}})
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).not_to include(lead)
+      lead.update_columns(other_information: {"external_lead_payload" => {"messages" => [{"sender_type" => "SysUser", "read_at" => nil}]}})
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).not_to include(lead)
+    end
+
+    it "não inclui mensagens externas sem espelhamento e exclui encerrados das três abas espelhadas" do
+      integration = create(:external_lead_integration, tenant: tenant, connected_by_admin_user: admin,
+        operational_mappings: {"mirror_c2s_owners" => false})
+      lead = create(:lead, tenant: tenant, admin_user: admin, external_lead_integration: integration,
+        other_information: {"external_lead_payload" => {"messages" => [{"sender_type" => "Customer", "read_at" => nil}]}})
+      create(:task, tenant: tenant, admin_user: admin, lead: lead, due_at: 2.days.from_now, status: "pendente")
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "todo")).not_to include(lead)
+      integration.update!(operational_mappings: {"mirror_c2s_owners" => true})
+      lead.update_columns(status: "Negócio fechado")
+      %w[todo visits future].each do |tab|
+        expect(controller.send(:lead_scope_for_tab, tenant.leads, tab)).not_to include(lead)
+      end
+      expect(controller.send(:lead_scope_for_tab, tenant.leads, "all")).to include(lead)
+    end
+
     it "computes only the requested tabs" do
       counts = controller.send(:lead_tab_counts_for, tenant.leads, only: %w[todo visits future favorites all])
 

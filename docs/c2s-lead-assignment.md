@@ -8,6 +8,9 @@ Nesse modo, reentradas, links de corretor, distribuição explícita e automaç�
 
 No espelhamento, a etapa usa o contrato real `funnel_status.status`, com prioridade para arquivamento/negócio fechado. O mapeamento configurado da conta prevalece; na ausência dele, reutiliza as etapas equivalentes do funil da conta (atendimento, visita, proposta e encerramento), sem criar etapas ou disparar automações/conversões. As sincronizações preservam contatos, conversas e agenda. Ao voltar a operar localmente, o modo desligado conserva as decisões locais.
 
+Nas abas operacionais do espelhamento, `A fazer`, `Visitas`, `Futuras` e `Favoritos` excluem leads encerrados; a estrela e a agenda histórica permanecem salvas. `A fazer` também inclui mensagens de cliente ainda não lidas no payload C2S, mesmo quando o retorno está em `Futuras`. Essa pendência não é uma nova tarefa nem uma interação local fabricada. Lista, PWA e contadores compartilham os mesmos escopos. Contas sem espelhamento preservam o comportamento local.
+
+
 Lista, kanban, filtros de período e paginação desktop/PWA usam o recebimento do ID no C2S (`c2s_source_created_at_epoch`, validado na importação), com fallback para o cadastro original. Reentradas locais continuam preservadas na timeline, mas não promovem um cadastro antigo enquanto ele é espelhado. Contas/leads fora desse modo mantêm suas regras de datas e ordenação anteriores. O card PWA exibe a etapa espelhada sem substituir o rótulo por ausência de interação local; isso não registra contato humano nem muda os indicadores de atendimento.
 
 O relógio de obsolescência só é comparável dentro do mesmo ID do C2S. Um payload legado de outro ID, deixado por conciliação antiga por contato, não pode bloquear a restauração da identidade correta por uma atualização mais antiga. Corrigir esses casos com GET do ID próprio, backup e auditoria; nunca unificar IDs externos distintos por telefone/e-mail.

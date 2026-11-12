@@ -2983,6 +2983,7 @@ class Admin::LeadsController < Admin::BaseController
     unless archived_history_requested?
       base_scope = Leads::OperationalScope.without_archived(base_scope, tenant: current_tenant)
     end
+    base_scope = Leads::OperationalScope.without_closed_mirrored(base_scope, tenant: current_tenant) if tab.in?(%w[todo visits future])
     case tab
     when "todo"
       pwa_actionable_leads(base_scope)
@@ -3019,9 +3020,11 @@ class Admin::LeadsController < Admin::BaseController
       .where.not(id: Proposal.joins(:lead).where(leads: { tenant_id: current_tenant.id }).select(:lead_id))
       .where(id: LeadActivity.where(tenant_id: current_tenant.id, kind: "accepted").select(:lead_id))
 
-    base_scope.where("leads.id IN (:task_ids) OR leads.id IN (:untouched_ids)",
+    unanswered_ids = Leads::OperationalScope.unanswered_mirrored(operational_scope, tenant: current_tenant).select(:id)
+    base_scope.where("leads.id IN (:task_ids) OR leads.id IN (:untouched_ids) OR leads.id IN (:unanswered_ids)",
       task_ids: task_ids,
-      untouched_ids: untouched_scope.select(:id))
+      untouched_ids: untouched_scope.select(:id),
+      unanswered_ids: unanswered_ids)
   end
 
   def pwa_future_visit_lead_ids(base_scope)
