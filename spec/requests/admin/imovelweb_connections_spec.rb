@@ -14,7 +14,7 @@ RSpec.describe 'Imovelweb binding workspace', type: :request do
       expect { get admin_portal_integrations_path(portal: portal) }.not_to change(ImovelwebConnection, :count)
       expect(response).to have_http_status(:ok)
       block = Nokogiri::HTML(response.body).at_css('#portal-imovelweb-leads')
-      expect(block.text).to include('Autorização do portal pendente', 'Produção bloqueada', 'Gateway')
+      expect(block.text).to include('Autorização do portal pendente', 'gerenciada pelo suporte', 'Gateway')
       expect(block.css('input[name="imovelweb_connection[advertiser_code]"]').size).to eq(1)
       expect(block.css('input[type=password], input[name*=enabled], input[name*=authorized], input[name*=client_secret]')).to be_empty
     end

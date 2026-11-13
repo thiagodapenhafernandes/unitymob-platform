@@ -1,10 +1,10 @@
 <section id="portal-imovelweb-leads" aria-label="Integração direta Imovelweb">
   <%= ax_operational_panel(eyebrow: "Leads · Imovelweb", title: "Vínculo com a Unitymob", class_name: "tw-mt-4") do %>
     <div class="tw-flex tw-flex-wrap tw-gap-2">
-      <%= ax_badge("Autorização do portal pendente", tone: :amber) %>
-      <%= ax_badge("Produção bloqueada nesta tela", tone: :gray) %>
+      <%= imovelweb_production_badge(@imovelweb_production) %>
+      <%= ax_badge("Configuração de recebimento gerenciada pelo suporte", tone: :gray) %>
     </div>
-    <p class="ax-field__hint tw-mt-3">A Unitymob recebe os callbacks pelo Gateway global e encaminha cada evento à conta vinculada. A autorização da conta comercial aguarda a confirmação do fluxo pela Imovelweb.</p>
+    <p class="ax-field__hint tw-mt-3">A Unitymob recebe os callbacks pelo Gateway global e encaminha cada evento à conta vinculada. O estado abaixo reflete as conexões configuradas. Consultar eventos não altera distribuição, vínculos ou o C2S.</p>
 
     <%= ax_field_group(title: "Dados da conta anunciante", class_name: "tw-mt-4") do %>
       <%= form_with model: @imovelweb_binding, url: (@imovelweb_binding.persisted? ? admin_imovelweb_connection_path(@imovelweb_binding) : admin_imovelweb_connections_path), local: true, html: { aria: { label: "Dados de vínculo Imovelweb" } } do |f| %>
@@ -13,7 +13,7 @@
             <%= ax_text_field(form: f, method: :advertiser_code, label: "Código da conta anunciante", placeholder: "Código informado pela Imovelweb", required: true, maxlength: 128, hint: "Informe o código da conta no portal. Ele não substitui o clientCode de roteamento.") %>
           </div>
           <div class="ax-span-6">
-            <%= ax_field(label: "Autorização da conta comercial") do %><p class="ax-field__hint">Pendente de confirmação da Imovelweb. O botão de autorização será disponibilizado após a definição do procedimento oficial.</p><% end %>
+            <%= ax_field(label: "Autorização da conta comercial") do %><p class="ax-field__hint">Novos vínculos dependem de confirmação da Imovelweb. As conexões já confirmadas estão listadas abaixo.</p><% end %>
           </div>
         <% end %>
         <%= f.submit "Salvar dados do vínculo", class: "ax-btn ax-btn--primary tw-mt-3" %>
@@ -32,16 +32,16 @@
       <% else %>
         <div class="ax-table-wrap">
           <table class="ax-table" aria-label="Conexões Imovelweb desta conta">
-            <thead><tr><th scope="col">Ambiente</th><th scope="col">Conta anunciante</th><th scope="col">clientCode</th><th scope="col">Estado</th><th scope="col">Recibos</th><th scope="col">Último lead processado</th></tr></thead>
+            <thead><tr><th scope="col">Ambiente</th><th scope="col">Conta anunciante</th><th scope="col">clientCode</th><th scope="col">Estado</th><th scope="col">Recibos</th><th scope="col">Último evento recebido</th></tr></thead>
             <tbody>
               <% @imovelweb_connections.each do |connection| %>
                 <tr>
                   <td><%= connection.environment == "sandbox" ? "Sandbox · homologação" : "Produção" %></td>
                   <td><%= connection.advertiser_code.presence || "Não informado" %></td>
                   <td><%= connection.authorized_at.present? ? connection.client_code : "A confirmar pelo portal" %></td>
-                  <td><%= connection.environment == "sandbox" ? (connection.receiving? ? "Recebendo testes" : "Pausado") : "Autorização comercial pendente" %></td>
-                  <td><% %w[pending processed quarantined].each do |status| %><span class="tw-block"><%= { "pending" => "Pendentes", "processed" => "Processados", "quarantined" => "Em quarentena" }.fetch(status) %>: <%= @imovelweb_receipt_counts.fetch([connection.id, status], 0) %></span><% end %></td>
-                  <td><%= connection.last_lead_received_at.present? ? l(connection.last_lead_received_at, format: :short) : "Nenhum registrado" %></td>
+                  <td><%= imovelweb_connection_status(connection) %></td>
+                  <td><% %w[pending processed quarantined].each do |status| %><span class="tw-block"><%= link_to "#{ { "pending" => "Pendentes", "processed" => "Processados", "quarantined" => "Em quarentena" }.fetch(status) }: #{@imovelweb_receipt_counts.fetch([connection.id, status], 0)}", admin_imovelweb_connection_lead_receipts_path(connection, status: status), class: "ax-link" %></span><% end %></td>
+                  <td><%= @imovelweb_last_received[connection.id].present? ? l(@imovelweb_last_received[connection.id], format: :short) : "Nenhum evento recebido" %></td>
                 </tr>
               <% end %>
             </tbody>

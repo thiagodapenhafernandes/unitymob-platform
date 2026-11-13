@@ -61,7 +61,7 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
       expect(row.text).to include("Lead recebido", "confirmação conjunta", I18n.l(received_at, format: :short))
     end
     row = rows.find { |r| r.at_css("td").text == "Imovelweb" }
-    expect(row.text).to include("Autorização do portal pendente", "Produção bloqueada")
+    expect(row.text).to include("Autorização do portal pendente", "Nenhum evento recebido")
     expect(row.text).not_to include("Lead recebido")
   end
 
