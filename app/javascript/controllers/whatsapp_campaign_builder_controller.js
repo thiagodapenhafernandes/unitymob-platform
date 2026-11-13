@@ -636,7 +636,8 @@ export default class extends Controller {
             <select
               name="whatsapp_campaign[template_variables][${this.escape(index)}]"
               id="whatsapp_campaign_template_variables_${this.escape(index)}"
-              class="ax-control"
+              class="ax-control ax-autocomplete-select"
+              data-controller="tom-select"
               data-whatsapp-campaign-builder-target="variableInput"
               data-variable-key="${this.escape(item.placeholder || `{{${index}}}`)}"
               data-action="change->whatsapp-campaign-builder#refreshReview change->whatsapp-campaign-builder#previewTemplate">
@@ -694,7 +695,7 @@ export default class extends Controller {
               <span>Quando clicarem</span>
               <strong data-response-decision-badge>${this.escape(this.responseDecisionBadge(action))}</strong>
             </div>
-            <select class="ax-control"
+            <select class="ax-control ax-autocomplete-select" data-controller="tom-select"
                     name="whatsapp_campaign[response_decisions][buttons][${index}][action]"
                     data-whatsapp-campaign-builder-target="responseDecisionInput"
                     data-action="change->whatsapp-campaign-builder#syncResponseDecisionRow change->whatsapp-campaign-builder#refreshReview">
@@ -703,7 +704,7 @@ export default class extends Controller {
           </div>
           <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="distribution_rule">
             <label class="ax-label">Regra de distribuição</label>
-            <select class="ax-control" name="whatsapp_campaign[response_decisions][buttons][${index}][distribution_rule_id]">
+            <select class="ax-control ax-autocomplete-select" data-controller="tom-select" name="whatsapp_campaign[response_decisions][buttons][${index}][distribution_rule_id]">
               <option value="">Escolher regra...</option>
               ${this.distributionRuleOptions(distributionRuleId)}
             </select>
@@ -969,13 +970,22 @@ export default class extends Controller {
       phone: ["contains", "present", "blank"]
     }[field] || ["contains", "equals"]
 
+    const optionsChanged = Array.from(select.options).some((option) => option.disabled !== !allowed.includes(option.value))
+    const selectionChanged = !allowed.includes(select.value)
     Array.from(select.options).forEach((option) => {
       option.hidden = !allowed.includes(option.value)
       option.disabled = !allowed.includes(option.value)
     })
 
-    if (!allowed.includes(select.value)) {
+    if (selectionChanged) {
       select.value = allowed[0]
+    }
+    if (select.tomselect && (optionsChanged || selectionChanged)) {
+      Array.from(select.options).forEach((option) => {
+        select.tomselect.updateOption(option.value, { ...select.tomselect.options[option.value], disabled: option.disabled })
+      })
+      select.tomselect.setValue(select.value, true)
+      select.tomselect.refreshOptions(false)
     }
   }
 }

@@ -76,6 +76,7 @@ export default class extends Controller {
     if (this.element.tomselect) {
       this.tomSelect = this.element.tomselect
       this.bindOpenAvailableOptionsOnFocus()
+      this.observeDisabledState()
       this.unbindDeferredInitialization()
       return
     }
@@ -166,8 +167,18 @@ export default class extends Controller {
       this.tomSelect.wrapper.classList.add('form-control-sm')
     }
 
+    this.observeDisabledState()
     this.element.closest('.ax-multiselect')?.classList.remove('ax-multiselect--pending')
     this.unbindDeferredInitialization()
+  }
+
+  observeDisabledState() {
+    this.disabledObserver?.disconnect()
+    this.disabledObserver = new MutationObserver(() => {
+      if (!this.tomSelect || this.tomSelect.isDisabled === this.element.disabled) return
+      this.element.disabled ? this.tomSelect.disable() : this.tomSelect.enable()
+    })
+    this.disabledObserver.observe(this.element, { attributes: true, attributeFilter: ["disabled"] })
   }
 
   applyOptionDescriptions(config) {
@@ -288,6 +299,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.disabledObserver?.disconnect()
     this.unbindDeferredInitialization()
     this.unbindOpenAvailableOptionsOnFocus()
     this.unbindDropdownViewportSync()

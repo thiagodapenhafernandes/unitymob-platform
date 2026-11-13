@@ -91,8 +91,9 @@
               <%= f.select :whatsapp_sender_number_id,
                            @sender_number_options,
                            { prompt: "Usar número padrão conectado" },
-                           class: "ax-control",
+                           class: "ax-control ax-autocomplete-select",
                            data: {
+                             controller: "tom-select",
                              whatsapp_campaign_builder_target: "senderSelect",
                              action: "change->whatsapp-campaign-builder#refreshReview"
                            } %>
@@ -133,17 +134,14 @@
       <%= ax_operational_panel(eyebrow: "Etapa 2", title: "Modelo e variáveis") do %>
         <div class="ax-panel-body whatsapp-campaign-form__stack whatsapp-campaign-model-layout">
           <div class="whatsapp-campaign-form__stack whatsapp-campaign-model-controls">
-          <div class="ax-field">
-            <%= ax_field_label(f, :whatsapp_template_id, text: "Modelo WhatsApp aprovado") %>
-            <%= f.select :whatsapp_template_id,
-                         @template_options,
-                         { prompt: "Selecione um modelo aprovado" },
-                         class: "ax-control",
-                         data: {
-                           whatsapp_campaign_builder_target: "templateSelect",
-                           action: "change->whatsapp-campaign-builder#refreshReview change->whatsapp-campaign-builder#previewTemplate"
-                         } %>
-          </div>
+          <%= ax_autocomplete_select_field(form: f, method: :whatsapp_template_id,
+                label: "Modelo WhatsApp aprovado", choices: @template_options,
+                select_options: { prompt: "Selecione um modelo aprovado" },
+                placeholder: "Buscar modelo aprovado...",
+                html_options: { data: {
+                  whatsapp_campaign_builder_target: "templateSelect",
+                  action: "change->whatsapp-campaign-builder#refreshReview change->whatsapp-campaign-builder#previewTemplate"
+                } }) %>
           <div class="whatsapp-template-variable-map" data-whatsapp-campaign-builder-target="variableList">
             <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
               Selecione um modelo para o sistema identificar e montar os campos variáveis automaticamente.
