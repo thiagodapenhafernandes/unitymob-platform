@@ -34,6 +34,19 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
   end
 
   describe "GET index" do
+    it "renderiza campanhas agrupadas do número selecionado sem pré-carregar associações na agregação" do
+      sender = create(:whatsapp_sender_number)
+      WhatsappCampaign.create!(name: "Campanha agrupada", whatsapp_template: template,
+        whatsapp_sender_number: sender, group_name: "Grupo de disparos", created_by: admin)
+      other_sender = create(:whatsapp_sender_number)
+      WhatsappCampaign.create!(name: "Campanha de outro número", whatsapp_template: template,
+        whatsapp_sender_number: other_sender, group_name: "Grupo de outro número", created_by: admin)
+      get admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Grupo de disparos", "Campanha agrupada")
+      expect(response.body).not_to include("Campanha de outro número")
+    end
+
     it "renderiza estado vazio compartilhado quando nao existem remetentes" do
       get admin_whatsapp_campaigns_path
 
