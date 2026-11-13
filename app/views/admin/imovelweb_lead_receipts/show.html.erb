@@ -1,6 +1,7 @@
 <% content_for :mobile_detail_header do %>
   <%= render "admin/shared/ui/mobile_detail_header", title: "Evento Imovelweb", back_path: admin_imovelweb_connection_lead_receipts_path(@connection), status: imovelweb_receipt_status(@receipt) %>
 <% end %>
+<div class="ax-integration-layout">
 <%= ax_page_header(title: "Evento Imovelweb", subtitle: @receipt.event_id, icon: "inbox", actions: ax_button("Voltar aos eventos", admin_imovelweb_connection_lead_receipts_path(@connection), variant: :ghost, icon: "arrow-left")) %>
 <%= ax_operational_panel(eyebrow: @connection.environment == "production" ? "Produção" : "Sandbox", title: imovelweb_receipt_status(@receipt)) do %>
   <p class="ax-field__hint tw-mb-4"><%= imovelweb_receipt_reason(@receipt) %> Esta consulta não libera nem reprocessa o evento.</p>
@@ -14,3 +15,4 @@
   <% end %>
   <p class="ax-field__hint tw-mt-4"><%= @receipt.lead_id.present? ? "Evento processado para um lead." : "Nenhum lead de carteira criado por este evento." %></p>
 <% end %>
+</div>
