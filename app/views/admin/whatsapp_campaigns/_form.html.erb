@@ -151,6 +151,9 @@
           </div>
           <% linked_workflow = campaign.automation_workflow %>
           <% notice_html = capture do %>
+            <%= ax_inline_notice(tone: :info, icon: "megaphone", compact: true) do %>
+              Para escolher uma fila, ative a fonte “Campanhas de disparo” na regra de distribuição. Apenas filas ativas com essa fonte habilitada aparecem aqui.
+            <% end %>
             <% if linked_workflow&.whatsapp_campaign_customized? %>
               <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true) do %>
                 A automação vinculada foi personalizada no builder avançado. As decisões simples continuam visíveis aqui, mas não sobrescrevem os ajustes finos.

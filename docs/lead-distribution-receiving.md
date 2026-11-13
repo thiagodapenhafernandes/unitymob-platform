@@ -73,3 +73,24 @@ da roleta. Atribuir manualmente preserva o status e a etapa do funil.
 
 Sem migrations, alteração automática das configurações das filas ou envios em
 massa. A opção não habilita o WhatsApp em uma fila que o mantenha desligado.
+
+## Campanhas de disparo WhatsApp (13/11/2026)
+
+A fonte **Campanhas de disparo** habilita o recebimento na fila. Na configuração
+comercial dos botões da campanha, apenas filas ativas da própria conta com essa
+fonte ligada podem ser escolhidas. A migration
+`20261113150000_add_whatsapp_campaign_source_to_distribution_rules.rb` habilita
+as filas já referenciadas nas decisões de campanhas da mesma conta; filas sem
+vínculo começam com a opção desligada.
+
+Ao gerar um lead, a conversão usa a origem `whatsapp_campaign` e a fila escolhida,
+sem uma nova busca por fontes, cidades ou filtros de entrada. O responsável
+informado na planilha não substitui a escolha da fila. Seguem as regras de aceite,
+elegibilidade, check-in, horários, represamento, fidelização, complemento e
+contingência. O destino de contingência conserva seu contrato de encaminhamento,
+sem exigir habilitação para receber campanhas diretamente. A automação não
+executa novamente a distribuição já iniciada pela conversão.
+
+No roteamento automático sem destino explícito, essa origem corresponde somente
+a filas com a fonte de campanhas habilitada, sem ser confundida com Site.
+A mudança não redistribui leads históricos nem envia campanhas.

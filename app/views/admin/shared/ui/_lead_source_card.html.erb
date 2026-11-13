@@ -1,12 +1,14 @@
-<section class="distribution-rule-source-card">
+<section class="distribution-rule-source-card<%= " distribution-rule-source-card--compact" if local_assigns[:compact] %>">
   <div class="distribution-rule-source__head">
     <span class="distribution-rule-source__icon"><i class="bi bi-<%= brand %> <%= local_assigns[:icon_class] %>" aria-hidden="true"></i></span>
     <div class="distribution-rule-source__copy"><strong><%= title %></strong><span><%= description %></span></div>
     <div class="distribution-rule-source__actions">
-      <%= ax_toggle_chip(form, source_method, label: "Ativar", class_name: "distribution-rule-source__toggle", input_data: { action: "change->distribution-rule##{toggle_action}" }) %>
+      <%= ax_toggle_chip(form, source_method, label: "Ativar", class_name: "distribution-rule-source__toggle", input_data: local_assigns[:toggle_action].present? ? { action: "change->distribution-rule##{toggle_action}" } : {}) %>
     </div>
   </div>
+  <% unless local_assigns[:compact] %>
   <div class="section-toggle-container distribution-rule-source__body<%= ' tw-hidden' unless form.object.public_send(source_method) %>" data-distribution-rule-target="<%= section_target %>">
     <%= yield %>
   </div>
+  <% end %>
 </section>

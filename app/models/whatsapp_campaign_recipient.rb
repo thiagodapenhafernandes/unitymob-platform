@@ -48,10 +48,10 @@ class WhatsappCampaignRecipient < ApplicationRecord
       name: display_name,
       phone: display_phone,
       email: display_email,
-      origin: origin.presence || self.origin.presence || "whatsapp_campaign",
+      origin: origin.presence || "whatsapp_campaign",
       status: status.presence || Lead.default_status,
       tags: tag_list,
-      admin_user_id: admin_user_id,
+      admin_user_id: distribution_rule ? nil : admin_user_id,
       distribution_rule: distribution_rule
     )
     created_lead = Leads::Intake.receive!(created_lead)

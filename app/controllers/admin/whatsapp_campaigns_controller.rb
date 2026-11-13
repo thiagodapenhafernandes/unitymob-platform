@@ -133,7 +133,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
         locals: {
           buttons: buttons,
           decisions: decisions,
-          distribution_rules: current_tenant.distribution_rules.active.order(:name).pluck(:name, :id)
+          distribution_rules: current_tenant.distribution_rules.active.where(source_whatsapp_campaign: true).order(:name).pluck(:name, :id)
         }
       ),
       values: preview.values,
@@ -240,7 +240,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     @broker_options = current_tenant.admin_users.active.order(:name).pluck(:name, :id)
     @sender_number_options = current_tenant.whatsapp_sender_numbers.active.ordered.map { |number| [number.display_label, number.id] }
     @group_options = current_tenant.whatsapp_campaigns.where.not(group_name: [nil, ""]).distinct.order(:group_name).pluck(:group_name)
-    @distribution_rule_options = current_tenant.distribution_rules.active.order(:name).pluck(:name, :id)
+    @distribution_rule_options = current_tenant.distribution_rules.active.where(source_whatsapp_campaign: true).order(:name).pluck(:name, :id)
     @audience_field_options = Whatsapp::CampaignFilterConditions::FIELD_DEFINITIONS.map { |key, meta| [meta[:label], key] }
     @audience_operator_options = [
       ["Contém", "contains"],

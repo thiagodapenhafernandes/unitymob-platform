@@ -37,6 +37,7 @@ module Admin::DistributionRulesHelper
       ["RD Station", rule.source_rd_station?],
       ["Lovers", rule.source_lovers?],
       ["Site/WhatsApp", rule.source_site?],
+      ["Campanhas de disparo", rule.source_whatsapp_campaign?],
       ["Portais", rule.source_portal?],
       ["Webhook", rule.source_webhook?]
     ].select(&:second).map(&:first)

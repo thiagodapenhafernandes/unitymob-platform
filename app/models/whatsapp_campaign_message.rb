@@ -445,7 +445,7 @@ class WhatsappCampaignMessage < ApplicationRecord
       return if lead_id.present?
       return unless recipient
 
-      distribution_rule = DistributionRule.active.find_by(id: decision[:distribution_rule_id])
+      distribution_rule = tenant.distribution_rules.find_by!(id: decision[:distribution_rule_id])
       created_lead = recipient.convert_to_lead!(distribution_rule: distribution_rule)
       update_column(:lead_id, created_lead.id)
       LeadActivity.log!(

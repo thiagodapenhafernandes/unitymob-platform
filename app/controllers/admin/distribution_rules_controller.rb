@@ -354,7 +354,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     # isso distribution_rule_agents_attributes NÃO é permitido aqui.
     params.require(:distribution_rule).permit(
       :name, :business_type, :active,
-      :source_tiktok, :source_linkedin, :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station, :source_lovers,
+      :source_whatsapp_campaign, :source_tiktok, :source_linkedin, :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station, :source_lovers,
       :distribution_mode,
       :contingency_enabled, :contingency_rule_id,
       :contingency_unavailable_minutes, :contingency_pool_minutes, :contingency_acceptance_minutes,

@@ -42,6 +42,8 @@ module Leads
           reason: @lead.share_token.present? ? "share_link" : "manual_assignment"
         })
         Leads::NotificationDispatcher.notify_direct_assignment(@lead)
+      elsif @lead.origin == "whatsapp_campaign" && @lead.distribution_rule
+        Leads::DistributorService.distribute_to(@lead, @lead.distribution_rule)
       else
         Leads::DistributorService.find_and_distribute(@lead)
       end

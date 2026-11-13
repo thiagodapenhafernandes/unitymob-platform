@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe WhatsappCampaignMessage, type: :model do
   let(:admin) { create(:admin_user, :admin) }
-  let(:distribution_rule) { create(:distribution_rule, name: "Captação Alto Padrão") }
+  let(:distribution_rule) { create(:distribution_rule, source_whatsapp_campaign: true, name: "Captação Alto Padrão") }
   let(:template) do
     WhatsappTemplate.create!(
       name: "campanha_botoes",
@@ -16,6 +16,14 @@ RSpec.describe WhatsappCampaignMessage, type: :model do
     )
   end
   let(:conversation) { WhatsappConversation.create!(contact_phone: "5511999990000", status: "open") }
+
+  it "rejeita uma decisão de campanha destinada a uma fila sem recebimento habilitado" do
+    distribution_rule.update!(source_whatsapp_campaign: false)
+    campaign = WhatsappCampaign.new(name: "Destino desligado", whatsapp_template: template, created_by: admin,
+      response_decisions: { buttons: [{ key: template.interactive_buttons.first["key"], action: "generate_lead", distribution_rule_id: distribution_rule.id }] })
+    expect(campaign).not_to be_valid
+    expect(campaign.errors[:response_decisions].join).to include("sem recebimento de campanhas de disparo")
+  end
 
   it "normaliza telefone antes de validar" do
     simple_template = WhatsappTemplate.create!(
