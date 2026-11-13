@@ -17,8 +17,8 @@
     <%= select_tag "#{base_name}[field]",
                    options_for_select(field_options, field),
                    id: "#{base_name}_field",
-                   class: "ax-control",
-                   data: { condition_field: true, action: "change->whatsapp-campaign-builder#syncConditionRow" } %>
+                   class: "ax-control ax-autocomplete-select",
+                   data: { controller: "tom-select", condition_field: true, action: "change->whatsapp-campaign-builder#syncConditionRow" } %>
   </div>
 
   <div class="ax-field">
@@ -26,8 +26,8 @@
     <%= select_tag "#{base_name}[operator]",
                    options_for_select(operator_options, operator),
                    id: "#{base_name}_operator",
-                   class: "ax-control",
-                   data: { condition_operator: true, action: "change->whatsapp-campaign-builder#syncConditionRow" } %>
+                   class: "ax-control ax-autocomplete-select",
+                   data: { controller: "tom-select", condition_operator: true, action: "change->whatsapp-campaign-builder#syncConditionRow" } %>
   </div>
 
   <div class="ax-field whatsapp-audience-condition__value" data-condition-value-type="status">

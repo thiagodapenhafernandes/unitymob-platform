@@ -33,6 +33,20 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
     expect(options).to eq([{ "label" => enabled.name, "value" => enabled.id }])
   end
 
+  it "oferece autocomplete nos selects do formulário e mantém os eventos do modelo" do
+    get new_admin_whatsapp_campaign_path
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    selects = document.css("select[name^='whatsapp_campaign[']")
+    expect(selects).not_to be_empty
+    selects.each do |select|
+      expect(select["data-controller"].to_s.split).to include("tom-select"), select["name"]
+    end
+    model = document.at_css("#whatsapp_campaign_whatsapp_template_id")
+    expect(model["data-action"]).to include("previewTemplate", "refreshReview")
+    expect(model["data-tom-select-create-value"]).to eq("false")
+  end
+
   describe "GET index" do
     it "renderiza campanhas agrupadas do número selecionado sem pré-carregar associações na agregação" do
       sender = create(:whatsapp_sender_number)
@@ -485,6 +499,9 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       data = JSON.parse(response.body)
       expect(data["buttons"].map { |button| button["text"] }).to eq(["Saiba mais", "Descadastrar"])
       expect(data["buttons"].map { |button| button["action"] }).to eq(["generate_lead", "unsubscribe"])
+      selects = Nokogiri::HTML.fragment(data["response_decisions_html"]).css("select")
+      expect(selects.size).to eq(4)
+      selects.each { |select| expect(select["data-controller"]).to eq("tom-select") }
     end
 
     it "retorna schema dinamico para todas as variaveis do template" do

@@ -55,8 +55,8 @@
             <%= select_tag "#{base_name}[action]",
                            options_for_select(WhatsappCampaign::RESPONSE_ACTIONS.map { |value, label| [label, value] }, selected_action),
                            id: "whatsapp_button_decision_#{safe_id}_action",
-                           class: "ax-control",
-                           data: { whatsapp_campaign_builder_target: "responseDecisionInput", action: "change->whatsapp-campaign-builder#syncResponseDecisionRow change->whatsapp-campaign-builder#refreshReview" } %>
+                           class: "ax-control ax-autocomplete-select",
+                           data: { controller: "tom-select", whatsapp_campaign_builder_target: "responseDecisionInput", action: "change->whatsapp-campaign-builder#syncResponseDecisionRow change->whatsapp-campaign-builder#refreshReview" } %>
           </div>
 
           <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="distribution_rule">
@@ -64,7 +64,8 @@
             <%= select_tag "#{base_name}[distribution_rule_id]",
                            options_for_select(distribution_options, action["distribution_rule_id"]),
                            include_blank: "Escolher regra...",
-                           class: "ax-control" %>
+                           class: "ax-control ax-autocomplete-select",
+                           data: { controller: "tom-select" } %>
           </div>
           <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="message">
             <label class="ax-label">Mensagem automática</label>
