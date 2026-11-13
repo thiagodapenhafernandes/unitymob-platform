@@ -3930,6 +3930,7 @@ CREATE TABLE public.imovelweb_connections (
     last_lead_received_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    advertiser_code character varying(128),
     CONSTRAINT imovelweb_environment CHECK (((environment)::text = ANY ((ARRAY['sandbox'::character varying, 'production'::character varying])::text[])))
 );
 
@@ -15178,6 +15179,13 @@ CREATE UNIQUE INDEX index_home_settings_on_unique_tenant_id ON public.home_setti
 
 
 --
+-- Name: index_imovelweb_advertiser_per_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_imovelweb_advertiser_per_tenant ON public.imovelweb_connections USING btree (tenant_id, environment, advertiser_code) WHERE (advertiser_code IS NOT NULL);
+
+
+--
 -- Name: index_imovelweb_connections_on_environment_and_client_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -21769,6 +21777,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261113130000'),
 ('20261109120000'),
 ('20261106170000'),
 ('20261106160000'),

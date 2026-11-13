@@ -522,6 +522,7 @@ Rails.application.routes.draw do
       post :sync_batch
       post :sync_images_now
     end
+    resources :imovelweb_connections, only: [:create, :update]
     resources :portal_integrations, only: [:index, :update], param: :portal do
       get :preview_feed, on: :member
       post :grupozap_key, on: :collection

@@ -5,6 +5,13 @@ class Admin::PortalIntegrationsController < Admin::BaseController
   def index
     @active_portal = normalize_portal(params[:portal])
     @integrations = PortalIntegration::PORTALS.index_with { |portal| find_integration!(portal) }
+    if @active_portal.in?(%w[imovelweb imovelweb_2])
+      @imovelweb_connections = ImovelwebConnection.where(tenant: current_tenant).includes(:tenant).order(:id).to_a
+      @imovelweb_binding = @imovelweb_connections.find(&:binding_editable?) ||
+        ImovelwebConnection.new(tenant: current_tenant, environment: "production")
+      @imovelweb_receipt_counts = ImovelwebLeadReceipt.where(imovelweb_connection_id: @imovelweb_connections.map(&:id))
+        .group(:imovelweb_connection_id, :status).count
+    end
     @lead_integration = @integrations["zapimoveis"]
     @status_options = Habitation::STATUS_OPTIONS
     @business_type_options = [["Venda", "venda"], ["Aluguel", "aluguel"]]

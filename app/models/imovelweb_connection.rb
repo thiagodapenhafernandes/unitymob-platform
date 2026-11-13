@@ -15,6 +15,15 @@ class ImovelwebConnection < ApplicationRecord
     end
   end
 
+  normalizes :advertiser_code, with: ->(value) { value.strip.presence }
+  validates :advertiser_code, length: { maximum: 128 }, format: { with: /\A[A-Za-z0-9_.-]+\z/ }, allow_blank: true
+  validates :advertiser_code, uniqueness: { scope: [:tenant_id, :environment] }, allow_blank: true
+  validates :advertiser_code, presence: true, on: :binding_request
+
+  def binding_editable?
+    environment == "production" && !enabled? && authorized_at.blank?
+  end
+
   def receiving?
     encryption_ready? && ENV["IMOVELWEB_RECEIVING_ENABLED"] == "true" && enabled? && authorized_at.present? && tenant.active?
   end

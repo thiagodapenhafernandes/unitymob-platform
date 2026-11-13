@@ -1,5 +1,9 @@
 module Admin::PortalIntegrationsHelper
-  DIRECT_LEAD_PORTALS = %w[imovelweb imovelweb_2 casamineira chavesnamao].freeze
+  DIRECT_LEAD_PORTALS = %w[casamineira chavesnamao].freeze
+
+  def imovelweb_direct_leads?(integration)
+    integration.portal.in?(%w[imovelweb imovelweb_2])
+  end
 
   def portal_direct_lead_setup(integration)
     return unless DIRECT_LEAD_PORTALS.include?(integration.portal)

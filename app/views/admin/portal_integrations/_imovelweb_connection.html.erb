@@ -1,0 +1,53 @@
+<section id="portal-imovelweb-leads" aria-label="Integração direta Imovelweb">
+  <%= ax_operational_panel(eyebrow: "Leads · Imovelweb", title: "Vínculo com a Unitymob", class_name: "tw-mt-4") do %>
+    <div class="tw-flex tw-flex-wrap tw-gap-2">
+      <%= ax_badge("Autorização do portal pendente", tone: :amber) %>
+      <%= ax_badge("Produção bloqueada nesta tela", tone: :gray) %>
+    </div>
+    <p class="ax-field__hint tw-mt-3">A Unitymob recebe os callbacks pelo Gateway global e encaminha cada evento à conta vinculada. A autorização da conta comercial aguarda a confirmação do fluxo pela Imovelweb.</p>
+
+    <%= ax_field_group(title: "Dados da conta anunciante", class_name: "tw-mt-4") do %>
+      <%= form_with model: @imovelweb_binding, url: (@imovelweb_binding.persisted? ? admin_imovelweb_connection_path(@imovelweb_binding) : admin_imovelweb_connections_path), local: true, html: { aria: { label: "Dados de vínculo Imovelweb" } } do |f| %>
+        <%= ax_field_grid(columns: 12) do %>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :advertiser_code, label: "Código da conta anunciante", placeholder: "Código informado pela Imovelweb", required: true, maxlength: 128, hint: "Informe o código da conta no portal. Ele não substitui o clientCode de roteamento.") %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_field(label: "Autorização da conta comercial") do %><p class="ax-field__hint">Pendente de confirmação da Imovelweb. O botão de autorização será disponibilizado após a definição do procedimento oficial.</p><% end %>
+          </div>
+        <% end %>
+        <%= f.submit "Salvar dados do vínculo", class: "ax-btn ax-btn--primary tw-mt-3" %>
+        <p class="ax-field__hint tw-mt-3">Salvar apenas registra a solicitação nesta conta. Não autoriza o portal, ativa recebimento, sincroniza rotas ou altera a distribuição.</p>
+      <% end %>
+    <% end %>
+
+    <%= ax_field_group(title: "Credenciais e callbacks", class_name: "tw-mt-4") do %>
+      <p>Client ID, Client secret e a chave do callback são gerenciados pela Unitymob no Gateway, separadamente por ambiente. Nenhuma dessas credenciais é solicitada ou exibida nesta tela.</p>
+      <p class="ax-field__hint tw-mt-3">A senha da imobiliária no portal não deve ser informada aqui. A configuração de leads é independente do envio de imóveis e dos tokens do feed.</p>
+    <% end %>
+
+    <%= ax_field_group(title: "Conexões desta conta", class_name: "tw-mt-4") do %>
+      <% if @imovelweb_connections.empty? %>
+        <p class="ax-field__hint">Nenhuma conexão preparada. Salve o código da conta para registrar o pedido de vínculo.</p>
+      <% else %>
+        <div class="ax-table-wrap">
+          <table class="ax-table" aria-label="Conexões Imovelweb desta conta">
+            <thead><tr><th scope="col">Ambiente</th><th scope="col">Conta anunciante</th><th scope="col">clientCode</th><th scope="col">Estado</th><th scope="col">Recibos</th><th scope="col">Último lead processado</th></tr></thead>
+            <tbody>
+              <% @imovelweb_connections.each do |connection| %>
+                <tr>
+                  <td><%= connection.environment == "sandbox" ? "Sandbox · homologação" : "Produção" %></td>
+                  <td><%= connection.advertiser_code.presence || "Não informado" %></td>
+                  <td><%= connection.authorized_at.present? ? connection.client_code : "A confirmar pelo portal" %></td>
+                  <td><%= connection.environment == "sandbox" ? (connection.receiving? ? "Recebendo testes" : "Pausado") : "Autorização comercial pendente" %></td>
+                  <td><% %w[pending processed quarantined].each do |status| %><span class="tw-block"><%= { "pending" => "Pendentes", "processed" => "Processados", "quarantined" => "Em quarentena" }.fetch(status) %>: <%= @imovelweb_receipt_counts.fetch([connection.id, status], 0) %></span><% end %></td>
+                  <td><%= connection.last_lead_received_at.present? ? l(connection.last_lead_received_at, format: :short) : "Nenhum registrado" %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</section>
