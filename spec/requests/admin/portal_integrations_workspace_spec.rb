@@ -61,7 +61,7 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
       expect(row.text).to include("Lead recebido", "confirmação conjunta", I18n.l(received_at, format: :short))
     end
     row = rows.find { |r| r.at_css("td").text == "Imovelweb" }
-    expect(row.text).to include("Sem integração de leads neste canal", "Não confirmado")
+    expect(row.text).to include("Autorização do portal pendente", "Produção bloqueada")
     expect(row.text).not_to include("Lead recebido")
   end
 
@@ -74,7 +74,7 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
   end
 
   it "prepara solicitações diretas por portal sem ativar recebimento ou expor credenciais" do
-    %w[imovelweb imovelweb_2 casamineira chavesnamao].each do |portal|
+    %w[casamineira chavesnamao].each do |portal|
       integration = PortalIntegration.for_portal!(portal, tenant: admin.tenant)
       integration.update!(enabled: true, leads_enabled: false, account_id: "123456", webhook_secret: "segredo-do-portal")
       original_token = integration.feed_token

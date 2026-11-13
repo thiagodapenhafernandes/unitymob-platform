@@ -185,3 +185,30 @@ e dos identificadores de teste. Não houve deploy nem ativação nesta revalida�
 O chamado SB-129147 recebeu resposta esclarecendo Unitymob como integradora e
 Salute como piloto; callbacks ficam globais no Gateway por ambiente, com roteamento
 por `clientCode` e autorização por conta, inclusive para futuros clientes.
+
+## Bloco de vínculo por conta no admin
+
+A tela existente de Portais, nas abas Imovelweb e Imovelweb 2, compartilha o bloco
+“Vínculo com a Unitymob”. O formulário salva somente `advertiser_code` (código da
+conta anunciante), em uma conexão de produção desativada e não autorizada.
+`client_code` provisório é apenas identidade interna do rascunho; não é exibido
+como código confirmado pelo portal. GET não prepara conexões automaticamente.
+
+As ações create/update exigem gerenciar integrações, limitam consultas ao tenant
+corrente e não aceitam ambiente, tenant, credenciais, ativação ou autorização
+por parâmetros. Conexões sandbox, habilitadas ou já autorizadas não são editáveis
+nesse formulário. Nenhuma rota é sincronizada ao salvar; publicação de imóveis,
+feeds, tokens e distribuição permanecem independentes.
+
+Conexões, ambiente, clientCode confirmado, última entrega processada e contagens
+de recibos são apresentados apenas para a conta atual, sem payloads de contato,
+segredos ou valores de credenciais. Credenciais da integradora e chaves de callback
+continuam exclusivamente no Gateway, separadas por ambiente.
+
+Autorização comercial e produção continuam pendentes nesta interface: não há
+botão funcional de autorização nem interruptor para ativar recebimento. O fluxo
+oficial de consentimento e a confirmação do clientCode dependem do portal; a
+identidade imutável de conexões existentes não é alterada pelo formulário.
+
+A migration `20261113130000` adiciona o código anunciante opcional e sua unicidade
+por tenant/ambiente, preservando conexões existentes sem backfill ou ativação.
