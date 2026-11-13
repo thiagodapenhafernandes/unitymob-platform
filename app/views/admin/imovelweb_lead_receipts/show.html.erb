@@ -1,0 +1,16 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Evento Imovelweb", back_path: admin_imovelweb_connection_lead_receipts_path(@connection), status: imovelweb_receipt_status(@receipt) %>
+<% end %>
+<%= ax_page_header(title: "Evento Imovelweb", subtitle: @receipt.event_id, icon: "inbox", actions: ax_button("Voltar aos eventos", admin_imovelweb_connection_lead_receipts_path(@connection), variant: :ghost, icon: "arrow-left")) %>
+<%= ax_operational_panel(eyebrow: @connection.environment == "production" ? "Produção" : "Sandbox", title: imovelweb_receipt_status(@receipt)) do %>
+  <p class="ax-field__hint tw-mb-4"><%= imovelweb_receipt_reason(@receipt) %> Esta consulta não libera nem reprocessa o evento.</p>
+  <%= ax_field_grid(columns: 12) do %>
+    <% { "Recebido em" => l(@receipt.received_at, format: "%d/%m/%Y às %H:%M:%S"), "Tipo do evento" => @receipt.event_type, "clientCode" => @connection.client_code, "Referência do imóvel" => @entry["reference"], "ID do anúncio no portal" => @entry["listing_id"], "Nome" => @entry["name"], "E-mail" => @entry["email"], "Telefone" => @entry["phone"], "Data original no portal" => @entry["registered_at"] }.each do |label, value| %>
+      <div class="ax-span-6"><%= ax_field(label: label) do %><p class="tw-break-all"><%= value.presence || "Não informado" %></p><% end %></div>
+    <% end %>
+  <% end %>
+  <%= ax_field_group(title: "Mensagem recebida", class_name: "tw-mt-4") do %>
+    <p class="tw-whitespace-pre-wrap tw-break-words"><%= @entry["message"].presence || "Sem mensagem" %></p>
+  <% end %>
+  <p class="ax-field__hint tw-mt-4"><%= @receipt.lead_id.present? ? "Evento processado para um lead." : "Nenhum lead de carteira criado por este evento." %></p>
+<% end %>

@@ -1,0 +1,29 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Eventos Imovelweb", back_path: admin_portal_integrations_path(portal: "imovelweb", anchor: "portal-imovelweb-leads"), status: @connection.environment == "production" ? "Produção" : "Sandbox" %>
+<% end %>
+<%= ax_page_header(title: "Eventos Imovelweb", subtitle: "#{imovelweb_connection_status(@connection)} · #{@connection.client_code}", icon: "inbox", actions: ax_button("Voltar", admin_portal_integrations_path(portal: "imovelweb", anchor: "portal-imovelweb-leads"), variant: :ghost, icon: "arrow-left")) %>
+<%= ax_operational_panel(eyebrow: "Recebimento", title: params[:status] == "quarantined" ? "Eventos em quarentena" : "Eventos recebidos") do %>
+  <p class="ax-field__hint tw-mb-3">Consulta de eventos. Nenhuma ação nesta tela libera leads, reprocessa eventos ou altera a distribuição e o C2S.</p>
+  <div class="tw-flex tw-gap-3 tw-mb-4">
+    <%= link_to "Todos", admin_imovelweb_connection_lead_receipts_path(@connection), class: "ax-link" %>
+    <%= link_to "Em quarentena", admin_imovelweb_connection_lead_receipts_path(@connection, status: "quarantined"), class: "ax-link" %>
+  </div>
+  <div class="ax-table-wrap">
+    <table class="ax-table" aria-label="Eventos recebidos da Imovelweb">
+      <thead><tr><% ["Recebido em", "Evento", "Tipo", "Estado", "Detalhes"].each do |label| %><th scope="col"><%= label %></th><% end %></tr></thead>
+      <tbody>
+        <% @receipts.each do |receipt| %>
+          <tr>
+            <td><%= l(receipt.received_at, format: :short) %></td>
+            <td class="tw-break-all"><%= receipt.event_id %></td>
+            <td><%= receipt.event_type %></td>
+            <td><%= imovelweb_receipt_status(receipt) %><small class="ax-field__hint tw-block"><%= imovelweb_receipt_reason(receipt) %></small></td>
+            <td><%= link_to "Abrir evento", admin_imovelweb_connection_lead_receipt_path(@connection, receipt), class: "ax-link" %></td>
+          </tr>
+        <% end %>
+        <% if @receipts.empty? %><tr><td colspan="5"><%= ax_empty_state(title: "Nenhum evento neste filtro", icon: "inbox", compact: true) %></td></tr><% end %>
+      </tbody>
+    </table>
+  </div>
+  <%= will_paginate @receipts %>
+<% end %>

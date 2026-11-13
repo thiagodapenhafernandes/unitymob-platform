@@ -29,8 +29,8 @@
               <td><%= portal_lead_connection_badge(@lead_integration) %><small class="ax-field__hint tw-block">Grupo OLX · confirmação conjunta</small></td>
               <td><%= @lead_integration.last_lead_at.present? ? l(@lead_integration.last_lead_at, format: :short) : "Nenhum confirmado" %></td>
             <% elsif imovelweb_direct_leads?(integration) %>
-              <td><%= ax_badge("Autorização do portal pendente", tone: :amber) %><small class="tw-block"><%= link_to "Configurar vínculo Imovelweb", admin_portal_integrations_path(portal: portal, anchor: "portal-imovelweb-leads"), class: "ax-link" %></small></td>
-              <td>Produção bloqueada</td>
+              <td><%= imovelweb_production_badge(@imovelweb_production) %><small class="tw-block"><%= link_to "Configurar vínculo Imovelweb", admin_portal_integrations_path(portal: portal, anchor: "portal-imovelweb-leads"), class: "ax-link" %></small></td>
+              <td><%= @imovelweb_production.filter_map { |connection| @imovelweb_last_received[connection.id] }.max.then { |time| time ? l(time, format: :short) : "Nenhum evento recebido" } %></td>
             <% else %>
               <td>Sem integração de leads neste canal<% if portal_direct_lead_setup(integration) %><small class="tw-block"><%= link_to "Preparar recebimento direto", admin_portal_integrations_path(portal: portal, anchor: "portal-direct-leads"), class: "ax-link" %></small><% end %></td>
               <td>Não confirmado</td>
