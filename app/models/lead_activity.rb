@@ -14,6 +14,10 @@ class LeadActivity < ApplicationRecord
   ].freeze
 
   AUTOMATION_KINDS = %w[
+    external_lead_export_queued
+    external_lead_exported
+    external_lead_export_failed
+    external_lead_export_skipped
     automation
     automation_event
     automation_redistribution

@@ -26,6 +26,7 @@ module Leads
     end
 
     def check!
+      return if @lead.distribution_rule&.destination_c2s?
       return if @lead.instagram_automation_holding?
       return if Lead.non_operational_status_values(tenant: @lead.tenant).include?(@lead.status) || @lead.archived_at.present?
       if @lead.contingency_pending?
@@ -60,6 +61,7 @@ module Leads
     end
 
     def try_forward!(rule, reason)
+      return false if rule.destination_c2s?
       return false unless forwardable? && rule.contingency_for?(reason)
       initialize_cycle!
       minutes = case reason

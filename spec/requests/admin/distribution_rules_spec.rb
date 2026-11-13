@@ -10,6 +10,21 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "seleciona o destino C2S e preserva a equipe configurada ao ocultar os campos locais" do
+    create(:external_lead_integration, tenant: admin.tenant)
+    rule = create(:distribution_rule, tenant: admin.tenant)
+    agent = create(:admin_user, :field_agent, tenant: admin.tenant)
+    create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent)
+    get edit_admin_distribution_rule_path(rule)
+    expect(response.body).to include("Destino dos leads", "C2S — sem distribuição local")
+    patch admin_distribution_rule_path(rule), params: { distribution_rule: { delivery_destination: "c2s" } }
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(rule.reload.destination_c2s?).to be(true)
+    expect(rule.distribution_rule_agents.pluck(:admin_user_id)).to eq([agent.id])
+    get admin_distribution_rule_path(rule)
+    expect(response.body).to include("C2S — sem distribuição local")
+  end
+
   it "exibe e persiste a fonte de campanhas de disparo" do
     rule = create(:distribution_rule, tenant: admin.tenant)
     get edit_admin_distribution_rule_path(rule)

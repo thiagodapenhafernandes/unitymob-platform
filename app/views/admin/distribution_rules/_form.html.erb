@@ -1,4 +1,4 @@
-<%= form_with(model: [:admin, distribution_rule], local: true, data: { controller: "distribution-rule distribution-rule-summary", action: "submit->distribution-rule#validateBeforeSubmit" }, html: { class: "distribution-rule-form distribution-rule-form--workspace" }) do |f| %>
+<%= form_with(model: [:admin, distribution_rule], local: true, data: { controller: "distribution-rule distribution-rule-summary conditional-reveal", conditional_reveal_kind_value: "select", action: "submit->distribution-rule#validateBeforeSubmit" }, html: { class: "distribution-rule-form distribution-rule-form--workspace" }) do |f| %>
   <%
     form_title = local_assigns.fetch(:form_title) do
       distribution_rule.persisted? ? "Editar regra: #{distribution_rule.name}" : "Nova regra de distribuição"
@@ -47,6 +47,19 @@
                   ) %>
             </div>
           </div>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Saída", title: "Destino dos leads") do %>
+        <div class="ax-panel-body">
+          <%= ax_select_field(form: f, method: :delivery_destination, label: "Encaminhar para",
+                choices: DistributionRule::DELIVERY_DESTINATIONS.map { |value, text| [text, value] },
+                html_options: { data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } }) %>
+          <%= ax_inline_notice(tone: :info, icon: "box-arrow-up-right", compact: true) do %>
+            C2S usa a conexão configurada em <%= link_to "Migração de leads", admin_external_lead_integration_path %>.
+            O lead fica registrado sem corretor na Unitymob; aceite, roleta, check-in e notificações locais não são executados.
+            A opção global de exportação não precisa estar ligada para enviar por esta regra.
+          <% end %>
         </div>
       <% end %>
 
@@ -242,7 +255,7 @@
       <% end %>
 
       <%# Equipe %>
-      <div id="team" data-controller="team-rules"
+      <div id="team" data-conditional-reveal-target="panel" data-conditional-reveal-values="unitymob" data-controller="team-rules"
            data-team-rules-all-agents-value="<%= (@all_agents || []).to_json %>">
         <% initial_agent_count = Array(distribution_rule.distribution_rule_agents).reject(&:marked_for_destruction?).map(&:admin_user_id).compact.size %>
         <%= ax_operational_panel(eyebrow: "Equipe", title: "Corretores e fila",
@@ -297,6 +310,7 @@
 
       <%# Notificações %>
       <% channel_states = notification_channel_states %>
+      <div data-conditional-reveal-target="panel" data-conditional-reveal-values="unitymob">
       <%= ax_operational_panel(eyebrow: "Avisos", title: "Notificações") do %>
         <div class="ax-panel-body">
           <div class="ax-option-stack">
@@ -339,6 +353,8 @@
           </div>
         </div>
       <% end %>
+
+      </div>
 
       <%# Modal de canal não configurado (preenchido pelo controller distribution-rule) %>
       <%= ax_quick_modal(

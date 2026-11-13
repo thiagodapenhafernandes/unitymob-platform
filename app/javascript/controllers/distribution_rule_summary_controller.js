@@ -63,13 +63,14 @@ export default class extends Controller {
     if (this.checked("source_site")) sources.push("Site")
     if (this.checked("source_portal")) sources.push("Portais")
 
+    const c2s = this.element.querySelector('[name="distribution_rule[delivery_destination]"]')?.value === "c2s"
     const n = this.agentCount()
     if (this.hasAgentCountTarget) this.agentCountTarget.textContent = String(n)
 
     if (this.hasLineTarget) {
       const src = sources.length ? `<b>${sources.join(", ")}</b>` : "<b>nenhuma origem</b>"
       const who = n ? `<b>${n} corretor${n > 1 ? "es" : ""}</b>` : "<b>sem corretores</b>"
-      this.lineTarget.innerHTML = `Leads de ${src} → ${who} em <b>${modeLabel}</b>.`
+      this.lineTarget.innerHTML = c2s ? `Leads de ${src} → <b>C2S</b>, sem distribuição local.` : `Leads de ${src} → ${who} em <b>${modeLabel}</b>.`
       const business = this.element.querySelector('select[name="distribution_rule[business_type]"]')
       const cities = this.element.querySelector('select[name="distribution_rule[property_cities][]"]')
       const names = Array.from(cities?.selectedOptions || []).map(option => option.value).filter(Boolean)

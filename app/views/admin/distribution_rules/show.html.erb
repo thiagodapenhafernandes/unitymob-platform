@@ -31,10 +31,18 @@
         pills: [@rule.active? ? "Ativa" : "Inativa"],
         subtitle: "#{distribution_rule_business_label(@rule)} · #{distribution_rule_mode_label(@rule)} · #{enabled_sources.presence&.to_sentence || "Nenhuma fonte habilitada"}") %>
 
+  <% if @rule.destination_c2s? %>
+    <%= ax_inline_notice(tone: :info, icon: "box-arrow-up-right") do %>
+      Os leads desta regra são enviados ao C2S, sem atribuição a corretores na Unitymob.
+      A equipe, o aceite, o check-in e as notificações locais ficam preservados na configuração, mas não são aplicados neste destino.
+      Acompanhe o resultado do envio no histórico de cada lead.
+    <% end %>
+  <% end %>
+
   <div class="distribution-rule-show__kpis">
     <%= ax_metric_card(label: "Receber", value: distribution_rule_business_label(@rule)) %>
     <%= ax_metric_card(label: "Distribuição", value: distribution_rule_mode_label(@rule)) %>
-    <%= ax_metric_card(label: "Corretores", value: "#{@agents_queue.size} na fila") %>
+    <%= ax_metric_card(label: "Corretores", value: @rule.destination_c2s? ? "Sem distribuição local" : "#{@agents_queue.size} na fila") %>
     <%= ax_metric_card(label: "Preço", value: distribution_rule_price_range(@rule)) %>
   </div>
 

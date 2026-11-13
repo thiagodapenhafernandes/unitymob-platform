@@ -2,32 +2,37 @@ require "rails_helper"
 
 RSpec.describe ExternalLeadMigration::LeadExportMapper do
   let(:tenant) { Tenant.default }
-  let(:broker) { create(:admin_user, tenant:, email: "corretor@example.test", name: "Corretor") }
-  let(:property) { create(:habitation, tenant:, codigo: "AP-9001") }
+  let(:property) { create(:habitation, tenant: tenant, codigo: "AP-9001") }
 
-  it "monta o payload de exportação com cliente, origem e referência rastreável" do
-    lead = create(:lead, tenant:, name: "Maria", phone: "+55 48 98851-6745", email: "maria@example.test",
-      origin: "Site", product: "Apartamento", property_id: property.id, admin_user: broker)
-
-    payload = described_class.call(lead:)
-
-    expect(payload["customer"]).to include("name" => "Maria", "email" => "maria@example.test", "phone" => "5548988516745")
-    expect(payload["lead_source"]).to eq("name" => "Site")
-    expect(payload["seller"]).to eq("email" => "corretor@example.test", "name" => "Corretor")
-    expect(payload["description"]).to eq(property.display_title)
-    expect(payload["observation"]).to include("Origem: Site")
-    expect(payload["external_reference"]).to eq("unitymob:#{tenant.id}:#{lead.id}")
-    expect(payload["custom_attributes"]).to include("unitymob_lead_id" => lead.id, "unitymob_property_code" => "AP-9001")
+  it "segue o envelope de criação documentado pelo C2S" do
+    lead = create(:lead, tenant: tenant, name: "Maria", phone: "+55 48 98851-6745", email: "maria@example.test",
+      origin: "Site", product: "Apartamento", property_id: property.id)
+    payload = described_class.call(lead: lead)
+    expect(payload.dig("data", "type")).to eq("lead")
+    expect(payload.dig("data", "attributes")).to include(
+      "name" => "Maria", "email" => "maria@example.test", "phone" => "5548988516745",
+      "source" => "Site", "prop_ref" => "AP-9001", "description" => property.display_title.truncate(250),
+      "external_id" => "unitymob:#{tenant.id}:#{lead.id}")
+    expect(payload.dig("data", "attributes")).not_to have_key("seller")
+    expect(payload).not_to have_key("customer")
   end
 
-  it "funciona sem corretor, imóvel ou e-mail" do
-    lead = create(:lead, tenant:, name: "José", phone: "47999990000", email: "")
+  it "envia o valor documentado para imóvel sem código e limita a descrição" do
+    lead = build(:lead, tenant: tenant, name: "José", phone: "47999990000", email: "", product: "X" * 300)
+    attributes = described_class.call(lead: lead).dig("data", "attributes")
+    expect(attributes).to include("name" => "José", "phone" => "5547999990000", "prop_ref" => "Sem código")
+    expect(attributes).not_to have_key("email")
+    expect(attributes["description"].length).to eq(250)
+  end
 
-    payload = described_class.call(lead:)
+  it "não consulta imóveis de outra conta" do
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Outra", slug: "c2s-mapper-#{SecureRandom.hex(3)}"))
+    lead = build(:lead, tenant: tenant, property_id: foreign.id)
+    expect(described_class.call(lead: lead).dig("data", "attributes", "prop_ref")).to eq("Sem código")
+  end
 
-    expect(payload["customer"]).to include("name" => "José", "phone" => "5547999990000")
-    expect(payload["customer"]).not_to have_key("email")
-    expect(payload["seller"]).to be_nil
-    expect(payload["external_reference"]).to eq("unitymob:#{tenant.id}:#{lead.id}")
+  it "exige ao menos um contato" do
+    lead = build(:lead, tenant: tenant, phone: nil, email: nil)
+    expect { described_class.call(lead: lead) }.to raise_error(ArgumentError, "C2S exige telefone ou e-mail")
   end
 end

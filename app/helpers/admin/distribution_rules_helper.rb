@@ -14,6 +14,8 @@ module Admin::DistributionRulesHelper
   end
 
   def distribution_rule_mode_label(rule)
+    return "C2S — sem distribuição local" if rule.respond_to?(:destination_c2s?) && rule.destination_c2s?
+
     mode = rule.respond_to?(:distribution_mode) ? rule.distribution_mode : rule.to_s
     {
       "rotary" => "Rotativo",
