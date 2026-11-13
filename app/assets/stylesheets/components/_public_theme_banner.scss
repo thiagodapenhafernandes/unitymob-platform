@@ -1,10 +1,4 @@
 // As dimensões de img/source reservam a proporção real de cada imagem.
 // Geometria compartilhada entre todos os temas; sem esticar o banner mobile.
 .public-theme-banner__image { height: auto; }
-@media (min-width: 769px) {
-  .public-theme-banner__image {
-    max-height: 200px;
-    object-fit: contain;
-  }
-}
 .public-theme-city-links__link { display: inline-flex; align-items: center; min-height: 24px; }

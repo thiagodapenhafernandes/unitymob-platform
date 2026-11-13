@@ -44,7 +44,7 @@
               size: :compact,
               empty_text: "Sem imagem desktop"
             ) do %>
-          <%= ax_file_field(form: f, method: :image_desktop, label: "Alterar desktop", accept: "image/*", button_label: "Escolher imagem", hint: "Recomendado: 1440 × 200. Exibição com altura máxima de 200 px, sem cortar a arte.") %>
+          <%= ax_file_field(form: f, method: :image_desktop, label: "Alterar desktop", accept: "image/*", button_label: "Escolher imagem", hint: "Recomendado: 1440 × 200. A imagem ocupa toda a largura disponível, com altura proporcional e sem cortes.") %>
         <% end %>
         <%= ax_media_preview(
               label: "Imagem mobile",
