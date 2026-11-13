@@ -4,7 +4,7 @@ module Gateway
     FIELDS = {
       'event_id' => %w[eventId idEvento], 'event_type' => %w[eventType tipoEvento],
       'client_code' => %w[clientCode codigoImobiliaria codigoInmobiliaria codigoCliente],
-      'reference' => %w[reference referencia clientListingId], 'listing_id' => %w[idNavplat idnavplat originListingId],
+      'reference' => %w[reference internalReference referencia clientListingId], 'listing_id' => %w[idNavplat idnavplat originListingId],
       'name' => %w[name nome nombre], 'email' => %w[email], 'phone' => %w[phoneNumber phone telefone telefono],
       'message' => %w[message mensagem mensaje], 'registered_at' => %w[registerDate dataRegistro fechaRegistro timestamp],
       'contact_type' => %w[contactTypeId idTipoContacto], 'message_id' => %w[messageId idMensagem idMensaje],
