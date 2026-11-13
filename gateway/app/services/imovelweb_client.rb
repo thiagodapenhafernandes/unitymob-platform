@@ -25,7 +25,7 @@ module Gateway
       raise Error, 'HTTPS callback and dedicated token required' unless uri.scheme == 'https' && uri.host.present? && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil? && token.to_s.length >= 32
       request(:put, '/v1/configuracao/callbacks', { url: url, authorizationHeaderKey: 'Authorization',
         authorizationHeaderValue: "Bearer #{token}", lenguajeCallbackBody: 'EN' })
-      %w[CONTACTO CONTACTO_MENSAJE].each { |event| request(:put, "/v1/configuracao/callbacks/#{event}") }
+      %w[CONTACTO CONTACTO_MENSAJE].each { |event| request(:put, "/v1/configuracao/callbacks/#{event}?evento=#{event}") }
     end
 
     def callbacks

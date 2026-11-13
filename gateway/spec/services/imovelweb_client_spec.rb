@@ -17,8 +17,8 @@ RSpec.describe Gateway::ImovelwebClient do
   it 'uses the Brazilian sandbox contract to configure EN callbacks with a dedicated header and subscribes to both lead events' do
     setup = stub_request(:put, "#{base}/v1/configuracao/callbacks").with(headers: {'Authorization' => 'Bearer access-token'},
       body: {url: 'https://webhooks.example.com/webhooks/imovelweb/sandbox', authorizationHeaderKey: 'Authorization', authorizationHeaderValue: "Bearer #{'t' * 32}", lenguajeCallbackBody: 'EN'}.to_json).to_return(status: 204)
-    contact = stub_request(:put, "#{base}/v1/configuracao/callbacks/CONTACTO").to_return(status: 204)
-    message = stub_request(:put, "#{base}/v1/configuracao/callbacks/CONTACTO_MENSAJE").to_return(status: 204)
+    contact = stub_request(:put, "#{base}/v1/configuracao/callbacks/CONTACTO?evento=CONTACTO").to_return(status: 204)
+    message = stub_request(:put, "#{base}/v1/configuracao/callbacks/CONTACTO_MENSAJE?evento=CONTACTO_MENSAJE").to_return(status: 204)
     client.configure_callbacks(url: 'https://webhooks.example.com/webhooks/imovelweb/sandbox', token: 't' * 32)
     [setup, contact, message].each { |request| expect(request).to have_been_requested.once }
   end
