@@ -44,7 +44,7 @@
               size: :compact,
               empty_text: "Sem imagem desktop"
             ) do %>
-          <%= ax_file_field(form: f, method: :image_desktop, label: "Alterar desktop", accept: "image/*", button_label: "Escolher imagem", hint: "Até 1440 × 360 (proporção 4:1).") %>
+          <%= ax_file_field(form: f, method: :image_desktop, label: "Alterar desktop", accept: "image/*", button_label: "Escolher imagem", hint: "Recomendado: 1440 × 200. Exibição com altura máxima de 200 px, sem cortar a arte.") %>
         <% end %>
         <%= ax_media_preview(
               label: "Imagem mobile",
@@ -54,7 +54,7 @@
               size: :compact,
               empty_text: "Sem imagem mobile"
             ) do %>
-          <%= ax_file_field(form: f, method: :image_mobile, label: "Alterar mobile", accept: "image/*", button_label: "Escolher imagem", hint: "Até 768 × 360. A barra lateral usa só esta.") %>
+          <%= ax_file_field(form: f, method: :image_mobile, label: "Alterar mobile", accept: "image/*", button_label: "Escolher imagem", hint: "Recomendado: proporção 10:11, quase quadrada e levemente vertical. A barra lateral usa só esta.") %>
         <% end %>
       </div>
     <% end %>

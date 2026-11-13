@@ -18,13 +18,13 @@ class Banner < ApplicationRecord
     'sidebar' => 'Barra Lateral'
   }.freeze
   
-  # Dica por posição no formulário: ícone, tom, tamanho recomendado (o site redimensiona até 1440x360 / 768x360) e onde aparece.
+  # Dica por posição no formulário: ícone, tom, tamanho recomendado (desktop recomendado 1440x200; mobile até 768x845) e onde aparece.
   POSITION_META = {
-    'home_after_hero' => { icon: 'layout-text-window-reverse', tone: 'blue', size: '1440 × 360', note: 'Faixa larga logo abaixo do topo da Home' },
-    'search_results' => { icon: 'search', tone: 'teal', size: '1440 × 360', note: 'Acima da lista de imóveis na busca' },
-    'property_detail' => { icon: 'house-door', tone: 'violet', size: '1440 × 360', note: 'Largura total na página do imóvel' },
-    'home_before_footer' => { icon: 'layout-text-window', tone: 'amber', size: '1440 × 360', note: 'Fim da Home, antes do rodapé' },
-    'sidebar' => { icon: 'layout-sidebar-inset-reverse', tone: 'pink', size: '768 × 360', note: 'Coluna lateral do imóvel; usa a imagem mobile' }
+    'home_after_hero' => { icon: 'layout-text-window-reverse', tone: 'blue', size: '1440 × 200', note: 'Faixa larga logo abaixo do topo da Home' },
+    'search_results' => { icon: 'search', tone: 'teal', size: '1440 × 200', note: 'Acima da lista de imóveis na busca' },
+    'property_detail' => { icon: 'house-door', tone: 'violet', size: '1440 × 200', note: 'Largura total na página do imóvel' },
+    'home_before_footer' => { icon: 'layout-text-window', tone: 'amber', size: '1440 × 200', note: 'Fim da Home, antes do rodapé' },
+    'sidebar' => { icon: 'layout-sidebar-inset-reverse', tone: 'pink', size: '768 × 845', note: 'Coluna lateral do imóvel; usa a imagem mobile' }
   }.freeze
 
   # Validations
