@@ -2555,8 +2555,10 @@ CREATE TABLE public.distribution_rules (
     archived_at timestamp(6) without time zone,
     display_position integer DEFAULT 0 NOT NULL,
     source_whatsapp_campaign boolean DEFAULT false NOT NULL,
+    delivery_destination character varying DEFAULT 'unitymob'::character varying NOT NULL,
     CONSTRAINT chk_distribution_rules_first_contact_sla_positive CHECK (((first_contact_sla_minutes IS NULL) OR (first_contact_sla_minutes > 0))),
-    CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0)))
+    CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0))),
+    CONSTRAINT distribution_rule_delivery_destination CHECK (((delivery_destination)::text = ANY ((ARRAY['unitymob'::character varying, 'c2s'::character varying])::text[])))
 );
 
 
@@ -21778,6 +21780,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261113170000'),
 ('20261113150000'),
 ('20261113130000'),
 ('20261109120000'),

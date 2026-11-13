@@ -101,6 +101,25 @@ module Leads
       complemented = try_complement
       return complemented if complemented
 
+      if rule.destination_c2s?
+        if @lead.imported_from_c2s? || routing_lead.imported_from_c2s?
+          LeadActivity.log!(lead: @lead, kind: "external_lead_export_skipped", metadata: { reason: "c2s_origin", rule_id: rule.id })
+          return rule
+        end
+
+        prepare_reentry!
+        @lead.assign_attributes(distribution_rule: rule, admin_user_id: nil,
+          status: Lead.default_status(tenant: tenant), distribution_cycle_started_at: nil,
+          contingency_pending: false)
+        snapshot_entry_context! if @automatic_entry || @inquiry
+        @lead.save!
+        if @lead.c2s_exported_at.blank?
+          ExternalLeadMigration::ExportLeadJob.perform_later(@lead.id, tenant_id: tenant.id)
+          LeadActivity.log!(lead: @lead, kind: "external_lead_export_queued", metadata: { rule_id: rule.id })
+        end
+        return rule
+      end
+
       checkin_candidates = rule.candidates_filtered_by_checkin
       candidates = rule.candidates_for(routing_lead, candidates: checkin_candidates)
       sticky_user = Leads::StickyAssignment.corretor_for(@inquiry || @lead, rule, candidates: candidates) unless @lead.contingency_forwarded_at.present? && !@inquiry
@@ -361,7 +380,7 @@ module Leads
 
     def find_matching_rule
       @automatic_entry = true
-      candidates = tenant.distribution_rules.active.where.not(distribution_mode: :attendance)
+      candidates = tenant.distribution_rules.active.where("delivery_destination = ? OR distribution_mode <> ?", "c2s", DistributionRule.distribution_modes[:attendance])
         .order(:id).select { |rule| rule_matches?(rule) }
       matches = candidates.select { |rule| matches_business_type?(rule) }
       if meta_origin?(routing_lead.origin.to_s.downcase)

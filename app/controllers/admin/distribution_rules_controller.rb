@@ -241,6 +241,8 @@ class Admin::DistributionRulesController < Admin::BaseController
   # metadados de peso/posição, casadas por admin_user_id. Isso evita perder
   # corretores quando o chip e a fila ficam dessincronizados no front.
   def sync_agents
+    return if @distribution_rule.destination_c2s?
+
     metadata = nested_agent_metadata
     selected_ids =
       if params.key?(:agent_select)
@@ -353,7 +355,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     # Os agentes da fila são tratados em sync_agents (fonte = agent_select), por
     # isso distribution_rule_agents_attributes NÃO é permitido aqui.
     params.require(:distribution_rule).permit(
-      :name, :business_type, :active,
+      :name, :business_type, :active, :delivery_destination,
       :source_whatsapp_campaign, :source_tiktok, :source_linkedin, :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station, :source_lovers,
       :distribution_mode,
       :contingency_enabled, :contingency_rule_id,

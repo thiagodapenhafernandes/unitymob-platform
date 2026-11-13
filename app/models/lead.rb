@@ -113,6 +113,15 @@ class Lead < ApplicationRecord
     end
   end
 
+  def imported_from_c2s?
+    return true if external_lead_integration_id.present? || external_lead_id.present?
+
+    info = other_information.to_h
+    provider = ExternalLeadMigration::LeadMapper::PROVIDER_KEY
+    info["source"] == provider || attribution_data.to_h["provider"] == provider ||
+      Array(info["webhook_tags"]).include?(ExternalLeadIntegration::WEBHOOK_TAG)
+  end
+
   def c2s_owner_mirrored?
     external_lead_integration&.mirror_c2s_owners? == true && external_lead_integration.tenant_id == tenant_id
   end
@@ -829,12 +838,7 @@ class Lead < ApplicationRecord
   def enqueue_c2s_export
     return if destroyed? || tenant.blank? || whatsapp_service_contact?
     return unless tenant.external_lead_integration&.export_active?
-    return if external_lead_integration_id.present? || external_lead_id.present?
-
-    info = other_information.to_h
-    provider = ExternalLeadMigration::LeadMapper::PROVIDER_KEY
-    return if info["source"] == provider || attribution_data.to_h["provider"] == provider ||
-      Array(info["webhook_tags"]).include?(ExternalLeadIntegration::WEBHOOK_TAG)
+    return if imported_from_c2s? || distribution_rule&.destination_c2s?
 
     ExternalLeadMigration::ExportLeadJob.perform_later(id, tenant_id: tenant_id)
   rescue StandardError => error

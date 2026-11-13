@@ -168,6 +168,15 @@ class DistributionRule < ApplicationRecord
       (min_price.present? && other.max_price.present? && min_price > other.max_price)
   end
 
+  DELIVERY_DESTINATIONS = { "unitymob" => "Corretores na Unitymob", "c2s" => "C2S — sem distribuição local" }.freeze
+  enum :delivery_destination, { unitymob: "unitymob", c2s: "c2s" }, prefix: :destination
+  validate :c2s_destination_requires_connection
+
+  def c2s_destination_requires_connection
+    return unless destination_c2s? && active?
+    errors.add(:delivery_destination, "exige uma integração C2S conectada em Migração de leads") unless tenant&.external_lead_integration&.connected?
+  end
+
   enum :distribution_mode, { rotary: 0, performance: 1, shark_tank: 2, attendance: 3 }
 
   validates :name, presence: true
@@ -231,6 +240,8 @@ class DistributionRule < ApplicationRecord
   end
 
   def eligible_distribution_rule_agents(candidates = distribution_rule_agents)
+    return candidates.respond_to?(:where) ? candidates.none : [] if destination_c2s?
+
     if candidates.respond_to?(:joins)
       # dono da conta nunca entra no rodizio (mesmo se salvo em regra antiga)
       candidates
@@ -256,6 +267,8 @@ class DistributionRule < ApplicationRecord
   end
 
   def campaign_allowed_for?(admin_user_id, entry)
+    return false if destination_c2s?
+
     agent = distribution_rule_agents.find_by(tenant_id: tenant_id, admin_user_id: admin_user_id)
     agent.nil? || agent.allows_campaign?(entry)
   end
@@ -302,7 +315,7 @@ class DistributionRule < ApplicationRecord
   end
 
   def pocket_operational?
-    pocket_active? && pocket_time.to_i.positive? && self.class.pocket_requires_secure_push?
+    destination_unitymob? && pocket_active? && pocket_time.to_i.positive? && self.class.pocket_requires_secure_push?
   end
 
   def pocket_to_pool?
@@ -310,7 +323,7 @@ class DistributionRule < ApplicationRecord
   end
 
   def pool_mode?
-    shark_tank? || pocket_to_pool?
+    destination_unitymob? && (shark_tank? || pocket_to_pool?)
   end
 
   def pool_renotify_interval?

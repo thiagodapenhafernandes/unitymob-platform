@@ -117,6 +117,7 @@ export default class extends Controller {
   // No submit: impede salvar com canal selecionado-e-não-configurado (abre modal)
   // e exige ao menos uma URL quando o Webhook externo está ligado.
   validateBeforeSubmit(event) {
+    if (this.element.querySelector('[name="distribution_rule[delivery_destination]"]')?.value === "c2s") return
     const guarded = this.element.querySelectorAll('input[type="checkbox"][data-channel]')
     for (const input of guarded) {
       if (input.checked && input.dataset.configured !== "true") {

@@ -27,10 +27,12 @@
       header_class: "distribution-rule-aside-panel__header"
     ) do %>
   <div class="distribution-rule-aside__body">
+    <div data-conditional-reveal-target="panel" data-conditional-reveal-values="unitymob">
     <%= render "contingency_fields", f: f %>
+    </div>
     <%= ax_operational_panel(eyebrow: "Lógica", title: "Modo de distribuição") do %>
       <div class="ax-panel-body">
-        <div class="ax-option-stack distribution-rule-modes">
+        <div class="ax-option-stack distribution-rule-modes" data-conditional-reveal-target="panel" data-conditional-reveal-values="unitymob">
           <% [
               [:rotary, "arrow-repeat", "Rotativo", "Fila sequencial", "Entrega para um corretor por vez, seguindo a ordem da fila. Com aceite com prazo, se o corretor não atender no tempo definido, o lead pode ser repassado ou enviado ao Bolsão da regra."],
               [:performance, "graph-up", distribution_rule_mode_label(:performance), "Pesos definidos manualmente", "Escolhe um corretor por sorteio ponderado. Corretores com peso maior têm mais chance de receber o lead, sem seguir uma fila fixa. Os pesos são definidos manualmente e não aprendem com conversões."],
@@ -88,6 +90,7 @@
       </div>
     <% end %>
 
+    <div data-conditional-reveal-target="panel" data-conditional-reveal-values="unitymob">
     <%= ax_operational_panel(eyebrow: "Campo", title: "Check-in geolocalizado", actions: ax_badge("Opcional", tone: :gray)) do %>
       <div class="ax-panel-body">
         <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
@@ -274,6 +277,7 @@
       </p>
     <% end %>
 
+    </div>
     <%= render "admin/distribution_rules/form_summary" %>
   </div>
 <% end %>

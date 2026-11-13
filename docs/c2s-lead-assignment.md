@@ -59,3 +59,45 @@ A modalidade usa a negociação do produto e, na ausência dela, o tipo do funil
 Uma nova consulta de contato existente passa pela conciliação e pelas regras de fidelização/pocket. Reentregas do mesmo evento não giram a fila. Sincronizações posteriores não alteram o responsável/regra local; consultas que passaram pela decisão operacional também preservam status/funil local. O vendedor e o conteúdo externo continuam disponíveis nos metadados da integração. Redistribuições locais continuam sob as regras existentes; o reconciliador histórico de responsáveis não assume leads cuja atribuição operacional já foi decidida.
 
 Importações históricas continuam espelhando o legado sem iniciar distribuição. A migração adiciona dois campos com padrão `c2s`, sem redistribuir ou modificar leads existentes. A alteração não recupera eventos ausentes nem reatribui a Daniela. Não executar sincronização, backfill ou replay como parte da ativação desta configuração.
+
+## Saída por regra para o C2S (13/11/2026)
+
+Em **Distribuição de leads → Destino dos leads → Encaminhar para**, selecionar
+**C2S — sem distribuição local**. A regra exige a integração da própria conta
+conectada em **Migração de leads**. Não é necessário ligar a exportação global;
+a seleção da regra autoriza somente as entradas que chegam àquela fila. As
+regras existentes continuam em **Corretores na Unitymob** por padrão. Nenhuma
+configuração de cliente é ativada automaticamente pela migration
+`20261113170000_add_delivery_destination_to_distribution_rules.rb`.
+
+As fontes, modalidades e filtros de entrada continuam selecionando a regra.
+Uma campanha WhatsApp também pode escolher uma regra C2S como destino explícito.
+Depois dessa escolha, não há roleta, aceite, check-in, notificação a corretores ou
+contingência de saída para uma fila local. O cadastro é preservado na Unitymob,
+sem responsável e sem ciclo de distribuição local. A equipe e as configurações
+locais salvas permanecem disponíveis ao voltar para Unitymob. Salvar o destino
+não move leads históricos. Leads vindos do C2S não são reenviados para ele.
+
+O job de exportação existente é compartilhado pela saída global e pelas regras.
+A saída global mantém seu alcance anterior para as demais entradas. O envio usa
+`POST /integration/leads` com `data.type=lead` e campos em `data.attributes`,
+incluindo contato, origem, referência externa e código público do imóvel. Sem
+imóvel, usa o valor documentado `Sem código`. Não envia um vendedor local como
+destino: a distribuição no C2S segue a configuração daquela plataforma.
+
+A resposta deve confirmar um ID (`lead_id` no contrato atual). HTTP de sucesso
+sem identificação ou com `success=false` gera falha, sem marcar como enviado e
+sem retry automático dessa resposta ambígua. Erros transitórios HTTP mantêm as
+cinco tentativas do job; credencial inválida é registrada sem retry. A timeline
+mostra agendamento, sucesso, falha ou descarte por origem C2S. Desconexão não
+provoca distribuição local como fallback.
+
+Um advisory lock exclusivo das exportações impede dois workers de enviarem o
+mesmo cadastro simultaneamente, sem segurar a transação do lead durante HTTP.
+Após sucesso registrado, novas execuções não repetem o POST. Não há garantia
+exatamente uma vez em falhas de rede depois de o C2S aceitar o envio: `external_id`
+serve para correlação, mas a documentação não promete deduplicação por esse
+campo. Conferir no C2S antes de replay manual desses casos. A homologação real
+com o fornecedor permanece necessária; os testes usam transporte simulado.
+
+Contrato consultado: https://docs-api-leads.c2sapp.com/docs.html
