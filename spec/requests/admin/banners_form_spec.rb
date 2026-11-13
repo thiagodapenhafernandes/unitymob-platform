@@ -26,7 +26,7 @@ RSpec.describe "Admin::Banners formulário", type: :request do
     expect(html.at_css("input#banner_active")["checked"]).to be_present # banner novo já nasce ativo (o botão é "Publicar banner")
     expect(html.at_css("#banner_display_order")).to be_present
     expect(html.at_css("[data-controller='banner-preview']")).to be_present
-    expect(html.css(".bn-pos__size").map(&:text).join).to include("1440 × 360", "768 × 360")
+    expect(html.css(".bn-pos__size").map(&:text).join).to include("1440 × 200", "768 × 845")
   end
 
   it "ao editar um banner inativo, o interruptor continua desligado" do

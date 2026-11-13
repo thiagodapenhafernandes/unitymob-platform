@@ -8,7 +8,7 @@ module Storage
     CARD = [[360, 270], [540, 405], [720, 540]].map do |size|
       { resize_to_fill: size, format: :webp, quality: 82, strip: true }
     end.freeze
-    BANNER = [[1440, 360], [768, 360]].map do |size|
+    BANNER = [[1440, 360], [768, 845]].map do |size|
       { resize_to_limit: size, format: :webp, quality: 82, strip: true }
     end.freeze
     BUILDER = { resize_to_limit: [900, 900], format: :webp, quality: 82, strip: true }.freeze

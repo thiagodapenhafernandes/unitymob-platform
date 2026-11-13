@@ -57,7 +57,7 @@ RSpec.describe Storage::WarmPublicVariantsJob, type: :job do
       { resize_to_limit: [480, 360], format: :webp },
       { resize_to_fill: [720, 520], format: :webp },
       { resize_to_limit: [1440, 360] },
-      { resize_to_limit: [768, 360] },
+      { resize_to_limit: [768, 845] },
       { resize_to_limit: [640, 1138], format: :webp },
       { resize_to_fill: [720, 860], format: :webp },
       { resize_to_fill: [560, 640], format: :webp }
