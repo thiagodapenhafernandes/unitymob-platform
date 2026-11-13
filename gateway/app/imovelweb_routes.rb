@@ -1,5 +1,14 @@
 module Gateway
   module ImovelwebRoutes
+    def self.authentication_failure(secret:, header:)
+      return 'not_configured' if secret.length < 32
+      return 'missing' if header.empty?
+      # O esquema HTTP é case-insensitive; o token continua exato e case-sensitive.
+      match = header.match(/\A[ \t]*Bearer[ \t]+([^ \t\r\n]+)[ \t]*\z/i)
+      return 'invalid_scheme' unless match
+      'token_mismatch' unless Rack::Utils.secure_compare(secret, match[1])
+    end
+
     def self.registered(app)
       app.post '/internal/imovelweb/routes' do
         require_internal_token!
@@ -34,7 +43,12 @@ module Gateway
         halt 404 unless %w[sandbox production].include?(environment)
         secret = ENV["IMOVELWEB_#{environment.upcase}_CALLBACK_TOKEN"].to_s
         provided = request.env['HTTP_AUTHORIZATION'].to_s
-        halt 401 unless secret.length >= 32 && Rack::Utils.secure_compare("Bearer #{secret}", provided)
+        failure = ImovelwebRoutes.authentication_failure(secret: secret, header: provided)
+        if failure
+          warn({ provider: 'imovelweb', event: 'callback_auth_rejected', environment: environment, reason: failure }.to_json)
+          headers 'WWW-Authenticate' => 'Bearer realm="Unitymob Imovelweb"'
+          halt 401
+        end
         halt 413 if request.content_length.to_i > 65_536
         raw = request.body.read(65_537)
         halt 413 if raw.bytesize > 65_536

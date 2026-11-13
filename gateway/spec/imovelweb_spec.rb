@@ -47,6 +47,40 @@ RSpec.describe 'Imovelweb Gateway' do
     expect(stub).to have_been_requested.once
   end
 
+  it 'accepts standard Bearer scheme casing and spacing without relaxing the token' do
+    register
+    ["bearer #{'t' * 32}", "BEARER #{'t' * 32}", "Bearer  #{'t' * 32}", " Bearer #{'t' * 32} "].each do |header|
+      post '/webhooks/imovelweb/sandbox', payload.to_json,
+        {'HTTP_AUTHORIZATION' => header, 'CONTENT_TYPE' => 'application/json'}
+      expect(last_response.status).to eq(202)
+    end
+    expect(WebhookEvent.count).to eq(1)
+    receive('T' * 32)
+    expect(last_response.status).to eq(401)
+    expect(last_response.headers['www-authenticate']).to include('Bearer')
+  end
+
+  it 'identifies missing authorization without logging contact or token values' do
+    register
+    expect do
+      post '/webhooks/imovelweb/sandbox', payload.to_json, {'CONTENT_TYPE' => 'application/json'}
+    end.to output(/"reason":"missing"/).to_stderr
+    expect(last_response.status).to eq(401)
+    expect(WebhookEvent.count).to eq(0)
+  end
+
+  it 'preserves the internalReference field used in the support callback' do
+    register
+    payload[:internalReference] = payload.delete(:reference)
+    receive
+    expect(last_response.status).to eq(202)
+    expect(WebhookEvent.last.payload['reference']).to eq('AP-1')
+    payload[:reference] = 'conflicting'
+    receive
+    expect(last_response.status).to eq(422)
+    expect(WebhookEvent.count).to eq(1)
+  end
+
   it 'keeps first event body even if a redelivery changes its fields' do
     register
     receive
