@@ -90,6 +90,12 @@ module Leads
       end
       return ContingencyService.try_forward!(@lead, rule: rule, reason: "deactivated") unless rule.active?
 
+      if routing_lead.origin == "whatsapp_campaign" && !@lead.contingency_forwarded_at? && !rule.source_whatsapp_campaign?
+        @lead.update!(status: :represado, distribution_rule_id: rule.id) if @lead.admin_user_id.nil?
+        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: { reason: "campaign_source_disabled", rule_id: rule.id })
+        return nil
+      end
+
       # Complemento: mesma pessoa com lead aberto no tempo de atendimento não
       # gera lead novo — a consulta agrega ao existente e o transitório sai.
       complemented = try_complement
@@ -532,6 +538,7 @@ module Leads
 
     def matches_source?(rule)
       origin = routing_lead.origin.to_s.downcase
+      return rule.source_whatsapp_campaign? if origin == "whatsapp_campaign"
       return rule.source_rd_station? if routing_lead.lead_type == "rd_station"
 
       return rule.source_portal? if routing_lead.attribution_source == "imovelweb" && routing_lead.attribution_data.to_h["provider"] == "imovelweb_direct"

@@ -59,6 +59,7 @@ export default class extends Controller {
     if (this.checked("source_meta")) sources.push("Meta Ads")
     if (this.checked("source_rd_station")) sources.push("RD Station")
     if (this.checked("source_webhook")) sources.push("Webhooks")
+    if (this.checked("source_whatsapp_campaign")) sources.push("Campanhas de disparo")
     if (this.checked("source_site")) sources.push("Site")
     if (this.checked("source_portal")) sources.push("Portais")
 

@@ -395,8 +395,8 @@ class WhatsappCampaign < ApplicationRecord
         next
       end
 
-      unless tenant.distribution_rules.active.exists?(id: row["distribution_rule_id"])
-        errors.add(:response_decisions, "usa uma regra de distribuição inválida para o botão #{row['text']}")
+      unless tenant.distribution_rules.active.where(source_whatsapp_campaign: true).exists?(id: row["distribution_rule_id"])
+        errors.add(:response_decisions, "usa uma regra de distribuição inválida ou sem recebimento de campanhas de disparo para o botão #{row['text']}")
       end
     end
   end

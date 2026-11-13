@@ -20,6 +20,19 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
     sign_in admin
   end
 
+  it "oferece somente filas ativas da conta que recebem campanhas" do
+    enabled = create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: true)
+    create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: false)
+    create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: true, active: false)
+    foreign = Tenant.create!(name: "Outra", slug: "campaign-picker-#{SecureRandom.hex(4)}")
+    create(:distribution_rule, tenant: foreign, source_whatsapp_campaign: true)
+    get new_admin_whatsapp_campaign_path
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    options = JSON.parse(document.at_css("[data-whatsapp-campaign-builder-distribution-rules-value]")["data-whatsapp-campaign-builder-distribution-rules-value"])
+    expect(options).to eq([{ "label" => enabled.name, "value" => enabled.id }])
+  end
+
   describe "GET index" do
     it "renderiza estado vazio compartilhado quando nao existem remetentes" do
       get admin_whatsapp_campaigns_path

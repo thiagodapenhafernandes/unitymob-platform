@@ -230,10 +230,14 @@ module Automation
         destination = tenant.distribution_rules.active.find_by(id: action[:distribution_rule_id])
         raise ArgumentError, "Resultado com atendimento sem destino" unless destination
 
+        if campaign_recipient && !destination.source_whatsapp_campaign?
+          raise ArgumentError, "Fila não recebe leads de campanhas de disparo"
+        end
+        existing_lead = @lead || campaign_recipient&.lead
         @lead ||= campaign_recipient&.convert_to_lead!(distribution_rule: destination)
         raise ArgumentError, "Resultado com atendimento sem destinatário para converter" unless @lead
 
-        Leads::DistributorService.distribute_to(@lead, destination)
+        Leads::DistributorService.distribute_to(@lead, destination) if existing_lead
       elsif @lead.nil? && campaign_recipient
         if result.to_s == "no_attendance"
           campaign_recipient.mark_no_interest!

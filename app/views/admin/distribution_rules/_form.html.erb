@@ -201,57 +201,21 @@
             </section>
 
             <div class="distribution-rule-source-grid">
-              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
-                <div class="distribution-rule-source__head">
-                  <span class="distribution-rule-source__icon"><i class="bi bi-envelope-paper"></i></span>
-                  <div class="distribution-rule-source__copy">
-                    <strong>RD Station</strong>
-                    <span>Contatos enviados pela integração RD Station.</span>
-                  </div>
-                  <div class="distribution-rule-source__actions">
-                    <%= ax_toggle_chip(f, :source_rd_station, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
-                  </div>
-                </div>
-              </section>
-
-              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
-                <div class="distribution-rule-source__head">
-                  <span class="distribution-rule-source__icon"><i class="bi bi-heart"></i></span>
-                  <div class="distribution-rule-source__copy">
-                    <strong>Lovers</strong>
-                    <span>Leads importados pela integração LeadLovers.</span>
-                  </div>
-                  <div class="distribution-rule-source__actions">
-                    <%= ax_toggle_chip(f, :source_lovers, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
-                  </div>
-                </div>
-              </section>
-
-              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
-                <div class="distribution-rule-source__head">
-                  <span class="distribution-rule-source__icon"><i class="bi bi-globe2"></i></span>
-                  <div class="distribution-rule-source__copy">
-                    <strong>Site</strong>
-                    <span>WhatsApp, formulários e conversões do site público.</span>
-                  </div>
-                  <div class="distribution-rule-source__actions">
-                    <%= ax_toggle_chip(f, :source_site, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
-                  </div>
-                </div>
-              </section>
-
-              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
-                <div class="distribution-rule-source__head">
-                  <span class="distribution-rule-source__icon"><i class="bi bi-buildings"></i></span>
-                  <div class="distribution-rule-source__copy">
-                    <strong>Portais imobiliários</strong>
-                    <span>ZAP, VivaReal e integrações de portais cadastrados.</span>
-                  </div>
-                  <div class="distribution-rule-source__actions">
-                    <%= ax_toggle_chip(f, :source_portal, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
-                  </div>
-                </div>
-              </section>
+              <%= render "admin/shared/ui/lead_source_card", form: f, compact: true,
+                    brand: "megaphone", title: "Campanhas de disparo", source_method: :source_whatsapp_campaign,
+                    description: "Receba leads de campanhas de WhatsApp nesta fila, respeitando as regras de atendimento." %>
+              <%= render "admin/shared/ui/lead_source_card", form: f, compact: true,
+                    brand: "envelope-paper", title: "RD Station", source_method: :source_rd_station,
+                    description: "Contatos enviados pela integração RD Station." %>
+              <%= render "admin/shared/ui/lead_source_card", form: f, compact: true,
+                    brand: "heart", title: "Lovers", source_method: :source_lovers,
+                    description: "Leads importados pela integração LeadLovers." %>
+              <%= render "admin/shared/ui/lead_source_card", form: f, compact: true,
+                    brand: "globe2", title: "Site", source_method: :source_site,
+                    description: "WhatsApp, formulários e conversões do site público." %>
+              <%= render "admin/shared/ui/lead_source_card", form: f, compact: true,
+                    brand: "buildings", title: "Portais imobiliários", source_method: :source_portal,
+                    description: "ZAP, VivaReal e integrações de portais cadastrados." %>
             </div>
           </div>
         <% end %>

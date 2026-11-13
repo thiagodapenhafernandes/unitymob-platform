@@ -10,6 +10,18 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "exibe e persiste a fonte de campanhas de disparo" do
+    rule = create(:distribution_rule, tenant: admin.tenant)
+    get edit_admin_distribution_rule_path(rule)
+    expect(response.body).to include("Campanhas de disparo", 'distribution_rule[source_whatsapp_campaign]')
+    patch admin_distribution_rule_path(rule), params: { distribution_rule: { source_whatsapp_campaign: "1" } }
+    expect(rule.reload.source_whatsapp_campaign?).to be(true)
+    get admin_distribution_rule_path(rule)
+    expect(response.body).to include("Campanhas de disparo")
+    patch admin_distribution_rule_path(rule), params: { distribution_rule: { source_whatsapp_campaign: "0" } }
+    expect(rule.reload.source_whatsapp_campaign?).to be(false)
+  end
+
   it "edita campanhas por corretor, conserva seleção ao reabrir e volta a todas ao limpar" do
     rule = create(:distribution_rule, tenant: admin.tenant)
     user = create(:admin_user, :field_agent, tenant: admin.tenant)

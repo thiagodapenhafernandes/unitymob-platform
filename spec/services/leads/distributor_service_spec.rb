@@ -1,6 +1,17 @@
 require 'rails_helper'
 
 RSpec.describe Leads::DistributorService do
+  it "distingue campanhas de WhatsApp das entradas do site no roteamento automático" do
+    site_rule = create(:distribution_rule, source_site: true)
+    campaign_rule = create(:distribution_rule, source_site: false, source_whatsapp_campaign: true)
+    campaign_lead = build(:lead, origin: "whatsapp_campaign")
+    site_lead = build(:lead, origin: "site")
+    expect(described_class.new(campaign_lead).matching_entry_rule).to eq(campaign_rule)
+    expect(described_class.new(site_lead).matching_entry_rule).to eq(site_rule)
+    campaign_rule.update!(source_whatsapp_campaign: false)
+    expect(described_class.new(campaign_lead).matching_entry_rule).to be_nil
+  end
+
   it "trata chaves de filtro como dados, sem executar métodos do lead" do
     lead = build(:lead, other_information: {"destroy!" => "apenas texto"})
     expect(lead).not_to receive(:destroy!)
@@ -84,7 +95,7 @@ RSpec.describe Leads::DistributorService do
     end
 
     it "distribui para uma regra explícita sem redescobrir pelos filtros de origem" do
-      rule = create(:distribution_rule, source_site: false, source_webhook: true, require_active_checkin: false)
+      rule = create(:distribution_rule, source_site: false, source_webhook: true, source_whatsapp_campaign: true, require_active_checkin: false)
       create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
 
       lead = build_lead(origin: "whatsapp_campaign")

@@ -23,7 +23,7 @@ RSpec.describe "WhatsApp campaign builder services" do
   describe Automation::WhatsappCampaignWorkflowSync do
     it "cria workflow ativo por campanha com condicoes dos botoes reais" do
       sender = create(:whatsapp_sender_number)
-      distribution_rule = create(:distribution_rule, name: "Rodizio WhatsApp")
+      distribution_rule = create(:distribution_rule, source_whatsapp_campaign: true, name: "Rodizio WhatsApp")
       button_template = WhatsappTemplate.create!(
         name: "campanha_com_botoes",
         language: "pt_BR",
@@ -82,7 +82,7 @@ RSpec.describe "WhatsApp campaign builder services" do
 
     it "nao sobrescreve workflow de campanha personalizado no builder avancado" do
       sender = create(:whatsapp_sender_number)
-      distribution_rule = create(:distribution_rule, name: "Rodizio protegido")
+      distribution_rule = create(:distribution_rule, source_whatsapp_campaign: true, name: "Rodizio protegido")
       button_template = WhatsappTemplate.create!(
         name: "campanha_com_fluxo_personalizado",
         language: "pt_BR",
