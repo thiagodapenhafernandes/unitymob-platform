@@ -1,6 +1,7 @@
 <% content_for :mobile_detail_header do %>
   <%= render "admin/shared/ui/mobile_detail_header", title: "Eventos Imovelweb", back_path: admin_portal_integrations_path(portal: "imovelweb", anchor: "portal-imovelweb-leads"), status: @connection.environment == "production" ? "Produção" : "Sandbox" %>
 <% end %>
+<div class="ax-integration-layout">
 <%= ax_page_header(title: "Eventos Imovelweb", subtitle: "#{imovelweb_connection_status(@connection)} · #{@connection.client_code}", icon: "inbox", actions: ax_button("Voltar", admin_portal_integrations_path(portal: "imovelweb", anchor: "portal-imovelweb-leads"), variant: :ghost, icon: "arrow-left")) %>
 <%= ax_operational_panel(eyebrow: "Recebimento", title: params[:status] == "quarantined" ? "Eventos em quarentena" : "Eventos recebidos") do %>
   <p class="ax-field__hint tw-mb-3">Consulta de eventos. Nenhuma ação nesta tela libera leads, reprocessa eventos ou altera a distribuição e o C2S.</p>
@@ -27,3 +28,4 @@
   </div>
   <%= will_paginate @receipts %>
 <% end %>
+</div>

@@ -6,7 +6,7 @@
   .ax-mobile-detail-header__title strong { display: block; font-size: 15px; }
   .ax-mobile-detail-header__title span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12px; margin-top: 3px; }
   .ax-mobile-detail-header__status { max-width: 104px; padding: 5px 8px; border-radius: 12px; background: var(--admin-primary-soft, #e8f0fb); color: var(--admin-primary, #365f8f); font-size: 11px; font-weight: 700; text-align: center; line-height: 1.2; }
-  body:has(.ax-mobile-detail-header) :is(.ax-navbar, .ax-sidebar-contextbar, .ax-contextbar, .ax-sidebar, .ax-page-head) { display: none !important; }
+  body:has(.ax-mobile-detail-header) :is(.ax-navbar, .ax-sidebar-contextbar, .ax-contextbar, .ax-sidebar, .ax-page-head, .ax-workspace-heading) { display: none !important; }
   body:has(.ax-mobile-detail-header) > .ax-main { margin: 0 !important; padding-top: 0 !important; min-height: 100dvh; }
   .ax-support-workspace--ticket > .ax-support-header { display: none; }
   .ax-support-workspace--ticket { padding-top: 0; }
