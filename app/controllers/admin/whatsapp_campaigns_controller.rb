@@ -556,7 +556,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def grouped_campaigns(scope)
-    scope
+    scope.except(:includes, :preload, :eager_load, :order)
       .where.not(group_name: [nil, ""])
       .group(:group_name)
       .select(
