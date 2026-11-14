@@ -19,6 +19,26 @@ RSpec.describe MetaSyncJob, type: :job do
     allow(service).to receive(:subscribe_page_to_app)
   end
 
+  it "ignora um job agendado antes da desconexão" do
+    integration.disconnect!
+    expect(service).not_to receive(:get_user_pages)
+    job.perform(integration.id)
+    expect(integration.reload).to be_disconnected
+    expect(integration.sync_status).to be_nil
+  end
+
+  it "não reativa páginas se a conexão for desconectada durante a consulta à Meta" do
+    record = integration
+    allow(service).to receive(:get_user_pages) do
+      record.disconnect!
+      [{"id" => "11111", "name" => "Primeira", "access_token" => "token-page"}]
+    end
+    job.perform(record.id)
+    expect(record.reload).to be_disconnected
+    expect(record.meta_facebook_pages.enabled).to be_empty
+    expect(service).not_to have_received(:get_page_lead_forms)
+  end
+
   it "envia o catálogo somente ao canal de suporte e omite nomes externos no progresso" do
     integration.update!(selected_page_ids: ["11111"])
     messages = []
@@ -54,7 +74,7 @@ RSpec.describe MetaSyncJob, type: :job do
     job.perform(integration.id)
     expect(integration.meta_facebook_pages.enabled).to be_empty
     expect(integration.reload.sync_status).to eq("partial")
-    expect(integration.last_sync_error).to include("Nenhuma página foi vinculada", "salvar a seleção")
+    expect(integration.last_sync_error).to include("Nenhuma página foi vinculada", "salve a seleção")
     expect(ResetSyncStatusJob).not_to have_been_enqueued.with(integration.id, anything)
     expect(service).not_to have_received(:get_page_lead_forms)
     expect(job).not_to have_received(:register_meta_gateway_route)

@@ -2,7 +2,6 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   requires_permission :manage, :integracoes
   helper_method :instagram_payment_conditions_allowed?
   before_action :set_integration
-  before_action :require_meta_impersonation!, only: [:selected_pages]
   before_action :set_page, only: [:list_forms]
   FORMS_PER_PAGE = 10
 
@@ -213,7 +212,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   def disconnect
-    @integration&.destroy
+    @integration&.disconnect!
     redirect_to admin_meta_integrations_path, notice: "Conta do Facebook desconectada."
   end
 
@@ -257,17 +256,13 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     end
   end
 
-  def require_meta_impersonation!
-    head :forbidden unless impersonating_admin_user?
-  end
-
   def direct_capture_page
     MetaFacebookPage.available_for_distribution(current_tenant.id)
       .where(instagram_enabled: true).find(params[:page_id])
   end
 
   def set_integration
-    @integration = UserMetaIntegration.find_by(admin_user: current_admin_user, tenant_id: current_tenant.id)
+    @integration = UserMetaIntegration.where(disconnected_at: nil).find_by(admin_user: current_admin_user, tenant_id: current_tenant.id)
   end
 
   # Datasets (pixels) das contas de anúncios conectadas nesta conta, via o

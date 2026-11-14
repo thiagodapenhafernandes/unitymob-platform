@@ -20,7 +20,8 @@ module Meta
         if preserve_permissions && integration.access_token != previous_token
           raise PermissionLoss, 'A conexão foi alterada durante a autorização. Inicie novamente.'
         end
-        integration.update!(access_token: new_token,
+        integration.update!(access_token: new_token, disconnected_at: nil,
+          sync_status: "processing", sync_progress: 0, sync_message: "Aguardando sincronização das páginas e do Instagram…", last_sync_error: nil,
           facebook_user_id: identity.fetch('facebook_user_id'), name: identity['name'], email: identity['email'],
           token_expires_at: token_info&.fetch('expires_in', nil) ? Time.current + token_info['expires_in'].to_i.seconds : nil)
         job = MetaSyncJob.perform_later(integration.id)

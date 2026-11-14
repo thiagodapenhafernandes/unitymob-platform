@@ -9,7 +9,7 @@ class UserMetaIntegration < ApplicationRecord
   before_validation { self.tenant_id ||= admin_user&.tenant_id if has_attribute?(:tenant_id) }
   validates :tenant_id, presence: true, if: -> { has_attribute?(:tenant_id) }
 
-  validates :access_token, presence: true
+  validates :access_token, presence: true, unless: :disconnected?
   validates :facebook_user_id, presence: true
 
   scope :owned_by_tenant, ->(tenant_id) {
@@ -20,6 +20,18 @@ class UserMetaIntegration < ApplicationRecord
   # Tenant efetivo mesmo pré-migration.
   def owner_tenant_id
     (tenant_id if has_attribute?(:tenant_id)) || admin_user&.tenant_id
+  end
+
+  def disconnected?
+    disconnected_at.present?
+  end
+
+  def disconnect!
+    with_lock do
+      update!(access_token: nil, disconnected_at: Time.current, token_expires_at: Time.current,
+        sync_status: nil, sync_progress: 0, sync_message: nil, last_sync_error: nil)
+      meta_facebook_pages.update_all(active: false, instagram_enabled: false, access_token: nil)
+    end
   end
 
   def selected_ad_accounts

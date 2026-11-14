@@ -3,7 +3,7 @@ class MetaSyncJob < ApplicationJob
 
   def perform(integration_id, new_forms_only: false)
     integration = UserMetaIntegration.find_by(id: integration_id)
-    return unless integration
+    return unless integration && !integration.disconnected?
     pending = new_forms_only && integration.last_sync_error.present? ? [integration.last_sync_error] : []
     
     # Marcamos como 5% para indicar que o Job realmente começou
@@ -40,6 +40,7 @@ class MetaSyncJob < ApplicationJob
         page = integration.meta_facebook_pages.find_or_initialize_by(page_id: page_data["id"])
         selected = false
         integration.with_lock do
+          return if integration.disconnected?
           selected = integration.selected_page_ids.include?(page_data["id"].to_s)
           page.update!(
             name: page_data["name"],
@@ -58,6 +59,7 @@ class MetaSyncJob < ApplicationJob
           next
         end
         integration.with_lock do
+          return if integration.disconnected?
           page.update!(active: integration.selected_page_ids.include?(page.page_id))
         end
         next unless page.active?
@@ -90,7 +92,8 @@ class MetaSyncJob < ApplicationJob
     # 2. Sync Forms for each page
     total_synced_pages = synced_pages.size
     synced_pages.each_with_index do |page, index|
-      next unless integration.reload.selected_page_ids.include?(page.page_id)
+      return if integration.reload.disconnected?
+      next unless integration.selected_page_ids.include?(page.page_id)
       begin
         integration.update!(sync_message: "Buscando formulários da página: #{page.name} (#{index + 1}/#{total_synced_pages})")
         broadcast_status(integration)
@@ -106,6 +109,7 @@ class MetaSyncJob < ApplicationJob
         broadcast_status(integration)
 
         forms_data.each_with_index do |form_data, form_index|
+          return if integration.reload.disconnected?
           form = page.meta_lead_forms.find_or_initialize_by(form_id: form_data["id"])
           is_new = form.new_record?
           
@@ -162,8 +166,9 @@ class MetaSyncJob < ApplicationJob
       sleep(1.0) # Cadência maior entre páginas
     end
 
-    if integration.reload.selected_page_ids.empty?
-      pending << "Nenhuma página foi vinculada a esta conta. O suporte deve selecionar as páginas desta imobiliária em Páginas desta conta e salvar a seleção para iniciar a sincronização dos recursos."
+    return if integration.reload.disconnected?
+    if integration.selected_page_ids.empty?
+      pending << "Nenhuma página foi vinculada a esta conta. Clique em Selecionar páginas, escolha as páginas desta imobiliária e salve a seleção para iniciar a sincronização dos recursos."
     end
 
     integration.update!(sync_status: pending.empty? ? 'completed' : 'partial', sync_progress: 100,
@@ -172,7 +177,7 @@ class MetaSyncJob < ApplicationJob
     broadcast_status(integration)
     
     Turbo::StreamsChannel.broadcast_replace_to("meta_sync_#{integration.id}", target: "meta_pages",
-      partial: "admin/meta_integrations/pages", locals: { pages: integration.meta_facebook_pages.enabled.where(page_id: integration.selected_page_ids) })
+      partial: "admin/meta_integrations/pages", locals: { integration: integration, pages: integration.meta_facebook_pages.enabled.where(page_id: integration.selected_page_ids) })
 
     Turbo::StreamsChannel.broadcast_replace_to("meta_selection_#{integration.id}", target: "meta_page_selection",
       partial: "admin/meta_integrations/page_selection", locals: { integration: integration })

@@ -13,7 +13,7 @@
 %>
   <%= ax_badge(status_label, tone: status_tone) %>
   <% if @integration %>
-    <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn", data: { turbo_confirm: "Desconectar esta conta do Facebook?\n\nO CRM deixa de receber contatos por esta conexão e remove as páginas, formulários e vínculos que estavam sincronizados.\n\nOs contatos e mensagens que já chegaram continuam salvos. A autorização continua ativa no seu Facebook, e você pode retirá-la por lá.\n\nPara voltar a receber, conecte de novo e escolha as páginas outra vez." } do %>
+    <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn", data: { turbo_confirm: "Desconectar esta conta do Facebook?\n\nO CRM deixa de receber contatos por esta conexão. A seleção de páginas, os formulários e as configurações serão preservados.\n\nOs contatos e mensagens que já chegaram continuam salvos. A autorização continua ativa no seu Facebook, e você pode retirá-la por lá.\n\nPara voltar a receber, conecte de novo. O CRM reutilizará sua seleção e verificará o acesso às páginas e ao Instagram." } do %>
       <i class="bi bi-box-arrow-right ax-ico" aria-hidden="true"></i> Desconectar
     <% end %>
   <% end %>
