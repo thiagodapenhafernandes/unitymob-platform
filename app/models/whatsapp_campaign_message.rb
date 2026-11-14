@@ -442,10 +442,17 @@ class WhatsappCampaignMessage < ApplicationRecord
 
     case action
     when "generate_lead"
+      return if lead_id.present? && !lead.imported_from_c2s? && lead.c2s_export_external_id.blank?
+
+      distribution_rule = tenant.distribution_rules.find_by!(id: decision[:distribution_rule_id])
+      existing_lead = lead || recipient&.lead
+      if distribution_rule.destination_c2s? && existing_lead && (existing_lead.imported_from_c2s? || existing_lead.c2s_export_external_id.present?)
+        C2sLeadReactivation.request!(lead: existing_lead, campaign_message: self, distribution_rule: distribution_rule)
+        return
+      end
       return if lead_id.present?
       return unless recipient
 
-      distribution_rule = tenant.distribution_rules.find_by!(id: decision[:distribution_rule_id])
       created_lead = recipient.convert_to_lead!(distribution_rule: distribution_rule)
       update_column(:lead_id, created_lead.id)
       LeadActivity.log!(

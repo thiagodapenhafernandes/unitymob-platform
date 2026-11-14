@@ -101,3 +101,49 @@ campo. Conferir no C2S antes de replay manual desses casos. A homologação real
 com o fornecedor permanece necessária; os testes usam transporte simulado.
 
 Contrato consultado: https://docs-api-leads.c2sapp.com/docs.html
+
+## Reativação explícita após resposta de campanha (13/11/2026)
+
+Uma resposta configurada como **Converter em lead e distribuir** (por exemplo,
+**Estou buscando**), destinada a uma fila **C2S — sem distribuição local**, pode
+reativar um cadastro que já existe no C2S. Não depende da exportação global.
+
+Esse caminho é exclusivo do clique positivo da campanha. Eventos automáticos de
+importação, entrega ou leitura continuam sem autorizar reenvio; respostas como
+**Já aluguei**, configuradas como registro, não reativam. O destino e a decisão
+positiva são revalidados antes de executar. A regra deve continuar ativa, com a
+fonte de campanhas ligada, na mesma conta da mensagem e da integração.
+
+A identidade usa o ID externo associado à integração daquela conta, ou o ID de
+uma exportação anterior da Unitymob. Nunca busca ou cria outro cadastro por
+telefone/e-mail. O job primeiro confirma o ID com GET; depois usa
+`POST /leads/:id/update_status` com status `0` (Novo) e uma mensagem de auditoria,
+e, após confirmar a reabertura do mesmo ID, chama
+`POST /distribution_queues/:lead_id/redistribute_lead` com o mesmo ID. Essa última
+operação usa a distribuição do cadastro no C2S; não recebe o ID da fila Unitymob.
+Não chama `POST /leads`, não altera `created_at`, dados de contato, produto ou
+histórico anterior, e não faz rotação/atribuição local. O proprietário local só
+poderá refletir o novo vendedor pelos mecanismos de sincronização já existentes.
+
+Migration: `20261113190000_create_c2s_lead_reactivations.rb`. Cada mensagem de
+campanha tem um único pedido persistido, com ID remoto, fila, integração, etapas,
+horários e vendedor retornado pelo C2S. Cliques e execuções repetidas não repetem
+uma operação concluída. A timeline registra agendamento, confirmação ou falha;
+**convertido** nos indicadores da campanha não é confirmação de redistribuição
+externa. Excluir a mensagem não apaga esse registro de auditoria.
+
+As chamadas são serializadas pelo mesmo lock das exportações, sem manter
+transação do lead durante HTTP. Se a reabertura já tiver sido confirmada, uma
+retomada nessa etapa não repete essa chamada; antes de redistribuir, confirma que
+o cadastro remoto não mudou. Timeout, resposta inválida ou interrupção após o
+início de uma mutação deixam a operação **uncertain**, sem repetição automática.
+Isso evita girar a fila novamente após um resultado remoto desconhecido. Conferir
+no C2S antes de qualquer intervenção nesses casos. Não há retry cego dos POSTs.
+
+Não há processamento retroativo dos cliques das campanhas 3/4 nem homologação
+real embutida no deploy. Validar o primeiro clique autorizado após publicar,
+confirmando o mesmo ID remoto, a reabertura, o vendedor e os logs do C2S. Para
+rollback de código, drenar/cancelar os jobs de reativação primeiro; remover a
+tabela de pedidos apagaria a auditoria e não desfaria alterações já feitas no C2S.
+
+Contrato consultado: https://docs-api-leads.c2sapp.com/docs.html

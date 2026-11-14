@@ -113,6 +113,12 @@ class Lead < ApplicationRecord
     end
   end
 
+  def c2s_existing_id_for(integration)
+    return if integration.blank? || integration.tenant_id != tenant_id
+    return external_lead_id if external_lead_integration_id == integration.id
+    c2s_export_external_id if external_lead_integration_id.blank?
+  end
+
   def imported_from_c2s?
     return true if external_lead_integration_id.present? || external_lead_id.present?
 

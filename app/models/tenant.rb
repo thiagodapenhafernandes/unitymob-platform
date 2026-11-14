@@ -126,6 +126,7 @@ class Tenant < ApplicationRecord
   has_many :tiktok_lead_receipts, dependent: :delete_all
   has_one :linkedin_integration, dependent: :destroy
   has_many :linkedin_lead_receipts, dependent: :delete_all
+  has_many :c2s_lead_reactivations, dependent: :destroy
   has_one :external_lead_integration, dependent: :destroy
   has_many :lead_pipelines, dependent: :restrict_with_error
   has_many :lead_pipeline_stages, dependent: :restrict_with_error

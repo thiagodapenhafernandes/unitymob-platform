@@ -6,6 +6,10 @@ module Admin::ComercialHelper
     "created"            => { icon: "bi-stars",            color: "blue",  label: "Lead criado" },
     "received"           => { icon: "bi-inbox",            color: "gray",  label: "Lead recebido" },
     "assigned_directly"  => { icon: "bi-person-check",     color: "blue",  label: "Atribuído diretamente" },
+    "c2s_reactivation_queued" => { icon: "bi-arrow-repeat", color: "blue", label: "Reativação no C2S agendada" },
+    "c2s_reactivation_completed" => { icon: "bi-check-circle", color: "green", label: "Lead reativado e redistribuído no C2S" },
+    "c2s_reactivation_failed" => { icon: "bi-exclamation-triangle", color: "red", label: "Falha na reativação do C2S" },
+    "c2s_reactivation_uncertain" => { icon: "bi-exclamation-triangle", color: "amber", label: "Reativação no C2S exige conferência" },
     "external_lead_export_queued" => { icon: "bi-box-arrow-up-right", color: "blue", label: "Envio ao C2S agendado" },
     "external_lead_exported" => { icon: "bi-check-circle", color: "green", label: "Lead enviado ao C2S" },
     "external_lead_export_failed" => { icon: "bi-exclamation-triangle", color: "red", label: "Falha no envio ao C2S" },
@@ -578,6 +582,10 @@ module Admin::ComercialHelper
   def timeline_detail(activity, detailed: true)
     meta = activity.metadata.is_a?(Hash) ? activity.metadata : {}
     case activity.kind
+    when "c2s_reactivation_queued", "c2s_reactivation_completed"
+      ["Reativação ##{meta['reactivation_id']}", ("Fila ##{meta['rule_id']}" if meta["rule_id"].present?)].compact.join(" · ")
+    when "c2s_reactivation_failed", "c2s_reactivation_uncertain"
+      meta["reason"].presence
     when "note"        then meta["body"].presence
     when "task_created", "task_updated", "task_completed",
          "appointment_created", "appointment_updated", "appointment_done",

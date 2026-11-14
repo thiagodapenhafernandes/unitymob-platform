@@ -5,7 +5,14 @@ module ExternalLeadMigration
     BASE_URL = "https://api.contact2sale.com/integration".freeze
     DEFAULT_TIMEOUT = 20
 
-    class Error < StandardError; end
+    class Error < StandardError
+      attr_reader :http_status
+
+      def initialize(message, http_status: nil)
+        @http_status = http_status
+        super(message)
+      end
+    end
     class UnauthorizedError < Error; end
 
     def initialize(token:, base_url: BASE_URL)
@@ -48,12 +55,21 @@ module ExternalLeadMigration
     end
 
     def lead(id)
-      get("/leads/#{id}")
+      get("/leads/#{ERB::Util.url_encode(id.to_s)}")
     end
 
     # POST /integration/leads, com envelope data.attributes.
     def create_lead(payload, path: "/leads")
       post(path.to_s.presence || "/leads", body: payload)
+    end
+
+    # Atualiza o registro existente; nunca usa POST /leads para reativação.
+    def reactivate_lead(id, message:)
+      post("/leads/#{ERB::Util.url_encode(id.to_s)}/update_status", body: { status: 0, message: message })
+    end
+
+    def redistribute_lead(id)
+      post("/distribution_queues/#{ERB::Util.url_encode(id.to_s)}/redistribute_lead", body: { id: id.to_s })
     end
 
     def subscribe!(hook_action:, hook_url:)
@@ -99,9 +115,9 @@ module ExternalLeadMigration
       when 200..299
         parsed
       when 401, 403
-        raise UnauthorizedError, error_message(parsed, response)
+        raise UnauthorizedError.new(error_message(parsed, response), http_status: response.code.to_i)
       else
-        raise Error, error_message(parsed, response)
+        raise Error.new(error_message(parsed, response), http_status: response.code.to_i)
       end
     end
 

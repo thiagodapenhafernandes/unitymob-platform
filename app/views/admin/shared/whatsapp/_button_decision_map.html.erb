@@ -65,7 +65,7 @@
                            options_for_select(distribution_options, action["distribution_rule_id"]),
                            include_blank: "Escolher regra...",
                            class: "ax-control ax-autocomplete-select",
-                           data: { controller: "tom-select" } %>
+                           data: { controller: "tom-select", action: "change->whatsapp-campaign-builder#refreshReview" } %>
           </div>
           <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="message">
             <label class="ax-label">Mensagem automática</label>

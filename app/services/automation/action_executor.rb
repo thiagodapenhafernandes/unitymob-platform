@@ -237,7 +237,12 @@ module Automation
         @lead ||= campaign_recipient&.convert_to_lead!(distribution_rule: destination)
         raise ArgumentError, "Resultado com atendimento sem destinatário para converter" unless @lead
 
-        Leads::DistributorService.distribute_to(@lead, destination) if existing_lead
+        if existing_lead && destination.destination_c2s? && (@lead.imported_from_c2s? || @lead.c2s_export_external_id.present?) &&
+            @automation_event&.name == "whatsapp_campaign_message_replied"
+          C2sLeadReactivation.request!(lead: @lead, campaign_message: webhook_campaign_message, distribution_rule: destination)
+        elsif existing_lead
+          Leads::DistributorService.distribute_to(@lead, destination)
+        end
       elsif @lead.nil? && campaign_recipient
         if result.to_s == "no_attendance"
           campaign_recipient.mark_no_interest!

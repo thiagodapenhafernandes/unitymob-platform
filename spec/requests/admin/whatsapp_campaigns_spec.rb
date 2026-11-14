@@ -21,7 +21,8 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
   end
 
   it "oferece somente filas ativas da conta que recebem campanhas" do
-    enabled = create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: true)
+    create(:external_lead_integration, tenant: admin.tenant)
+    enabled = create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: true, delivery_destination: "c2s")
     create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: false)
     create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: true, active: false)
     foreign = Tenant.create!(name: "Outra", slug: "campaign-picker-#{SecureRandom.hex(4)}")
@@ -31,6 +32,9 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
     document = Nokogiri::HTML(response.body)
     options = JSON.parse(document.at_css("[data-whatsapp-campaign-builder-distribution-rules-value]")["data-whatsapp-campaign-builder-distribution-rules-value"])
     expect(options).to eq([{ "label" => enabled.name, "value" => enabled.id }])
+    destinations = JSON.parse(document.at_css("[data-whatsapp-campaign-builder-distribution-rule-destinations-value]")["data-whatsapp-campaign-builder-distribution-rule-destinations-value"])
+    expect(destinations).to eq(enabled.id.to_s => "c2s")
+    expect(document.at_css("[data-whatsapp-campaign-builder-target='reviewRouting']")).to be_present
   end
 
   it "oferece autocomplete nos selects do formulário e mantém os eventos do modelo" do
