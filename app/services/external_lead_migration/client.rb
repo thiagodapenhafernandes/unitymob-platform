@@ -74,7 +74,7 @@ module ExternalLeadMigration
 
     def update_lead_routing(id, attributes:)
       request(Net::HTTP::Put, "/leads/#{ERB::Util.url_encode(id.to_s)}",
-        body: { data: { type: "lead", attributes: attributes } })
+        body: { lead: attributes })
     end
 
     def subscribe!(hook_action:, hook_url:)

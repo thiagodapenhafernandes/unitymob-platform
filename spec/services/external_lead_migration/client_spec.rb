@@ -5,8 +5,8 @@ RSpec.describe ExternalLeadMigration::Client do
 
   it "atualiza somente a fonte do mesmo cadastro via PUT" do
     expect(client).to receive(:request).with(Net::HTTP::Put, "/leads/other%2Fid",
-      body: {data: {type: "lead", attributes: {"source" => "Disparo de WhatsApp", "type_negotiation" => "Alugar"}}})
-    client.update_lead_routing("other/id", attributes: {"source" => "Disparo de WhatsApp", "type_negotiation" => "Alugar"})
+      body: {lead: {"lead_source_id" => 2049, "type_negotiation" => 1}})
+    client.update_lead_routing("other/id", attributes: {"lead_source_id" => 2049, "type_negotiation" => 1})
   end
 
   it "reabre e redistribui o ID existente sem chamar a criação de leads" do
