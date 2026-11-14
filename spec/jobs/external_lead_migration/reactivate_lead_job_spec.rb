@@ -16,7 +16,7 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
   end
   let(:lead) do
     create(:lead, tenant: tenant, external_lead_integration: integration, external_lead_id: "existing-c2s-id",
-      admin_user: admin, skip_automatic_routing: true, other_information: {"historical_note" => "Preservar"})
+      admin_user: admin, skip_automatic_routing: true, attribution_data: {"lead_source" => {"id" => 2049, "name" => "Disparo de WhatsApp"}}, other_information: {"historical_note" => "Preservar"})
   end
   let(:recipient) { campaign.campaign_recipients.create!(lead: lead, phone_number: lead.phone) }
   let(:message) do
@@ -29,11 +29,14 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
   let(:reactivated) { {"data" => {"id" => "existing-c2s-id", "attributes" => {"lead_status" => {"id" => 0}, "archive_details" => {"archived" => false}}}} }
 
   before do
+    create(:lead, tenant: tenant, external_lead_integration: integration, external_lead_id: "source-reference",
+      skip_automatic_routing: true, attribution_data: {"lead_source" => {"id" => 2049, "name" => "Disparo de WhatsApp"}})
     allow(ExternalLeadMigration::Client).to receive(:new).with(token: integration.access_token).and_return(client)
     allow(client).to receive(:lead).with("existing-c2s-id").and_return(remote)
     allow(client).to receive(:update_lead_routing) do
       remote["data"]["attributes"]["lead_source"] = {"name" => "Disparo de WhatsApp"}
       reactivated["data"]["attributes"]["lead_source"] = {"name" => "Disparo de WhatsApp"}
+      remote["data"]["attributes"]["product"] = {"real_estate_detail" => {"negotiation_name" => "Aluguel"}}
       {"success" => true}
     end
     allow(client).to receive(:reactivate_lead).and_return(reactivated)
@@ -45,7 +48,7 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
     previous = lead.reload.attributes
     expect(client).not_to receive(:create_lead)
     expect { described_class.perform_now(operation.id, tenant_id: tenant.id) }.not_to change(Lead, :count)
-    expect(client).to have_received(:update_lead_routing).with("existing-c2s-id", attributes: {"source" => "Disparo de WhatsApp"}).once
+    expect(client).to have_received(:update_lead_routing).with("existing-c2s-id", attributes: {"lead_source_id" => 2049}).once
     expect(client).to have_received(:reactivate_lead).with("existing-c2s-id", message: include("Interesse confirmado", "##{campaign.id}"))
     expect(client).to have_received(:redistribute_lead).with("existing-c2s-id").once
     expect(operation.reload).to have_attributes(status: "completed", seller_id: "next-seller", external_lead_id: "existing-c2s-id")
@@ -59,7 +62,7 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
     rule.update!(c2s_negotiation_type: "Aluguel", c2s_source: "Disparo de WhatsApp")
     described_class.perform_now(operation.id, tenant_id: tenant.id)
     expect(client).to have_received(:update_lead_routing).with("existing-c2s-id",
-      attributes: {"source" => "Disparo de WhatsApp", "type_negotiation" => "Alugar"})
+      attributes: {"lead_source_id" => 2049, "type_negotiation" => 1})
     expect(operation.reload.status).to eq("completed")
   end
 
@@ -69,6 +72,22 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
     expect(operation.reload.status).to eq("failed")
     expect(operation.error_message).to include("Origem da campanha WhatsApp não confirmada")
     expect(client).not_to have_received(:reactivate_lead)
+    expect(client).not_to have_received(:redistribute_lead)
+  end
+
+  it "não altera o cadastro quando a fonte configurada não tem identificação na conta" do
+    rule.update!(c2s_source: "Fonte ainda não sincronizada")
+    described_class.perform_now(operation.id, tenant_id: tenant.id)
+    expect(client).not_to have_received(:update_lead_routing)
+    expect(client).not_to have_received(:redistribute_lead)
+    expect(operation.reload.status).to eq("failed")
+  end
+
+  it "não redistribui quando o C2S mantém a negociação anterior" do
+    rule.update!(c2s_negotiation_type: "Compra")
+    described_class.perform_now(operation.id, tenant_id: tenant.id)
+    expect(operation.reload.status).to eq("failed")
+    expect(operation.error_message).to include("Negociação da campanha não confirmada")
     expect(client).not_to have_received(:redistribute_lead)
   end
 

@@ -44,10 +44,15 @@ module ExternalLeadMigration
 
       routing = operation.distribution_rule.c2s_routing_attributes(campaign: true)
       source = routing.fetch("source")
-      client.update_lead_routing(external_id, attributes: routing)
+      client.update_lead_routing(external_id, attributes: update_routing_attributes(operation, source))
       confirmed = client.lead(external_id)
       unless remote_id(confirmed) == external_id && remote_attributes(confirmed).dig("lead_source", "name").to_s.casecmp?(source)
         raise InvalidResponse, "Origem da campanha WhatsApp não confirmada no C2S; redistribuição não executada"
+      end
+      expected_negotiation = operation.distribution_rule.effective_c2s_negotiation_type
+      expected_negotiation = operation.distribution_rule.c2s_negotiation_other if expected_negotiation == "Outros"
+      if expected_negotiation.present? && remote_attributes(confirmed).dig("product", "real_estate_detail", "negotiation_name").to_s != expected_negotiation
+        raise InvalidResponse, "Negociação da campanha não confirmada no C2S; redistribuição não executada"
       end
 
       unless operation.reactivated_at
@@ -72,6 +77,24 @@ module ExternalLeadMigration
         reactivation_id: operation.id, whatsapp_campaign_message_id: operation.whatsapp_campaign_message_id,
         external_lead_id: external_id, seller_id: operation.seller_id, rule_id: operation.distribution_rule_id
       })
+    end
+
+    def update_routing_attributes(operation, source)
+      source_ids = operation.external_lead_integration.leads.where(tenant_id: operation.tenant_id)
+        .where("LOWER(attribution_data -> 'lead_source' ->> 'name') = ?", source.downcase)
+        .distinct.pluck(Arel.sql("attribution_data -> 'lead_source' ->> 'id'")).compact
+      unless source_ids.one? && source_ids.first.match?(/\A[1-9]\d*\z/)
+        raise InvalidContext, "Fonte de encaminhamento sem identificação única no histórico sincronizado do C2S"
+      end
+
+      attributes = { "lead_source_id" => source_ids.first.to_i }
+      case operation.distribution_rule.effective_c2s_negotiation_type
+      when "Compra" then attributes["type_negotiation"] = 0
+      when "Aluguel" then attributes["type_negotiation"] = 1
+      when "Outros"
+        attributes["product"] = { "type_negotiation_string" => operation.distribution_rule.c2s_negotiation_other }
+      end
+      attributes
     end
 
     def validate_context!(operation)
