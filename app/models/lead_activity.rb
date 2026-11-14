@@ -14,6 +14,10 @@ class LeadActivity < ApplicationRecord
   ].freeze
 
   AUTOMATION_KINDS = %w[
+    c2s_reactivation_queued
+    c2s_reactivation_completed
+    c2s_reactivation_failed
+    c2s_reactivation_uncertain
     external_lead_export_queued
     external_lead_exported
     external_lead_export_failed

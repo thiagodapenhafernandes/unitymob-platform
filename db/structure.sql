@@ -1661,6 +1661,48 @@ ALTER SEQUENCE public.browser_extension_operations_id_seq OWNED BY public.browse
 
 
 --
+-- Name: c2s_lead_reactivations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.c2s_lead_reactivations (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    whatsapp_campaign_message_id bigint,
+    distribution_rule_id bigint,
+    external_lead_integration_id bigint,
+    external_lead_id character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    reactivated_at timestamp(6) without time zone,
+    redistributed_at timestamp(6) without time zone,
+    seller_id character varying,
+    error_message character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT c2s_reactivation_status CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('reactivating'::character varying)::text, ('reactivated'::character varying)::text, ('redistributing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('uncertain'::character varying)::text])))
+);
+
+
+--
+-- Name: c2s_lead_reactivations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.c2s_lead_reactivations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: c2s_lead_reactivations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.c2s_lead_reactivations_id_seq OWNED BY public.c2s_lead_reactivations.id;
+
+
+--
 -- Name: captacao_goals; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8959,6 +9001,13 @@ ALTER TABLE ONLY public.browser_extension_operations ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: c2s_lead_reactivations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.c2s_lead_reactivations ALTER COLUMN id SET DEFAULT nextval('public.c2s_lead_reactivations_id_seq'::regclass);
+
+
+--
 -- Name: captacao_goals id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10326,6 +10375,14 @@ ALTER TABLE ONLY public.browser_extension_grants
 
 ALTER TABLE ONLY public.browser_extension_operations
     ADD CONSTRAINT browser_extension_operations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: c2s_lead_reactivations c2s_lead_reactivations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.c2s_lead_reactivations
+    ADD CONSTRAINT c2s_lead_reactivations_pkey PRIMARY KEY (id);
 
 
 --
@@ -13696,6 +13753,41 @@ CREATE UNIQUE INDEX index_browser_extension_grants_on_token_digest ON public.bro
 --
 
 CREATE INDEX index_browser_extension_grants_on_trusted_device_id ON public.browser_extension_grants USING btree (trusted_device_id);
+
+
+--
+-- Name: index_c2s_lead_reactivations_on_distribution_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_c2s_lead_reactivations_on_distribution_rule_id ON public.c2s_lead_reactivations USING btree (distribution_rule_id);
+
+
+--
+-- Name: index_c2s_lead_reactivations_on_external_lead_integration_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_c2s_lead_reactivations_on_external_lead_integration_id ON public.c2s_lead_reactivations USING btree (external_lead_integration_id);
+
+
+--
+-- Name: index_c2s_lead_reactivations_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_c2s_lead_reactivations_on_lead_id ON public.c2s_lead_reactivations USING btree (lead_id);
+
+
+--
+-- Name: index_c2s_lead_reactivations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_c2s_lead_reactivations_on_tenant_id ON public.c2s_lead_reactivations USING btree (tenant_id);
+
+
+--
+-- Name: index_c2s_reactivations_on_tenant_message; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_c2s_reactivations_on_tenant_message ON public.c2s_lead_reactivations USING btree (tenant_id, whatsapp_campaign_message_id);
 
 
 --
@@ -19421,6 +19513,14 @@ ALTER TABLE ONLY public.habitations
 
 
 --
+-- Name: c2s_lead_reactivations fk_rails_4ac539ad38; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.c2s_lead_reactivations
+    ADD CONSTRAINT fk_rails_4ac539ad38 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
 -- Name: whatsapp_conversations fk_rails_4c2819349d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20010,6 +20110,14 @@ ALTER TABLE ONLY public.lead_pipelines
 
 ALTER TABLE ONLY public.lead_favorites
     ADD CONSTRAINT fk_rails_7e34b72563 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: c2s_lead_reactivations fk_rails_7e6923b476; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.c2s_lead_reactivations
+    ADD CONSTRAINT fk_rails_7e6923b476 FOREIGN KEY (external_lead_integration_id) REFERENCES public.external_lead_integrations(id) ON DELETE SET NULL;
 
 
 --
@@ -20749,6 +20857,14 @@ ALTER TABLE ONLY public.photography_schedule_blocks
 
 
 --
+-- Name: c2s_lead_reactivations fk_rails_b79f01d581; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.c2s_lead_reactivations
+    ADD CONSTRAINT fk_rails_b79f01d581 FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_meta_integrations fk_rails_b94a922717; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21098,6 +21214,14 @@ ALTER TABLE ONLY public.lead_pipeline_stage_transitions
 
 ALTER TABLE ONLY public.presentation_cards
     ADD CONSTRAINT fk_rails_cb854d1c50 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: c2s_lead_reactivations fk_rails_cc5453af26; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.c2s_lead_reactivations
+    ADD CONSTRAINT fk_rails_cc5453af26 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id) ON DELETE SET NULL;
 
 
 --
@@ -21653,6 +21777,14 @@ ALTER TABLE ONLY public.whatsapp_attendances
 
 
 --
+-- Name: c2s_lead_reactivations fk_rails_f64788dc5f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.c2s_lead_reactivations
+    ADD CONSTRAINT fk_rails_f64788dc5f FOREIGN KEY (whatsapp_campaign_message_id) REFERENCES public.whatsapp_campaign_messages(id) ON DELETE SET NULL;
+
+
+--
 -- Name: linkedin_integrations fk_rails_f68091e6a0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21782,6 +21914,7 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20261113210000'),
+('20261113190000'),
 ('20261113170000'),
 ('20261113150000'),
 ('20261113130000'),

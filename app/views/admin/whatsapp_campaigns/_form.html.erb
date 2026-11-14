@@ -27,6 +27,8 @@
                 whatsapp_campaign_builder_test_url_value: send_test_admin_whatsapp_campaigns_path,
                 whatsapp_campaign_builder_response_actions_value: WhatsappCampaign::RESPONSE_ACTIONS.to_json,
                 whatsapp_campaign_builder_distribution_rules_value: @distribution_rule_options.map { |label, value| { label: label, value: value } }.to_json,
+                whatsapp_campaign_builder_distribution_rule_destinations_value: @distribution_rule_destinations.to_json,
+                whatsapp_campaign_builder_customized_workflow_value: campaign.automation_workflow&.whatsapp_campaign_customized? == true,
                 whatsapp_campaign_builder_current_response_decisions_value: campaign.response_decisions.to_json
               } do |f| %>
   <% if campaign.errors.any? %>
@@ -482,6 +484,7 @@
             <div><dt>Modelo</dt><dd data-whatsapp-campaign-builder-target="reviewTemplate">Modelo não selecionado</dd></div>
             <div><dt>Audiência</dt><dd data-whatsapp-campaign-builder-target="reviewAudience">Pré-visualização pendente</dd></div>
             <div><dt>Agendamento</dt><dd data-whatsapp-campaign-builder-target="reviewSchedule">Envio manual</dd></div>
+            <div><dt>Respostas e destino</dt><dd data-whatsapp-campaign-builder-target="reviewRouting" aria-live="polite">Selecione um modelo para conferir as respostas e o encaminhamento.</dd></div>
             <div><dt>Variáveis</dt><dd data-whatsapp-campaign-builder-target="reviewVariables">Sem variáveis</dd></div>
           </dl>
           <p class="ax-field__hint">O disparo emitirá eventos para a Automação conforme envio, entrega, leitura, falha e resposta.</p>

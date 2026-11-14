@@ -25,6 +25,7 @@ export default class extends Controller {
     "reviewAudience",
     "reviewSchedule",
     "reviewVariables",
+    "reviewRouting",
     "templatePreview",
     "testPhone",
     "testResult",
@@ -60,6 +61,8 @@ export default class extends Controller {
     testUrl: String,
     responseActions: Object,
     distributionRules: Array,
+    distributionRuleDestinations: Object,
+    customizedWorkflow: Boolean,
     currentResponseDecisions: Object
   }
 
@@ -114,6 +117,8 @@ export default class extends Controller {
   }
 
   refreshReview() {
+    if (this.hasReviewRoutingTarget) this.reviewRoutingTarget.textContent = this.routingReview()
+
     if (this.hasReviewNameTarget && this.hasNameInputTarget) {
       this.reviewNameTarget.textContent = this.nameInputTarget.value || "Sem nome"
     }
@@ -145,6 +150,28 @@ export default class extends Controller {
         .join(" | ")
       this.reviewVariablesTarget.textContent = values || "Sem variaveis"
     }
+  }
+
+  routingReview() {
+    if (this.customizedWorkflowValue) return "Automação personalizada: confira os destinos no fluxo vinculado antes de disparar."
+    if (!this.responseDecisionRowTargets.length) return "Sem decisões de botões configuradas; não há encaminhamento por botão definido."
+
+    return this.responseDecisionRowTargets.map((row) => {
+      const button = row.querySelector("input[name*='[text]']")?.value || "Botão"
+      const action = row.querySelector("select[name*='[action]']")?.value || "ignore"
+      if (action === "generate_lead") {
+        const select = row.querySelector("select[name*='[distribution_rule_id]']")
+        if (!select?.value) return `“${button}” → Gerar lead: fila não selecionada.`
+        const name = select.selectedOptions[0]?.textContent?.trim() || "Fila indisponível"
+        const destination = this.distributionRuleDestinationsValue?.[select.value]
+        const detail = destination === "c2s" ? "envio ao C2S, sem distribuição local" :
+          destination === "unitymob" ? "atendimento pela equipe da Unitymob, conforme as regras da fila" : "confira o destino na regra"
+        return `“${button}” → Fila: ${name} — ${detail}.`
+      }
+      const label = this.responseActionsValue?.[action] || "Registrar resposta"
+      const message = action === "send_message" ? row.querySelector("input[name*='[message]']")?.value?.trim() : ""
+      return `“${button}” → ${label}${message ? `: ${message}` : ""}.`
+    }).join(" ")
   }
 
   createGroup(event) {
@@ -704,7 +731,7 @@ export default class extends Controller {
           </div>
           <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="distribution_rule">
             <label class="ax-label">Regra de distribuição</label>
-            <select class="ax-control ax-autocomplete-select" data-controller="tom-select" name="whatsapp_campaign[response_decisions][buttons][${index}][distribution_rule_id]">
+            <select class="ax-control ax-autocomplete-select" data-controller="tom-select" data-action="change->whatsapp-campaign-builder#refreshReview" name="whatsapp_campaign[response_decisions][buttons][${index}][distribution_rule_id]">
               <option value="">Escolher regra...</option>
               ${this.distributionRuleOptions(distributionRuleId)}
             </select>

@@ -3,7 +3,7 @@ module ExternalLeadMigration
     queue_as :sync
 
     class InvalidResponse < StandardError; end
-    EXPORT_LOCK_NAMESPACE = 72420
+    EXPORT_LOCK_NAMESPACE = LeadLock::NAMESPACE
 
     retry_on ExternalLeadMigration::Client::Error, wait: :polynomially_longer, attempts: 5
 
@@ -14,16 +14,8 @@ module ExternalLeadMigration
       lead = tenant.leads.find_by(id: lead_id)
       return unless lead
 
-      # Serializa apenas as exportações, sem manter transação/lock do cadastro durante HTTP.
-      Lead.connection_pool.with_connection do |connection|
-        locked = connection.select_value("SELECT pg_try_advisory_lock(#{EXPORT_LOCK_NAMESPACE}, #{Integer(lead.id)})")
-        return unless locked
-
-        begin
-          export!(lead.reload, tenant.external_lead_integration)
-        ensure
-          connection.select_value("SELECT pg_advisory_unlock(#{EXPORT_LOCK_NAMESPACE}, #{Integer(lead.id)})")
-        end
+      LeadLock.synchronize(lead.id) do
+        export!(lead.reload, tenant.external_lead_integration)
       end
     rescue ExternalLeadMigration::Client::UnauthorizedError => e
       record_failure(lead, tenant, e)

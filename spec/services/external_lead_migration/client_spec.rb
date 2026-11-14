@@ -3,6 +3,18 @@ require "rails_helper"
 RSpec.describe ExternalLeadMigration::Client do
   let(:client) { described_class.new(token: "test-token") }
 
+  it "reabre e redistribui o ID existente sem chamar a criação de leads" do
+    expect(client).to receive(:post).with("/leads/remote-id/update_status", body: {status: 0, message: "Interesse confirmado"}).ordered
+    expect(client).to receive(:post).with("/distribution_queues/remote-id/redistribute_lead", body: {id: "remote-id"}).ordered
+    client.reactivate_lead("remote-id", message: "Interesse confirmado")
+    client.redistribute_lead("remote-id")
+  end
+
+  it "escapa o ID externo como um único segmento da URL" do
+    expect(client).to receive(:post).with("/distribution_queues/other%2Fid/redistribute_lead", body: {id: "other/id"})
+    client.redistribute_lead("other/id")
+  end
+
   it "envia o mesmo instante no relógio exigido pelo filtro C2S, sem mudar os parâmetros recebidos" do
     ["2026-11-12T12:58:14Z", "2026-11-12T09:58:14-03:00"].each do |stamp|
       params = { updated_gte: stamp, sort: "-updated_at" }
