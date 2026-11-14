@@ -144,16 +144,17 @@
   <% end %>
 
   <% if @selected_sender_number %>
-    <%= ax_operational_panel(eyebrow: "Número", title: "Indicadores do número") do %>
+    <%= ax_operational_panel(eyebrow: "Número", title: "Indicadores das campanhas filtradas") do %>
+      <% if @dashboard[:history_incomplete] %>
+        <%= ax_inline_notice(tone: :info, compact: true) { "Há respostas anteriores ao histórico detalhado. Para elas, somente a última resposta disponível é contabilizada." } %>
+      <% end %>
       <% dashboard_cards = [
-        ["Total", @dashboard[:total], "mensagens no escopo filtrado", "bi-envelope", "slate"],
-        ["Enviadas", @dashboard[:sent], "mensagens enviadas", "bi-send", "purple"],
-        ["Falhas", @dashboard[:failed], "mensagens com falha", "bi-x-circle", "red"],
-        ["Respostas", @dashboard[:replied], "respostas recebidas", "bi-chat-dots", "cyan"],
-        ["Atendido", @dashboard[:attended], "fluxos com atendimento", "bi-person-check", "green"],
-        ["Não atendido", @dashboard[:unattended], "sem atendimento", "bi-person-x", "blue"],
-        ["CPL", number_to_currency(@dashboard[:cpl], unit: "R$", separator: ",", delimiter: "."), "custo por atendimento", "bi-calculator", "orange"],
-        ["Gasto total", number_to_currency(@dashboard[:cost], unit: "R$", separator: ",", delimiter: "."), "estimativa do período", "bi-wallet2", "teal"]
+        ["Total de disparos", @dashboard[:total], "mensagens no escopo filtrado", "bi-envelope", "slate"],
+        ["Falhas", @dashboard[:failed], "#{@dashboard[:failure_rate]}% do total", "bi-x-circle", "red"],
+        ["Enviadas", @dashboard[:sent], "#{@dashboard[:sent_rate]}% do total", "bi-send", "purple"],
+        ["Entregues", @dashboard[:delivered], "#{@dashboard[:delivery_rate]}% das enviadas", "bi-check2-circle", "green"],
+        ["Interações", @dashboard[:interactions], "#{@dashboard[:reply_rate]}% das entregues · destinatários por campanha", "bi-chat-dots", "cyan"],
+        ["Cliques recebidos", @dashboard[:clicks], "inclui repetições legítimas", "bi-hand-index", "purple"]
       ] %>
 
       <section class="whatsapp-dashboard-grid" aria-label="Indicadores">
@@ -161,15 +162,7 @@
           <article class="whatsapp-dashboard-card whatsapp-dashboard-card--<%= tone %>">
             <div class="whatsapp-dashboard-card__top">
               <i class="bi <%= icon %>"></i>
-              <% if label == "CPL" %>
-                <button type="button"
-                        class="whatsapp-dashboard-card__tool"
-                        aria-label="Editar parâmetros do CPL"
-                        title="Parâmetros do CPL"
-                        data-ax-modal-open="#whatsappCplSettingsModal">
-                  <i class="bi bi-sliders"></i>
-                </button>
-              <% end %>
+
             </div>
             <span><%= label %></span>
             <strong><%= value %></strong>
@@ -178,39 +171,9 @@
         <% end %>
       </section>
 
-      <%= ax_quick_modal(id: "whatsappCplSettingsModal", title: "Parâmetros do CPL", size: :sm, class_name: "whatsapp-cpl-modal") do %>
-        <div class="whatsapp-cpl-modal__context">
-          <span>Número</span>
-          <strong><%= @selected_sender_number.formatted_phone %></strong>
-        </div>
-        <%= form_with model: [:admin, @selected_sender_number],
-                      url: admin_whatsapp_sender_number_path(@selected_sender_number),
-                      method: :patch,
-                      local: true,
-                      class: "whatsapp-cpl-settings__form" do |f| %>
-          <div class="ax-field">
-            <%= f.label :cpl_sent_unit_price, "Valor por enviada", class: "ax-label" %>
-            <%= f.text_field :cpl_sent_unit_price,
-                             value: number_with_precision(@selected_sender_number.cpl_sent_unit_price, precision: 2, separator: ",", delimiter: "."),
-                             class: "ax-control",
-                             inputmode: "decimal" %>
-          </div>
-          <div class="ax-field">
-            <%= f.label :cpl_fla_unit_price, "Valor por FLA", class: "ax-label" %>
-            <%= f.text_field :cpl_fla_unit_price,
-                             value: number_with_precision(@selected_sender_number.cpl_fla_unit_price, precision: 2, separator: ",", delimiter: "."),
-                             class: "ax-control",
-                             inputmode: "decimal" %>
-          </div>
-          <div class="whatsapp-cpl-settings__actions">
-            <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
-            <button type="submit" class="ax-btn ax-btn--primary">
-              <i class="bi bi-check2 ax-ico"></i><span>Salvar</span>
-            </button>
-          </div>
-        <% end %>
-      <% end %>
     <% end %>
+
+    <%= render "admin/shared/whatsapp/pricing", sender: @selected_sender_number %>
 
     <%= ax_operational_panel(eyebrow: "Filtros", title: "Refinar campanhas") do %>
       <%= form_with url: admin_whatsapp_campaigns_path, method: :get, local: true, class: "whatsapp-campaign-filters" do %>
@@ -232,11 +195,11 @@
           <%= text_field_tag :query, @filters[:query], class: "ax-control", placeholder: "Nome da campanha" %>
         </div>
         <div class="ax-field">
-          <%= label_tag :started_on, "Data inicial", class: "ax-label" %>
+          <%= label_tag :started_on, "Campanhas criadas de", class: "ax-label" %>
           <%= date_field_tag :started_on, @filters[:started_on], class: "ax-control" %>
         </div>
         <div class="ax-field">
-          <%= label_tag :ended_on, "Data final", class: "ax-label" %>
+          <%= label_tag :ended_on, "Campanhas criadas até", class: "ax-label" %>
           <%= date_field_tag :ended_on, @filters[:ended_on], class: "ax-control" %>
         </div>
         <div class="whatsapp-campaign-filters__actions">
@@ -266,6 +229,7 @@
       <% end %>
     <% else %>
       <%= ax_operational_panel(eyebrow: "Agrupamento", title: "Grupos de campanhas") do %>
+      <p class="ax-field__hint">Os grupos usam os mesmos filtros dos indicadores. Campanhas sem grupo aparecem somente na listagem.</p>
         <div class="ax-table-wrap">
           <table class="ax-table whatsapp-group-table">
             <caption class="ax-table__caption--sr-only">Grupos de campanhas do número selecionado</caption>
@@ -283,13 +247,21 @@
                   <td>
                     <strong><i class="bi bi-folder2-open"></i> <%= group.group_name %></strong>
                   </td>
-                  <td><%= pluralize(group.campaigns_count.to_i, "campanha", "campanhas") %></td>
+                  <td>
+                    <%= pluralize(group.campaigns_count.to_i, "campanha", "campanhas") %>
+                    <small class="tw-block"><%= @group_campaign_names[group.group_name].first(3).join(" · ") %><%= " · mais #{@group_campaign_names[group.group_name].size - 3}" if @group_campaign_names[group.group_name].size > 3 %></small>
+                  </td>
                 <td>
                   <div class="whatsapp-group-metrics">
                     <%= ax_badge("Total #{number_with_delimiter(group.total_recipients_sum.to_i)}") %>
                     <%= ax_badge("Enviadas #{number_with_delimiter(group.sent_count_sum.to_i)}", tone: :purple) %>
                     <%= ax_badge("Falhas #{number_with_delimiter(group.failed_count_sum.to_i)}", tone: :red) %>
-                    <%= ax_badge("Respostas #{number_with_delimiter(group.replied_count_sum.to_i)}", tone: :cyan) %>
+                    <%= ax_badge("Entregues #{number_with_delimiter(group.delivered_count_sum.to_i)}", tone: :green) %>
+                    <%= ax_badge("Interações #{number_with_delimiter(@group_interactions[group.group_name][:interactions])}", tone: :cyan) %>
+                    <%= ax_badge("Cliques #{@group_interactions[group.group_name][:clicks]}", tone: :purple) %>
+                    <% @group_interactions[group.group_name][:outcomes].each do |key, count| %>
+                      <%= ax_badge("#{WhatsappCampaignInteraction::OUTCOME_LABELS[key] || key.humanize} #{count}", tone: :green) %>
+                    <% end %>
                   </div>
                 </td>
                   <td class="ax-table__actions">

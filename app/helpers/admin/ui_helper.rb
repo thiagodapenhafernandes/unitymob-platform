@@ -939,8 +939,8 @@ module Admin::UiHelper
     render "admin/shared/ui/integration_hero", icon:, title:, tone:, eyebrow:, subtitle:, status:, status_tone:, actions:, stats:
   end
 
-  def ax_metric_card(label:, value:, badge: nil, hint: nil, progress: nil, class_name: nil, icon: nil, tone: nil)
-    render "admin/shared/ui/metric_card", label:, value:, badge:, hint:, progress:, class_name:, icon:, tone:
+  def ax_metric_card(label:, value:, badge: nil, hint: nil, progress: nil, class_name: nil, icon: nil, tone: nil, actions: nil)
+    render "admin/shared/ui/metric_card", label:, value:, badge:, hint:, progress:, class_name:, icon:, tone:, actions:
   end
 
   # Toggle reutilizável "+ equipe": recorta uma listagem pela subárvore de gestão.

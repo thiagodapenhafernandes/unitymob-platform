@@ -258,7 +258,7 @@ module Whatsapp
       owner = conversation.tenant.admin_users.active.find_by(id: action["target_user_id"]) if action["action"] == "send_to_user"
       commercial = action["action"] == "distribute_lead" || DistributionRule.new(tenant: conversation.tenant).eligible_distribution_agent?(owner)
       lead = commercial ? ensure_lead : conversation.lead
-      AttendanceManager.open!(conversation: conversation, lead: lead, flow: flow, action: action)
+      AttendanceManager.open!(conversation: conversation, lead: lead, flow: flow, action: action, campaign_interaction: campaign_message&.interactions&.responses&.find_by(inbound_whatsapp_message_id: inbound_message.id))
     end
 
     def ensure_lead

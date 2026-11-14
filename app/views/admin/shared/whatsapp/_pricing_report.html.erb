@@ -1,0 +1,38 @@
+<%= turbo_frame_tag "whatsapp_meta_pricing" do %>
+  <%= ax_filter_form(url: pricing_admin_whatsapp_campaigns_path, submit_label: "Consultar", filter_label: "Período das entregas") do %>
+    <%= hidden_field_tag :whatsapp_sender_number_id, @pricing_sender.id %>
+    <%= hidden_field_tag :return_to, params[:return_to] %>
+    <%= ax_standalone_field(name: :pricing_started_on, id: "pricing_started_on", label: "De", value: @pricing_starts_on || Date.current.beginning_of_month, type: :date) %>
+    <%= ax_standalone_field(name: :pricing_ended_on, id: "pricing_ended_on", label: "Até", value: @pricing_ends_on || Date.current, type: :date) %>
+  <% end %>
+  <p class="ax-field__hint">Número <%= @pricing_sender.formatted_phone %> · todas as mensagens entregues no período, incluindo outros disparos e envios avulsos. O total não é rateado entre campanhas.</p>
+  <% total = @pricing_sender.customer_delivery_total(meta_amount: @pricing_report.amount, currency: @pricing_report.currency, delivered: @pricing_report.delivered) %>
+  <% settings_allowed = can?(:manage, :whatsapp_campaigns) || can?(:manage, :integracoes) %>
+  <% pricing_actions = capture do %>
+    <% if settings_allowed %>
+      <%= button_tag type: :button, class: "ax-btn ax-btn--ghost ax-btn--sm", aria: {label: "Ajustar parâmetros do preço"}, data: {ax_modal_open: "whatsappCustomerPricingModal"} do %>
+        <i class="bi bi-sliders" aria-hidden="true"></i>
+      <% end %>
+    <% end %>
+  <% end %>
+  <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-3">
+    <%= ax_metric_card(label: "Entregues", value: @pricing_report.delivered.nil? ? "—" : @pricing_report.delivered, hint: "Entregas confirmadas pela Meta no período", icon: "check2-circle") %>
+    <%= ax_metric_card(label: "Gasto total", value: total.nil? ? "Indisponível" : number_to_currency(total, unit: "R$", separator: ",", delimiter: "."), hint: "Preço final em reais · somente mensagens entregues", icon: "wallet2", tone: :teal, actions: pricing_actions) %>
+    <%= ax_metric_card(label: "Preço médio por entregue", value: total && @pricing_report.delivered.to_i.positive? ? number_to_currency(total / @pricing_report.delivered, unit: "R$", precision: 4, separator: ",", delimiter: ".") : "—", hint: "Preço final total dividido pelas entregas; sem rateio por campanha", icon: "calculator") %>
+  </div>
+  <% if @pricing_report.message.present? %>
+    <%= ax_inline_notice(tone: :warning, icon: "info-circle") do %>
+      <%= @pricing_report.message %>
+    <% end %>
+  <% elsif total.nil? %>
+    <%= ax_inline_notice(tone: :warning, icon: "info-circle") do %>
+      Configure a cotação fixa da moeda da Meta para reais para disponibilizar o preço final.
+    <% end %>
+  <% end %>
+  <% if settings_allowed %>
+    <%= render "admin/shared/whatsapp/customer_pricing_settings", sender: @pricing_sender, currency: @pricing_report.currency %>
+  <% end %>
+  <% if @pricing_report.checked_at %>
+    <p class="ax-field__hint">Consultado em <%= l(@pricing_report.checked_at, format: :short) %>. Os dados podem ser atualizados pela Meta; novas consultas reutilizam o resultado por até 10 minutos.</p>
+  <% end %>
+<% end %>

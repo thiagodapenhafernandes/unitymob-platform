@@ -72,6 +72,11 @@ module ExternalLeadMigration
       post("/distribution_queues/#{ERB::Util.url_encode(id.to_s)}/redistribute_lead", body: { id: id.to_s })
     end
 
+    def update_lead_routing(id, attributes:)
+      request(Net::HTTP::Put, "/leads/#{ERB::Util.url_encode(id.to_s)}",
+        body: { data: { type: "lead", attributes: attributes } })
+    end
+
     def subscribe!(hook_action:, hook_url:)
       post("/api/subscribe", body: { hook_action: hook_action, hook_url: hook_url })
     end

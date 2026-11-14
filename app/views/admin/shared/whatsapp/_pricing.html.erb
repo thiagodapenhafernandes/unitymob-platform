@@ -1,0 +1,11 @@
+<% if sender %>
+  <% campaign = local_assigns[:campaign] %>
+  <% delivered_at = campaign&.campaign_messages&.minimum(:delivered_at) %>
+  <% starts_on = delivered_at&.to_date || Date.current.beginning_of_month %>
+  <% ends_on = campaign&.campaign_messages&.maximum(:delivered_at)&.to_date || Date.current %>
+  <%= ax_operational_panel(eyebrow: "Cobrança WhatsApp", title: "Gasto do número") do %>
+    <%= turbo_frame_tag "whatsapp_meta_pricing", src: pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id, pricing_started_on: starts_on.iso8601, pricing_ended_on: ends_on.iso8601, return_to: request.fullpath), loading: :lazy do %>
+      <p role="status">Consultando mensagens entregues e gasto…</p>
+    <% end %>
+  <% end %>
+<% end %>

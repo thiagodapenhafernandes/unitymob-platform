@@ -10,6 +10,8 @@ export default class extends Controller {
     "progressPercent",
     "pendingCount",
     "responseCards",
+    "outcomeCards",
+    "interactionHistory",
     "messagesBody"
   ]
 
@@ -97,6 +99,8 @@ export default class extends Controller {
     this.renderMetrics(data.metrics || {})
     this.renderProgress(data)
     this.renderResponseCards(data.response_cards || [])
+    if (this.hasOutcomeCardsTarget) this.outcomeCardsTarget.innerHTML = (data.outcome_cards || []).map((card) => this.interactionCard(card)).join("") || "<p>Nenhum resultado interno confirmado.</p>"
+    this.renderInteractionHistory(data.recent_interactions || [])
     this.renderMessages(data.recent_messages || [])
   }
 
@@ -168,14 +172,26 @@ export default class extends Controller {
       return
     }
 
-    this.responseCardsTarget.innerHTML = cards.map((card) => `
-      <article class="whatsapp-response-card whatsapp-response-card--${this.escapeAttribute(card.tone || "slate")}">
-        <i class="bi ${this.escapeAttribute(card.icon || "bi-grid")}"></i>
-        <span>${this.escape(card.label || "-")}</span>
-        <strong>${this.number(card.count || 0)}</strong>
-        <small>${this.escape(card.action_label || card.context || "-")}</small>
-      </article>
-    `).join("")
+    this.responseCardsTarget.innerHTML = cards.map((card) => this.interactionCard(card)).join("")
+  }
+
+  interactionCard(card) {
+    const count = card.count == null ? "Não mensurável" : this.number(card.count)
+    const rate = card.rate == null ? "" : `<small>${this.percent(card.rate)}% das entregues</small>`
+    return `<article class="whatsapp-response-card whatsapp-response-card--${this.escapeAttribute(card.tone || "slate")}">
+      <i class="bi ${this.escapeAttribute(card.icon || "bi-grid")}" aria-hidden="true"></i>
+      <span>${this.escape(card.label || "-")}</span><strong>${count}</strong>${rate}
+      <small>${this.escape(card.action_label || "")}</small><small>${this.escape(card.hint || "")}</small>
+    </article>`
+  }
+
+  renderInteractionHistory(events) {
+    if (!this.hasInteractionHistoryTarget) return
+    this.interactionHistoryTarget.innerHTML = events.map((event) => `<tr>
+      <td>${this.escape(event.occurred_at)}</td><td>${this.escape(event.recipient)}</td>
+      <td>${this.escape(event.kind)}${event.legacy ? " · registro anterior" : ""}</td>
+      <td>${this.escape(event.label)}</td><td>${this.escape(event.action || "—")}</td>
+    </tr>`).join("") || '<tr><td colspan="5" class="ax-table__empty">Nenhum evento detalhado registrado. Respostas antigas continuam em Mensagens recentes.</td></tr>'
   }
 
   messageRow(message) {
@@ -204,7 +220,7 @@ export default class extends Controller {
   }
 
   metricValue(key, value) {
-    if (["cpl", "cost"].includes(key)) return this.currency(value)
+    if (["cpl", "cost"].includes(key)) return "—"
 
     return this.number(value)
   }
@@ -212,15 +228,18 @@ export default class extends Controller {
   metricHint(key, metrics) {
     const hints = {
       total: "mensagens criadas",
-      sent: `${this.percent(metrics.delivery_rate)}% entregues`,
-      delivered: "recebidas pelo WhatsApp",
-      read: `${this.percent(metrics.read_rate)}% leitura`,
-      failed: `${this.percent(metrics.failure_rate)}% falha`,
+      sent: `${this.percent(metrics.sent_rate)}% do total`,
+      delivered: `${this.percent(metrics.delivery_rate)}% das enviadas`,
+      read: `${this.percent(metrics.read_rate)}% das entregues`,
+      interactions: `${this.percent(metrics.reply_rate)}% das entregues · destinatários únicos`,
+      clicks: "repetições legítimas preservadas",
+      free_responses: "destinatários únicos · texto ou mídia",
+      failed: `${this.percent(metrics.failure_rate)}% do total`,
       replied: `${this.percent(metrics.reply_rate)}% resposta`,
-      attended: "viraram lead",
-      unattended: "responderam sem virar lead",
-      cpl: "custo por atendimento",
-      cost: "estimativa"
+      attended: "Atendimentos aceitos na Unitymob",
+      unattended: "Interações sem aceite de atendimento",
+      cpl: "Custo por disparo não informado pela Meta",
+      cost: "A Meta não informa custo por disparo; consulte o número e período abaixo."
     }
 
     return hints[key]
@@ -237,13 +256,6 @@ export default class extends Controller {
 
   percent(value) {
     return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(Number(value || 0))
-  }
-
-  currency(value) {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(Number(value || 0))
   }
 
   escape(value) {

@@ -26,6 +26,8 @@ class WhatsappCampaign < ApplicationRecord
            dependent: :destroy,
            inverse_of: :whatsapp_campaign
 
+  has_many :interactions, class_name: "WhatsappCampaignInteraction", dependent: :delete_all
+
   validates :name, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :audience_mode, inclusion: { in: AUDIENCE_MODES }
@@ -37,6 +39,7 @@ class WhatsappCampaign < ApplicationRecord
   validate :associations_must_belong_to_tenant
   validate :scheduled_at_must_be_future, if: -> { status == "scheduled" }
   validate :spreadsheet_requires_file_or_existing_attachment
+  validate :spreadsheet_format_must_be_valid, if: -> { new_record? || attachment_changes.key?("audience_file") || (will_save_change_to_status? && scheduled?) }
   validate :response_decisions_must_be_complete
 
   scope :recent, -> { order(created_at: :desc) }
@@ -52,6 +55,10 @@ class WhatsappCampaign < ApplicationRecord
     return false if processing?
     raise ArgumentError, "Campanha cancelada não pode ser iniciada." if cancelled?
     raise ArgumentError, "Modelo WhatsApp precisa estar aprovado para disparo." unless whatsapp_template&.approved?
+    if audience_mode == "spreadsheet"
+      import = Whatsapp::CampaignSpreadsheetImporter.call(campaign: self)
+      raise ArgumentError, import.errors.to_sentence if import.errors.any?
+    end
 
     # Gate atômico: cliques duplos e CampaignStartJobs duplicados (re-agendamentos)
     # disputam este UPDATE condicional e só um enfileira o processamento.
@@ -208,26 +215,27 @@ class WhatsappCampaign < ApplicationRecord
   end
 
   def read_rate
-    percent(read_count, sent_count)
+    percent(read_count, delivered_count)
   end
 
   def reply_rate
-    percent(replied_count, sent_count)
+    percent(interaction_metrics.totals[:interactions], delivered_count)
   end
 
   def failure_rate
     percent(failed_count, total_recipients)
   end
 
-  def attended_count
-    converted = campaign_recipients.where(conversion_status: "converted").count
-    return converted if converted.positive?
+  def interaction_metrics
+    Whatsapp::CampaignInteractionMetrics.new(tenant: tenant, campaigns: tenant.whatsapp_campaigns.where(id: id))
+  end
 
-    campaign_messages.where(status: "replied").where.not(lead_id: nil).count
+  def attended_count
+    interactions.actions.where(outcome: "attendance_started").distinct.count(:recipient_key)
   end
 
   def unattended_count
-    [replied_count.to_i - attended_count.to_i, 0].max
+    [interaction_metrics.totals[:interactions] - attended_count, 0].max
   end
 
   def response_decisions
@@ -262,8 +270,11 @@ class WhatsappCampaign < ApplicationRecord
   def response_decision_for(button_text: nil, button_payload: nil)
     text = button_text.to_s.strip
     payload = button_payload.to_s.strip
-    row = response_decision_rows.find do |item|
-      item["text"].to_s.casecmp?(text) || (payload.present? && item["key"].to_s == payload)
+    rows = response_decision_rows
+    row = rows.find { |item| payload.present? && item["key"].to_s == payload }
+    unless row
+      matching = rows.select { |item| item["text"].to_s.casecmp?(text) }
+      row = matching.first if matching.one?
     end
     return {} unless row
 
@@ -274,53 +285,8 @@ class WhatsappCampaign < ApplicationRecord
     automation_workflow&.active?
   end
 
-  def button_response_counts
-    campaign_messages
-      .where.not(reply_button_text: [nil, ""])
-      .group("LOWER(reply_button_text)")
-      .count
-  end
-
   def dynamic_response_cards
-    counts = button_response_counts
-    rows = response_decision_rows.map do |button|
-      count = counts.fetch(button["text"].to_s.downcase, 0)
-      {
-        key: button["key"],
-        label: button["text"],
-        context: button["context"].presence || button["kind_label"],
-        action: button["action"],
-        action_label: button["action_label"],
-        count: count,
-        tone: response_action_tone(button["action"]),
-        icon: response_action_icon(button["action"])
-      }
-    end
-
-    other = campaign_messages.where(status: "replied").where(reply_button_text: [nil, ""]).count
-    rows << {
-      key: "other_text_responses",
-      label: "Outras respostas",
-      context: "Texto livre ou mídia",
-      action: "ignore",
-      action_label: "Analisar pela automação",
-      count: other,
-      tone: "cyan",
-      icon: "bi-chat-dots"
-    } if other.positive?
-    rows
-  end
-
-  def estimated_cost(sent_unit: nil, failed_unit: nil)
-    sent_price = sent_unit || sender_number&.cpl_sent_unit_price || 0.59.to_d
-    failed_price = failed_unit || sender_number&.cpl_fla_unit_price || 0.12.to_d
-    (sent_count.to_i * sent_price.to_d) + (failed_count.to_i * failed_price.to_d)
-  end
-
-  def estimated_cpl(sent_unit: nil, failed_unit: nil)
-    return 0.to_d if attended_count.zero?
-
-    estimated_cost(sent_unit:, failed_unit:) / attended_count
+    interaction_metrics.button_cards(self)
   end
 
   def emit_event!(event_name, lead: nil, payload: {})
@@ -329,7 +295,8 @@ class WhatsappCampaign < ApplicationRecord
       lead || campaign_messages.includes(:lead).where.not(lead_id: nil).first&.lead,
       source: "whatsapp_campaign",
       payload: metrics_payload.merge(payload).compact,
-      idempotency_key: "#{event_name}:whatsapp_campaign:#{id}:#{payload[:whatsapp_campaign_message_id]}"
+      idempotency_key: [event_name, "whatsapp_campaign", id, payload[:whatsapp_campaign_message_id],
+        (payload[:campaign_interaction_id] if event_name == "whatsapp_campaign_message_replied")].compact.join(":")
     )
   end
 
@@ -384,6 +351,13 @@ class WhatsappCampaign < ApplicationRecord
     return if audience_file.attached?
 
     errors.add(:audience_file, "precisa ser enviada para importar destinatários por planilha")
+  end
+
+  def spreadsheet_format_must_be_valid
+    return unless audience_mode == "spreadsheet" && audience_file.attached?
+
+    import = Whatsapp::CampaignSpreadsheetImporter.call(campaign: self)
+    import.errors.each { |error| errors.add(:audience_file, error) }
   end
 
   def response_decisions_must_be_complete

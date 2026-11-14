@@ -53,7 +53,8 @@ module Whatsapp
     def initialize(campaign:, materialize:, uploaded_file:)
       @campaign = campaign
       @materialize = materialize
-      @uploaded_file = uploaded_file
+      pending_file = campaign.attachment_changes["audience_file"]&.attachable
+      @uploaded_file = uploaded_file || (pending_file if pending_file.respond_to?(:tempfile))
     end
 
     def call
@@ -61,6 +62,7 @@ module Whatsapp
       parsed_rows = parse_csv
       rows = parsed_rows.each_with_index.map { |data, index| build_row(data, index + 2) }
       valid_rows = dedupe_rows(rows.select(&:valid?))
+      raise ArgumentError, "O CSV não contém destinatários com telefone. Preencha a coluna telefone e envie o arquivo novamente." if valid_rows.empty?
       recipients = materialize ? materialize_rows(valid_rows) : []
       Result.new(rows:, valid_rows:, invalid_rows: rows.reject(&:valid?), recipients:, errors: [])
     rescue => e
@@ -91,10 +93,24 @@ module Whatsapp
       options[:col_sep] = col_sep if col_sep.present?
 
       if uploaded_file.present?
-        CSV.read(uploaded_file.tempfile.path, **options).map(&:to_h)
+        validate_headers!(CSV.read(uploaded_file.tempfile.path, **options)).map(&:to_h)
       else
-        campaign.audience_file.open { |file| CSV.read(file.path, **options).map(&:to_h) }
+        campaign.audience_file.open { |file| validate_headers!(CSV.read(file.path, **options)).map(&:to_h) }
       end
+    end
+
+    def validate_headers!(table)
+      headers = table.headers.compact
+      unknown = headers.reject { |header| HEADER_ALIASES.values.flatten.include?(normalize_header(header)) }
+      errors = []
+      errors << "Colunas não reconhecidas: #{unknown.join(', ')}." if unknown.any?
+      unless headers.any? { |header| HEADER_ALIASES[:phone].include?(normalize_header(header)) }
+        errors << "A coluna telefone é obrigatória."
+      end
+      if errors.any?
+        raise ArgumentError, "#{errors.join(' ')} Use o modelo CSV com cabeçalhos nome, telefone, email, origem, status, tags e responsavel_email; somente telefone é obrigatório. Corrija o arquivo antes de importar."
+      end
+      table
     end
 
     def source_file_present?

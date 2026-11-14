@@ -36,23 +36,4 @@ RSpec.describe WhatsappCampaign, type: :model do
     expect(campaign.campaign_messages.last.reload.status).to eq("pending")
   end
 
-  it "calcula custo estimado com parametros do numero de envio" do
-    sender = create(:whatsapp_sender_number, cpl_sent_unit_price: 0.75, cpl_fla_unit_price: 0.20)
-    campaign.update!(
-      whatsapp_sender_number: sender,
-      sent_count: 10,
-      failed_count: 2,
-      replied_count: 4
-    )
-    4.times do |index|
-      campaign.campaign_messages.create!(
-        lead: lead,
-        phone_number: "554799999000#{index}",
-        status: "replied"
-      )
-    end
-
-    expect(campaign.estimated_cost).to eq(7.90.to_d)
-    expect(campaign.estimated_cpl).to eq(1.975.to_d)
-  end
 end

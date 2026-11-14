@@ -109,6 +109,7 @@ module Automation
         status: "pendente"
       )
       LeadActivity.log!(lead: @lead, kind: "task_created", metadata: { task_id: task.id, title: task.title, by: "Automação" })
+      record_campaign_result(action, "task_created", task_id: task.id)
     end
 
     def act_send_whatsapp(action, template:)
@@ -175,7 +176,7 @@ module Automation
         LeadActivity.log!(lead: @lead, kind: "note", metadata: { contact_kind: "automação", body: "Conversa automática:\n#{summary}", by: "Automação" })
       end
       Whatsapp::AttendanceManager.open!(
-        conversation: conversation, lead: @lead, flow: nil,
+        conversation: conversation, lead: @lead, flow: nil, campaign_interaction: campaign_interaction,
         action: {
           "action" => "distribute_lead", "distribution_rule_id" => action[:distribution_rule_id],
           "button_key" => "automation", "button_text" => action[:topic].presence || "Atendimento automático",
@@ -226,6 +227,7 @@ module Automation
       raise ArgumentError, "Resultado do caminho inválido" unless %w[generates_attendance no_attendance record_only].include?(result.to_s)
 
       destination = nil
+      distribution_result = nil
       if result.to_s == "generates_attendance"
         destination = tenant.distribution_rules.active.find_by(id: action[:distribution_rule_id])
         raise ArgumentError, "Resultado com atendimento sem destino" unless destination
@@ -241,7 +243,7 @@ module Automation
             @automation_event&.name == "whatsapp_campaign_message_replied"
           C2sLeadReactivation.request!(lead: @lead, campaign_message: webhook_campaign_message, distribution_rule: destination)
         elsif existing_lead
-          Leads::DistributorService.distribute_to(@lead, destination)
+          distribution_result = Leads::DistributorService.distribute_to(@lead, destination)
         end
       elsif @lead.nil? && campaign_recipient
         if result.to_s == "no_attendance"
@@ -249,6 +251,14 @@ module Automation
         elsif campaign_recipient.conversion_status == "pending"
           campaign_recipient.update!(conversion_status: "ignored")
         end
+      end
+
+      if result.to_s == "generates_attendance"
+        if destination.destination_unitymob? && @lead.distribution_rule_id == destination.id && (!existing_lead || distribution_result)
+          record_campaign_result(action, "forwarded", rule_id: destination.id)
+        end
+      else
+        record_campaign_result(action, result.to_s == "no_attendance" ? "no_attendance" : "recorded")
       end
 
       if @lead
@@ -286,6 +296,7 @@ module Automation
         when "mark_no_interest", "block_lead", "discard_lead"
           campaign_recipient.mark_no_interest!
         end
+        record_campaign_result(action, lifecycle_action == "unsubscribe_lead" ? "unsubscribed" : "no_interest") if %w[unsubscribe_lead mark_no_interest block_lead discard_lead].include?(lifecycle_action)
         return
       end
 
@@ -295,6 +306,7 @@ module Automation
 
       from = @lead.status
       @lead.update!(status: to)
+      record_campaign_result(action, lifecycle_action == "unsubscribe_lead" ? "unsubscribed" : "no_interest") if %w[unsubscribe_lead mark_no_interest block_lead discard_lead].include?(lifecycle_action)
       LeadActivity.log!(
         lead: @lead,
         kind: "status_change",
@@ -306,6 +318,22 @@ module Automation
           by: "Automação"
         }.compact
       )
+    end
+
+    def campaign_interaction
+      event = @automation_event
+      return unless event && event.name == "whatsapp_campaign_message_replied"
+      scope = event.tenant.whatsapp_campaign_interactions.responses
+        .where(whatsapp_campaign_message_id: webhook_campaign_message&.id)
+      id = event.payload_hash[:campaign_interaction_id]
+      return scope.find_by(id: id) if id
+      inbound = inbound_whatsapp_message
+      scope.find_by(inbound_whatsapp_message_id: inbound.id) if inbound
+    end
+
+    def record_campaign_result(action, outcome, **metadata)
+      WhatsappCampaignInteraction.record_action!(response: campaign_interaction, action_key: action[:type],
+        label: self.class.label(action), outcome: outcome, metadata: metadata)
     end
 
     def default_lifecycle_stage(lifecycle_action)

@@ -55,6 +55,28 @@
           <%= ax_select_field(form: f, method: :delivery_destination, label: "Encaminhar para",
                 choices: DistributionRule::DELIVERY_DESTINATIONS.map { |value, text| [text, value] },
                 html_options: { data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } }) %>
+          <div data-conditional-reveal-target="panel" data-conditional-reveal-values="c2s" <%= "hidden" unless distribution_rule.destination_c2s? %>>
+            <%= ax_field_group(title: "Dados de encaminhamento") do %>
+              <%= ax_field_grid do %>
+                <div class="ax-span-6" data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+                  <%= ax_select_field(form: f, method: :c2s_negotiation_type, label: "Tipo de negociação",
+                        choices: DistributionRule::C2S_NEGOTIATION_TYPES.map { |value| [value, value] },
+                        select_options: { selected: distribution_rule.effective_c2s_negotiation_type, include_blank: "Selecione" },
+                        tooltip: "Classifica o interesse do lead como Aluguel, Compra ou outro tipo informado por você. Essa classificação é enviada com o lead e influencia a seleção da fila de destino. Não altera o campo Receber desta regra nem garante uma fila específica.",
+                        html_options: { data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } }) %>
+                  <div data-conditional-reveal-target="panel" data-conditional-reveal-values="Outros" <%= "hidden" unless distribution_rule.c2s_negotiation_type == "Outros" %>>
+                    <%= ax_text_field(form: f, method: :c2s_negotiation_other, label: "Outro tipo de negociação", maxlength: 255,
+                          data: { conditional_required: "true" }) %>
+                  </div>
+                </div>
+                <div class="ax-span-6">
+                  <%= ax_text_field(form: f, method: :c2s_source, label: "Fonte", maxlength: 255,
+                        value: distribution_rule.c2s_source.presence || DistributionRule::C2S_DEFAULT_SOURCE,
+                        tooltip: "Identifica a origem deste encaminhamento nos filtros, relatórios e regras de distribuição. Use o nome da fonte esperado na fila de destino, como Disparo de WhatsApp. Não muda a origem histórica do contato nem corrige leads já enviados. Outras regras de prioridade ainda podem influenciar a fila escolhida." ) %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
           <%= ax_inline_notice(tone: :info, icon: "box-arrow-up-right", compact: true) do %>
             C2S usa a conexão configurada em <%= link_to "Migração de leads", admin_external_lead_integration_path %>.
             O lead fica registrado sem corretor na Unitymob; aceite, roleta, check-in e notificações locais não são executados.

@@ -10,6 +10,21 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "exibe os dados de encaminhamento com ajuda e persiste fonte e negociação livres" do
+    create(:external_lead_integration, tenant: admin.tenant)
+    rule = create(:distribution_rule, tenant: admin.tenant, delivery_destination: "c2s", business_type: :locacao)
+    get edit_admin_distribution_rule_path(rule)
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('[name="distribution_rule[c2s_source]"]')["value"]).to eq("Disparo de WhatsApp")
+    expect(document.at_css('[name="distribution_rule[c2s_negotiation_type]"] option[selected]').text).to eq("Aluguel")
+    expect(response.body).to include("Dados de encaminhamento", "Outro tipo de negociação", "Classifica o interesse do lead", "Identifica a origem deste encaminhamento")
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {
+      c2s_negotiation_type: "Outros", c2s_negotiation_other: "Temporada", c2s_source: "Campanha de verão"}}
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(rule.reload).to have_attributes(c2s_negotiation_type: "Outros", c2s_negotiation_other: "Temporada", c2s_source: "Campanha de verão")
+  end
+
   it "seleciona o destino C2S e preserva a equipe configurada ao ocultar os campos locais" do
     create(:external_lead_integration, tenant: admin.tenant)
     rule = create(:distribution_rule, tenant: admin.tenant)

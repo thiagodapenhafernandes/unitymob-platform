@@ -42,6 +42,14 @@ module ExternalLeadMigration
         raise InvalidContext, "O cadastro C2S mudou após a reabertura; redistribuição não executada"
       end
 
+      routing = operation.distribution_rule.c2s_routing_attributes(campaign: true)
+      source = routing.fetch("source")
+      client.update_lead_routing(external_id, attributes: routing)
+      confirmed = client.lead(external_id)
+      unless remote_id(confirmed) == external_id && remote_attributes(confirmed).dig("lead_source", "name").to_s.casecmp?(source)
+        raise InvalidResponse, "Origem da campanha WhatsApp não confirmada no C2S; redistribuição não executada"
+      end
+
       unless operation.reactivated_at
         operation.update!(status: "reactivating", error_message: nil)
         response = client.reactivate_lead(external_id,

@@ -15,6 +15,9 @@ class WhatsappSenderNumber < ApplicationRecord
   validates :cpl_sent_unit_price,
             :cpl_fla_unit_price,
             numericality: { greater_than_or_equal_to: 0, less_than: 1_000_000 }
+  validates :meta_brl_exchange_rate, numericality: { greater_than: 0, less_than: 1_000_000 }, allow_nil: true
+  validates :meta_exchange_currency, format: { with: /\A[A-Z]{3}\z/ }, allow_nil: true
+  validates :meta_exchange_currency, presence: true, if: -> { meta_brl_exchange_rate.present? }
   validate :display_phone_number_must_be_valid
   validate :integration_must_belong_to_tenant
   validate :receptive_response_flow_must_match_sender
@@ -86,8 +89,13 @@ class WhatsappSenderNumber < ApplicationRecord
     Phones::Normalizer.display("+#{display_phone_number.to_s.delete_prefix('+')}").presence || display_phone_number.presence
   end
 
-  def campaign_cost(sent_count:, failed_count:)
-    (sent_count.to_i * cpl_sent_unit_price.to_d) + (failed_count.to_i * cpl_fla_unit_price.to_d)
+  def customer_delivery_total(meta_amount:, currency:, delivered:)
+    return if meta_amount.nil? || delivered.nil?
+    return if currency != "BRL" && currency != meta_exchange_currency
+    rate = currency == "BRL" ? 1.to_d : meta_brl_exchange_rate
+    return if rate.blank? || rate <= 0
+
+    (meta_amount.to_d * rate) + (delivered * cpl_sent_unit_price.to_d)
   end
 
   private

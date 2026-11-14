@@ -31,4 +31,41 @@ RSpec.describe WhatsappSenderNumber, type: :model do
     expect(described_class.default_for_campaign(Tenant.default)).to eq(first)
     expect(Tenant.default.whatsapp_sender_numbers.active).to include(first, second)
   end
+  describe "preço final por mensagens entregues" do
+    let(:sender) { build(:whatsapp_sender_number, cpl_sent_unit_price: 0.59, cpl_fla_unit_price: 0.12, meta_brl_exchange_rate: 5, meta_exchange_currency: "USD") }
+
+    it "converte o custo oficial e embute o adicional somente no volume entregue" do
+      expect(sender.customer_delivery_total(meta_amount: "0.4375", currency: "USD", delivered: 7)).to eq(BigDecimal("6.3175"))
+    end
+
+    it "usa somente o custo da Meta quando o adicional é zero" do
+      sender.cpl_sent_unit_price = 0
+      expect(sender.customer_delivery_total(meta_amount: "0.4375", currency: "USD", delivered: 7)).to eq(BigDecimal("2.1875"))
+    end
+
+    it "não inventa custo sem o valor da Meta ou sem cotação" do
+      expect(sender.customer_delivery_total(meta_amount: nil, currency: "USD", delivered: 7)).to be_nil
+      sender.meta_brl_exchange_rate = nil
+      expect(sender.customer_delivery_total(meta_amount: "0.4375", currency: "USD", delivered: 7)).to be_nil
+    end
+
+    it "exige nova cotação quando a moeda Meta muda" do
+      expect(sender.customer_delivery_total(meta_amount: 1, currency: "EUR", delivered: 2)).to be_nil
+    end
+
+    it "não converte novamente valores já em reais" do
+      expect(sender.customer_delivery_total(meta_amount: 1, currency: "BRL", delivered: 2)).to eq(BigDecimal("2.18"))
+    end
+
+    it "não cobra falhas nem mensagens não entregues" do
+      expect(sender.customer_delivery_total(meta_amount: 0, currency: "BRL", delivered: 0)).to eq(0)
+    end
+
+    it "recusa cotação negativa e começa novos números sem adicional" do
+      sender.meta_brl_exchange_rate = -1
+      expect(sender).not_to be_valid
+      expect(described_class.new.cpl_sent_unit_price).to eq(0)
+    end
+  end
+
 end

@@ -1,4 +1,4 @@
-\restrict 7w19ujgujDWjrUegmLw6Ptq2sFtQOdM8FVAgIWCkLNNnhgL85Be6RpGjuLbnCQf
+\restrict u0LjU4ScVl43Phh1kxuIvIo1PQSkaHVAA3LTAbJat9FGTw5UR8IxScYcHW7LIoI
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -2598,9 +2598,13 @@ CREATE TABLE public.distribution_rules (
     display_position integer DEFAULT 0 NOT NULL,
     source_whatsapp_campaign boolean DEFAULT false NOT NULL,
     delivery_destination character varying DEFAULT 'unitymob'::character varying NOT NULL,
+    c2s_negotiation_type character varying,
+    c2s_negotiation_other character varying,
+    c2s_source character varying,
     CONSTRAINT chk_distribution_rules_first_contact_sla_positive CHECK (((first_contact_sla_minutes IS NULL) OR (first_contact_sla_minutes > 0))),
     CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0))),
-    CONSTRAINT distribution_rule_delivery_destination CHECK (((delivery_destination)::text = ANY ((ARRAY['unitymob'::character varying, 'c2s'::character varying])::text[])))
+    CONSTRAINT distribution_rule_delivery_destination CHECK (((delivery_destination)::text = ANY (ARRAY[('unitymob'::character varying)::text, ('c2s'::character varying)::text]))),
+    CONSTRAINT distribution_rules_c2s_negotiation_type CHECK (((c2s_negotiation_type IS NULL) OR ((c2s_negotiation_type)::text = ANY ((ARRAY['Aluguel'::character varying, 'Compra'::character varying, 'Outros'::character varying])::text[]))))
 );
 
 
@@ -2756,8 +2760,8 @@ CREATE TABLE public.external_lead_integrations (
     last_export_error text,
     sale_assignment_mode character varying DEFAULT 'c2s'::character varying NOT NULL,
     rental_assignment_mode character varying DEFAULT 'c2s'::character varying NOT NULL,
-    CONSTRAINT external_leads_rental_assignment_mode CHECK (((rental_assignment_mode)::text = ANY ((ARRAY['c2s'::character varying, 'unitymob'::character varying])::text[]))),
-    CONSTRAINT external_leads_sale_assignment_mode CHECK (((sale_assignment_mode)::text = ANY ((ARRAY['c2s'::character varying, 'unitymob'::character varying])::text[])))
+    CONSTRAINT external_leads_rental_assignment_mode CHECK (((rental_assignment_mode)::text = ANY (ARRAY[('c2s'::character varying)::text, ('unitymob'::character varying)::text]))),
+    CONSTRAINT external_leads_sale_assignment_mode CHECK (((sale_assignment_mode)::text = ANY (ARRAY[('c2s'::character varying)::text, ('unitymob'::character varying)::text])))
 );
 
 
@@ -3936,8 +3940,8 @@ CREATE TABLE public.home_settings (
     hero_ai_suggestions text,
     daily_rental_search_enabled boolean DEFAULT false NOT NULL,
     corporate_title character varying DEFAULT 'Private Corporate'::character varying NOT NULL,
-    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
-    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
 );
 
 
@@ -3976,7 +3980,7 @@ CREATE TABLE public.imovelweb_connections (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     advertiser_code character varying(128),
-    CONSTRAINT imovelweb_environment CHECK (((environment)::text = ANY ((ARRAY['sandbox'::character varying, 'production'::character varying])::text[])))
+    CONSTRAINT imovelweb_environment CHECK (((environment)::text = ANY (ARRAY[('sandbox'::character varying)::text, ('production'::character varying)::text])))
 );
 
 
@@ -4016,7 +4020,7 @@ CREATE TABLE public.imovelweb_lead_receipts (
     processed_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT imovelweb_receipt_status CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'processed'::character varying, 'quarantined'::character varying])::text[])))
+    CONSTRAINT imovelweb_receipt_status CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processed'::character varying)::text, ('quarantined'::character varying)::text])))
 );
 
 
@@ -4768,7 +4772,7 @@ CREATE TABLE public.lead_pipeline_stages (
     meta_event_trigger character varying DEFAULT 'stage_entered'::character varying NOT NULL,
     google_qualification_enabled boolean DEFAULT false NOT NULL,
     CONSTRAINT chk_lead_pipeline_stages_sla_positive CHECK (((sla_minutes IS NULL) OR (sla_minutes > 0))),
-    CONSTRAINT lead_stages_google_event CHECK (((google_event)::text = ANY ((ARRAY['none'::character varying, 'qualify_lead'::character varying, 'visit'::character varying, 'proposal'::character varying, 'closed'::character varying])::text[])))
+    CONSTRAINT lead_stages_google_event CHECK (((google_event)::text = ANY (ARRAY[('none'::character varying)::text, ('qualify_lead'::character varying)::text, ('visit'::character varying)::text, ('proposal'::character varying)::text, ('closed'::character varying)::text])))
 );
 
 
@@ -4877,7 +4881,7 @@ CREATE TABLE public.lead_property_suggestion_feedbacks (
     match_score integer,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT chk_suggestion_feedbacks_decision CHECK (((decision)::text = ANY ((ARRAY['accepted'::character varying, 'rejected'::character varying])::text[])))
+    CONSTRAINT chk_suggestion_feedbacks_decision CHECK (((decision)::text = ANY (ARRAY[('accepted'::character varying)::text, ('rejected'::character varying)::text])))
 );
 
 
@@ -8254,7 +8258,8 @@ CREATE TABLE public.whatsapp_attendances (
     accepted_at timestamp(6) without time zone,
     closed_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    campaign_interaction_id bigint
 );
 
 
@@ -8342,6 +8347,53 @@ CREATE SEQUENCE public.whatsapp_business_integrations_id_seq
 --
 
 ALTER SEQUENCE public.whatsapp_business_integrations_id_seq OWNED BY public.whatsapp_business_integrations.id;
+
+
+--
+-- Name: whatsapp_campaign_interactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.whatsapp_campaign_interactions (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    whatsapp_campaign_id bigint NOT NULL,
+    whatsapp_campaign_message_id bigint CONSTRAINT whatsapp_campaign_interacti_whatsapp_campaign_message__not_null NOT NULL,
+    inbound_whatsapp_message_id bigint,
+    source_response_id bigint,
+    event_key character varying NOT NULL,
+    recipient_key character varying NOT NULL,
+    kind character varying NOT NULL,
+    button_key character varying,
+    button_text character varying,
+    body text,
+    action_key character varying,
+    action_label character varying,
+    outcome character varying,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT campaign_interaction_kind CHECK (((kind)::text = ANY (ARRAY[('response'::character varying)::text, ('action'::character varying)::text])))
+);
+
+
+--
+-- Name: whatsapp_campaign_interactions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.whatsapp_campaign_interactions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: whatsapp_campaign_interactions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.whatsapp_campaign_interactions_id_seq OWNED BY public.whatsapp_campaign_interactions.id;
 
 
 --
@@ -8703,12 +8755,15 @@ CREATE TABLE public.whatsapp_sender_numbers (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    cpl_sent_unit_price numeric(10,2) DEFAULT 0.59 NOT NULL,
+    cpl_sent_unit_price numeric(10,2) DEFAULT 0.0 NOT NULL,
     cpl_fla_unit_price numeric(10,2) DEFAULT 0.12 NOT NULL,
     tenant_id bigint NOT NULL,
     use_for_notifications boolean DEFAULT false NOT NULL,
     receptive_response_flow_id bigint,
-    administrative_inbox_enabled boolean DEFAULT true NOT NULL
+    administrative_inbox_enabled boolean DEFAULT true NOT NULL,
+    meta_brl_exchange_rate numeric(18,8),
+    meta_exchange_currency character varying(3),
+    CONSTRAINT whatsapp_sender_meta_exchange_rate_positive CHECK (((meta_brl_exchange_rate IS NULL) OR ((meta_brl_exchange_rate > (0)::numeric) AND (meta_brl_exchange_rate < (1000000)::numeric) AND (meta_exchange_currency IS NOT NULL) AND ((meta_exchange_currency)::text ~ '^[A-Z]{3}$'::text))))
 );
 
 
@@ -10048,6 +10103,13 @@ ALTER TABLE ONLY public.whatsapp_attendances ALTER COLUMN id SET DEFAULT nextval
 --
 
 ALTER TABLE ONLY public.whatsapp_business_integrations ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_business_integrations_id_seq'::regclass);
+
+
+--
+-- Name: whatsapp_campaign_interactions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_interactions ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_campaign_interactions_id_seq'::regclass);
 
 
 --
@@ -11626,6 +11688,14 @@ ALTER TABLE ONLY public.whatsapp_business_integrations
 
 
 --
+-- Name: whatsapp_campaign_interactions whatsapp_campaign_interactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_interactions
+    ADD CONSTRAINT whatsapp_campaign_interactions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: whatsapp_campaign_messages whatsapp_campaign_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12216,6 +12286,13 @@ CREATE INDEX idx_on_connected_by_admin_user_id_2487a8ba72 ON public.whatsapp_bus
 
 
 --
+-- Name: idx_on_inbound_whatsapp_message_id_e303bd5a26; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_inbound_whatsapp_message_id_e303bd5a26 ON public.whatsapp_campaign_interactions USING btree (inbound_whatsapp_message_id);
+
+
+--
 -- Name: idx_on_portal_external_listing_id_a9202d155f; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12325,6 +12402,13 @@ CREATE INDEX idx_on_vista_habitation_code_occurred_at_965a8d5412 ON public.clien
 --
 
 CREATE INDEX idx_on_whatsapp_business_integration_id_1506c99b7b ON public.whatsapp_sender_numbers USING btree (whatsapp_business_integration_id);
+
+
+--
+-- Name: idx_on_whatsapp_campaign_message_id_f62c7f3792; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_whatsapp_campaign_message_id_f62c7f3792 ON public.whatsapp_campaign_interactions USING btree (whatsapp_campaign_message_id);
 
 
 --
@@ -13788,6 +13872,20 @@ CREATE INDEX index_c2s_lead_reactivations_on_tenant_id ON public.c2s_lead_reacti
 --
 
 CREATE UNIQUE INDEX index_c2s_reactivations_on_tenant_message ON public.c2s_lead_reactivations USING btree (tenant_id, whatsapp_campaign_message_id);
+
+
+--
+-- Name: index_campaign_interactions_on_campaign_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_interactions_on_campaign_time ON public.whatsapp_campaign_interactions USING btree (tenant_id, whatsapp_campaign_id, occurred_at);
+
+
+--
+-- Name: index_campaign_interactions_on_tenant_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_campaign_interactions_on_tenant_event ON public.whatsapp_campaign_interactions USING btree (tenant_id, event_key);
 
 
 --
@@ -18089,6 +18187,13 @@ CREATE INDEX index_whatsapp_attendances_on_admin_user_id ON public.whatsapp_atte
 
 
 --
+-- Name: index_whatsapp_attendances_on_campaign_interaction_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_attendances_on_campaign_interaction_id ON public.whatsapp_attendances USING btree (campaign_interaction_id);
+
+
+--
 -- Name: index_whatsapp_attendances_on_closed_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -18170,6 +18275,27 @@ CREATE INDEX index_whatsapp_business_integrations_on_tenant_id_and_status ON pub
 --
 
 CREATE INDEX index_whatsapp_business_integrations_on_waba_id ON public.whatsapp_business_integrations USING btree (waba_id);
+
+
+--
+-- Name: index_whatsapp_campaign_interactions_on_source_response_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_interactions_on_source_response_id ON public.whatsapp_campaign_interactions USING btree (source_response_id);
+
+
+--
+-- Name: index_whatsapp_campaign_interactions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_interactions_on_tenant_id ON public.whatsapp_campaign_interactions USING btree (tenant_id);
+
+
+--
+-- Name: index_whatsapp_campaign_interactions_on_whatsapp_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_interactions_on_whatsapp_campaign_id ON public.whatsapp_campaign_interactions USING btree (whatsapp_campaign_id);
 
 
 --
@@ -19193,6 +19319,14 @@ ALTER TABLE ONLY public.development_aliases
 
 
 --
+-- Name: whatsapp_attendances fk_rails_2f1cf77820; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_attendances
+    ADD CONSTRAINT fk_rails_2f1cf77820 FOREIGN KEY (campaign_interaction_id) REFERENCES public.whatsapp_campaign_interactions(id) ON DELETE SET NULL;
+
+
+--
 -- Name: distribution_rule_agents fk_rails_2ff40d37bc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19286,6 +19420,14 @@ ALTER TABLE ONLY public.linkedin_integrations
 
 ALTER TABLE ONLY public.lead_settings
     ADD CONSTRAINT fk_rails_34bc901d4c FOREIGN KEY (default_distribution_rule_id) REFERENCES public.distribution_rules(id);
+
+
+--
+-- Name: whatsapp_campaign_interactions fk_rails_35049800ff; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_interactions
+    ADD CONSTRAINT fk_rails_35049800ff FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -20073,6 +20215,14 @@ ALTER TABLE ONLY public.ai_property_search_histories
 
 
 --
+-- Name: whatsapp_campaign_interactions fk_rails_7a313dc944; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_interactions
+    ADD CONSTRAINT fk_rails_7a313dc944 FOREIGN KEY (inbound_whatsapp_message_id) REFERENCES public.whatsapp_messages(id) ON DELETE SET NULL;
+
+
+--
 -- Name: home_section_items fk_rails_7b26eeb510; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20681,6 +20831,14 @@ ALTER TABLE ONLY public.commercial_contract_events
 
 
 --
+-- Name: whatsapp_campaign_interactions fk_rails_a661aa7113; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_interactions
+    ADD CONSTRAINT fk_rails_a661aa7113 FOREIGN KEY (source_response_id) REFERENCES public.whatsapp_campaign_interactions(id) ON DELETE CASCADE;
+
+
+--
 -- Name: admin_users fk_rails_a6e17e12bd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21214,6 +21372,14 @@ ALTER TABLE ONLY public.lead_pipeline_stage_transitions
 
 ALTER TABLE ONLY public.presentation_cards
     ADD CONSTRAINT fk_rails_cb854d1c50 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: whatsapp_campaign_interactions fk_rails_cb8be07d9c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_interactions
+    ADD CONSTRAINT fk_rails_cb8be07d9c FOREIGN KEY (whatsapp_campaign_message_id) REFERENCES public.whatsapp_campaign_messages(id) ON DELETE CASCADE;
 
 
 --
@@ -21769,6 +21935,14 @@ ALTER TABLE ONLY public.landing_pages
 
 
 --
+-- Name: whatsapp_campaign_interactions fk_rails_f4b190407b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_interactions
+    ADD CONSTRAINT fk_rails_f4b190407b FOREIGN KEY (whatsapp_campaign_id) REFERENCES public.whatsapp_campaigns(id) ON DELETE CASCADE;
+
+
+--
 -- Name: whatsapp_attendances fk_rails_f4bfc76b8e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21908,11 +22082,14 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 7w19ujgujDWjrUegmLw6Ptq2sFtQOdM8FVAgIWCkLNNnhgL85Be6RpGjuLbnCQf
+\unrestrict u0LjU4ScVl43Phh1kxuIvIo1PQSkaHVAA3LTAbJat9FGTw5UR8IxScYcHW7LIoI
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261114140000'),
+('20261114130000'),
+('20261114120000'),
 ('20261113210000'),
 ('20261113190000'),
 ('20261113170000'),

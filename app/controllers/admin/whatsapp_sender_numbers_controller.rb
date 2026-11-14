@@ -15,8 +15,13 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
   end
 
   def update
-    if @sender_number.update(sender_number_params)
-      redirect_after_save("Parâmetros do número atualizados.")
+    permitted = sender_number_params
+    if @sender_number.update(permitted)
+      if (permitted.keys - %w[cpl_sent_unit_price cpl_fla_unit_price meta_brl_exchange_rate meta_exchange_currency]).empty?
+        redirect_to sender_number_return_path(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number.id)), notice: "Preço ao cliente atualizado."
+      else
+        redirect_after_save("Parâmetros do número atualizados.")
+      end
     else
       redirect_to sender_number_return_path(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number.id)), alert: @sender_number.errors.full_messages.to_sentence
     end
@@ -97,10 +102,15 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
       :quality_rating,
       :use_for_notifications,
       :administrative_inbox_enabled,
+      :meta_brl_exchange_rate,
+      :meta_exchange_currency,
       :cpl_sent_unit_price,
       :cpl_fla_unit_price,
       :whatsapp_business_integration_id
     )
+    permitted[:meta_exchange_currency] = permitted[:meta_exchange_currency].to_s.strip.upcase.presence if permitted.key?(:meta_exchange_currency)
+    normalize_decimal_param!(permitted, :meta_brl_exchange_rate)
+    permitted[:meta_brl_exchange_rate] = nil if permitted.key?(:meta_brl_exchange_rate) && permitted[:meta_brl_exchange_rate].blank?
     normalize_decimal_param!(permitted, :cpl_sent_unit_price)
     normalize_decimal_param!(permitted, :cpl_fla_unit_price)
     permitted

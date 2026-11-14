@@ -1,0 +1,15 @@
+<%= ax_quick_modal(id: "whatsappCustomerPricingModal", title: "Parâmetros do preço", size: :sm) do %>
+  <p class="ax-field__hint">Número: <%= sender.formatted_phone %>. O cliente visualiza somente o preço final.</p>
+  <%= form_with model: [:admin, sender], url: admin_whatsapp_sender_number_path(sender), method: :patch, local: true, data: {turbo_frame: "_top"} do |form| %>
+    <%= hidden_field_tag :return_to, params[:return_to] %>
+    <%= form.hidden_field :meta_exchange_currency, value: currency.presence || sender.meta_exchange_currency %>
+    <%= ax_field_grid(columns: 1) do %>
+      <%= ax_text_field(form: form, method: :cpl_sent_unit_price, label: "Adicional por entregue (R$)", value: number_with_precision(sender.cpl_sent_unit_price, precision: 2, separator: ",", delimiter: ""), inputmode: "decimal", hint: "Use zero para cobrar somente o custo informado pela Meta, convertido pela cotação fixa. Falhas não são cobradas.") %>
+      <%= ax_text_field(form: form, method: :meta_brl_exchange_rate, label: "Cotação fixa para reais", value: sender.meta_brl_exchange_rate ? number_with_precision(sender.meta_brl_exchange_rate, precision: 8, strip_insignificant_zeros: true, separator: ",", delimiter: "") : "", inputmode: "decimal", hint: currency.present? ? "Reais por 1 #{currency}. Se a Meta cobrar em BRL, a conversão usa 1 automaticamente." : "Reais por unidade da moeda da Meta. Sem custo oficial ou sem cotação, o preço fica indisponível.") %>
+    <% end %>
+    <div class="ax-integration-actions">
+      <%= button_tag "Cancelar", type: :button, class: "ax-btn ax-btn--ghost", data: {action: "ax-modal#close"} %>
+      <%= form.submit "Salvar", class: "ax-btn ax-btn--primary" %>
+    </div>
+  <% end %>
+<% end %>

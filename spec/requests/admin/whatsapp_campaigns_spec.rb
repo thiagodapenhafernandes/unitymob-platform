@@ -20,6 +20,130 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
     sign_in admin
   end
 
+  describe "indicadores de interação da Unitymob" do
+    let(:sender) { create(:whatsapp_sender_number, tenant: admin.tenant) }
+    let(:buttons) do
+      admin.tenant.whatsapp_templates.create!(name: "metric-buttons", language: "pt_BR", status: "APPROVED", body: "Opções",
+        buttons: {"0" => {"kind" => "quick_reply", "text" => "Visitar"}, "1" => {"kind" => "quick_reply", "text" => "Agora não"}})
+    end
+    let(:campaign) do
+      admin.tenant.whatsapp_campaigns.create!(name: "Métrica selecionada", group_name: "Grupo selecionado", whatsapp_sender_number: sender,
+        whatsapp_template: buttons, created_by: admin, status: "completed", total_recipients: 2,
+        response_decisions: {buttons: buttons.interactive_buttons.map { |b| b.merge("action" => "ignore") }})
+    end
+
+    def click_message(campaign, phone, text, id)
+      message = campaign.campaign_messages.find_or_create_by!(phone_number: phone) { |m| m.status = "delivered"; m.sent_at = Time.current }
+      message.mark_replied!(raw_payload: {"id" => id, "type" => "button", "button" => {"text" => text}})
+      message
+    end
+
+    it "usa os mesmos filtros nos indicadores e nos grupos" do
+      click_message(campaign, "5511999990000", "Visitar", "click-1")
+      click_message(campaign, "5511999990000", "Visitar", "click-2")
+      campaign.refresh_counters!
+      excluded = admin.tenant.whatsapp_campaigns.create!(name: "Fora do filtro", group_name: "Grupo excluído", whatsapp_sender_number: sender, whatsapp_template: buttons, created_by: admin, status: "draft")
+      click_message(excluded, "5511999990001", "Agora não", "click-excluded")
+      get admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id, status: "completed")
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Grupo selecionado", "Métrica selecionada", "Interações 1", "Cliques 2")
+      groups = Nokogiri::HTML(response.body).css("table").find { |table| table.at_css("caption")&.text&.include?("Grupos de campanhas") }
+      expect(groups.text).not_to include("Grupo excluído", "Fora do filtro")
+    end
+
+    it "separa destinatários, cliques e resultados no detalhe e na atualização ao vivo" do
+      message = click_message(campaign, "5511999990000", "Visitar", "click-1")
+      click_message(campaign, "5511999990000", "Agora não", "click-2")
+      get status_admin_whatsapp_campaign_path(campaign)
+      data = response.parsed_body
+      expect(data["metrics"]).to include("interactions" => 1, "clicks" => 2, "attended" => 0, "forwarded" => 0)
+      expect(data["response_cards"].map { |row| [row["label"], row["count"]] }).to contain_exactly(["Visitar", 1], ["Agora não", 1])
+      expect(data["recent_interactions"].count { |row| row["kind"] == "Clique" }).to eq(2)
+      get admin_whatsapp_campaign_path(campaign)
+      expect(response.body).to include("Histórico de interações", "O que aconteceu na Unitymob", "Configurada:")
+      expect(response.body).not_to include("viraram lead")
+    end
+
+    it "mantém o denominador das taxas consistente com as entregas" do
+      click_message(campaign, "5511999990000", "Visitar", "click-1")
+      campaign.campaign_messages.create!(phone_number: "5511999990001", status: "sent", sent_at: Time.current)
+      get status_admin_whatsapp_campaign_path(campaign)
+      data = response.parsed_body["metrics"]
+      expect(data).to include("sent" => 2, "delivered" => 1, "delivery_rate" => 50.0, "read_rate" => 100.0, "reply_rate" => 100.0)
+    end
+  end
+
+  describe "cobrança oficial e preço final" do
+    let(:sender) { create(:whatsapp_sender_number, tenant: admin.tenant, cpl_sent_unit_price: 0.59, meta_brl_exchange_rate: 5, meta_exchange_currency: "USD") }
+    let(:report) { Whatsapp::PricingAnalytics::Result.new(amount: BigDecimal("0.4375"), currency: "USD", delivered: 7, checked_at: Time.current) }
+
+    it "exibe um único preço final com adicional e cotação sem expor a decomposição" do
+      allow(Whatsapp::PricingAnalytics).to receive(:call).and_return(report)
+      get pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id)
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      cost = html.at_css('[aria-label="Gasto total"] .ax-metric-card__value').text
+      expect(cost).to include("6,32")
+      expect(response.body).to include("Ajustar parâmetros do preço", "Cotação fixa para reais")
+      expect(response.body).not_to include("USD 0,44", "Valor por FLA")
+    end
+
+    it "com adicional zero apresenta somente custo Meta convertido" do
+      sender.update!(cpl_sent_unit_price: 0)
+      allow(Whatsapp::PricingAnalytics).to receive(:call).and_return(report)
+      get pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id)
+      expect(Nokogiri::HTML(response.body).at_css('[aria-label="Gasto total"] .ax-metric-card__value').text).to include("2,19")
+    end
+
+    it "não mostra zero ou o preço configurado como substituto do custo bloqueado" do
+      allow(Whatsapp::PricingAnalytics).to receive(:call).and_return(Whatsapp::PricingAnalytics::Result.new(currency: "USD", delivered: 7, message: "Custo bloqueado por parceiro"))
+      get pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id)
+      expect(response.body).to include("Indisponível", "Custo bloqueado por parceiro")
+    end
+
+    it "recusa número de outra conta antes da API" do
+      foreign = Tenant.create!(name: "Outra", slug: "price-account-#{SecureRandom.hex(3)}")
+      number = create(:whatsapp_sender_number, tenant: foreign, whatsapp_business_integration: create(:whatsapp_business_integration, tenant: foreign, connected_by_admin_user: create(:admin_user, :admin, tenant: foreign)))
+      expect(Whatsapp::PricingAnalytics).not_to receive(:call)
+      get pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: number.id)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "recusa período inválido antes da API" do
+      expect(Whatsapp::PricingAnalytics).not_to receive(:call)
+      get pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id, pricing_started_on: "inválida")
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "recusa datas compostas sem erro interno ou consulta externa" do
+      expect(Whatsapp::PricingAnalytics).not_to receive(:call)
+      get pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id), params: {pricing_started_on: [Date.current.iso8601]}
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "carrega a cobrança separadamente sem atrasar as telas operacionais" do
+      expect(Whatsapp::PricingAnalytics).not_to receive(:call)
+      get admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id)
+      expect(response.body).to include("whatsapp_meta_pricing", "loading=\"lazy\"")
+      expect(response.body).not_to include("estimativa do período", "Valor por FLA")
+    end
+
+    it "salva cotação e adicional sem refazer inscrições na Meta" do
+      expect(Whatsapp::SenderNumberConnector).not_to receive(:call)
+      patch admin_whatsapp_sender_number_path(sender), params: {whatsapp_sender_number: {cpl_sent_unit_price: "0,00", meta_brl_exchange_rate: "5,25", meta_exchange_currency: "USD"}}
+      expect(sender.reload.cpl_sent_unit_price).to eq(0)
+      expect(sender.meta_brl_exchange_rate).to eq(BigDecimal("5.25"))
+      expect(response).to have_http_status(:redirect)
+    end
+
+    it "não consulta os custos globais para usuário limitado às próprias campanhas" do
+      allow_any_instance_of(Admin::WhatsappCampaignsController).to receive(:visible_owner_ids).with(:whatsapp_campaigns).and_return([admin.id])
+      expect(Whatsapp::PricingAnalytics).not_to receive(:call)
+      get pricing_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id)
+      expect(response.body).to include("restrito")
+    end
+  end
+
   it "oferece somente filas ativas da conta que recebem campanhas" do
     create(:external_lead_integration, tenant: admin.tenant)
     enabled = create(:distribution_rule, tenant: admin.tenant, source_whatsapp_campaign: true, delivery_destination: "c2s")
@@ -763,6 +887,26 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
   end
 
   describe "POST create" do
+    %w[draft schedule start_now].each do |action|
+      it "bloqueia #{action} com CSV fora do formato mesmo sem passar pela prévia" do
+        file = Tempfile.new(["cabecalho-invalido", ".csv"])
+        file.write("Nome do cliente,Telefone do cliente\nMaria,11999990000\n")
+        file.rewind
+        expect {
+          post admin_whatsapp_campaigns_path, params: {
+            commit_action: action,
+            whatsapp_campaign: { name: "CSV inválido", whatsapp_template_id: template.id,
+              audience_mode: "spreadsheet", scheduled_at: 1.day.from_now,
+              audience_file: Rack::Test::UploadedFile.new(file.path, "text/csv", original_filename: "leads.csv") }
+          }
+        }.not_to change(WhatsappCampaign, :count)
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.body).to include("Colunas não reconhecidas", "Corrija o arquivo antes de importar")
+      ensure
+        file&.close!
+      end
+    end
+
     it "salva rascunho" do
       sender = create(:whatsapp_sender_number)
 
