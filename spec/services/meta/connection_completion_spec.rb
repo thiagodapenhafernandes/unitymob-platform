@@ -17,6 +17,20 @@ RSpec.describe Meta::ConnectionCompletion do
     expect(integration.reload.access_token).to eq('new')
     expect(integration.selected_page_ids).to eq(['page-1'])
   end
+  it 'reconnects a disconnected integration preserving forms, page selection and Instagram settings' do
+    page = create(:meta_facebook_page, user_meta_integration: integration, page_id: 'page-1', instagram_id: 'ig-1')
+    form = create(:meta_lead_form, meta_facebook_page: page)
+    integration.disconnect!
+    described_class.call(integration: integration, identity: identity)
+    expect(integration.reload).not_to be_disconnected
+    expect(integration.access_token).to eq('new')
+    expect(integration.selected_page_ids).to eq(['page-1'])
+    expect(page.reload.instagram_id).to eq('ig-1')
+    expect(form.reload).to be_persisted
+    expect(integration.sync_status).to eq('processing')
+    expect(MetaSyncJob).to have_received(:perform_later).with(integration.id)
+  end
+
   it 'refuses a token that drops Instagram without modifying the integration' do
     identity['granted_permissions'] = ['ads_management']
     expect { described_class.call(integration: integration, identity: identity, preserve_permissions: true) }.to raise_error(described_class::PermissionLoss)

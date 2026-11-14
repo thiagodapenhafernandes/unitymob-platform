@@ -16,7 +16,8 @@ module Instagram
       raise Error, "Nenhum Instagram profissional acessível nesta página." if page.instagram_id.blank?
       verify_app_subscription!
       page.with_lock do
-        raise Error, "Página removida da seleção desta conta." unless page.active? && page.user_meta_integration.reload.selected_page_ids.include?(page.page_id)
+        integration = page.user_meta_integration.reload
+        raise Error, "Página removida da seleção desta conta ou conexão desconectada." unless page.active? && !integration.disconnected? && integration.selected_page_ids.include?(page.page_id)
         page.update!(instagram_enabled: true) # Unique index prevents ambiguous routing.
         if Meta::WebhookConfiguration.gateway?
           route_page = Struct.new(:page_id, :active?).new(page.instagram_id, true)

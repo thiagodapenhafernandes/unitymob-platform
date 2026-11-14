@@ -9,7 +9,7 @@ class MetaFacebookPage < ApplicationRecord
 
   scope :available_for_distribution, ->(tenant_id) {
     joins(:user_meta_integration)
-      .where(user_meta_integrations: { tenant_id: tenant_id })
+      .where(user_meta_integrations: { tenant_id: tenant_id, disconnected_at: nil })
       .where(active: true)
       .where("user_meta_integrations.selected_page_ids @> jsonb_build_array(meta_facebook_pages.page_id)")
   }

@@ -7992,7 +7992,8 @@ CREATE TABLE public.user_meta_integrations (
     last_sync_error text,
     selected_page_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
     ad_accounts jsonb DEFAULT '{}'::jsonb NOT NULL,
-    last_webhook_at timestamp(6) without time zone
+    last_webhook_at timestamp(6) without time zone,
+    disconnected_at timestamp(6) without time zone
 );
 
 
@@ -21780,6 +21781,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261113210000'),
 ('20261113170000'),
 ('20261113150000'),
 ('20261113130000'),

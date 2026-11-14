@@ -119,20 +119,20 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(forms_frame.ancestors("details").first["open"]).to be_nil
   end
 
-  it "oculta o catálogo e bloqueia seleção e consultas amplas fora da impersonação" do
+  it "permite escolher páginas da própria conexão, preservando consultas amplas restritas ao suporte" do
     page
     other = create(:meta_facebook_page, user_meta_integration: integration, name: "Outra imobiliária", active: true)
     get admin_meta_integrations_path
     expect(response.body).to include(page.name)
-    expect(response.body).not_to include(other.name, "meta_page_selection")
+    expect(response.body).to include(other.name, "meta_page_selection")
     streams = Nokogiri::HTML(response.body).css("turbo-cable-stream-source").map { |node| Turbo::StreamsChannel.verified_stream_name(node["signed-stream-name"]) }
-    expect(streams).not_to include("meta_selection_#{integration.id}")
+    expect(streams).to include("meta_selection_#{integration.id}")
 
     patch selected_pages_admin_meta_integrations_path, params: {meta_integration: {selected_page_ids: [other.page_id]}}
-    expect(response).to have_http_status(:forbidden)
-    expect(integration.reload.selected_page_ids).to eq([page.page_id])
-    expect(MetaSyncJob).not_to have_been_enqueued
-    get list_forms_admin_meta_integrations_path(page_id: other.id)
+    expect(response).to redirect_to(admin_meta_integrations_path)
+    expect(integration.reload.selected_page_ids).to eq([other.page_id])
+    expect(MetaSyncJob).to have_been_enqueued.with(integration.id)
+    get list_forms_admin_meta_integrations_path(page_id: page.id)
     expect(response).to have_http_status(:not_found)
     expect(Facebook::MetaService).not_to receive(:new)
     get ad_accounts_admin_meta_integrations_path(all: "1")
@@ -178,6 +178,40 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     get admin_meta_integrations_path
     expect(response.body).to include("Inscrição de mensagens pendente")
     expect(response.body).not_to include("Pronto para receber")
+  end
+
+  it "desconecta sem apagar páginas, formulários ou seleção e impede sincronização até reconectar" do
+    page.update!(instagram_enabled: true)
+    form = create(:meta_lead_form, meta_facebook_page: page)
+    delete disconnect_admin_meta_integrations_path
+    expect(integration.reload).to be_disconnected
+    expect(integration.access_token).to be_nil
+    expect(integration.selected_page_ids).to eq([page.page_id])
+    expect(page.reload).not_to be_active
+    expect(page).not_to be_instagram_enabled
+    expect(page.access_token).to be_nil
+    expect(form.reload).to be_persisted
+    post sync_pages_admin_meta_integrations_path, as: :json
+    expect(response).to have_http_status(:unprocessable_content)
+    get admin_meta_integrations_path
+    expect(response.body).to include("Não conectada")
+  end
+
+  it "mantém a seleção restrita a usuários que gerenciam integrações" do
+    page
+    sign_in create(:admin_user)
+    patch selected_pages_admin_meta_integrations_path, params: {meta_integration: {selected_page_ids: [page.page_id]}}
+    expect(response).to redirect_to(admin_root_path)
+    expect(integration.reload.selected_page_ids).to eq([page.page_id])
+    expect(MetaSyncJob).not_to have_been_enqueued
+  end
+
+  it "recusa seleção de página de outra conexão mesmo com permissão para integrações" do
+    integration
+    other = create(:meta_facebook_page)
+    patch selected_pages_admin_meta_integrations_path, params: {meta_integration: {selected_page_ids: [other.page_id]}}
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(integration.reload.selected_page_ids).to be_empty
   end
 
   it "salva a seleção local sem alterar outra integração e agenda a sincronização" do

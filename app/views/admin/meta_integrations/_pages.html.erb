@@ -1,3 +1,4 @@
+<% integration = local_assigns[:integration] || @integration %>
 <div id="meta_pages">
   <% pages_actions = capture do %>
     <%= button_to sync_forms_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--primary" do %>
@@ -6,14 +7,14 @@
     <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn" do %>
       <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Atualizar páginas
     <% end %>
-    <% if respond_to?(:impersonating_admin_user?) && impersonating_admin_user? %>
+    <% if integration.present? %>
       <%= button_tag "Selecionar páginas", type: "button", class: "ax-btn", data: {ax_modal_open: "metaPageSelectionModal"} %>
     <% end %>
   <% end %>
-  <% if respond_to?(:impersonating_admin_user?) && impersonating_admin_user? %>
-    <%= turbo_stream_from "meta_selection_#{@integration.id}" %>
+  <% if integration.present? %>
+    <%= turbo_stream_from "meta_selection_#{integration.id}" %>
     <%= ax_quick_modal(id: "metaPageSelectionModal", title: "Selecionar páginas") do %>
-      <%= render "admin/meta_integrations/page_selection", integration: @integration %>
+      <%= render "admin/meta_integrations/page_selection", integration: integration %>
     <% end %>
   <% end %>
   <%= ax_form_section(title: "Páginas conectadas", subtitle: "Escolha as páginas da sua imobiliária. Os formulários e as mensagens do Instagram seguem a sua seleção.", class_name: "ax-form-section--comfortable", icon: "facebook", actions: pages_actions, tooltip: "Cada formulário de anúncio das páginas abaixo envia os contatos para o CRM.") do %>
