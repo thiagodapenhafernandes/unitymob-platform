@@ -102,6 +102,7 @@ class Tenant < ApplicationRecord
   has_many :whatsapp_sender_numbers, dependent: :restrict_with_error
   has_many :notification_template_settings, dependent: :restrict_with_error
   has_many :whatsapp_campaign_recipients, dependent: :restrict_with_error
+  has_many :whatsapp_campaign_interactions, dependent: :delete_all
   has_many :whatsapp_campaign_messages, dependent: :restrict_with_error
   has_many :whatsapp_campaign_unsubscribes, dependent: :restrict_with_error
   has_many :whatsapp_conversations, dependent: :restrict_with_error

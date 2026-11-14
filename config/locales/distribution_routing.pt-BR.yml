@@ -1,0 +1,7 @@
+pt-BR:
+  activerecord:
+    attributes:
+      distribution_rule:
+        c2s_negotiation_type: "Tipo de negociação"
+        c2s_negotiation_other: "Outro tipo de negociação"
+        c2s_source: "Fonte"

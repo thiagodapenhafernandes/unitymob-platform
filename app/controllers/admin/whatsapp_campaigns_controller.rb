@@ -1,6 +1,6 @@
 class Admin::WhatsappCampaignsController < Admin::BaseController
-  requires_permission :view, :whatsapp_campaigns, only: [:index, :show, :status, :documentation]
-  requires_permission :manage, :whatsapp_campaigns, except: [:index, :show, :status, :documentation]
+  requires_permission :view, :whatsapp_campaigns, only: [:index, :show, :status, :documentation, :pricing]
+  requires_permission :manage, :whatsapp_campaigns, except: [:index, :show, :status, :documentation, :pricing]
   before_action :set_campaign, only: [:show, :edit, :update, :destroy, :start, :pause, :resume, :cancel, :cancel_pending, :retry_failed, :status]
   before_action :load_options, only: [:new, :edit, :create, :update]
 
@@ -10,8 +10,10 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     @number_selection_only = @selected_sender_number.blank?
     @filters = campaign_filters
     @sender_numbers = current_tenant.whatsapp_sender_numbers.active.ordered
-    @campaign_groups = grouped_campaigns(base_campaign_scope)
     scoped = apply_campaign_filters(base_campaign_scope)
+    @campaign_groups = grouped_campaigns(scoped)
+    @interaction_metrics = Whatsapp::CampaignInteractionMetrics.new(tenant: current_tenant, campaigns: @number_selection_only ? scoped.none : scoped)
+    @group_interactions = @number_selection_only ? {} : grouped_interaction_metrics(scoped)
     @campaigns = scoped.recent.paginate(page: params[:page], per_page: 25)
     @dashboard = campaign_dashboard(scoped)
     @filter_options = campaign_filter_options
@@ -21,6 +23,9 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   def show
     @campaign.refresh_counters!
     @metrics = campaign_metrics
+    @response_cards = campaign_interaction_metrics.button_cards(@campaign)
+    @outcome_cards = campaign_outcome_cards
+    @interactions = @campaign.interactions.includes(whatsapp_campaign_message: [:lead, :whatsapp_campaign_recipient]).order(occurred_at: :desc, id: :desc).paginate(page: params[:interaction_page], per_page: 30)
     @failure_summary = campaign_failure_summary
     @messages_status = params[:messages_status].to_s.presence
     @messages_query = params[:messages_query].to_s.strip.presence
@@ -34,6 +39,23 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     @messages_query = params[:messages_query].to_s.strip.presence
 
     render json: campaign_live_status_payload
+  end
+
+  def pricing
+    sender = current_tenant.whatsapp_sender_numbers.find_by!(id: params[:whatsapp_sender_number_id].to_s)
+    @pricing_sender = sender
+    @pricing_starts_on = params[:pricing_started_on].present? ? Date.iso8601(params[:pricing_started_on].to_s) : Date.current.beginning_of_month
+    @pricing_ends_on = params[:pricing_ended_on].present? ? Date.iso8601(params[:pricing_ended_on].to_s) : Date.current
+    if visible_owner_ids(:whatsapp_campaigns).present?
+      @pricing_report = Whatsapp::PricingAnalytics::Result.new(message: "O custo do número é restrito a quem pode visualizar todas as campanhas da conta.")
+    else
+      @pricing_report = Whatsapp::PricingAnalytics.call(tenant: current_tenant, sender: sender,
+        starts_on: @pricing_starts_on, ends_on: @pricing_ends_on)
+    end
+    render partial: "admin/shared/whatsapp/pricing_report"
+  rescue Date::Error, ArgumentError
+    @pricing_report = Whatsapp::PricingAnalytics::Result.new(message: "Escolha um período válido dentro dos últimos 12 meses, sem datas futuras.")
+    render partial: "admin/shared/whatsapp/pricing_report", status: :unprocessable_content
   end
 
   def documentation
@@ -567,9 +589,37 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
         "SUM(total_recipients) AS total_recipients_sum",
         "SUM(sent_count) AS sent_count_sum",
         "SUM(failed_count) AS failed_count_sum",
+        "SUM(delivered_count) AS delivered_count_sum",
         "SUM(replied_count) AS replied_count_sum"
       )
       .order(:group_name)
+  end
+
+  def campaign_interaction_metrics
+    @interaction_metrics ||= Whatsapp::CampaignInteractionMetrics.new(tenant: current_tenant,
+      campaigns: current_tenant.whatsapp_campaigns.where(id: @campaign.id))
+  end
+
+  def campaign_outcome_cards
+    campaign_interaction_metrics.totals[:outcomes].map do |key, count|
+      {key: key, label: WhatsappCampaignInteraction::OUTCOME_LABELS[key] || key.humanize, count: count,
+       rate: percent(count, @campaign.delivered_count), tone: "green", icon: "bi-check2-circle",
+       hint: "Destinatários únicos com este resultado confirmado na Unitymob"}
+    end
+  end
+
+  def grouped_interaction_metrics(scope)
+    groups = Hash.new { |hash, key| hash[key] = {interactions: 0, clicks: 0, attended: 0, outcomes: {}} }
+    @group_campaign_names = Hash.new { |hash, key| hash[key] = [] }
+    scope.except(:includes, :preload, :eager_load, :order).pluck(:id, :group_name, :name).each do |id, name, campaign_name|
+      @group_campaign_names[name] << campaign_name
+      row = @interaction_metrics.by_campaign[id]
+      groups[name][:interactions] += row[:interactions]
+      groups[name][:clicks] += row[:clicks]
+      groups[name][:attended] += row[:outcomes].fetch("attendance_started", 0)
+      row[:outcomes].each { |key, n| groups[name][:outcomes][key] = groups[name][:outcomes].fetch(key, 0) + n }
+    end
+    groups
   end
 
   def campaign_dashboard(scope)
@@ -583,8 +633,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
       Arel.sql("COALESCE(SUM(read_count), 0)")
     )
     total, sent, failed, replied, delivered, read = totals.map(&:to_i)
-    cost = @selected_sender_number&.campaign_cost(sent_count: sent, failed_count: failed) ||
-           ((sent * 0.59.to_d) + (failed * 0.12.to_d))
+    interactions = @interaction_metrics.totals
     {
       active: totals_scope.active.count,
       total: total,
@@ -593,13 +642,19 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
       replied: replied,
       delivered: delivered,
       read: read,
-      attended: replied,
-      unattended: [sent - replied - failed, 0].max,
+      interactions: interactions[:interactions],
+      clicks: interactions[:clicks],
+      free_responses: interactions[:free_responses],
+      history_incomplete: interactions[:history_incomplete],
+      attended: interactions[:outcomes].fetch("attendance_started", 0),
+      unattended: [interactions[:interactions] - interactions[:outcomes].fetch("attendance_started", 0), 0].max,
       delivery_rate: percent(delivered, sent),
-      read_rate: percent(read, sent),
-      reply_rate: percent(replied, sent),
-      cpl: replied.positive? ? cost / replied : 0.to_d,
-      cost: cost
+      sent_rate: percent(sent, total),
+      failure_rate: percent(failed, total),
+      read_rate: percent(read, delivered),
+      reply_rate: percent(interactions[:interactions], delivered),
+      cpl: nil,
+      cost: nil
     }
   end
 
@@ -650,7 +705,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     read = @campaign.read_count.to_i
     replied = @campaign.replied_count.to_i
     failed = @campaign.failed_count.to_i
-    cost = @campaign.estimated_cost
+    interactions = campaign_interaction_metrics.totals
     {
       total: total,
       sent: sent,
@@ -658,13 +713,19 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
       read: read,
       replied: replied,
       failed: failed,
-      attended: @campaign.attended_count,
-      unattended: @campaign.unattended_count,
-      cost: cost,
-      cpl: @campaign.estimated_cpl,
+      interactions: interactions[:interactions],
+      clicks: interactions[:clicks],
+      free_responses: interactions[:free_responses],
+      history_incomplete: interactions[:history_incomplete],
+      attended: interactions[:outcomes].fetch("attendance_started", 0),
+      forwarded: interactions[:outcomes].fetch("forwarded", 0),
+      unattended: [interactions[:interactions] - interactions[:outcomes].fetch("attendance_started", 0), 0].max,
+      cost: nil,
+      cpl: nil,
       delivery_rate: percent(delivered, sent),
-      read_rate: percent(read, sent),
-      reply_rate: percent(replied, sent),
+      sent_rate: percent(sent, total),
+      read_rate: percent(read, delivered),
+      reply_rate: percent(interactions[:interactions], delivered),
       failure_rate: percent(failed, total)
     }
   end
@@ -682,10 +743,22 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
       progress_percent: progress[:percent],
       pending_count: progress[:pending_count],
       metrics: metrics,
-      response_cards: @campaign.dynamic_response_cards,
+      response_cards: campaign_interaction_metrics.button_cards(@campaign),
+      outcome_cards: campaign_outcome_cards,
+      recent_interactions: recent_campaign_interactions,
       failure_summary: campaign_failure_summary,
       recent_messages: recent_campaign_messages
     }
+  end
+
+  def recent_campaign_interactions
+    @campaign.interactions.includes(whatsapp_campaign_message: [:lead, :whatsapp_campaign_recipient]).order(occurred_at: :desc, id: :desc).limit(30).map do |event|
+      {id: event.id, occurred_at: l(event.occurred_at, format: :short),
+       recipient: event.whatsapp_campaign_message.display_name,
+       kind: event.kind == "response" ? (event.button_text.present? ? "Clique" : "Resposta sem botão") : "Resultado interno",
+       label: event.kind == "response" ? (event.button_text.presence || event.body.presence || "Mídia recebida") : event.outcome_label,
+       action: event.kind == "response" && event.action_label.present? ? "Configurada: #{event.action_label}" : event.action_label, legacy: event.metadata["legacy_snapshot"] == true}
+    end
   end
 
   def campaign_progress(metrics = campaign_metrics)

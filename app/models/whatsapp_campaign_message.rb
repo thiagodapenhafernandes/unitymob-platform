@@ -89,6 +89,8 @@ class WhatsappCampaignMessage < ApplicationRecord
   belongs_to :whatsapp_message, optional: true
 
   validates :phone_number, presence: true
+  has_many :interactions, class_name: "WhatsappCampaignInteraction", dependent: :delete_all
+
   validates :status, inclusion: { in: STATUSES }
   validates :external_message_id, uniqueness: { scope: :tenant_id }, allow_blank: true
   before_validation :normalize_phone_number
@@ -164,13 +166,25 @@ class WhatsappCampaignMessage < ApplicationRecord
   end
 
   def mark_replied!(at: Time.current, inbound_message: nil, raw_payload: nil)
-    reply_attrs = reply_attributes(inbound_message, raw_payload)
-    update!(reply_attrs.merge(status: "replied", replied_at: at))
-    apply_response_decision! unless whatsapp_campaign.automation_driven_response_decisions?
+    interaction = nil
+    with_lock do
+      if replied? && !interactions.responses.exists?
+        WhatsappCampaignInteraction.record_response!(message: self,
+          attributes: attributes.symbolize_keys, at: replied_at || updated_at, legacy: true)
+      end
+      reply_attrs = reply_attributes(inbound_message, raw_payload)
+      interaction = WhatsappCampaignInteraction.record_response!(message: self, inbound: inbound_message,
+        attributes: reply_attrs, at: at)
+      return interaction unless interaction.previously_new_record?
+      update!(reply_attrs.merge(status: "replied", replied_at: at))
+    end
+    apply_response_decision!(interaction: interaction) unless whatsapp_campaign.automation_driven_response_decisions?
     refresh_campaign_and_emit!(
       "whatsapp_campaign_message_replied",
-      payload: inbound_payload(inbound_message).merge(reply_attrs.slice(:reply_type, :reply_body, :reply_button_text, :reply_button_payload, :reply_payload)).compact
+      payload: inbound_payload(inbound_message).merge(campaign_interaction_id: interaction.id)
+        .merge(reply_attributes(inbound_message, raw_payload).slice(:reply_type, :reply_body, :reply_button_text, :reply_button_payload, :reply_payload)).compact
     )
+    interaction
   end
 
   # source :meta (default) = webhook de status da Meta, autoritativo: pode
@@ -415,7 +429,7 @@ class WhatsappCampaignMessage < ApplicationRecord
       reply_button_text: button_text.to_s.strip.presence,
       reply_button_payload: button_payload.to_s.strip.presence,
       reply_payload: compact_reply_payload(raw)
-    }.compact
+    }
   end
 
   def compact_reply_payload(raw)
@@ -432,7 +446,7 @@ class WhatsappCampaignMessage < ApplicationRecord
     }.compact
   end
 
-  def apply_response_decision!
+  def apply_response_decision!(interaction: nil)
     decision = whatsapp_campaign.response_decision_for(
       button_text: reply_button_text.presence || reply_body,
       button_payload: reply_button_payload
@@ -454,6 +468,10 @@ class WhatsappCampaignMessage < ApplicationRecord
       return unless recipient
 
       created_lead = recipient.convert_to_lead!(distribution_rule: distribution_rule)
+      if distribution_rule.destination_unitymob? && created_lead.distribution_rule_id == distribution_rule.id
+        WhatsappCampaignInteraction.record_action!(response: interaction, action_key: action,
+          label: "Encaminhado à fila", outcome: "forwarded", metadata: {rule_id: distribution_rule.id})
+      end
       update_column(:lead_id, created_lead.id)
       LeadActivity.log!(
         lead: created_lead,
@@ -468,8 +486,10 @@ class WhatsappCampaignMessage < ApplicationRecord
       )
     when "mark_no_interest"
       recipient&.mark_no_interest!
+      WhatsappCampaignInteraction.record_action!(response: interaction, action_key: action, label: "Marcado sem interesse", outcome: "no_interest")
     when "unsubscribe"
       recipient&.unsubscribe!
+      WhatsappCampaignInteraction.record_action!(response: interaction, action_key: action, label: "Descadastrado", outcome: "unsubscribed")
       sender_number = whatsapp_campaign.sender_number
       if sender_number
         WhatsappCampaignUnsubscribe.register!(
@@ -487,6 +507,7 @@ class WhatsappCampaignMessage < ApplicationRecord
       end
     when "ignore"
       recipient&.update!(conversion_status: "ignored") if recipient&.conversion_status == "pending"
+      WhatsappCampaignInteraction.record_action!(response: interaction, action_key: action, label: "Resposta registrada", outcome: "recorded")
     end
   end
 

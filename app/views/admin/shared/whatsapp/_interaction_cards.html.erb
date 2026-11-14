@@ -1,0 +1,10 @@
+<% cards.each do |card| %>
+  <article class="whatsapp-response-card whatsapp-response-card--<%= card[:tone] %>">
+    <i class="bi <%= card[:icon] %>" aria-hidden="true"></i>
+    <span><%= card[:label] %></span>
+    <strong><%= card[:count].nil? ? "Não mensurável" : number_with_delimiter(card[:count]) %></strong>
+    <% unless card[:rate].nil? %><small><%= number_with_precision(card[:rate], precision: 1, separator: ",") %>% das entregues</small><% end %>
+    <% if card[:action_label].present? %><small><%= card[:action_label] %></small><% end %>
+    <small><%= card[:hint] %></small>
+  </article>
+<% end %>

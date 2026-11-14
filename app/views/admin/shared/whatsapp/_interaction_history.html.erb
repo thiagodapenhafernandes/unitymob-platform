@@ -1,0 +1,21 @@
+<%= ax_operational_panel(eyebrow: "Campanha", title: "Histórico de interações e resultados internos") do %>
+  <p class="ax-field__hint">Cada resposta recebida e cada resultado confirmado permanece no histórico. Reentregas do mesmo webhook não geram novos cliques. Respostas anteriores a esta atualização possuem apenas o último registro disponível; cliques antigos não registrados não podem ser recuperados.</p>
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead><tr><th>Quando</th><th>Destinatário</th><th>Tipo</th><th>Interação ou resultado</th><th>Ação</th></tr></thead>
+      <tbody <%= 'data-whatsapp-campaign-live-target="interactionHistory"'.html_safe if params[:interaction_page].to_i <= 1 %>>
+        <% interactions.each do |event| %>
+          <tr>
+            <td><%= l(event.occurred_at, format: :short) %></td>
+            <td><%= event.whatsapp_campaign_message.display_name %></td>
+            <td><%= event.kind == "action" ? "Resultado interno" : (event.button_text.present? ? "Clique" : "Resposta sem botão") %><%= " · registro anterior" if event.metadata["legacy_snapshot"] %></td>
+            <td><%= event.kind == "action" ? event.outcome_label : (event.button_text.presence || event.body.presence || "Mídia recebida") %></td>
+            <td><%= event.kind == "response" && event.action_label.present? ? "Configurada: #{event.action_label}" : (event.action_label.presence || "—") %></td>
+          </tr>
+        <% end %>
+        <% if interactions.empty? %><tr><td colspan="5" class="ax-table__empty">Nenhum evento detalhado registrado. Respostas antigas continuam em Mensagens recentes.</td></tr><% end %>
+      </tbody>
+    </table>
+  </div>
+  <%= will_paginate interactions, param_name: :interaction_page %>
+<% end %>

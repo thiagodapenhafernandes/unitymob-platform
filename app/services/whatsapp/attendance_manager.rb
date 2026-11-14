@@ -10,7 +10,7 @@ module Whatsapp
     FinishResult = Struct.new(:ok?, :warning, keyword_init: true)
 
     class << self
-      def open!(conversation:, lead:, flow:, action:)
+      def open!(conversation:, lead:, flow:, action:, campaign_interaction: nil)
         tenant = conversation.tenant
         rule, owner, pool = resolve(tenant, action, lead: lead)
         unless owner && assign(lead, rule, owner)
@@ -22,10 +22,11 @@ module Whatsapp
         end
 
         attendance = conversation.attendances.create!(
-          tenant: tenant, lead: lead, whatsapp_response_flow: flow, distribution_rule: rule, admin_user: owner,
+          tenant: tenant, lead: lead, whatsapp_response_flow: flow, distribution_rule: rule, admin_user: owner, campaign_interaction: campaign_interaction,
           button_key: action["button_key"], button_text: action["button_text"], agent_ids: pool,
           finish_message: action["finish_message"], status: "open", opened_at: Time.current
         )
+        WhatsappCampaignInteraction.record_action!(response: campaign_interaction, action_key: "open_attendance", label: "Atendimento aberto", outcome: "forwarded", metadata: {attendance_id: attendance.id})
         conversation.update_column(:assigned_admin_user_id, owner.id)
         LeadActivity.log!(lead: lead, kind: "whatsapp_attendance_opened", metadata: { attendance_id: attendance.id, button_text: attendance.button_text, admin_user_id: owner.id, admin_user_name: owner.name })
         notify(owner, conversation, "Novo atendimento", "#{attendance.button_text} · #{conversation.display_name}", event: "attendance_opened")
@@ -42,6 +43,7 @@ module Whatsapp
         return unless attendance && !attendance.accepted? && attendance.admin_user_id == admin_user&.id
 
         attendance.update!(accepted_at: Time.current)
+        WhatsappCampaignInteraction.record_action!(response: attendance.campaign_interaction, action_key: "accept_attendance", label: "Atendimento aceito", outcome: "attendance_started", metadata: {attendance_id: attendance.id, admin_user_id: admin_user.id})
         broadcast_change(conversation)
       end
 

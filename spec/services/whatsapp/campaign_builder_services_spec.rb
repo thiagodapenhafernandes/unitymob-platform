@@ -239,6 +239,32 @@ RSpec.describe "WhatsApp campaign builder services" do
       expect(result.sample.size).to eq(4)
     end
 
+    {
+      "Nome do cliente,Email do cliente,Telefone do cliente\nMaria,maria@example.com,11999990000\n" => "Colunas não reconhecidas",
+      "nome,email\nMaria,maria@example.com\n" => "A coluna telefone é obrigatória",
+      "nome,telefone\nMaria,\n" => "não contém destinatários",
+      "nome,telefone\n" => "não contém destinatários"
+    }.each do |csv, error|
+      it "bloqueia CSV inválido com aviso: #{error} (#{csv.lines.first.strip})" do
+        file = Tempfile.new(["invalido", ".csv"])
+        file.write(csv)
+        file.rewind
+        upload = Rack::Test::UploadedFile.new(file.path, "text/csv", original_filename: "leads.csv")
+        campaign = WhatsappCampaign.new(name: "CSV inválido", whatsapp_template: template,
+          created_by: admin, audience_mode: "spreadsheet")
+        campaign.audience_file.attach(upload)
+
+        preview = described_class.call(campaign, uploaded_file: upload)
+        expect(preview).not_to be_ok
+        expect(preview.errors.join).to include(error)
+        expect(campaign.save).to eq(false)
+        expect(campaign.errors[:audience_file].join).to include(error)
+        expect(campaign).not_to be_persisted
+      ensure
+        file&.close!
+      end
+    end
+
     it "pre-visualiza arquivo CSV sem materializar leads" do
       file = Tempfile.new(["leads", ".csv"])
       file.write("nome,telefone,email,origem,status\nMaria Silva,11999990000,maria@example.com,importacao,Novo\nSem Telefone,,sem@example.com,importacao,Novo\n")

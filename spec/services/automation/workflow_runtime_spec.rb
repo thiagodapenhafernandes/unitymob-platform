@@ -914,7 +914,7 @@ RSpec.describe "Automation workflow runtime" do
   end
 
   it "converte destinatario de campanha em lead quando resultado gera atendimento" do
-    destination_rule = create(:distribution_rule, name: "Captação Alto Padrão")
+    destination_rule = create(:distribution_rule, source_whatsapp_campaign: true, name: "Captação Alto Padrão")
     template = WhatsappTemplate.create!(name: "campanha_botoes", language: "pt_BR", status: "APPROVED", body: "Oi {{1}}")
     campaign = WhatsappCampaign.create!(name: "Campanha conversão", whatsapp_template: template, created_by: admin)
     recipient = campaign.campaign_recipients.create!(

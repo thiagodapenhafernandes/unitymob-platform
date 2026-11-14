@@ -169,6 +169,32 @@ class DistributionRule < ApplicationRecord
   end
 
   DELIVERY_DESTINATIONS = { "unitymob" => "Corretores na Unitymob", "c2s" => "C2S — sem distribuição local" }.freeze
+  C2S_DEFAULT_SOURCE = "Disparo de WhatsApp".freeze
+  C2S_NEGOTIATION_TYPES = %w[Aluguel Compra Outros].freeze
+  before_validation do
+    %i[c2s_negotiation_type c2s_negotiation_other c2s_source].each do |attribute|
+      self[attribute] = self[attribute].to_s.strip.presence
+    end
+  end
+  validates :c2s_negotiation_type, inclusion: { in: C2S_NEGOTIATION_TYPES }, allow_blank: true
+  validates :c2s_negotiation_other, presence: true, if: -> { destination_c2s? && c2s_negotiation_type == "Outros" }
+  validates :c2s_source, :c2s_negotiation_other, length: { maximum: 255 }
+
+  def effective_c2s_negotiation_type
+    c2s_negotiation_type.presence || { "locacao" => "Aluguel", "venda" => "Compra" }[business_type]
+  end
+
+  def c2s_routing_attributes(campaign: false)
+    attributes = {}
+    source = c2s_source.to_s.strip.presence || (C2S_DEFAULT_SOURCE if campaign)
+    attributes["source"] = source if source
+    case c2s_negotiation_type.presence || (effective_c2s_negotiation_type if campaign)
+    when "Aluguel" then attributes["type_negotiation"] = "Alugar"
+    when "Compra" then attributes["type_negotiation"] = "Comprar"
+    when "Outros" then attributes["type_negotiation_string"] = c2s_negotiation_other.to_s.strip
+    end
+    attributes
+  end
   enum :delivery_destination, { unitymob: "unitymob", c2s: "c2s" }, prefix: :destination
   validate :c2s_destination_requires_connection
 

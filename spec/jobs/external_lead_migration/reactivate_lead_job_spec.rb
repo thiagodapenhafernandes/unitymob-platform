@@ -31,6 +31,11 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
   before do
     allow(ExternalLeadMigration::Client).to receive(:new).with(token: integration.access_token).and_return(client)
     allow(client).to receive(:lead).with("existing-c2s-id").and_return(remote)
+    allow(client).to receive(:update_lead_routing) do
+      remote["data"]["attributes"]["lead_source"] = {"name" => "Disparo de WhatsApp"}
+      reactivated["data"]["attributes"]["lead_source"] = {"name" => "Disparo de WhatsApp"}
+      {"success" => true}
+    end
     allow(client).to receive(:reactivate_lead).and_return(reactivated)
     allow(client).to receive(:redistribute_lead).and_return("success" => true, "seller_id" => "next-seller")
   end
@@ -40,6 +45,7 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
     previous = lead.reload.attributes
     expect(client).not_to receive(:create_lead)
     expect { described_class.perform_now(operation.id, tenant_id: tenant.id) }.not_to change(Lead, :count)
+    expect(client).to have_received(:update_lead_routing).with("existing-c2s-id", attributes: {"source" => "Disparo de WhatsApp"}).once
     expect(client).to have_received(:reactivate_lead).with("existing-c2s-id", message: include("Interesse confirmado", "##{campaign.id}"))
     expect(client).to have_received(:redistribute_lead).with("existing-c2s-id").once
     expect(operation.reload).to have_attributes(status: "completed", seller_id: "next-seller", external_lead_id: "existing-c2s-id")
@@ -47,6 +53,23 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
     expect(operation.redistributed_at).to be_present
     expect(lead.reload.attributes).to eq(previous)
     expect(lead.activities.where(kind: "c2s_reactivation_completed")).to exist
+  end
+
+  it "envia a fonte e negociação configuradas na regra antes de redistribuir" do
+    rule.update!(c2s_negotiation_type: "Aluguel", c2s_source: "Disparo de WhatsApp")
+    described_class.perform_now(operation.id, tenant_id: tenant.id)
+    expect(client).to have_received(:update_lead_routing).with("existing-c2s-id",
+      attributes: {"source" => "Disparo de WhatsApp", "type_negotiation" => "Alugar"})
+    expect(operation.reload.status).to eq("completed")
+  end
+
+  it "não redistribui quando o C2S ignora a atualização de origem" do
+    allow(client).to receive(:update_lead_routing).and_return("success" => true)
+    described_class.perform_now(operation.id, tenant_id: tenant.id)
+    expect(operation.reload.status).to eq("failed")
+    expect(operation.error_message).to include("Origem da campanha WhatsApp não confirmada")
+    expect(client).not_to have_received(:reactivate_lead)
+    expect(client).not_to have_received(:redistribute_lead)
   end
 
   it "ignora cliques e execuções repetidos para a mesma mensagem" do
@@ -93,7 +116,8 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
   end
 
   it "também agenda pela decisão legada sem automação vinculada" do
-    expect { message.mark_replied! }.to have_enqueued_job(described_class)
+    expect { message.mark_replied!(raw_payload: {id: "new-interest-click", type: "button", button: {text: "Estou buscando", payload: template.interactive_buttons.first["key"]}}) }
+      .to have_enqueued_job(described_class)
     expect(tenant.c2s_lead_reactivations.count).to eq(1)
   end
 

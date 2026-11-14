@@ -8,6 +8,7 @@
     <% else %>
       <span class="ax-metric-card__label"><%= label %></span>
     <% end %>
+    <%= local_assigns[:actions] %>
     <% if local_assigns[:badge].present? %>
       <%= badge %>
     <% end %>

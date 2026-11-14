@@ -6,6 +6,7 @@ class WhatsappAttendance < ApplicationRecord
   belongs_to :whatsapp_conversation
   belongs_to :whatsapp_response_flow, optional: true
   belongs_to :lead, optional: true
+  belongs_to :campaign_interaction, class_name: "WhatsappCampaignInteraction", optional: true
   belongs_to :distribution_rule, optional: true
   belongs_to :admin_user, optional: true
   belongs_to :closed_by, class_name: "AdminUser", optional: true
@@ -13,6 +14,12 @@ class WhatsappAttendance < ApplicationRecord
   STATUSES = %w[open closed].freeze
 
   validates :status, inclusion: { in: STATUSES }
+  validate do
+    if campaign_interaction && (campaign_interaction.tenant_id != tenant_id || campaign_interaction.kind != "response" ||
+        (campaign_interaction.inbound_whatsapp_message && campaign_interaction.inbound_whatsapp_message.whatsapp_conversation_id != whatsapp_conversation_id))
+      errors.add(:campaign_interaction, "não pertence a esta conversa e conta")
+    end
+  end
 
   scope :open_now, -> { where(status: "open") }
   scope :administrative, -> {

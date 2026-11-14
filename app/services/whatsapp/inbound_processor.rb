@@ -397,18 +397,9 @@ module Whatsapp
     end
 
     def mark_campaign_reply!(conversation, inbound_message, raw_message:)
-      campaign_message = nil
-      if conversation.lead_id.present?
-        campaign_message = WhatsappCampaignMessage
-          .joins(:whatsapp_campaign)
-          .where(lead_id: conversation.lead_id)
-          .where(tenant: tenant)
-          .where(status: %w[sent delivered read])
-          .where(whatsapp_campaigns: { status: %w[processing completed] })
-          .order(sent_at: :desc, id: :desc)
-          .first
-      end
-      campaign_message ||= campaign_reply_candidate(conversation.contact_phone)
+      context_id = raw_message.dig("context", "id").presence || inbound_message.context_wa_message_id.presence
+      campaign_message = campaign_reply_candidate(conversation.contact_phone,
+        lead_id: conversation.lead_id, sender_number_id: conversation.whatsapp_sender_number_id, context_id: context_id)
 
       return unless campaign_message
 
@@ -430,22 +421,20 @@ module Whatsapp
       conversation.update_column(:lead_id, lead.id)
     end
 
-    def campaign_reply_candidate(phone)
+    def campaign_reply_candidate(phone, lead_id: nil, sender_number_id: nil, context_id: nil)
       normalized = Phones::Normalizer.call(phone).to_s
-      return if normalized.blank?
+      return if normalized.blank? && lead_id.blank?
 
-      WhatsappCampaignMessage
-        .left_joins(:whatsapp_campaign_recipient)
-        .joins(:whatsapp_campaign)
-        .where(tenant: tenant)
-        .where(status: %w[sent delivered read])
-        .where(whatsapp_campaigns: { status: %w[processing completed] })
-        .where(
-          "whatsapp_campaign_messages.phone_number = :phone OR whatsapp_campaign_recipients.phone_number = :phone",
-          phone: normalized
-        )
-        .order(sent_at: :desc, id: :desc)
-        .first
+      scope = tenant.whatsapp_campaign_messages.joins(:whatsapp_campaign)
+        .where(status: %w[sent delivered read replied])
+        .where(whatsapp_campaigns: {status: %w[processing completed]})
+      scope = scope.where(whatsapp_campaigns: {whatsapp_sender_number_id: [sender_number_id, nil]}) if sender_number_id
+      phone_scope = normalized.present? ? scope.where(phone_number: normalized) : scope.none
+      scope = lead_id.present? ? phone_scope.or(scope.where(lead_id: lead_id)) : phone_scope
+      return scope.find_by(external_message_id: context_id) if context_id
+
+      candidate = scope.order(sent_at: :desc, id: :desc).first
+      candidate unless candidate&.replied? && candidate.replied_at && candidate.replied_at < 24.hours.ago
     end
 
     def handle_reaction(conversation, msg)
@@ -552,7 +541,7 @@ module Whatsapp
 
       if internal_contact_for(phone)
         unlink_internal_whatsapp_lead(conversation, phone)
-      elsif conversation.lead_id.blank? && campaign_reply_candidate(phone).blank?
+      elsif conversation.lead_id.blank? && campaign_reply_candidate(phone, sender_number_id: sender&.id, context_id: entry_message.dig("context", "id")).blank?
         conversation.lead = link_or_create_lead(phone: phone, bsuid: bsuid, name: name, entry_message: entry_message)
       end
 

@@ -3,6 +3,12 @@ require "rails_helper"
 RSpec.describe ExternalLeadMigration::Client do
   let(:client) { described_class.new(token: "test-token") }
 
+  it "atualiza somente a fonte do mesmo cadastro via PUT" do
+    expect(client).to receive(:request).with(Net::HTTP::Put, "/leads/other%2Fid",
+      body: {data: {type: "lead", attributes: {"source" => "Disparo de WhatsApp", "type_negotiation" => "Alugar"}}})
+    client.update_lead_routing("other/id", attributes: {"source" => "Disparo de WhatsApp", "type_negotiation" => "Alugar"})
+  end
+
   it "reabre e redistribui o ID existente sem chamar a criação de leads" do
     expect(client).to receive(:post).with("/leads/remote-id/update_status", body: {status: 0, message: "Interesse confirmado"}).ordered
     expect(client).to receive(:post).with("/distribution_queues/remote-id/redistribute_lead", body: {id: "remote-id"}).ordered

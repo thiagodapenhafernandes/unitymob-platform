@@ -215,6 +215,7 @@ RSpec.describe WhatsappCampaignMessage, type: :model do
       phone_number: "5511988880000",
       status: "sent"
     )
+    conversation.update!(contact_phone: message.phone_number)
     inbound = WhatsappMessage.create!(
       whatsapp_conversation: conversation,
       direction: "inbound",
@@ -273,6 +274,7 @@ RSpec.describe WhatsappCampaignMessage, type: :model do
       phone_number: "5511977770000",
       status: "sent"
     )
+    conversation.update!(contact_phone: message.phone_number)
     inbound = WhatsappMessage.create!(
       whatsapp_conversation: conversation,
       direction: "inbound",

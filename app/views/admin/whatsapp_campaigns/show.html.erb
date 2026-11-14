@@ -98,17 +98,18 @@
 
   <%= render "admin/whatsapp_campaigns/delivery_occurrence_summary", campaign: @campaign, summary: @failure_summary %>
 
+  <% if @metrics[:history_incomplete] %>
+    <%= ax_inline_notice(tone: :info, compact: true) { "Há respostas anteriores ao histórico detalhado. Para elas, somente a última resposta disponível é contabilizada." } %>
+  <% end %>
   <% detail_cards = [
-    ["total", "Total", @metrics[:total], "mensagens criadas", "bi-people", "slate"],
-    ["sent", "Enviadas", @metrics[:sent], "#{@metrics[:delivery_rate]}% entregues", "bi-send", "purple"],
-    ["delivered", "Entregues", @metrics[:delivered], "recebidas pelo WhatsApp", "bi-check2-circle", "green"],
-    ["read", "Lidas", @metrics[:read], "#{@metrics[:read_rate]}% leitura", "bi-eye", "blue"],
-    ["failed", "Falhas", @metrics[:failed], "#{@metrics[:failure_rate]}% falha", "bi-x-circle", "red"],
-    ["replied", "Respostas", @metrics[:replied], "#{@metrics[:reply_rate]}% resposta", "bi-chat-dots", "cyan"],
-    ["attended", "Convertidos", @metrics[:attended], "viraram lead", "bi-person-check", "green"],
-    ["unattended", "Sem conversão", @metrics[:unattended], "responderam sem virar lead", "bi-person-x", "blue"],
-    ["cpl", "CPL", number_to_currency(@metrics[:cpl], unit: "R$", separator: ",", delimiter: "."), "custo por atendimento", "bi-calculator", "orange"],
-    ["cost", "Gasto total", number_to_currency(@metrics[:cost], unit: "R$", separator: ",", delimiter: "."), "estimativa", "bi-wallet2", "teal"]
+    ["total", "Total de disparos", @metrics[:total], "mensagens no escopo da campanha", "bi-people", "slate"],
+    ["failed", "Falhas", @metrics[:failed], "#{@metrics[:failure_rate]}% do total", "bi-x-circle", "red"],
+    ["sent", "Enviadas", @metrics[:sent], "#{@metrics[:sent_rate]}% do total", "bi-send", "purple"],
+    ["delivered", "Entregues", @metrics[:delivered], "#{@metrics[:delivery_rate]}% das enviadas", "bi-check2-circle", "green"],
+    ["read", "Lidas", @metrics[:read], "#{@metrics[:read_rate]}% das entregues", "bi-eye", "blue"],
+    ["interactions", "Interações", @metrics[:interactions], "#{@metrics[:reply_rate]}% das entregues · destinatários únicos", "bi-chat-dots", "cyan"],
+    ["clicks", "Cliques recebidos", @metrics[:clicks], "repetições legítimas preservadas", "bi-hand-index", "purple"],
+    ["free_responses", "Respostas sem botão", @metrics[:free_responses], "destinatários únicos · texto ou mídia", "bi-chat-text", "cyan"]
   ] %>
   <section class="whatsapp-dashboard-grid whatsapp-dashboard-grid--detail" aria-label="Indicadores da campanha">
     <% detail_cards.each do |key, label, value, hint, icon, tone| %>
@@ -121,11 +122,21 @@
     <% end %>
   </section>
 
+  <%= render "admin/shared/whatsapp/pricing", sender: @campaign.whatsapp_sender_number, campaign: @campaign %>
+
+  <%= ax_operational_panel(eyebrow: "Resultados", title: "O que aconteceu na Unitymob") do %>
+    <p class="ax-field__hint">Ações confirmadas, não intenções de clique. Um destinatário pode ter mais de um resultado; os totais não são mutuamente exclusivos. Atendimento aceito é diferente de encaminhamento à fila.</p>
+    <div class="whatsapp-response-card-grid" data-whatsapp-campaign-live-target="outcomeCards">
+      <%= render "admin/shared/whatsapp/interaction_cards", cards: @outcome_cards %>
+      <% if @outcome_cards.empty? %><p>Nenhum resultado interno confirmado.</p><% end %>
+    </div>
+  <% end %>
+
   <section class="whatsapp-response-card-panel" aria-label="Respostas por botão do template">
     <div class="whatsapp-response-card-panel__head">
       <div>
         <strong>Respostas por botão do template</strong>
-        <span>Cards gerados a partir dos botões reais do modelo usado nesta campanha.</span>
+        <span>Destinatários únicos por botão e total de cliques. A mesma pessoa pode acionar vários botões; a soma pode superar o total de interações. Botões antigos permanecem no histórico.</span>
       </div>
       <% if @campaign.automation_workflow %>
         <%= link_to builder_admin_automation_workflow_path(@campaign.automation_workflow), class: "ax-btn ax-btn--sm" do %>
@@ -137,15 +148,8 @@
       <% end %>
     </div>
     <div class="whatsapp-response-card-grid" data-whatsapp-campaign-live-target="responseCards">
-      <% @campaign.dynamic_response_cards.each do |card| %>
-        <article class="whatsapp-response-card whatsapp-response-card--<%= card[:tone] %>">
-          <i class="bi <%= card[:icon] %>"></i>
-          <span><%= card[:label] %></span>
-          <strong><%= card[:count] %></strong>
-          <small><%= card[:action_label] %></small>
-        </article>
-      <% end %>
-      <% if @campaign.dynamic_response_cards.blank? %>
+      <%= render "admin/shared/whatsapp/interaction_cards", cards: @response_cards %>
+      <% if @response_cards.blank? %>
         <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
           Este template não possui botões mensuráveis. Respostas por texto continuam aparecendo em Mensagens recentes e podem ser tratadas pela Automação.
         <% end %>
@@ -262,4 +266,5 @@
   <% end %>
 
   <%= ax_pagination @messages %>
+  <%= render "admin/shared/whatsapp/interaction_history", interactions: @interactions %>
 </div>

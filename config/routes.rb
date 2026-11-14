@@ -344,6 +344,7 @@ Rails.application.routes.draw do
 
     resources :whatsapp_campaigns, path: "whatsapp/disparos" do
       collection do
+        get :pricing
         get :documentation
         match :preview_audience, via: [:post, :patch]
         match :preview_template, via: [:post, :patch]
