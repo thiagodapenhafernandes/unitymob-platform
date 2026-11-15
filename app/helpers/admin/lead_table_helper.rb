@@ -1,4 +1,15 @@
 module Admin::LeadTableHelper
+  def lead_table_message_notices(leads, tenant:, user:)
+    ids = leads.select { |lead| lead.tenant_id == tenant.id }.map { |lead| lead.id.to_s }
+    return {} if ids.empty?
+
+    InAppNotification.visible_for(user, tenant).unread.where(kind: "instagram_message")
+      .where("metadata ->> 'lead_id' IN (?)", ids)
+      .select("DISTINCT ON (metadata ->> 'lead_id') in_app_notifications.*")
+      .order(Arel.sql("metadata ->> 'lead_id'"), created_at: :desc, id: :desc)
+      .to_h { |notification| [notification.metadata['lead_id'].to_i, notification] }
+  end
+
   def lead_table_interest_properties(leads, tenant:)
     lead_ids = leads.select { |lead| lead.tenant_id == tenant.id && lead.property_id.blank? }.map(&:id)
     return {} if lead_ids.empty?

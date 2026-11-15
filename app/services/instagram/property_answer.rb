@@ -6,7 +6,6 @@ module Instagram
     end
 
     def call(messages, question: nil)
-      return CatalogReply::HANDOFF unless CaptureAnswer.complete?(@lead) || @rule["allow_incomplete_contact"] == true
       return CatalogReply::HANDOFF unless @property.tenant_id == @lead.tenant_id && @lead.tenant.habitations.public_property_listable.exists?(id: @property.id)
       facts = registered_facts
       question ||= messages.reverse.find { |message| message[:role] == 'cliente' }&.fetch(:text, '').to_s
@@ -39,6 +38,9 @@ module Instagram
     def registered_facts
       helper = ActionController::Base.helpers
       facts = {}
+      facts['building'] = "Edifício: #{@property.nome_empreendimento.to_s.squish}." if @property.nome_empreendimento.present?
+      facts['transaction'] = "Disponível para #{@property.status.downcase}."
+
       facts['sale_price'] = "Valor de venda anunciado: #{helper.number_to_currency(@property.valor_venda_cents / 100.0, locale: :'pt-BR')}." if @property.valor_venda_cents.to_i.positive?
       facts['rent_price'] = "Valor de locação anunciado: #{helper.number_to_currency(@property.valor_locacao_cents / 100.0, locale: :'pt-BR')}." if @property.valor_locacao_cents.to_i.positive?
       location = @property.public_location_label
@@ -59,7 +61,7 @@ module Instagram
       if @rule['use_registered_payment_conditions'] == true && @rule['property_code'].to_s == @property.codigo.to_s && @property.condicoes_negociacao.present?
         facts['terms'] = helper.strip_tags(@property.condicoes_negociacao).squish
       end
-      groups = {"prices" => %w[sale_price rent_price], "location" => %w[location], "details" => %w[bedrooms suites parking area],
+      groups = {"prices" => %w[sale_price rent_price], "location" => %w[location building], "details" => %w[bedrooms suites parking area transaction],
         "features" => %w[features], "financing" => %w[financing installments terms]}
       groups.each { |group, keys| keys.each { |key| facts.delete(key) } unless CaptureSettings.allowed?(@rule, group) }
       facts

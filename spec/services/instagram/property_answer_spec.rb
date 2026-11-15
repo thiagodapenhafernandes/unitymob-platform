@@ -21,10 +21,10 @@ RSpec.describe Instagram::PropertyAnswer do
     described_class.new(lead, property, rule).call([{role: 'cliente', text: question}])
   end
 
-  it 'não responde antes dos dados obrigatórios nem usa imóvel de outra conta' do
+  it 'responde sem telefone e nunca usa imóvel de outra conta' do
     lead.update_columns(client_name: nil)
-    expect(answer).to eq(Instagram::CatalogReply::HANDOFF)
-    expect(client).not_to have_received(:create_response)
+    lead.update_columns(phone: nil)
+    expect(answer).to include('aceita financiamento')
     lead.update_columns(client_name: 'Maria Silva')
     other = Tenant.create!(name: 'Outra', slug: "ig-facts-#{SecureRandom.hex(3)}")
     foreign = create(:habitation, tenant: other)
@@ -84,11 +84,25 @@ RSpec.describe Instagram::PropertyAnswer do
     property.update!(dormitorios_qtd: 3)
     allow(client).to receive(:create_response) do |payload|
       facts = JSON.parse(payload.fetch(:input)).fetch('registered_facts')
-      expect(facts.keys - %w[bedrooms suites parking area]).to be_empty
+      expect(facts.keys - %w[bedrooms suites parking area transaction]).to be_empty
       {'output_text' => {'facts' => ['bedrooms'], 'needs_broker' => false}.to_json}
     end
     expect(answer('Quantos quartos?')).to include('Dormitórios: 3')
     expect(answer('Qual a forma de pagamento?')).to eq(Instagram::CatalogReply::HANDOFF)
+  end
+
+  it 'responde o edifício e a finalidade com dados atuais, sem nome nem telefone' do
+    lead.update_columns(client_name: nil, phone: nil)
+    property.update!(nome_empreendimento: 'Presidente Kennedy', status: 'Aluguel')
+    allow(client).to receive(:create_response) do |payload|
+      facts = JSON.parse(payload.fetch(:input)).fetch('registered_facts')
+      expect(facts['building']).to eq('Edifício: Presidente Kennedy.')
+      expect(facts['transaction']).to eq('Disponível para aluguel.')
+      {'output_text' => {'facts' => ['building', 'transaction'], 'needs_broker' => false}.to_json}
+    end
+    expect(answer('Qual nome desse edifício? Está disponível?')).to include('Presidente Kennedy', 'aluguel')
+    property.update!(exibir_no_site_flag: false)
+    expect(answer).to eq(Instagram::CatalogReply::HANDOFF)
   end
 
 end

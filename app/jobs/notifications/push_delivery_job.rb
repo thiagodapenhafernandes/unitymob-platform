@@ -12,6 +12,11 @@ module Notifications
       wait: :polynomially_longer, attempts: 3
 
     def perform(admin_user_id:, title:, body:, url:, notification_context: "general", lead_id: nil)
+      if notification_context == 'instagram_message'
+        user = AdminUser.find_by(id: admin_user_id)
+        return unless user&.tenant && user.active? && user.can?(:view, :leads) &&
+          Lead.accessible_to_admin(user, tenant: user.tenant).exists?(id: lead_id)
+      end
       PushDispatcher.deliver(
         admin_user_id: admin_user_id,
         title: title,

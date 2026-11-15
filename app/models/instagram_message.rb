@@ -30,7 +30,7 @@ class InstagramMessage < ApplicationRecord
       next unless attachment.is_a?(Hash)
       payload = attachment["payload"].is_a?(Hash) ? attachment["payload"] : {}
       {"type" => attachment["type"].to_s.first(100), "url" => safe_media_url(payload["url"]),
-        "title" => payload["title"].to_s.first(2000), "media_id" => (payload["ig_post_media_id"] || payload["id"]).to_s.first(200)}.compact_blank
+        "title" => payload["title"].to_s.first(20_000), "media_id" => (payload["ig_post_media_id"] || payload["id"]).to_s.first(200)}.compact_blank
     end
     context.compact_blank
   end
@@ -41,6 +41,19 @@ class InstagramMessage < ApplicationRecord
     value if uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.nil?
   rescue URI::InvalidURIError
     nil
+  end
+
+  def self.property_codes_in(text)
+    codes = text.to_s.scan(/\b(?:c[oó]d(?:igo)?|ref(?:er[eê]ncia)?)\s*[.:#-]?\s*([\p{L}\d-]+)/i).flatten
+    codes << text.to_s.strip if text.to_s.strip.match?(/\A[\p{L}\d-]{1,40}\z/) && !Instagram::CaptureAnswer.new(text).phone
+    codes.select { |code| code.match?(/\d/) }.uniq
+  end
+
+  def property_reference_codes
+    explicit = self.class.property_codes_in(body)
+    return explicit if explicit.any?
+
+    Array(context.to_h["attachments"]).flat_map { |attachment| self.class.property_codes_in(attachment["title"]) }.uniq
   end
 
   def contextual_interaction?
@@ -128,10 +141,14 @@ class InstagramMessage < ApplicationRecord
 
     previous_direction = lead.instagram_messages.where("occurred_at < ? OR (occurred_at = ? AND id < ?)", occurred_at, occurred_at, id)
       .order(occurred_at: :desc, id: :desc).pick(:direction)
-    InAppNotification.notify!(admin_user: user, kind: "instagram_message", title: "Nova mensagem no Instagram", body: body.presence&.truncate(160),
+    notification = InAppNotification.notify!(admin_user: user, kind: "instagram_message", title: "Nova mensagem para #{lead.display_name}", body: conversation_text.presence&.truncate(160),
       url: Rails.application.routes.url_helpers.admin_lead_path(lead, anchor: "lead-instagram-thread"),
       metadata: { lead_id: lead.id, instagram_message_id: id, sender_name: lead.display_name,
         event: (previous_direction == "outbound" ? "message_reply" : "instagram_message") })
+    if notification && lead.admin_user_id == user.id
+      Notifications::PushDeliveryJob.perform_later(admin_user_id: user.id, title: notification.title,
+        body: notification.body.to_s, url: notification.url, lead_id: lead.id, notification_context: "instagram_message")
+    end
   rescue StandardError => error
     Rails.logger.warn("[Instagram unread] notification unavailable class=#{error.class}")
   end

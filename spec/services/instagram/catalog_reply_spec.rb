@@ -176,4 +176,41 @@ RSpec.describe Instagram::CatalogReply do
     expect(result.cards).to be_empty
   end
 
+  it "usa o código no fim da legenda completa e mantém o contexto fora dos últimos dez turnos" do
+    lead = create(:lead)
+    property = create(:habitation, tenant: lead.tenant, codigo: '9705', nome_empreendimento: 'Presidente Kennedy')
+    lead.instagram_messages.create!(message_id: 'reel', occurred_at: Time.current, body: '',
+      context: {'attachments' => [{'type' => 'ig_reel', 'title' => ('Descrição longa. ' * 60) + 'Cód. 9705'}], 'property_code' => '9705'})
+    handler = instance_double(Instagram::PropertyAnswer, call: 'Edifício: Presidente Kennedy.')
+    allow(Instagram::PropertyAnswer).to receive(:new).with(lead, property, anything).and_return(handler)
+    history = [{role: 'cliente', text: 'Bom dia tudo bom? Qual nome desse edifício por gentileza'}]
+    expect(described_class.new(lead, {}).call(history, first_turn: false)).to include('Presidente Kennedy')
+    51.times { |n| lead.instagram_messages.create!(message_id: "later-#{n}", occurred_at: Time.current, body: 'Ok') }
+    expect(described_class.new(lead, {}).call(history, first_turn: false)).to include('Presidente Kennedy')
+    property.update!(exibir_no_site_flag: false)
+    expect(described_class.new(lead, {}).call(history, first_turn: false)).to include('catálogo disponível')
+  end
+
+  it "não resolve o código da legenda em outro tenant" do
+    lead = create(:lead)
+    other = create(:habitation, tenant: Tenant.create!(name: 'Outra conta', slug: 'foreign-ig-context'), codigo: '987987')
+    lead.instagram_messages.create!(message_id: 'foreign-reel', occurred_at: Time.current, body: '',
+      context: {'attachments' => [{'type' => 'ig_reel', 'title' => "Cód. #{other.codigo}"}]})
+    expect(Instagram::PropertyAnswer).not_to receive(:new)
+    result = described_class.new(lead, {}).call([{role: 'cliente', text: 'Qual nome desse edifício?'}], first_turn: false)
+    expect(result).to include('catálogo disponível')
+  end
+
+  it "consulta o catálogo mesmo sem domínio público configurado, sem fabricar links" do
+    lead = create(:lead)
+    property = create(:habitation, tenant: lead.tenant, titulo_anuncio: "Casa disponível no catálogo")
+    allow(lead.tenant).to receive(:public_base_url).and_return(nil)
+    query = instance_double(Ai::PropertySearch::PublicQuery, call: Ai::PropertySearch::PublicQuery::Result.new({}, nil, nil))
+    allow(Ai::PropertySearch::PublicQuery).to receive(:new).and_return(query)
+    result = described_class.new(lead, {}).call([{role: 'cliente', text: 'Quero uma casa'}], first_turn: true)
+    expect(result.body).to include(property.titulo_anuncio)
+    expect(result.body).not_to include('/imoveis/')
+    expect(result.cards).to be_empty
+  end
+
 end

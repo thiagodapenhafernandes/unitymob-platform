@@ -70,4 +70,22 @@ RSpec.describe 'Instagram Direct sem recarregar o lead', type: :request do
     expect(response).to have_http_status(:forbidden)
     expect(Instagram::Reply).not_to have_received(:call)
   end
+  it 'sinaliza nova mensagem na linha, mostra qualificação e limpa até o cursor lido' do
+    lead.update_columns(other_information: {'instagram_qualification' => {'ready' => true,
+      'business_type' => 'locacao', 'request' => '2 quartos no Centro', 'next_step' => 'Visitar'}})
+    get admin_leads_path(view: 'list')
+    expect(response).to have_http_status(:ok)
+    row = Nokogiri::HTML(response.body).at_css("#lead_#{lead.id}")
+    expect(row.at_css('[data-ax-lead-message-target="notice"]')['hidden']).to be_nil
+    expect(row.text).to include('Nova mensagem', 'Mensagem recebida')
+    get instagram_thread_admin_lead_path(lead)
+    expect(response.body).to include('Qualificação para o corretor', 'Locação', '2 quartos')
+    allow(InAppNotification).to receive(:broadcast_event!)
+    cursor = lead.instagram_messages.maximum(:id)
+    post read_direct_admin_in_app_notifications_path, params: {lead_id: lead.id, cursor: cursor}
+    expect(response).to have_http_status(:no_content)
+    expect(InAppNotification.visible_for(admin, admin.tenant).unread.where(kind: 'instagram_message')).to be_empty
+    expect(InAppNotification).to have_received(:broadcast_event!).with(admin.id, event: 'unread_changed', lead_id: lead.id, cursor: cursor)
+  end
+
 end

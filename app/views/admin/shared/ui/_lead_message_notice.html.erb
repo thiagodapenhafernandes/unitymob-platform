@@ -1,0 +1,11 @@
+<%= tag.div hidden: notification.nil?, data: {
+      controller: 'ax-lead-message', ax_lead_message_lead_id_value: lead.id,
+      ax_lead_message_target: 'notice',
+      ax_lead_message_cursor_value: notification&.metadata&.fetch('instagram_message_id', 0) || 0,
+      action: 'lead:notification@window->ax-lead-message#update'
+    } do %>
+  <%= link_to admin_lead_path(lead, anchor: 'lead-instagram-thread'), class: 'ax-record-contact', title: notification&.body do %>
+    <%= ax_badge('Nova mensagem', tone: :blue) %>
+    <span class="ax-record-email" data-ax-lead-message-target="preview"><%= notification&.body %></span>
+  <% end %>
+<% end %>

@@ -380,6 +380,13 @@ class Lead < ApplicationRecord
     instagram_automation_active? && other_information.to_h.dig("instagram_capture", "step") != "handoff_pending"
   end
 
+  def instagram_qualified_for_delivery?
+    instagram_account_id.present? && instagram_scoped_id.present? &&
+      other_information.to_h.dig('instagram_qualification', 'ready') == true &&
+      other_information.to_h.dig('instagram_capture', 'step').in?(%w[completed handoff_pending]) &&
+      Instagram::CaptureAnswer.complete?(self)
+  end
+
   def skip_automatic_routing?
     @skip_automatic_routing == true || whatsapp_service_contact? || instagram_automation_holding?
   end
@@ -477,6 +484,8 @@ class Lead < ApplicationRecord
     ].compact.join(" ").parameterize(separator: "_")
 
     return "Captação" if text.match?(/captacao|captar|proprietario|proprietaria/)
+    explicit = {"venda" => "Venda", "locacao" => "Locação", "ambos" => "Venda / Locação"}[info["business_type"]]
+    return explicit if explicit
     return "Locação" if text.match?(/locacao|aluguel|alugar|rental|locar/)
     return "Venda" if text.match?(/venda|comprar|compra|sale|vend/)
 
@@ -842,7 +851,7 @@ class Lead < ApplicationRecord
   end
 
   def enqueue_c2s_export
-    return if destroyed? || tenant.blank? || whatsapp_service_contact?
+    return if destroyed? || tenant.blank? || whatsapp_service_contact? || instagram_automation_holding?
     return unless tenant.external_lead_integration&.export_active?
     return if imported_from_c2s? || distribution_rule&.destination_c2s?
 
@@ -850,6 +859,8 @@ class Lead < ApplicationRecord
   rescue StandardError => error
     Rails.logger.warn("C2S export enqueue failed lead_id=#{id} error=#{error.class}")
   end
+
+  public :enqueue_c2s_export
 
   def route_lead
     return unless persisted? && !destroyed?
