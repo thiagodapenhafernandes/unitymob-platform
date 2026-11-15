@@ -32,4 +32,17 @@ RSpec.describe InstagramMessage do
     expect(message.automation_input?).to be(false)
   end
 
+  it 'seleciona players por tipo, deduplica stories e descarta endereços inseguros' do
+    message = described_class.new(context: {"story_url" => "https://example.com/story", "attachments" => [
+      {"type" => "story_mention", "url" => "https://example.com/story"},
+      {"type" => "image", "url" => "https://example.com/image"},
+      {"type" => "ig_reel", "url" => "https://example.com/video"},
+      {"type" => "audio", "url" => "https://example.com/audio"},
+      {"type" => "file", "url" => "https://example.com/file"},
+      {"type" => "image", "url" => "javascript:alert(1)"}
+    ]})
+    expect(message.media_items.pluck(:kind)).to eq(%w[auto image video audio document])
+    expect(message.media_urls.size).to eq(5)
+  end
+
 end

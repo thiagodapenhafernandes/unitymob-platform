@@ -23,8 +23,9 @@
       <% messages.each do |message| %>
         <div class="lead-ig-thread__msg lead-ig-thread__msg--<%= message.direction %>">
           <p><%= message.conversation_text.presence || "Mensagem sem texto" %></p>
-          <% message.media_urls.each_with_index do |url, index| %>
-            <p><%= link_to "Abrir mídia #{index + 1}", url, target: "_blank", rel: "noopener noreferrer" %></p>
+          <% message.media_items.each_with_index do |media, index| %>
+            <%= render "admin/shared/ui/message_media", kind: media[:kind], url: media[:url], inline: true %>
+            <p><%= link_to "Abrir mídia #{index + 1}", media[:url], target: "_blank", rel: "noopener noreferrer" %></p>
           <% end %>
           <small>
             <%= message.outbound? ? (message.sent_by_admin_user&.name.presence || "Equipe") : "Cliente" %>

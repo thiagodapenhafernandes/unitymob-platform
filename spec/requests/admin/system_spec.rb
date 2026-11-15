@@ -361,6 +361,14 @@ RSpec.describe "Admin::System", type: :request do
     expect(response.body).to include('class="ax-num ax-table__col--w-130"')
     expect(response.body).to include("Usuários globais disponíveis para impersonação auditada")
     expect(table_text).to include(active_user.name)
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css(".ax-field-grid--12.ax-field-grid--compact")).to be_present
+    action = document.at_css("form[action='#{admin_system_user_impersonation_path(active_user)}']")
+    expect(action["method"]).to eq("post")
+    expect(action["data-turbo"]).to eq("false")
+    expect(action["data-turbo-confirm"]).to eq("Entrar como #{active_user.name}?")
+    expect(action.at_css("button.ax-btn.ax-btn--primary.ax-btn--sm")["aria-label"]).to eq("Impersonar #{active_user.name}")
+    expect(action.at_css(".bi-person-bounding-box")).to be_present
     expect(table_text).not_to include(inactive_user.name)
     expect(table_text).not_to include(other_user.name)
   end

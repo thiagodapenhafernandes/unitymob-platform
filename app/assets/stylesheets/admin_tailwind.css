@@ -30119,19 +30119,19 @@ html[data-admin-theme="dark"] .wa-inbox-thread__scroll {
 
 .ax-app form.is-submitting button.is-submitting[type="submit"]::after,
 .ax-app form.is-submitting button.is-submitting:not([type])::after {
-  content: "";
-  display: inline-block;
-  width: .85em;
-  height: .85em;
+  content: "\f130"; /* Bootstrap Icons: arrow-repeat. */
+  display: inline-grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
   margin-left: .5rem;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 999px;
-  opacity: .72;
-  vertical-align: -.12em;
+  font-family: "bootstrap-icons";
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
   flex: 0 0 auto;
   box-sizing: border-box;
-  animation: submit-guard-spin .7s linear infinite;
+  animation: submit-guard-spin .8s linear infinite;
 }
 
 .ax-app form.is-submitting button.is-submitting:has([data-submit-guard-hidden="true"]) {
@@ -30140,10 +30140,8 @@ html[data-admin-theme="dark"] .wa-inbox-thread__scroll {
 
 .ax-app form.is-submitting button.is-submitting:has([data-submit-guard-hidden="true"])::after {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  margin-left: 0;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  margin: auto;
 }
 
 .ax-app form.is-submitting input[type="submit"].is-submitting {

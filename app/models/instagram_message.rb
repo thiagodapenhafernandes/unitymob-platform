@@ -74,9 +74,25 @@ class InstagramMessage < ApplicationRecord
     parts.uniq.join("; ")
   end
 
+  def media_items
+    items = []
+    items << { "type" => "auto", "url" => context.to_h["story_url"] } if context.to_h["story_url"].present?
+    items.concat(Array(context.to_h["attachments"]))
+    items.filter_map do |item|
+      url = self.class.safe_media_url(item["url"])
+      next unless url
+      kind = case item["type"]
+      when "image", "video", "audio" then item["type"]
+      when "ig_reel", "reel" then "video"
+      when "auto", "story", "ig_story", "story_mention", "ig_post", "share" then "auto"
+      else "document"
+      end
+      { kind: kind, url: url }
+    end.uniq { |item| item[:url] }
+  end
+
   def media_urls
-    [context.to_h["story_url"], *Array(context.to_h["attachments"]).filter_map { |attachment| attachment["url"] }]
-      .filter_map { |url| self.class.safe_media_url(url) }.uniq
+    media_items.pluck(:url)
   end
 
   def conversation_text
