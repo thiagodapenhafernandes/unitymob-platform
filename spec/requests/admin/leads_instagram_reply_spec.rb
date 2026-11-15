@@ -53,6 +53,7 @@ RSpec.describe "Admin::Leads Instagram reply", type: :request do
     get admin_lead_path(lead)
     expect(response.body).to include("Resposta a story", "Em captação", "Assumir atendimento", "Abrir mídia 1")
     expect(response.body).to include('href="https://lookaside.fbsbx.com/story"', 'rel="noopener noreferrer"')
+    expect(Nokogiri::HTML(response.body).at_css('.lead-ig-thread__messages img[src="https://lookaside.fbsbx.com/story"]')).to be_present
 
     post take_over_instagram_capture_admin_lead_path(lead)
     expect(response).to have_http_status(:see_other)

@@ -27,3 +27,6 @@
 .has-active-button .ax-message-preview__button { transition: background-color .15s ease, opacity .15s ease; }
 .has-active-button .ax-message-preview__button:not(.is-active) { opacity: .5; }
 .has-active-button .ax-message-preview__button.is-active { background: #d9fdd3; color: #0b6b2c; font-weight: 800; }
+
+.ax-message-preview__media-container--inline { width: 360px; max-width: 100%; margin: 8px 0; border-radius: 8px; overflow: hidden; }
+.ax-message-preview__media-container--inline .ax-message-preview__media { max-height: 280px; }

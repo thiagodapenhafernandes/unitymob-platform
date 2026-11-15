@@ -1,14 +1,14 @@
-<div class="ax-message-preview__media-container">
+<div class="ax-message-preview__media-container<%= " ax-message-preview__media-container--inline" if local_assigns[:inline] %>" data-controller="message-media" data-message-media-auto-value="<%= kind.to_s == "auto" %>">
 <% if url.present? %>
   <% case kind.to_s %>
-  <% when "image" %>
-    <%= image_tag url, alt: "Imagem do template", class: "ax-message-preview__media", loading: "lazy", data: { controller: "image-fallback", action: "error->image-fallback#hide" } %>
+  <% when "image", "auto" %>
+    <%= image_tag url, alt: "Imagem da mensagem", class: "ax-message-preview__media", loading: "lazy", referrerpolicy: "no-referrer", data: { message_media_target: "media", action: "error->message-media#failed" } %>
   <% when "video" %>
-    <%= video_tag url, controls: true, playsinline: true, preload: "metadata", class: "ax-message-preview__media" %>
+    <%= video_tag url, controls: true, playsinline: true, preload: "metadata", class: "ax-message-preview__media", data: { message_media_target: "media", action: "error->message-media#failed" } %>
   <% when "audio" %>
-    <%= audio_tag url, controls: true, preload: "none", class: "ax-message-preview__media" %>
+    <%= audio_tag url, controls: true, preload: "none", class: "ax-message-preview__media", data: { message_media_target: "media", action: "error->message-media#failed" } %>
   <% else %>
-    <%= link_to url, class: "ax-message-preview__document", target: "_blank", rel: "noopener" do %><%= ax_icon("file-earmark-text") %> Abrir documento<% end %>
+    <%= link_to url, class: "ax-message-preview__document", target: "_blank", rel: "noopener noreferrer" do %><%= ax_icon("file-earmark-text") %> Abrir documento<% end %>
   <% end %>
 <% elsif kind.to_s.in?(%w[image video audio document]) %>
   <div class="ax-message-preview__missing"><%= ax_icon("image") %> Mídia de exemplo indisponível</div>
