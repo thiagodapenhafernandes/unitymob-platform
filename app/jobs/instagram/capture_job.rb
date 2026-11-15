@@ -15,6 +15,8 @@ module Instagram
       cursor = lead.other_information.dig("instagram_capture", lead.instagram_capture_pending? ? "cursor" : "sdr_cursor")
       return if cursor && !lead.instagram_messages.inbound.where("id > ?", cursor).exists? && lead.other_information.dig("instagram_capture", "step") != "email" && !(lead.instagram_capture_pending? && CaptureAnswer.complete?(lead))
       return if lead.other_information.fetch("instagram_capture", {}).key?("sdr_cursor") && cursor.nil? && !lead.instagram_capture_pending?
+      latest = lead.instagram_messages.inbound.order(id: :desc).first
+      return if latest && !latest.automation_input?
       Reply.with_typing(lead, rule) { process_capture(lead, tenant_id) }
     rescue Instagram::Reply::Error, Faraday::Error, Timeout::Error
       Rails.logger.warn("[Instagram capture] prompt unavailable lead_id=#{lead_id}")
@@ -292,8 +294,11 @@ module Instagram
     end
 
     def conversation_history(lead, through)
-      lead.instagram_messages.where("id <= ?", through).where.not(body: "").order(id: :desc).limit(10)
-        .pluck(:direction, :body).reverse.map do |direction, body|
+      lead.instagram_messages.where("id <= ?", through).order(id: :desc).limit(10)
+        .to_a.reverse.filter_map do |message|
+          direction = message.direction
+          body = message.conversation_text
+          next if body.blank?
           text = body.to_s.squish.first(direction == "inbound" ? 300 : Reply::MAX_CHARS)
             .gsub(/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/, "[e-mail]")
             .gsub(/\+?\d[\d ().-]{8,}\d/, "[telefone]")

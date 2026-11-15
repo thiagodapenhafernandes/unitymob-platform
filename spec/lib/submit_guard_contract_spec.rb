@@ -36,6 +36,18 @@ RSpec.describe "global submit guard" do
     expect(admin_css).to include(".ax-app form.is-submitting button.is-submitting[type=\"submit\"]::after")
   end
 
+  it "keeps button spinners round and centered while rotating in both bundles" do
+    [application_css, admin_css].each do |css|
+      spin = css[/@keyframes submit-guard-spin\s*\{.*?\n\}/m]
+      expect(spin).to include("rotate: 360deg")
+      expect(spin).not_to include("transform:")
+      indicator = css[/button\.is-submitting\[type="submit"\]::after,.*?\n\}/m]
+      expect(indicator).to include("flex: 0 0 auto", "box-sizing: border-box")
+      centered = css[/button\.is-submitting:has\(\[data-submit-guard-hidden="true"\]\)::after\s*\{.*?\n\}/m]
+      expect(centered).to include("position: absolute", "transform: translate(-50%, -50%)", "margin-left: 0")
+    end
+  end
+
   it "does not force modulepreload for non-entrypoint shared imports" do
     expect(importmap_source).to include('pin "public", preload: "public"')
     expect(importmap_source).to include('pin "ax_toast", preload: false')

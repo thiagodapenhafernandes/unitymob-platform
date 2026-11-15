@@ -16,6 +16,73 @@ class InstagramMessage < ApplicationRecord
   def inbound? = direction == "inbound"
 
   def outbound? = direction == "outbound"
+
+  def self.received_context(message)
+    context = {}
+    reply = message["reply_to"].is_a?(Hash) ? message["reply_to"] : {}
+    story = reply["story"]
+    if story.is_a?(Hash)
+      context["story_id"] = story["id"].to_s.first(200) if story["id"].present?
+      context["story_url"] = safe_media_url(story["url"])
+    end
+    context["reply_to_message_id"] = reply["mid"].to_s.first(1000) if reply["mid"].present?
+    context["attachments"] = Array(message["attachments"]).first(10).filter_map do |attachment|
+      next unless attachment.is_a?(Hash)
+      payload = attachment["payload"].is_a?(Hash) ? attachment["payload"] : {}
+      {"type" => attachment["type"].to_s.first(100), "url" => safe_media_url(payload["url"]),
+        "title" => payload["title"].to_s.first(2000), "media_id" => (payload["ig_post_media_id"] || payload["id"]).to_s.first(200)}.compact_blank
+    end
+    context.compact_blank
+  end
+
+  def self.safe_media_url(value)
+    return unless value.is_a?(String) && value.length <= 16_000
+    uri = URI.parse(value)
+    value if uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.nil?
+  rescue URI::InvalidURIError
+    nil
+  end
+
+  def contextual_interaction?
+    context.to_h["story_id"].present? || context.to_h["attachments"].present?
+  end
+
+  def automation_input?
+    return true if context.to_h.dig("referral", "ad_id").present?
+    return false unless body.to_s.match?(/[\p{L}\d]/)
+    return true unless contextual_interaction?
+
+    answer = Instagram::CaptureAnswer.new(body)
+    answer.request? || answer.phone.present? || answer.name(explicit_only: true).present? || answer.business_type.present?
+  end
+
+  def context_description
+    parts = []
+    parts << "Resposta a story" if context.to_h["story_id"].present?
+    Array(context.to_h["attachments"]).each do |attachment|
+      label = case attachment["type"]
+      when "story_mention" then "Mencionou a conta em um story"
+      when "story", "ig_story" then "Compartilhou um story"
+      when "share", "ig_post", "ig_reel", "reel" then "Compartilhou uma publicação"
+      when "image" then "Enviou uma imagem"
+      when "video" then "Enviou um vídeo"
+      when "audio" then "Enviou um áudio"
+      else "Enviou um anexo"
+      end
+      parts << [label, attachment["title"].presence].compact.join(": ")
+    end
+    parts.uniq.join("; ")
+  end
+
+  def media_urls
+    [context.to_h["story_url"], *Array(context.to_h["attachments"]).filter_map { |attachment| attachment["url"] }]
+      .filter_map { |url| self.class.safe_media_url(url) }.uniq
+  end
+
+  def conversation_text
+    [body.presence, context_description.presence].compact.join("\n")
+  end
+
   private
 
   def record_property_journey

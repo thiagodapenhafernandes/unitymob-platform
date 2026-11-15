@@ -49,9 +49,10 @@ RSpec.describe "Admin::Leads Instagram reply", type: :request do
 
   it "mostra story sem texto e permite assumir uma captação pendente" do
     lead.update_columns(other_information: { "instagram_capture" => { "step" => "name" } })
-    lead.instagram_messages.create!(message_id: "story-1", context: { "story_id" => "42" }, occurred_at: Time.current)
+    lead.instagram_messages.create!(message_id: "story-1", context: { "story_id" => "42", "story_url" => "https://lookaside.fbsbx.com/story" }, occurred_at: Time.current)
     get admin_lead_path(lead)
-    expect(response.body).to include("Interação com story", "Em captação", "Assumir atendimento")
+    expect(response.body).to include("Resposta a story", "Em captação", "Assumir atendimento", "Abrir mídia 1")
+    expect(response.body).to include('href="https://lookaside.fbsbx.com/story"', 'rel="noopener noreferrer"')
 
     post take_over_instagram_capture_admin_lead_path(lead)
     expect(response).to have_http_status(:see_other)
