@@ -22,7 +22,10 @@
       <% end %>
       <% messages.each do |message| %>
         <div class="lead-ig-thread__msg lead-ig-thread__msg--<%= message.direction %>">
-          <p><%= message.body.presence || (message.context.to_h["story_id"].present? ? "Interação com story" : "Mensagem sem texto") %></p>
+          <p><%= message.conversation_text.presence || "Mensagem sem texto" %></p>
+          <% message.media_urls.each_with_index do |url, index| %>
+            <p><%= link_to "Abrir mídia #{index + 1}", url, target: "_blank", rel: "noopener noreferrer" %></p>
+          <% end %>
           <small>
             <%= message.outbound? ? (message.sent_by_admin_user&.name.presence || "Equipe") : "Cliente" %>
             · <%= l(message.occurred_at, format: :short) %>

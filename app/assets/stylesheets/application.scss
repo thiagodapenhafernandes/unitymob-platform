@@ -47,7 +47,7 @@ form.is-submitting [aria-disabled="true"] {
 }
 
 @keyframes submit-guard-spin {
-  to { transform: rotate(360deg); }
+  to { rotate: 360deg; }
 }
 
 @keyframes submit-guard-pulse {
@@ -67,6 +67,8 @@ form.is-submitting button.is-submitting:not([type])::after {
   border-radius: 999px;
   opacity: .72;
   vertical-align: -.12em;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   animation: submit-guard-spin .7s linear infinite;
 }
 
@@ -268,6 +270,8 @@ form.is-submitting button.is-submitting:has([data-submit-guard-hidden="true"])::
   opacity: .72;
 }
 .shared-property-identity-modal__submit[aria-busy="true"] i {
+  flex: 0 0 auto;
+  box-sizing: border-box;
   animation: submit-guard-spin .7s linear infinite;
 }
 .shared-property-identity-modal__cancel {

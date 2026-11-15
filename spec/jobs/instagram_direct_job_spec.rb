@@ -69,4 +69,17 @@ RSpec.describe InstagramDirectJob do
     expect(lead.other_information["meta_campaign_id"]).to be_nil
   end
 
+  it "preserva menções, mídia e resposta ao story sem inventar texto do cliente" do
+    event["message"].delete("text")
+    event["message"]["attachments"] = [{"type" => "story_mention", "payload" => {"url" => "https://lookaside.fbsbx.com/story"}}]
+    event["message"]["reply_to"] = {"story" => {"id" => "123", "url" => "https://lookaside.fbsbx.com/reply"}}
+    described_class.perform_now("12345", event)
+    message = integration.tenant.leads.find_by!(instagram_scoped_id: "98765").instagram_messages.sole
+    expect(message.body).to eq("")
+    expect(message.context).to include("story_id" => "123", "story_url" => "https://lookaside.fbsbx.com/reply",
+      "attachments" => [{"type" => "story_mention", "url" => "https://lookaside.fbsbx.com/story"}])
+    expect(message.conversation_text).to include("Mencionou a conta", "Resposta a story")
+    expect(message.automation_input?).to be(false)
+  end
+
 end

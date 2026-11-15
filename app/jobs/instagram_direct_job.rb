@@ -33,12 +33,10 @@ class InstagramDirectJob < ApplicationJob
           lead = Leads::Intake.receive!(lead)
         end
         return if lead.instagram_messages.exists?(message_id: message["mid"])
-        context = {}
+        context = InstagramMessage.received_context(message)
         referral = message["referral"] || event["referral"]
         context["referral"] = referral.slice("ref", "source", "type", "ad_id").select { |_, value| value.is_a?(String) }.transform_values { |value| value.first(2000) } if referral.is_a?(Hash)
         context["meta_facebook_page_id"] = page.id
-        story = message.dig("reply_to", "story")
-        context["story_id"] = story["id"] if story.is_a?(Hash)
         timestamp = Float(event["timestamp"], exception: false)
         occurred_at = timestamp && timestamp.between?(0, 32_503_680_000_000) ? Time.at(timestamp / 1000).utc : Time.current
         lead.instagram_messages.create!(message_id: message["mid"].to_s.first(1000), body: message["text"].to_s.first(20_000), context: context, occurred_at: occurred_at)

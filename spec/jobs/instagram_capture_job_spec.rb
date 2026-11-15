@@ -422,4 +422,28 @@ RSpec.describe Instagram::CaptureJob do
     expect(lead.reload).to be_instagram_capture_pending
   end
 
+  it "não pede contato nem responde comercialmente a menção, reação ou compartilhamento sem pedido" do
+    settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
+    lead = inbound("mention", "")
+    message = lead.instagram_messages.inbound.sole
+    message.update!(context: {"attachments" => [{"type" => "story_mention", "url" => "https://example.com/story"}]})
+    ["", "😍", "Compartilhando nossa publicação, obrigado pelo apoio"].each do |body|
+      message.update!(body: body)
+      described_class.perform_now(tenant.id, lead.id)
+    end
+    expect(Instagram::Reply).not_to have_received(:call)
+    expect(Leads::RoutingService).not_to have_received(:route!)
+    expect(lead.reload).to be_instagram_capture_pending
+    message.update!(body: "Qual o valor desse imóvel?")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(Instagram::Reply).to have_received(:call)
+  end
+
+  it "inclui o contexto no histórico sem confundir legenda com texto do cliente" do
+    lead = inbound("mention", "")
+    lead.instagram_messages.inbound.sole.update!(context: {"attachments" => [{"type" => "ig_post", "title" => "Casa compartilhada"}]})
+    history = described_class.new.send(:conversation_history, lead, lead.instagram_messages.maximum(:id))
+    expect(history).to eq([{role: "cliente", text: "Compartilhou uma publicação: Casa compartilhada"}])
+  end
+
 end
