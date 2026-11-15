@@ -495,7 +495,8 @@ module Leads
       when "lead_other_or_link"
         return pool_contact_value(links, :view) if pool_push?
 
-        links.secure?(:whatsapp) ? links.url(:view) : (@lead.product.presence || @lead.origin)
+        summary = Instagram::Qualification.summary(@lead).presence
+        links.secure?(:whatsapp) ? [summary, links.url(:view)].compact.join(" · ") : (summary || @lead.product.presence || @lead.origin)
       when "broker_name"
         @corretor.name
       when "broker_phone"

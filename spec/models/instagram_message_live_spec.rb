@@ -45,4 +45,15 @@ RSpec.describe InstagramMessage do
     expect(message.media_urls.size).to eq(5)
   end
 
+  it 'extrai o código explícito da legenda sem tratar telefone como referência de imóvel' do
+    message = described_class.new(body: '47998887777')
+    expect(message.property_reference_codes).to be_empty
+    message.context = {'attachments' => [{'title' => 'À venda. Cód. 9705'}]}
+    expect(message.property_reference_codes).to eq(['9705'])
+    message.body = 'Código: 9525'
+    expect(message.property_reference_codes).to eq(['9525'])
+    message.body = 'Código 9525, meu WhatsApp é (47) 99888-7777'
+    expect(message.property_reference_codes).to eq(['9525'])
+  end
+
 end

@@ -15,7 +15,7 @@ class Admin::InAppNotificationsController < Admin::BaseController
     scope = notifications.unread.where(kind: "instagram_message").where("metadata ->> 'lead_id' = ?", lead.id.to_s)
     scope = scope.where("(metadata ->> 'instagram_message_id')::bigint <= ?", params[:cursor].to_i)
     scope.update_all(read_at: Time.current, updated_at: Time.current)
-    InAppNotification.broadcast_event!(current_admin_user.id, event: "unread_changed")
+    InAppNotification.broadcast_event!(current_admin_user.id, event: "unread_changed", lead_id: lead.id, cursor: params[:cursor].to_i)
     head :no_content
   end
 

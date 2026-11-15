@@ -19,7 +19,7 @@
   <% if draft_id %><p class="tw-text-sm tw-text-ink-muted">A mesma configuração será aplicada às campanhas selecionadas.</p><% end %>
   <%= tag.div class: "tw-grid tw-gap-3", hidden: !campaign_id,
         data: (campaign_id ? {} : { conditional_reveal_target: "panel", conditional_reveal_values: "*" }) do %>
-    <p class="tw-text-sm tw-text-ink-muted">Nome confirmado e telefone com DDD são necessários antes de respostas sobre imóveis ou encaminhamento automático. O @ identifica o contato provisoriamente.</p>
+    <p class="tw-text-sm tw-text-ink-muted">A IA responde dúvidas e consulta imóveis ativos antes de pedir contato. Com intenção real e imóvel ou critérios mínimos, coleta apenas os dados faltantes e encaminha ao atendimento. O @ identifica o contato provisoriamente.</p>
     <%= ax_switch_field(name: "instagram_capture[enabled]", id: "#{field_prefix}_enabled", checked: rule["enabled"] == true,
           label: "Ativar captação", description: (campaign_id == "default" ? nil : "Desativar esta regra dispensa a captação nesta campanha.")) %>
     <%= ax_field_grid do %>

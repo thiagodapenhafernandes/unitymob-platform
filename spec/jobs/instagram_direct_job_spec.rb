@@ -82,4 +82,59 @@ RSpec.describe InstagramDirectJob do
     expect(message.automation_input?).to be(false)
   end
 
+  it "guarda a referência do catálogo na mensagem sem transformar a menção em pedido" do
+    property = create(:habitation, tenant: integration.tenant, codigo: '9705')
+    event['message'].delete('text')
+    event['message']['attachments'] = [{'type' => 'ig_reel', 'payload' => {'title' => ('Descrição do anúncio. ' * 110) + 'Cód. 9705'}}]
+    described_class.perform_now('12345', event)
+    message = integration.tenant.leads.find_by!(instagram_scoped_id: '98765').instagram_messages.sole
+    expect(message.context['property_code']).to eq(property.codigo)
+    expect(message.automation_input?).to be(false)
+  end
+
+  it "não concilia contato ambíguo e preserva ambos os cadastros" do
+    2.times { create(:lead, tenant: integration.tenant, phone: '47998887777', skip_automatic_routing: true) }
+    described_class.perform_now('12345', event)
+    provisional = integration.tenant.leads.find_by!(instagram_scoped_id: '98765')
+    event['message'] = {'mid' => 'phone', 'text' => 'Meu WhatsApp é (47) 99888-7777'}
+    expect { described_class.perform_now('12345', event) }.not_to change(Lead, :count)
+    expect(provisional.reload.other_information['instagram_identity_conflict']).to be(true)
+  end
+
+  it "aplica phone_and_email da conta e não usa contatos de outro tenant" do
+    LeadSetting.instance(tenant: integration.tenant).update!(stickiness_match: 'phone_and_email')
+    existing = create(:lead, tenant: integration.tenant, phone: '47998887777', email: 'maria@example.test', skip_automatic_routing: true)
+    event['message'] = {'mid' => 'phone', 'text' => 'Meu WhatsApp é (47) 99888-7777'}
+    described_class.perform_now('12345', event)
+    provisional = integration.tenant.leads.find_by!(instagram_scoped_id: '98765')
+    expect(provisional.id).not_to eq(existing.id)
+    provisional.update_columns(phone: '47998887777')
+    event['message'] = {'mid' => 'email', 'text' => 'Meu email é maria@example.test'}
+    described_class.perform_now('12345', event)
+    expect(existing.reload.instagram_scoped_id).to eq('98765')
+  end
+
+  it "não identifica por telefone um cadastro de outra conta" do
+    other = Tenant.create!(name: 'Outro contato', slug: 'ig-phone-isolation')
+    foreign = create(:lead, tenant: other, phone: '47998887777', skip_automatic_routing: true)
+    event['message'] = {'mid' => 'contact', 'text' => 'Meu WhatsApp é (47) 99888-7777'}
+    described_class.perform_now('12345', event)
+    own = integration.tenant.leads.find_by!(instagram_scoped_id: '98765')
+    expect(own.id).not_to eq(foreign.id)
+    expect(foreign.reload.instagram_scoped_id).to be_nil
+  end
+
+  it "não desfaz um cadastro Instagram que já está com responsável" do
+    owner = create(:admin_user, :admin, tenant: integration.tenant)
+    existing = create(:lead, tenant: integration.tenant, phone: '47998887777', skip_automatic_routing: true)
+    described_class.perform_now('12345', event)
+    provisional = integration.tenant.leads.find_by!(instagram_scoped_id: '98765')
+    provisional.update!(admin_user: owner, phone: '47998887776')
+    event['message'] = {'mid' => 'contact', 'text' => 'Meu WhatsApp é (47) 99888-7777'}
+    expect { described_class.perform_now('12345', event) }.not_to change(Lead, :count)
+    expect(provisional.reload).to have_attributes(admin_user_id: owner.id, instagram_scoped_id: '98765')
+    expect(existing.reload.instagram_scoped_id).to be_nil
+    expect(provisional.other_information['instagram_identity_conflict']).to be(true)
+  end
+
 end

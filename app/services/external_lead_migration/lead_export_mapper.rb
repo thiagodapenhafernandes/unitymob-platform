@@ -12,6 +12,10 @@ module ExternalLeadMigration
     def call
       campaign = campaign_source?
       routing = lead.distribution_rule&.destination_c2s? ? lead.distribution_rule.c2s_routing_attributes(campaign: campaign) : {}
+      qualification = lead.other_information['instagram_qualification'].to_h
+      if qualification['ready'] && routing['type_negotiation'].blank? && routing['type_negotiation_string'].blank?
+        routing['type_negotiation'] = {'venda' => 'Comprar', 'locacao' => 'Alugar'}[qualification['business_type']]
+      end
       source = routing["source"] || (campaign ? DistributionRule::C2S_DEFAULT_SOURCE : (lead.origin.presence || "unitymob"))
       attributes = {
         "name" => lead.display_name,
@@ -19,7 +23,7 @@ module ExternalLeadMigration
         "phone" => Phones::Normalizer.call(lead.display_phone).presence,
         "description" => (property&.display_title.presence || lead.product.presence)&.truncate(250),
         "prop_ref" => property&.codigo.presence || "Sem código",
-        "observation" => [lead.product.presence, ("Origem: #{source}" if lead.origin.present? || campaign)].compact.join(" · ").presence,
+        "observation" => [lead.product.presence, Instagram::Qualification.summary(lead), ("Origem: #{source}" if lead.origin.present? || campaign)].compact.join(" · ").presence,
         "url" => lead.source_url.presence,
         "source" => source,
         "external_id" => "unitymob:#{lead.tenant_id}:#{lead.id}"

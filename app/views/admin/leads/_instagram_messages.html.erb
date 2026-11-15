@@ -16,6 +16,9 @@
         <% end %>
       </div>
     <% end %>
+    <% if (qualification_summary = Instagram::Qualification.summary(lead)).present? %>
+      <%= ax_status_list(rows: [{label: 'Qualificação para o corretor', value: qualification_summary}]) %>
+    <% end %>
     <div class="lead-ig-thread__messages">
       <% if messages.empty? %>
         <p class="lead-ig-thread__empty">Nenhuma mensagem ainda.</p>

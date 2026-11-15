@@ -544,6 +544,8 @@ module Leads
     end
 
     def get_lead_value(key)
+      return routing_lead.instagram_qualified_for_delivery? if key == 'instagram_qualified'
+
       if routing_lead.has_attribute?(key) && routing_lead[key].present?
         routing_lead[key]
       elsif routing_lead.respond_to?(:answer_for) && routing_lead.answer_for(key).present?

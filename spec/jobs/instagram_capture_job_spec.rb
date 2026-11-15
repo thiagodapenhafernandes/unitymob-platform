@@ -23,20 +23,19 @@ RSpec.describe Instagram::CaptureJob do
     tenant.leads.find_by!(instagram_scoped_id: "98765")
   end
 
-  it "mantém o @ provisório e solicita os dados antes de responder sobre o imóvel" do
+  it "mantém o @ e responde sobre o imóvel sem exigir telefone, sem duplicar em retry" do
     settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
-    lead = inbound("first", "Oi")
-    lead.update_columns(other_information: lead.other_information.deep_merge("instagram_profile" => {"username" => "ednadgazevedo"}))
-    described_class.perform_now(tenant.id, lead.id)
-    catalog = instance_double(Instagram::CatalogReply, call: "A equipe confirma as condições deste imóvel.")
+    catalog = instance_double(Instagram::CatalogReply, call: "O edifício informado no cadastro é Presidente Kennedy.")
     allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
-    inbound("question", "Sobre esse apto do anúncio em cima do shopping.")
+    lead = inbound("question", "Qual nome desse edifício?")
+    lead.update_columns(other_information: lead.other_information.deep_merge("instagram_profile" => {"username" => "ednadgazevedo"}))
     2.times { described_class.perform_now(tenant.id, lead.id) }
     expect(lead.reload.client_name).to be_blank
+    expect(lead.phone).to be_blank
     expect(lead.display_name).to eq("@ednadgazevedo")
-    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_NAME_PROMPT, admin_user: nil, typing: false).once
-    expect(Instagram::Reply).not_to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_PHONE_PROMPT, admin_user: nil, typing: false)
-    expect(catalog).not_to have_received(:call)
+    expect(catalog).to have_received(:call).once
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "O edifício informado no cadastro é Presidente Kennedy.", admin_user: nil, typing: false).once
+    expect(Leads::RoutingService).not_to have_received(:route!)
   end
 
   it "aproveita nome e telefone de mensagens em sequência sem perder dados nem repetir o cadastro" do
@@ -51,17 +50,15 @@ RSpec.describe Instagram::CaptureJob do
     expect(Instagram::Reply).not_to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_PHONE_PROMPT, admin_user: nil, typing: false)
   end
 
-  it "explica a necessidade dos dados sem liberar a distribuição quando a pessoa não informa telefone" do
+  it "continua pelo Instagram quando a pessoa prefere não informar telefone" do
     settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
-    lead = inbound("first", "Oi")
-    described_class.perform_now(tenant.id, lead.id)
-    inbound("skip", "Prefiro continuar por aqui")
+    catalog = instance_double(Instagram::CatalogReply, call: "Podemos continuar por aqui. Você procura venda ou locação?")
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
+    lead = inbound("first", "Prefiro continuar por aqui")
     2.times { described_class.perform_now(tenant.id, lead.id) }
-    expect(lead.reload.client_name).to be_blank
-    expect(lead.phone).to be_blank
-    expect(lead).to be_instagram_capture_pending
+    expect(lead.reload.phone).to be_blank
     expect(Leads::RoutingService).not_to have_received(:route!)
-    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: a_string_including("nome e telefone com DDD"), admin_user: nil, typing: false).once
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Podemos continuar por aqui. Você procura venda ou locação?", admin_user: nil, typing: false).once
   end
 
   it "não perde a resposta que chega durante o envio da pergunta" do
@@ -84,35 +81,31 @@ RSpec.describe Instagram::CaptureJob do
     expect(Instagram::Reply).not_to have_received(:call).with(lead: lead, body: Instagram::CaptureSettings::DEFAULT_NAME_PROMPT, admin_user: nil, typing: false)
   end
 
-  it "só libera após obter os dois dados e então responde à dúvida que ficou pendente" do
+  it "responde primeiro e não repete a dúvida depois de receber o contato voluntário" do
     settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
-    lead = inbound("first", "Oi")
-    described_class.perform_now(tenant.id, lead.id)
     catalog = instance_double(Instagram::CatalogReply, call: "O imóvel aceita financiamento.")
     allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
-    inbound("question", "Como é a forma de pagamento?")
+    lead = inbound("question", "Como é a forma de pagamento?")
     described_class.perform_now(tenant.id, lead.id)
-    expect(catalog).not_to have_received(:call)
-    inbound("phone", "(47) 99888-7777")
-    described_class.perform_now(tenant.id, lead.id)
-    expect(lead.reload).to be_instagram_capture_pending
-    expect(Leads::RoutingService).not_to have_received(:route!)
-    inbound("name", "Me chamo Edna")
-    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.phone).to be_blank
+    inbound("contact", "Edna (47) 99888-7777")
+    2.times { described_class.perform_now(tenant.id, lead.id) }
     expect(lead.reload).not_to be_instagram_capture_pending
-    expect(catalog).to have_received(:call).with(array_including({role: "cliente", text: "Como é a forma de pagamento?"}), first_turn: true).once
+    expect(Leads::RoutingService).not_to have_received(:route!)
+    expect(catalog).to have_received(:call).once
     expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "O imóvel aceita financiamento.", admin_user: nil, typing: false).once
   end
 
   it "registra encaminhamento e avisa o corretor uma única vez quando faltam informações" do
     settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
-    lead = inbound("first", "Como é a forma de pagamento?")
+    lead = inbound("first", "Oi")
     described_class.perform_now(tenant.id, lead.id)
     catalog = instance_double(Instagram::CatalogReply, call: Instagram::CatalogReply::HANDOFF)
     allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
     allow(Leads::RoutingService).to receive(:route!) { |record| record.update_columns(admin_user_id: integration.admin_user_id) }
     allow(Leads::NotificationDispatcher).to receive(:push_to)
     inbound("contact", "Edna (47) 99888-7777")
+    inbound("question", "Como é a forma de pagamento?")
     2.times { described_class.perform_now(tenant.id, lead.id) }
     expect(lead.reload.other_information.dig('instagram_capture', 'sdr_cursor')).to be_nil
     expect(lead.activities.where(kind: 'note').where("metadata ? 'instagram_handoff_cursor'").count).to eq(1)
@@ -120,14 +113,15 @@ RSpec.describe Instagram::CaptureJob do
     expect(Leads::RoutingService).to have_received(:route!).with(lead).once
   end
 
-  it "retoma a coleta antes de responder a um contato antigo que ainda não tem dados" do
+  it "também responde ao contato antigo sem reiniciar uma cobrança de dados" do
     lead = inbound("old-contact", "Oi")
     settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
-    expect(Instagram::CatalogReply).not_to receive(:new)
+    catalog = instance_double(Instagram::CatalogReply, call: "Forma de pagamento cadastrada.")
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
     inbound("question", "Como é a forma de pagamento?")
     described_class.perform_now(tenant.id, lead.id)
-    expect(lead.reload).to be_instagram_capture_pending
-    expect(lead.other_information.dig('instagram_capture', 'step')).to eq('name')
+    expect(catalog).to have_received(:call).once
+    expect(lead.reload.phone).to be_blank
   end
 
   it "retém até confirmar nome e telefone com DDD e libera uma única vez" do
@@ -300,12 +294,12 @@ RSpec.describe Instagram::CaptureJob do
     expect(lead.reload.admin_user_id).to be_nil
   end
 
-  it "retoma a dúvida após o site completar os dados sem nova mensagem e sem distribuição" do
+  it "não repete a consulta quando o site completa os dados sem nova mensagem" do
+    catalog = instance_double(Instagram::CatalogReply, call: 'Valor cadastrado no imóvel.')
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
     lead = inbound('first', 'Qual é o valor?')
     described_class.perform_now(tenant.id, lead.id)
     lead.update_columns(client_name: 'Maria Silva', phone: '5547998887777')
-    catalog = instance_double(Instagram::CatalogReply, call: 'Valor cadastrado no imóvel.')
-    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
     2.times { described_class.perform_now(tenant.id, lead.id) }
     expect(lead.reload.other_information.dig('instagram_capture', 'step')).to eq('serving')
     expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: 'Valor cadastrado no imóvel.', admin_user: nil, typing: false).once
@@ -323,7 +317,7 @@ RSpec.describe Instagram::CaptureJob do
     expect(lead.reload.admin_user_id).to eq(integration.admin_user_id)
   end
 
-  it "continua atendendo se a distribuição ainda não encontrou corretor" do
+  it "aguarda a equipe sem reiniciar o SDR quando a distribuição não encontrou corretor" do
     lead = inbound('first', 'Quero um corretor')
     described_class.perform_now(tenant.id, lead.id)
     allow(Leads::RoutingService).to receive(:route!)
@@ -336,12 +330,14 @@ RSpec.describe Instagram::CaptureJob do
     allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
     inbound('more', 'Quero ver outras opções')
     described_class.perform_now(tenant.id, lead.id)
-    expect(catalog).to have_received(:call).once
+    expect(catalog).not_to have_received(:call)
     expect(Leads::RoutingService).to have_received(:route!).with(lead).once
   end
 
   it "encaminha compra confirmada à fila da página uma única vez, sem continuar a IA" do
     settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true})
+    settings.save_many(campaign_ids: ["default"], create_only: false, rule: {"enabled" => true, "sdr_enabled" => true,
+      "conditions" => [{"title" => "Compra para equipe", "match" => "keywords", "keywords" => "comprar", "action" => "handoff", "enabled" => true, "require_contact" => true}]})
     rule = create(:distribution_rule, tenant: tenant, business_type: :venda,
       source_site: false, source_meta: true, meta_page_ids: [page.page_id], auto_add_forms: true)
     agent = create(:admin_user, tenant: tenant)
@@ -444,6 +440,44 @@ RSpec.describe Instagram::CaptureJob do
     lead.instagram_messages.inbound.sole.update!(context: {"attachments" => [{"type" => "ig_post", "title" => "Casa compartilhada"}]})
     history = described_class.new.send(:conversation_history, lead, lead.instagram_messages.maximum(:id))
     expect(history).to eq([{role: "cliente", text: "Compartilhou uma publicação: Casa compartilhada"}])
+  end
+
+  it "encaminha uma única vez mesmo sem telefone, sem reiniciar o SDR na próxima mensagem" do
+    settings.save_many(campaign_ids: ['default'], create_only: false, rule: {'enabled' => true, 'sdr_enabled' => true})
+    catalog = instance_double(Instagram::CatalogReply, call: Instagram::CatalogReply::HANDOFF)
+    allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
+    lead = inbound('question', 'Qual é a entrada?')
+    2.times { described_class.perform_now(tenant.id, lead.id) }
+    inbound('ack', 'Ok')
+    described_class.perform_now(tenant.id, lead.id)
+    inbound('follow-up', 'Já mandei o código do apartamento')
+    described_class.perform_now(tenant.id, lead.id)
+    expect(catalog).to have_received(:call).once
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: Instagram::CatalogReply::HANDOFF, admin_user: nil, typing: false).once
+    expect(lead.reload.other_information.dig('instagram_capture', 'step')).to eq('handoff_pending')
+    expect(lead.activities.where(kind: 'note').where("metadata ? 'instagram_handoff_cursor'").count).to eq(1)
+    expect(Leads::RoutingService).not_to have_received(:route!)
+  end
+
+  it "responde o edifício do reel pelo catálogo atual antes de pedir nome e telefone" do
+    settings.save_many(campaign_ids: ['default'], create_only: false, rule: {'enabled' => true, 'sdr_enabled' => true})
+    create(:habitation, tenant: tenant, codigo: '9705', nome_empreendimento: 'Presidente Kennedy')
+    provider = instance_double(Ai::Provider, api_key: 'test-only', resolved_model: 'test-model')
+    client = instance_double(OpenAi::Client)
+    allow(Ai::Provider).to receive(:active).with(tenant: tenant).and_return(provider)
+    allow(Ai::Provider).to receive(:build_client).with(tenant: tenant).and_return(client)
+    allow(client).to receive(:create_response) do |payload|
+      expect(JSON.parse(payload[:input])['registered_facts']['building']).to eq('Edifício: Presidente Kennedy.')
+      {'output_text' => {facts: ['building'], needs_broker: false}.to_json}
+    end
+    InstagramDirectJob.perform_now('12345', {'sender' => {'id' => '98765'}, 'recipient' => {'id' => '12345'},
+      'message' => {'mid' => 'reel-context', 'attachments' => [{'type' => 'ig_reel', 'payload' => {'title' => ('Descrição do imóvel. ' * 40) + 'Cód. 9705'}}]}})
+    lead = inbound('building-question', 'Bom dia tudo bom? Qual nome desse edifício por gentileza')
+    2.times { described_class.perform_now(tenant.id, lead.id) }
+    expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: a_string_including('Presidente Kennedy'), admin_user: nil, typing: false).once
+    expect(lead.reload.phone).to be_blank
+    expect(lead.client_name).to be_blank
+    expect(Leads::RoutingService).not_to have_received(:route!)
   end
 
 end

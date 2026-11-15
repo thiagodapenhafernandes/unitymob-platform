@@ -23,13 +23,15 @@ module Instagram
     def call(messages, first_turn:)
       return HANDOFF if ConversationCondition.human_requested?(messages.last.fetch(:text))
       latest = messages.reverse.find { |message| message[:role] == "cliente" }&.fetch(:text, "").to_s
-      property = referenced_property(messages)
+      @reference_unavailable = false
+      property = referenced_property(messages) unless latest.match?(NEW_SEARCH)
+      return "Não encontrei esse imóvel no catálogo disponível. Quer que eu busque outras opções?" if @reference_unavailable
       reference_reply = latest.match?(/\A(?:c[oó]digo\s*[:#-]?\s*)?[\p{L}\d-]{1,40}\z/i) && latest.match?(/\d/)
       without_links = latest.gsub(%r{https?://\S+}, '')
       reference_reply ||= latest.match?(%r{https?://\S+}) && !without_links.match?(/\?|pagamento|entrada|financiamento|quanto|qual|como|onde/i)
-      question = reference_reply ? messages.reverse.drop(1).find { |message| message[:role] == "cliente" && message[:text].to_s.match?(/\?|pagamento|financiamento|parcelamento|entrada|pre[cç]o|valor/i) }&.fetch(:text, nil) : latest
+      question = reference_reply ? messages.reverse.drop(1).find { |message| message[:role] == "cliente" && message[:text].to_s.match?(/\?|pagamento|financiamento|parcelamento|entrada|pre[cç]o|valor|edif[ií]cio|pr[eé]dio|condom[ií]nio/i) }&.fetch(:text, nil) : latest
       question ||= "Quais são as informações cadastradas deste imóvel?"
-      factual_question = reference_reply || latest.match?(/\A(?:tem|possui|aceita|qual|como|onde)\b|\?|pagamento|parcelamento|financiamento|entrada|juros|pre[cç]o|valor|dormit[oó]rios|quartos|su[ií]tes|garagem|metragem|[aá]rea|localiza[cç][aã]o|onde fica/i)
+      factual_question = reference_reply || latest.match?(/\A(?:tem|possui|aceita|qual|como|onde)\b|\?|pagamento|parcelamento|financiamento|entrada|juros|pre[cç]o|valor|dormit[oó]rios|quartos|su[ií]tes|garagem|metragem|[aá]rea|localiza[cç][aã]o|onde fica|edif[ií]cio|pr[eé]dio|condom[ií]nio|dispon[ií]vel|aluga/i)
       if factual_question && !latest.match?(NEW_SEARCH)
         return location_reply([property]) if property && latest.match?(LOCATION_REQUEST) && CaptureSettings.allowed?(@rule, "location")
         return PropertyAnswer.new(@lead, property, @rule).call(messages, question: question) if property
@@ -74,32 +76,16 @@ module Instagram
     private
 
     def referenced_property(messages)
-      scope = @tenant.habitations.public_property_listable
-      latest = messages.reverse.find { |message| message[:role] == "cliente" }&.fetch(:text, "").to_s
-      messages.reverse_each do |message|
-        text = message[:text].to_s
-        linked = PropertyJourney.properties_in(@tenant, text)
-        if linked.any?
-          ordinal = latest[/primeir[oa]|segund[oa]|terceir[oa]/i]&.downcase
-          index = {"primeiro" => 0, "primeira" => 0, "segundo" => 1, "segunda" => 1, "terceiro" => 2, "terceira" => 2}[ordinal]
-          return linked[index] if index
-          return linked.one? ? linked.first : nil
-        end
-        next unless message[:role] == "cliente"
-        if match = text.match(/\b(?:c[oó]digo|ref(?:er[eê]ncia)?)\s*[:#-]?\s*([\p{L}\d-]+)/i)
-          return scope.find_by(codigo: match[1])
-        end
-        if text.match?(/\A[\p{L}\d-]{1,40}\z/) && text.match?(/\d/)
-          return scope.find_by(codigo: text)
-        end
-      end
-      scope.find_by(codigo: @rule["property_code"]) if @rule["property_code"].present?
+      context = PropertyContext.new(@lead, @rule)
+      property = context.resolve(messages)
+      @reference_unavailable = context.unavailable
+      property
     end
 
     def identify_property_prompt
       base = @tenant.public_base_url
-      text = CaptureSettings.message(@rule, "identify_property", @lead)
-      text
+      return "Pode me enviar o código ou compartilhar o link do imóvel para eu conferir no catálogo?" if base.blank?
+      CaptureSettings.message(@rule, "identify_property", @lead)
     end
 
     def previously_recommended(messages)
@@ -145,8 +131,6 @@ module Instagram
 
     def recommendations(properties)
       base = @tenant.public_base_url
-      return HANDOFF if base.blank?
-
       summaries = []
       cards = []
       properties.each do |property|
@@ -201,11 +185,11 @@ module Instagram
       end
       url = public_url(property, base)
       details = [prices.join(" · ").presence, location.presence].compact
-      summary = [title, *details, url].join("\n")
+      summary = [title, *details, url].compact.join("\n")
       source = property.public_image_sources.first if CaptureSettings.allowed?(@rule, "images")
       image_url = Storage::PublicCdnImageUrl.resolve(source) if source
       image_url = "#{base}#{image_url}" if image_url.to_s.match?(%r{\A/[^/]})
-      card = if image_url.to_s.start_with?("https://")
+      card = if url.present? && image_url.to_s.start_with?("https://")
         {
           title: title.truncate(80),
           subtitle: details.join(" · ").truncate(80),

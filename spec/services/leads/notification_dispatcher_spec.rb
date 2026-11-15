@@ -500,4 +500,15 @@ RSpec.describe Leads::NotificationDispatcher do
     expect(lead.activities.where(kind: "notification_failed").last.metadata).to include("channel" => "whatsapp")
   end
 
+  it "inclui o resumo na variável existente de outros dados e mantém contatos protegidos" do
+    LeadSetting.instance.update!(secure_links_enabled: true, secure_link_whatsapp: true)
+    lead.update_columns(other_information: {'instagram_qualification' => {
+      'ready' => true, 'business_type' => 'locacao', 'request' => '2 quartos no Centro até 4 mil', 'next_step' => 'Visitar'}})
+    values = described_class.new(lead).send(:default_whatsapp_template_params).map { |param| param[:text] }
+    expect(values[5]).to include('Locação', '2 quartos', 'Centro', '/s/')
+    expect(values[3]).to include('/s/')
+    expect(values[4]).to include('/s/')
+    expect(values[5]).not_to include(lead.display_phone)
+  end
+
 end

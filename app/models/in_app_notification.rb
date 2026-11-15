@@ -98,6 +98,7 @@ class InAppNotification < ApplicationRecord
   def broadcast_payload
     {
       id: id, kind: kind, title: title, body: body, url: url, created_at: created_at.iso8601,
+      lead_id: metadata.to_h["lead_id"], instagram_message_id: metadata.to_h["instagram_message_id"],
       unread_count: self.class.unread_count_for(admin_user)
     }
   end

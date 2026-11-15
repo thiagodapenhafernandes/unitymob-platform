@@ -1,3 +1,4 @@
+<% message_notices = lead_table_message_notices(leads, tenant: current_tenant, user: current_admin_user) %>
 <% meta_form_names = lead_table_meta_form_names(leads, tenant: current_tenant) %>
 <% origin_campaign_names = lead_origin_campaign_names(leads, tenant: current_tenant) %>
 <% origin_site_events = lead_origin_site_events(leads, tenant: current_tenant) %>
@@ -22,6 +23,7 @@
           <div class="ax-record-contact"><span><%= format_phone(lead.display_phone) %></span><%= ax_badge(lead.status.presence || Lead.default_status, tone: lead_table_status_tone(lead.status)) %></div>
           <div class="ax-record-contact-details"><span class="ax-record-email" title="<%= lead.display_email %>"><%= lead.display_email %></span>
           <%= render "admin/lead_labels/chips", lead: lead, labels: labels if labels.any? %></div>
+          <%= render "admin/shared/ui/lead_message_notice", lead: lead, notification: message_notices[lead.id] %>
         </div>
       </div>
     </div>

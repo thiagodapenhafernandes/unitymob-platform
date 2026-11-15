@@ -27,7 +27,7 @@ module ExternalLeadMigration
     private
 
     def export!(lead, integration)
-      return if lead.whatsapp_service_contact? || lead.c2s_exported_at.present? || lead.imported_from_c2s?
+      return if lead.instagram_automation_holding? || lead.whatsapp_service_contact? || lead.c2s_exported_at.present? || lead.imported_from_c2s?
 
       rule = lead.distribution_rule
       scoped = rule&.destination_c2s?

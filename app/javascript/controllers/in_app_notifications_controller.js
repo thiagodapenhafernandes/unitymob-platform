@@ -74,6 +74,7 @@ export default class extends Controller {
   }
 
   received(data) {
+    window.dispatchEvent(new CustomEvent("lead:notification", { detail: data }))
     this.refreshTitle()
     if (data.event === "unread_changed") return
 

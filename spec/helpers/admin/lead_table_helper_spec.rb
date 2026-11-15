@@ -107,4 +107,15 @@ RSpec.describe Admin::LeadTableHelper, type: :helper do
     expect(helper.lead_table_conversion(lead, {})[:label]).to eq("Formulário: legacy")
   end
 
+  it "mostra somente mensagens não lidas autorizadas do usuário e da conta" do
+    user = create(:admin_user, :admin)
+    lead = create(:lead, tenant: user.tenant, skip_automatic_routing: true)
+    notice = InAppNotification.create!(tenant: user.tenant, admin_user: user, kind: 'instagram_message', title: 'Nova mensagem', metadata: {lead_id: lead.id})
+    other_user = create(:admin_user, tenant: user.tenant)
+    expect(helper.lead_table_message_notices([lead], tenant: user.tenant, user: user)).to eq(lead.id => notice)
+    expect(helper.lead_table_message_notices([lead], tenant: user.tenant, user: other_user)).to be_empty
+    notice.update!(read_at: Time.current)
+    expect(helper.lead_table_message_notices([lead], tenant: user.tenant, user: user)).to be_empty
+  end
+
 end
