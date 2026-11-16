@@ -80,6 +80,8 @@ class InstagramMessage < ApplicationRecord
       when "image" then "Enviou uma imagem"
       when "video" then "Enviou um vídeo"
       when "audio" then "Enviou um áudio"
+      when "ephemeral"
+        attachment["url"].present? ? "Enviou uma mídia temporária" : "Mídia temporária: conteúdo não disponibilizado pela Meta"
       else "Enviou um anexo"
       end
       parts << [label, attachment["title"].presence].compact.join(": ")

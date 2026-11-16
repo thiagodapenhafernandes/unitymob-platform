@@ -88,4 +88,12 @@ RSpec.describe 'Instagram Direct sem recarregar o lead', type: :request do
     expect(InAppNotification).to have_received(:broadcast_event!).with(admin.id, event: 'unread_changed', lead_id: lead.id, cursor: cursor)
   end
 
+  it 'explica a ausência do conteúdo de um anexo temporário recebido da Meta' do
+    lead.instagram_messages.create!(message_id: 'ephemeral', body: '', context: {'attachments' => [{'type' => 'ephemeral'}]}, occurred_at: Time.current)
+    get instagram_thread_admin_lead_path(lead)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('Mídia temporária: conteúdo não disponibilizado pela Meta')
+    expect(response.body).not_to include('Enviou um anexo')
+  end
+
 end
