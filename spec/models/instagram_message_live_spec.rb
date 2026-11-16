@@ -56,4 +56,15 @@ RSpec.describe InstagramMessage do
     expect(message.property_reference_codes).to eq(['9525'])
   end
 
+  it 'explica o anexo temporário sem URL sem inventar conteúdo ou acionar o SDR' do
+    context = described_class.received_context('attachments' => [{'type' => 'ephemeral'}])
+    message = described_class.new(body: '', context: context)
+    expect(message.context_description).to eq('Mídia temporária: conteúdo não disponibilizado pela Meta')
+    expect(message.media_items).to be_empty
+    expect(message.automation_input?).to be(false)
+    message.context = {'attachments' => [{'type' => 'ephemeral', 'url' => 'https://example.com/media'}]}
+    expect(message.context_description).to eq('Enviou uma mídia temporária')
+    expect(message.media_urls).to eq(['https://example.com/media'])
+  end
+
 end
