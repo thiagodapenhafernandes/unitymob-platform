@@ -1,7 +1,9 @@
 # Conector direto Imovelweb — Unitymob
 
-Implementação de 03/11/2026. **Recebimento desativado; homologação pendente.**
-A publicação do código e das migrations não autoriza ativação do canal.
+Implementação inicial de 03/11/2026. **O recebimento é habilitado por conta e ambiente.**
+A publicação do código e das migrations não autoriza ativação do canal. As etapas
+de preparação e pendências abaixo registram a implantação inicial; o estado atual
+de cada conta deve ser conferido na conexão e nos recibos de produção.
 A Unitymob é a integradora; a Salute é a cliente piloto. O conector atende qualquer
 conta e permite mais de uma conta anunciante por tenant. Nenhum código da Salute,
 CNPJ, ID de imóvel ou configuração de produção está embutido na implementação.
@@ -29,8 +31,9 @@ CNPJ, ID de imóvel ou configuração de produção está embutido na implementa
    O worker existente encaminha depois, com assinatura HMAC ligada à rota.
 5. Rails recebe `POST /webhooks/imovelweb/:route_key`, valida assinatura, conta,
    ambiente, autorização e ativação. Persiste recibo criptografado e agenda job.
-6. Job resolve o imóvel **somente** pelo mapa da conexão. Recibos desconhecidos,
-   conflitantes ou sem contato válido ficam em quarentena. Nenhum lookup global.
+6. Job resolve o imóvel **somente** pelo mapa da conexão. Sem anúncio mapeado,
+   cria ou complementa o lead sem imóvel, preservando o contexto do anúncio.
+   Vínculos conflitantes ou sem contato válido ficam em quarentena. Nenhum lookup global.
 7. Reenvio usa `eventId`, não ID de contato: não duplica lead nem redistribui.
    Nova manifestação segue as regras atuais de complemento/fidelização da conta.
    E-mail válido sem telefone é aceito exclusivamente no canal direto.
@@ -146,8 +149,8 @@ Não se deve manipular XML para fazer essa habilitação.
   antigos HTTP. Client usa Bearer, token por expiração e uma renovação em HTTP 401.
 - Telefone/WhatsApp são tipos de consulta do portal, não captura de conversas de
   WhatsApp. A cobertura real brasileira precisa ser demonstrada na homologação.
-- Recebimento para imóvel ainda não associado fica em quarentena, preservado para
-  correção explícita. Sem contato utilizável, não criar cadastro fictício.
+- Imóvel não associado não bloqueia o contato. Sem contato utilizável, não criar
+  cadastro fictício. Conta, ambiente, assinatura e autorização continuam obrigatórios.
 - Nenhum teste de carga/SLA real, ativação, credencial ou chamada remota foi feito.
 
 ## Fontes consultadas
@@ -212,3 +215,19 @@ identidade imutável de conexões existentes não é alterada pelo formulário.
 
 A migration `20261113130000` adiciona o código anunciante opcional e sua unicidade
 por tenant/ambiente, preservando conexões existentes sem backfill ou ativação.
+
+## Recebimento sem imóvel — 16/11/2026
+
+- O vínculo do anúncio é opcional; referência ausente ou desconhecida não impede
+  a entrada de um contato válido pelo conector direto Imovelweb.
+- Referência, ID do anúncio e mensagem ficam nas observações da nova entrada e
+  nos dados de origem (`origin_listing_reference`, `origin_listing_id`, `portal_message`).
+  Ao reutilizar um lead existente, o contexto completo da consulta fica na atividade
+  `inquiry_complemented`, preservando o histórico anterior.
+- A identificação do contato e do evento continua usando `Leads::Intake`, com
+  escopo da conta, as regras existentes de fidelização/distribuição e idempotência.
+- Referência e ID mapeados para vínculos diferentes, ou mapa que aponte para imóvel
+  fora da conta, permanecem em quarentena `conflicting_listing`.
+- Recibos históricos `unknown_listing` não são liberados automaticamente pelo
+  deploy. Separar homologação de contatos reais, conferir o lote e reprocessar
+  apenas recibos autorizados, usando a tarefa existente por ID.

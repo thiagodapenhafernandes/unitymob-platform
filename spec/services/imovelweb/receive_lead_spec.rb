@@ -22,6 +22,8 @@ RSpec.describe Imovelweb::ReceiveLead do
     expect(receipt.lead.attribution_source).to eq("imovelweb")
     expect(receipt.lead.property_id).to eq(property.id)
     expect(receipt.lead.property_interests.where(habitation: property)).to exist
+    expect(receipt.lead.notes).to include("Referência do imóvel: IW-1", "Tenho interesse")
+    expect(receipt.lead.other_information["origin_listing_reference"]).to eq("IW-1")
     expect(receipt.payload_before_type_cast).not_to include("imovelweb@example.com")
     expect(connection.reload.last_lead_received_at).to be_present
     expect(other.reload.last_lead_at).to eq(previous)
@@ -30,27 +32,88 @@ RSpec.describe Imovelweb::ReceiveLead do
 
   it "records a distinct inquiry for the same contact and makes replay inert" do
     ImovelwebLeadProcessingJob.perform_now(receipt.id)
-    second = connection.imovelweb_lead_receipts.create!(event_id: "event-2", event_type: "CONTACTO_MENSAJE", payload: payload.merge("event_id" => "event-2").to_json, received_at: Time.current)
+    second = connection.imovelweb_lead_receipts.create!(event_id: "event-2", event_type: "CONTACTO_MENSAJE",
+      payload: payload.merge("event_id" => "event-2", "reference" => "SEM-MAPA", "listing_id" => "789", "message" => "Quero visitar outro anúncio").to_json, received_at: Time.current)
     expect { ImovelwebLeadProcessingJob.perform_now(second.id) }.not_to change(Lead, :count)
     expect(second.reload.lead_id).to eq(receipt.reload.lead_id)
     activities = second.lead.activities.where(kind: "inquiry_complemented")
+    expect(second.lead.property_id).to eq(property.id)
+    expect(second.lead.notes).to include("Referência do imóvel: IW-1")
+    expect(activities.last.metadata).to include("body" => a_string_including("Referência do imóvel: SEM-MAPA", "ID do anúncio: 789", "Quero visitar outro anúncio"))
+    expect(activities.last.metadata.dig("inquiry_information", "origin_listing_reference")).to eq("SEM-MAPA")
     count = activities.count
     expect(count).to be > 0
+    second.update!(status: "pending")
     ImovelwebLeadProcessingJob.perform_now(second.id)
     expect(activities.count).to eq(count)
   end
 
   it "uses the existing portal distribution rule" do
     rule = create(:distribution_rule, tenant: tenant, source_site: false, source_portal: true, distribution_mode: :shark_tank)
+    payload["reference"] = "SEM-MAPA"
     ImovelwebLeadProcessingJob.perform_now(receipt.id)
     expect(receipt.reload.lead.distribution_rule_id).to eq(rule.id)
+    expect(receipt.lead.property_id).to be_nil
     expect(receipt.lead.activities.where(kind: "shark_tank_ready")).to exist
   end
 
-  it "quarantines unknown listings and never searches another tenant" do
+  it "complements an existing C2S contact without replacing its owner, property or history" do
+    owner = create(:admin_user, tenant: tenant)
+    integration = create(:external_lead_integration, tenant: tenant, connected_by_admin_user: owner,
+      operational_mappings: { "mirror_c2s_owners" => true })
+    original = create(:lead, tenant: tenant, email: payload["email"], admin_user: owner,
+      property_id: property.id, notes: "Histórico anterior", origin: "Migração externa",
+      external_lead_integration: integration, external_lead_id: "existing-c2s")
+    previous = original.attributes.slice("admin_user_id", "status", "property_id", "origin", "notes", "external_lead_id")
+    payload.merge!("reference" => "SEM-MAPA", "listing_id" => "789")
+
+    expect { ImovelwebLeadProcessingJob.perform_now(receipt.id) }.not_to change { tenant.leads.count }
+    expect(receipt.reload.lead_id).to eq(original.id)
+    expect(original.reload.attributes.slice(*previous.keys)).to eq(previous)
+    expect(original.activities.find_by!(kind: "inquiry_complemented").metadata).to include(
+      "body" => a_string_including("Referência do imóvel: SEM-MAPA", "ID do anúncio: 789", "Tenho interesse"))
+    expect(ExternalLeadMigration::ExportLeadJob).not_to have_been_enqueued
+  end
+
+  it "receives an unmapped listing with its context without searching another tenant" do
+    other = Tenant.create!(name: "Outra conta", slug: "iw-unmapped")
+    foreign_property = create(:habitation, tenant: other, codigo: "NOT-MAPPED")
+    foreign_connection = ImovelwebConnection.create!(tenant: other, client_code: "foreign-unmapped")
+    foreign_connection.imovelweb_listings.create!(habitation: foreign_property, reference: "NOT-MAPPED", external_id: "987")
     payload["reference"] = "NOT-MAPPED"
+    payload["listing_id"] = "987"
     ImovelwebLeadProcessingJob.perform_now(receipt.id)
-    expect(receipt.reload.reason).to eq("unknown_listing")
+    expect(receipt.reload.status).to eq("processed")
+    expect(receipt.reason).to be_nil
+    expect(receipt.lead).to have_attributes(tenant_id: tenant.id, property_id: nil, product: nil)
+    expect(receipt.lead.property_interests).to be_empty
+    expect(receipt.lead.notes).to include("Referência do imóvel: NOT-MAPPED", "ID do anúncio: 987", "Tenho interesse")
+    expect(receipt.lead.other_information).to include("origin_listing_reference" => "NOT-MAPPED", "origin_listing_id" => "987", "portal_message" => "Tenho interesse")
+    expect(other.leads).to be_empty
+    expect { ImovelwebLeadProcessingJob.perform_now(receipt.id) }.not_to change(Lead, :count)
+  end
+
+  it "receives a valid contact even without listing identifiers" do
+    payload.delete("reference")
+    ImovelwebLeadProcessingJob.perform_now(receipt.id)
+    expect(receipt.reload.status).to eq("processed")
+    expect(receipt.lead.property_id).to be_nil
+    expect(receipt.lead.notes).to eq("Contato recebido pelo Imovelweb\nTenho interesse")
+  end
+
+  it "resolves a mapped listing by external ID without a reference" do
+    payload.delete("reference")
+    payload["listing_id"] = "123"
+    ImovelwebLeadProcessingJob.perform_now(receipt.id)
+    expect(receipt.reload.lead.property_id).to eq(property.id)
+  end
+
+  it "retains an invalid cross-tenant mapping instead of assigning a foreign property" do
+    other = Tenant.create!(name: "Outra conta", slug: "iw-invalid-map")
+    foreign_property = create(:habitation, tenant: other)
+    connection.imovelweb_listings.find_by!(reference: "IW-1").update_column(:habitation_id, foreign_property.id)
+    expect { ImovelwebLeadProcessingJob.perform_now(receipt.id) }.not_to change(Lead, :count)
+    expect(receipt.reload.reason).to eq("conflicting_listing")
     expect(receipt.lead_id).to be_nil
   end
 
