@@ -7,6 +7,10 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     property = create(:habitation, codigo: "3909", status: "Venda", exibir_no_site_flag: true)
     expect(described_class.property_from_text(property.tenant, "Form - 3909 Atlântico Shopping Residence")).to eq(property)
     expect(described_class.property_code_from_text("[3909] Atlântico Shopping")).to eq("3909")
+    expect(described_class.property_from_text(property.tenant, "3909 | Locação | Atlântico Shopping R$ 7.500")).to eq(property)
+    expect(described_class.property_code_from_text("[3909]|Compra|Atlântico Shopping")).to eq("3909")
+    expect(described_class.property_code_from_text("3909 | 4000 Atlântico")).to be_nil
+    expect(described_class.property_code_from_text("3909 | Venda | Atlântico COD 4000")).to be_nil
     expect(described_class.property_code_from_text("Form - Refuge 2 milhões")).to be_nil
     expect(described_class.property_code_from_text("Form - 500 mil")).to be_nil
     expect(described_class.property_code_from_text("Form - 3909 e 4000 Atlântico")).to be_nil
@@ -112,6 +116,24 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(lead.property_id).to eq(property.id)
     expect(lead.property_interests.pluck(:habitation_id)).to contain_exactly(property.id)
     expect(lead.other_information["meta_property_code"]).to eq("3168")
+  end
+
+  it "processa o formulário com barras preservando imóvel e intenção de locação" do
+    tenant = Tenant.default
+    property = create(:habitation, tenant: tenant, codigo: "9846", status: "Venda", exibir_no_site_flag: true,
+      valor_venda_cents: 50000000, valor_locacao_cents: 750000)
+    page = create_meta_setup(tenant, page_id: "page-pipe-title")
+    form = create(:meta_lead_form, meta_facebook_page: page, form_id: "form-pipe-title",
+      name: "9846 | Locação | Edifício Ruth de Sá R$ 7.500")
+    process_meta_lead("lead-pipe-title", page.page_id, form.form_id, [
+      {"name" => "full_name", "values" => ["Teste 9846"]},
+      {"name" => "email", "values" => ["teste9846@example.com"]},
+      {"name" => "phone_number", "values" => ["5511990009846"]}
+    ])
+    lead = tenant.leads.find_by!("other_information ->> 'meta_leadgen_id' = ?", "lead-pipe-title")
+    expect(lead.property_id).to eq(property.id)
+    expect(lead.product).to eq(form.name)
+    expect(Leads::EntryClassification.new(lead).business_type).to eq(:locacao)
   end
 
   it "nao vincula imovel quando o nome do formulario Meta tem mais de um codigo" do
