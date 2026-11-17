@@ -24,6 +24,17 @@ RSpec.describe Leads::NotificationDispatcher do
   end
 
 
+  it "notifica usando a conta do lead mesmo sem contexto de conta no job" do
+    lead
+    rule.update!(notify_push: false, notify_whatsapp: true)
+    dispatcher = described_class.new(lead)
+    allow(dispatcher).to receive(:deliver_whatsapp)
+
+    Current.set(tenant: nil) { dispatcher.deliver }
+
+    expect(dispatcher).to have_received(:deliver_whatsapp).once
+  end
+
   it "abre o card seguro do lead quando o destino do push e detalhes primeiro" do
     LeadSetting.instance.update!(push_lead_click_action: "system")
 

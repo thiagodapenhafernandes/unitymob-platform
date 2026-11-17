@@ -6,7 +6,7 @@ class ExternalLeadIntegration < ApplicationRecord
   SUPPORT_RULE_NAME = "Migração de leads - distribuição espelhada".freeze
   WEBHOOK_TAG = "external_lead_migration".freeze
   LEAD_ORIGIN = "Migração externa".freeze
-  ASSIGNMENT_MODES = { "Corretor informado pelo C2S" => "c2s", "Fila de distribuição da Unitymob" => "unitymob" }.freeze
+  ASSIGNMENT_MODES = { "Corretor informado pelo sistema anterior" => "c2s", "Fila de distribuição da Unitymob" => "unitymob" }.freeze
   INCOMING_BUSINESS_TYPES = { "Venda e Locação (todas as modalidades)" => "all", "Somente Venda" => "sale", "Somente Locação" => "rental" }.freeze
   LEGACY_TRASH_LOCAL_EMAIL = "lixeira@conexaobc.com.br".freeze
   LEGACY_TRASH_SELLER_EMAILS = %w[lixeira_cbc2025@c2sglobal.com].freeze

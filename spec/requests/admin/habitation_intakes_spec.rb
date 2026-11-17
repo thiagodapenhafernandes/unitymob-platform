@@ -51,6 +51,46 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     sign_in admin
   end
 
+  it "exibe e salva o edifício da sala comercial separado do complemento" do
+    intake = create(:habitation, :broker_intake, admin_user: admin,
+      categoria: "Sala Comercial", intake_step: "endereco", nome_empreendimento: nil)
+
+    get edit_admin_captacao_path(intake, step: "endereco")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('input[name="habitation[edificio_nome]"]')).to be_present
+    expect(document.at_css('input[name="habitation[complemento]"]')).to be_present
+    expect(document.at_css('label[for="habitation_edificio_nome"] .required-star')).to be_nil
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco", direction: "forward",
+      habitation: {
+        zip_code: "88330-030", street_type: "Rua", street: "Rua 1500",
+        street_number: "123", neighborhood: "Centro", city: "Balneário Camboriú",
+        state: "SC", edificio_nome: "Edifício Business Center", complemento: "Sala 402"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
+    expect(intake.reload.nome_empreendimento).to eq("Edifício Business Center")
+    expect(intake.complemento).to eq("Sala 402")
+    expect(intake.requires_intake_development_name?).to be(false)
+  end
+
+  ["Apartamento", "Casa", "Galpão"].each do |category|
+    it "preserva a exibição do edifício na categoria #{category}" do
+      intake = create(:habitation, :broker_intake, admin_user: admin,
+        categoria: category, intake_step: "endereco")
+
+      get edit_admin_captacao_path(intake, step: "endereco")
+
+      expect(response).to have_http_status(:ok)
+      field = Nokogiri::HTML(response.body).at_css('input[name="habitation[edificio_nome]"]')
+      expect(field.present?).to eq(category == "Apartamento")
+    end
+  end
+
   it "usa os mesmos grupos e categorias do cadastro direto na captação" do
     Habitation::REGISTRATION_PROFILES.each do |group, config|
       get new_admin_captacao_path, params: { habitation: { categoria: config[:categories].first, tipo: config[:tipo] } }

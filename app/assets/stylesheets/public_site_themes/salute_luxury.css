@@ -4494,7 +4494,7 @@ body.no-scroll { overflow: hidden; }
 .sl-development__aside { display: grid; gap: 18px; }
 @media (min-width: 1000px) {
   .sl-development__layout { grid-template-columns: minmax(0, 1fr) 344px; gap: 40px; }
-  /* Ficha e contato acompanham a leitura das seções longas. */
+  /* A ficha acompanha a leitura das informações complementares. */
   .sl-development__aside { position: sticky; top: 104px; }
 }
 
@@ -5760,3 +5760,10 @@ body.no-scroll { overflow: hidden; }
 .public-theme-institutional-page--salute-luxury .public-theme-institutional__dark { background: var(--sl-navy-900); }
 .public-theme-institutional-page--salute-luxury .public-theme-institutional__button { background: var(--sl-navy-900); }
 .public-theme-institutional-page--salute-luxury .public-theme-institutional__button.public-theme-institutional__heading { color: #fff; }
+
+.public-theme-development-units-wrap--salute-luxury { padding-top: 32px; }
+.public-theme-development-units__link--salute-luxury {
+  background: var(--color-accent);
+  color: var(--color-primary);
+  border-radius: 4px;
+}

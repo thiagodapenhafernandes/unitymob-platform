@@ -77,7 +77,7 @@
             <%
               current_access_id = admin_user.horizontal_profile_id.presence || admin_user.profile_id
               access_profile_groups = {
-                "Hierarquia" => (@assignable_vertical_profiles || []).map { |profile| [profile.name, profile.id, { data: { axis: "vertical" } }] },
+                "Hierarquia" => (@assignable_vertical_profiles || []).map { |profile| [profile.name, profile.id, { data: { axis: "vertical", position: profile.position.to_i } }] },
                 "Funções operacionais" => (@assignable_horizontal_profiles || []).map do |profile|
                   [
                     safe_join([profile.name, profile.root_vertical_profile ? "· #{profile.root_vertical_profile.name}" : nil].compact, " "),
@@ -136,12 +136,12 @@
           </div>
 
           <% if current_admin_user&.can?(:manage, :corretores) %>
-            <% manager_options = @assignable_manager_options || [] %>
+            <% manager_choices = (@assignable_manager_options || []).map { |manager| [manager.name, manager.id, { data: { position: manager.vertical_profile&.position } }] } %>
             <div data-admin-user-access-target="verticalOnly salesManagerField">
-              <%= ax_select_field(form: f, method: :manager_id, label: "Gestor de Venda", tooltip: "Equipe de venda: hierarquia e regras de distribuição de venda.", choices: manager_options.map { |manager| [manager.name, manager.id] }, select_options: { prompt: "Nenhum (topo da hierarquia)" }) %>
+              <%= ax_select_field(form: f, method: :manager_id, label: "Gestor de Venda", tooltip: "Equipe de venda: hierarquia e regras de distribuição de venda.", choices: manager_choices, html_options: { data: { admin_user_access_target: "managerSelect", profile_position: admin_user.vertical_profile&.position } }, select_options: { prompt: "Nenhum (topo da hierarquia)" }) %>
             </div>
             <div data-admin-user-access-target="verticalOnly rentalsManagerField">
-              <%= ax_select_field(form: f, method: :rentals_manager_id, label: "Gestor de Locação", tooltip: "Equipe de locação: hierarquia e regras de distribuição de locação.", choices: manager_options.map { |manager| [manager.name, manager.id] }, select_options: { prompt: "Nenhum (topo da hierarquia)" }) %>
+              <%= ax_select_field(form: f, method: :rentals_manager_id, label: "Gestor de Locação", tooltip: "Equipe de locação: hierarquia e regras de distribuição de locação.", choices: manager_choices, html_options: { data: { admin_user_access_target: "managerSelect", profile_position: admin_user.vertical_profile&.position } }, select_options: { prompt: "Nenhum (topo da hierarquia)" }) %>
             </div>
             <div data-admin-user-access-target="verticalOnly">
               <%= ax_inline_notice(tone: :warning, icon: "diagram-3", compact: true) do %>

@@ -164,7 +164,7 @@ export default class extends Controller {
         if (!select?.value) return `“${button}” → Gerar lead: fila não selecionada.`
         const name = select.selectedOptions[0]?.textContent?.trim() || "Fila indisponível"
         const destination = this.distributionRuleDestinationsValue?.[select.value]
-        const detail = destination === "c2s" ? "envio ao C2S, sem distribuição local" :
+        const detail = destination === "c2s" ? "envio ao sistema anterior durante a transição, sem distribuição local" :
           destination === "unitymob" ? "atendimento pela equipe da Unitymob, conforme as regras da fila" : "confira o destino na regra"
         return `“${button}” → Fila: ${name} — ${detail}.`
       }

@@ -31,13 +31,13 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     agent = create(:admin_user, :field_agent, tenant: admin.tenant)
     create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent)
     get edit_admin_distribution_rule_path(rule)
-    expect(response.body).to include("Destino dos leads", "C2S — sem distribuição local")
+    expect(response.body).to include("Destino dos leads", "Sistema anterior — transição")
     patch admin_distribution_rule_path(rule), params: { distribution_rule: { delivery_destination: "c2s" } }
     expect(response).to redirect_to(admin_distribution_rule_path(rule))
     expect(rule.reload.destination_c2s?).to be(true)
     expect(rule.distribution_rule_agents.pluck(:admin_user_id)).to eq([agent.id])
     get admin_distribution_rule_path(rule)
-    expect(response.body).to include("C2S — sem distribuição local")
+    expect(response.body).to include("Sistema anterior — transição")
   end
 
   it "exibe e persiste a fonte de campanhas de disparo" do
@@ -337,6 +337,23 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response.body).to include("Filtro opcional pela faixa de valor do lead")
     expect(doc.at_css("#distribution-rule-summary-title").text).to eq("Resumo da regra")
     expect(doc.at_css("[data-distribution-rule-summary-target='line'][role='status']")["aria-live"]).to eq("polite")
+  end
+
+  it "mantem a grade semanal compacta e acessivel ao criar e editar" do
+    rule = create(:distribution_rule, tenant: admin.tenant)
+
+    [new_admin_distribution_rule_path, edit_admin_distribution_rule_path(rule)].each do |path|
+      get path
+
+      expect(response).to have_http_status(:ok)
+      table = Nokogiri::HTML(response.body).at_css(".ax-table--schedule")
+      expect(table.css("thead th").map(&:text)).to eq(["Dia", "Func.", "Iníc.", "Fim"])
+      expect(table.css("tbody th[scope='row']").map(&:text)).to eq(%w[Seg Ter Qua Qui Sex Sáb Dom])
+      expect(table.css("tbody select").size).to eq(7)
+      expect(table.css("tbody label.tw-sr-only").size).to eq(7)
+      expect(table.css("tbody input[type='time'][aria-label]").size).to eq(14)
+      expect(table.css("tbody select").all? { |select| select.css("option").map { |option| option["value"] } == %w[unrestricted hours closed] }).to be(true)
+    end
   end
 
   it "limita selecao de fila a subarvore do usuario logado com permissao de distribuicao" do

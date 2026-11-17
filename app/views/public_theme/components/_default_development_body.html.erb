@@ -83,18 +83,10 @@
           </div>
 
           <div class="public-development-show__hero-actions flex flex-wrap gap-4">
-            <button type="button"
-                class="public-development-show__cta public-development-show__cta--primary inline-flex items-center gap-2 px-8 py-4 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-golden-two transition-all shadow-lg"
-                data-action="click->lead-capture#open"
-                data-property-id="<%= @habitation.id %>"
-                data-property-code="<%= @habitation.codigo %>"
-                data-property-title="<%= @habitation.nome_empreendimento %>"
-                data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
-                data-whatsapp-message="Olá, gostaria de saber mais sobre o empreendimento <%= @habitation.nome_empreendimento %>">
-              <i class="bi bi-whatsapp text-xl"></i>
-              <span>Fale Conosco</span>
-            </button>
-            
+            <% if @development_units.any? %>
+              <%= render "public_theme/components/development_units_link", variant: "default" %>
+            <% end %>
+
             <% if @habitation.tour_virtual.present? %>
               <%= link_to @habitation.tour_virtual,
                   target: "_blank",
@@ -206,31 +198,29 @@
     </div>
   <% end %>
 
-  <!-- Available Units: título em largura total (garante que cards e o bloco de
-       contato comecem na mesma altura) + cards em até 2 colunas + "Interessado?"
-       (com Informações/Compartilhar/corretor) numa 3ª coluna, sticky. -->
+  <!-- As unidades são o destino principal; a ficha do empreendimento fica abaixo. -->
   <div class="public-development-show__units-wrap container-custom">
-    <h2 class="public-development-show__section-title public-development-show__units-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-      <div class="w-1 h-8 bg-golden-one rounded"></div>
-      Unidades Disponíveis
-      <span class="ml-auto text-base text-gray-500 font-normal">
-        <%= @development_units.count %> <%= @development_units.count == 1 ? 'unidade' : 'unidades' %>
-      </span>
-    </h2>
-
     <% units_initial_batch = 6 %>
     <% units_paginated = @development_units.size > units_initial_batch %>
-    <div class="public-development-show__units-layout grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <section class="public-theme-development-units public-theme-development-units--default public-development-show__units lg:col-span-2"
+    <div class="public-development-show__units-layout grid grid-cols-1 gap-8">
+      <section id="unidades" aria-label="Unidades disponíveis" class="public-theme-development-units public-theme-development-units--default public-development-show__units"
                 <% if units_paginated %>
                   data-controller="public-progressive-reveal"
                   data-public-progressive-reveal-batch-size-value="<%= units_initial_batch %>"
                 <% end %>>
+        <h2 class="public-development-show__section-title public-development-show__units-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+          <div class="w-1 h-8 bg-golden-one rounded"></div>
+          Unidades Disponíveis
+          <span class="ml-auto text-base text-gray-500 font-normal">
+            <%= @development_units.count %> <%= @development_units.count == 1 ? 'unidade' : 'unidades' %>
+          </span>
+        </h2>
+
         <% if @development_units.any? %>
           <!-- Scroll infinito: unidades além das 6 iniciais já estão no HTML
                (mesmos dados usados nas estatísticas do topo), só ficam ocultas
                até o visitante chegar perto do fim da lista. -->
-          <div class="public-development-show__units-grid grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="public-development-show__units-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <% @development_units.each_with_index do |unit, index| %>
               <div data-public-progressive-reveal-target="item"<%= " hidden".html_safe if index >= units_initial_batch %>>
                 <%= render theme_component_path(:property_card), property: unit, priority_image: index < 2 %>
@@ -253,53 +243,8 @@
         <% end %>
       </section>
 
-      <!-- Interessado? + Informações + Compartilhar (e corretor, quando houver):
-           tudo junto, sticky, começando na mesma altura dos cards. -->
-      <aside class="public-development-show__units-aside lg:col-span-1">
-        <div class="public-development-show__units-aside-stack lg:sticky lg:top-24 space-y-6">
-          <% if @shared_broker.present? %>
-            <%= render "habitations/shared_broker_card",
-                shared_broker: @shared_broker,
-                habitation: @habitation,
-                share_token: @lead_share_token %>
-          <% end %>
-
-          <!-- Contact Card -->
-          <div class="public-development-show__contact-card bg-gradient-to-br from-blue-three to-blue-one rounded-xl shadow-lg p-6 text-white">
-            <h3 class="text-xl font-bold mb-4">Interessado?</h3>
-            <p class="text-white/90 text-sm mb-6">Fale com um especialista e receba atendimento personalizado</p>
-
-            <button type="button"
-                class="public-development-show__cta public-development-show__cta--contact w-full bg-white text-blue-three font-bold py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 mb-3"
-                data-action="click->lead-capture#open"
-                data-property-id="<%= @habitation.id %>"
-                data-property-code="<%= @habitation.codigo %>"
-                data-property-title="<%= @habitation.nome_empreendimento %>"
-                data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
-                data-whatsapp-message="Olá, gostaria de saber mais sobre o empreendimento <%= @habitation.nome_empreendimento %>">
-              <i class="bi bi-whatsapp text-green-500 text-xl"></i>
-              Falar no WhatsApp
-            </button>
-
-            <%= link_to "tel:+554733111067",
-                class: "public-development-show__cta public-development-show__cta--contact-ghost w-full bg-white/10 backdrop-blur-sm text-white font-bold py-3 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2 mb-3" do %>
-              <i class="bi bi-telephone text-golden-one"></i>
-              (47) 3311-1067
-            <% end %>
-
-            <button type="button"
-                class="public-development-show__cta public-development-show__cta--contact-ghost w-full bg-white/10 backdrop-blur-sm text-white font-bold py-3 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
-                data-action="click->lead-capture#open"
-                data-property-id="<%= @habitation.id %>"
-                data-property-code="<%= @habitation.codigo %>"
-                data-property-title="<%= @habitation.nome_empreendimento %>"
-                data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
-                data-whatsapp-message="Gostaria de agendar uma visita para <%= @habitation.nome_empreendimento %>">
-              <i class="bi bi-calendar-check text-golden-one"></i>
-              Agendar Visita
-            </button>
-          </div>
-
+      <aside class="public-development-show__units-aside">
+        <div class="public-development-show__units-aside-stack grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Info Card -->
           <div class="public-development-show__info-card bg-white rounded-xl shadow-sm p-6">
             <h3 class="font-bold text-gray-900 mb-4">Informações</h3>
@@ -360,8 +305,7 @@
     </div>
   </div>
 
-  <!-- Main Content: Sobre / Características / Localização / FAQ, sem sidebar
-       (tudo já subiu para junto de Unidades Disponíveis), largura total. -->
+  <!-- Informações complementares do empreendimento. -->
   <div class="public-development-show__content container-custom py-12">
     <div class="public-development-show__main space-y-12">
         <section class="public-development-show__section public-development-show__seo-summary bg-gradient-to-br from-blue-50/70 via-white to-white rounded-xl shadow-sm p-8 border border-blue-100">

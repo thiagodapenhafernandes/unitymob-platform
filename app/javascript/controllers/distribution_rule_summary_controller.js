@@ -70,7 +70,7 @@ export default class extends Controller {
     if (this.hasLineTarget) {
       const src = sources.length ? `<b>${sources.join(", ")}</b>` : "<b>nenhuma origem</b>"
       const who = n ? `<b>${n} corretor${n > 1 ? "es" : ""}</b>` : "<b>sem corretores</b>"
-      this.lineTarget.innerHTML = c2s ? `Leads de ${src} → <b>C2S</b>, sem distribuição local.` : `Leads de ${src} → ${who} em <b>${modeLabel}</b>.`
+      this.lineTarget.innerHTML = c2s ? `Leads de ${src} → <b>sistema anterior</b>, durante a transição e sem distribuição local.` : `Leads de ${src} → ${who} em <b>${modeLabel}</b>.`
       const business = this.element.querySelector('select[name="distribution_rule[business_type]"]')
       const cities = this.element.querySelector('select[name="distribution_rule[property_cities][]"]')
       const names = Array.from(cities?.selectedOptions || []).map(option => option.value).filter(Boolean)

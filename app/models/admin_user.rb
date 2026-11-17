@@ -514,13 +514,13 @@ class AdminUser < ApplicationRecord
     vertical_profile.position.to_i == other_user.vertical_profile.position.to_i
   end
 
-  def manager_candidate_for?(user)
+  def manager_candidate_for?(user, profile: user.vertical_profile)
     return false unless same_account_user?(user)
     return false if user.id.present? && id == user.id
     return false if user.id.present? && user.descendant_ids.include?(id)
-    return true if user.profile.blank? || profile.blank?
+    return true if profile.blank? || self.profile.blank?
 
-    vertical_above?(user)
+    vertical_profile.present? && vertical_profile.position.to_i < profile.position.to_i
   end
 
   def reset_instagram_direct_ids

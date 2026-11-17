@@ -37,7 +37,7 @@ module Leads
 
     # Lead que já chega com corretor (share link / atribuição manual na criação).
     def self.notify_direct_assignment(lead)
-      return unless LeadSetting.instance.notify_on_direct_assignment?
+      return unless LeadSetting.instance(tenant: lead.tenant).notify_on_direct_assignment?
 
       push_to(lead.admin_user,
               title: "Novo lead: #{lead.display_name}",
@@ -72,7 +72,7 @@ module Leads
 
     # Avisa o corretor que perdeu o lead por não atender no prazo (pocket).
     def self.notify_lost_turn(lead, previous_corretor)
-      return unless LeadSetting.instance.notify_on_lost_turn?
+      return unless LeadSetting.instance(tenant: lead.tenant).notify_on_lost_turn?
 
       push_to(previous_corretor,
               title: "Você perdeu o lead #{lead.display_name}",
@@ -153,7 +153,7 @@ module Leads
 
     # Gating por tipo de evento de distribuição (toggles em LeadSetting).
     def distribution_event_enabled?
-      setting = LeadSetting.instance
+      setting = LeadSetting.instance(tenant: @lead.tenant)
       if @sticky
         setting.notify_on_sticky?
       elsif redistribution?

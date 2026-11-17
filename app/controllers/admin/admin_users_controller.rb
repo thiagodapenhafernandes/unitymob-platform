@@ -406,7 +406,8 @@ module Admin
       @assignable_manager_options = current_tenant.admin_users.account_members.includes(:profile).order(:name).select do |candidate|
         next true if @admin_user.blank? || @admin_user.new_record? && candidate == current_admin_user
 
-        candidate.manager_candidate_for?(@admin_user) &&
+        # O nível é filtrado no formulário conforme o perfil escolhido, não o perfil salvo.
+        candidate.manager_candidate_for?(@admin_user, profile: nil) &&
           (tenant_owner? || candidate == current_admin_user || current_admin_user.can_manage_user?(candidate))
       end
     end

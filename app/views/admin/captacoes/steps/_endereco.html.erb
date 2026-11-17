@@ -22,6 +22,7 @@
     }
   end
   show_development_picker = @captacao.requires_intake_development_name? || @captacao.empreendimento? || @captacao.categoria.to_s == "Empreendimento"
+  show_development_name = show_development_picker || @captacao.property_kind_sala_comercial?
   show_unit_field = @captacao.requires_unit_number? || @captacao.empreendimento? || @captacao.categoria.to_s == "Empreendimento"
   unit_field_label = show_unit_field ? "Compl." : @captacao.intake_address_complement_label
 %>
@@ -125,12 +126,12 @@
       <% if field_invalid.call(:state) %><div class="invalid-feedback d-block">Informe a UF.</div><% end %>
     </div>
   <% end %>
-  <% if show_development_picker || @captacao.requires_intake_address_complement? %>
+  <% if show_development_name || @captacao.requires_intake_address_complement? %>
   <hr class="my-3">
   <%# Campos condicionais ao tipo do imóvel, empilhados em largura total (mobile-first). %>
-  <% if show_development_picker %>
+  <% if show_development_name %>
       <%= ax_text_field(form: f, method: :edificio_nome,
-            label: safe_join(["Edifício / Condomínio", tag.span("*", class: "required-star")], " "),
+            label: show_development_picker ? safe_join(["Edifício / Condomínio", tag.span("*", class: "required-star")], " ") : "Edifício / Condomínio",
             field_class: "wizard-field-group", class: field_state.call(:edificio_nome),
             placeholder: "Ex.: Nome do empreendimento", readonly: @captacao.codigo_empreendimento.present?,
             data: { habitation_form_target: "developmentName", habitation_duplicate_check_target: "building",
