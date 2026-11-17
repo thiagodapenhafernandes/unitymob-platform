@@ -1,50 +1,45 @@
-## Recebimento com autorização pelo cliente (implementação de 16/11/2026)
+# Imovelweb — autorização pelo portal e recebimento direto
 
-A tela Imovelweb possui dois fluxos independentes: **Enviar imóveis** mantém o
-formulário e o XML existentes; **Receber leads** prepara uma conexão com código
-aleatório exclusivo, abre o Login oficial e confirma a autorização na API antes
-de habilitar a conexão e sincronizar sua rota no Gateway. Salvar código anunciante,
-visitar uma URL ou retornar do Login não constituem confirmação de autorização.
+## Fluxo nativo (17/11/2026)
 
-### Pré-requisitos centrais, configurados uma vez por ambiente
+Enviar imóveis e receber contatos continuam separados. A tela de recebimento usa
+somente o código numérico da sucursal. O cliente abre
+`https://www.imovelweb.com.br/panel/empresa/integraciones-leads`, seleciona sua
+sucursal e **Unitymob**, e salva. Não há script Login, identificador INTEGRADOR,
+senha do portal ou credencial da API por cliente.
 
-- Gateway: `IMOVELWEB_PRODUCTION_API_URL`, `IMOVELWEB_PRODUCTION_CLIENT_ID`,
-  `IMOVELWEB_PRODUCTION_CLIENT_SECRET`, `IMOVELWEB_PRODUCTION_INTEGRATOR_ID`
-  (identificador do botão Login fornecido pelo portal; não inferir do nome ou client_id).
-- Permanecem obrigatórios callback global, token dedicado, worker de entrega e
-  `IMOVELWEB_RECEIVING_ENABLED=true` do Gateway.
-- Cada instalação CRM: configuração do Gateway interno, `APP_HOST` HTTPS,
-  `IMOVELWEB_GATEWAY_FORWARDING_SECRET`, criptografia e
-  `IMOVELWEB_RECEIVING_ENABLED=true`. O cliente não vê nem informa credenciais.
-- Publicar primeiro Gateway + sua migration, depois CRM + sua migration. `mina all`
-  não publica Gateway. Não habilitar gates globais como efeito de salvar um formulário.
+A Unitymob consulta a lista autorizada da API para confirmar o código. Uma
+conexão já vinculada à mesma rota, como a Salute, mantém seu vínculo e dispensa
+nova confirmação. Para um vínculo novo, autorização global à integradora não
+prova a titularidade de uma conta Unitymob: o cliente confirma um código enviado
+**somente ao e-mail Administrador devolvido pela API do Imovelweb**. O formulário
+não aceita escolher outro destinatário. O e-mail usa a infraestrutura transacional
+já existente da Unitymob.
 
-### Fluxo do cliente
+Após essa confirmação, a conexão é ativada e a rota sincronizada. O Gateway
+exige a prova de titularidade antes de criar qualquer rota nova de produção;
+ela é vinculada à conexão, sucursal e ambiente, expira em dez minutos, limita
+cinco tentativas e três envios por sucursal a cada dez minutos. Provas não são
+aceitas em outra conta nem reutilizadas para trocar a identidade da rota.
+Os tokens temporários no CRM são criptografados e removidos ao concluir.
 
-1. Informar o código numérico da sucursal em Receber leads e salvar.
-2. Abrir Autorizar no Imovelweb; entrar com administrador/supervisor e selecionar
-   a sucursal. O Login associa o código aleatório desta conexão à conta autorizada.
-3. A confirmação em segundo plano consulta `/v1/imobiliarias` por até 15 minutos,
-   localiza **exatamente** o código exclusivo e confere `idNavplat` com a sucursal
-   informada. Ao confirmar, ativa e sincroniza a rota automaticamente.
-4. Após a ativação, a Unitymob associa automaticamente os anúncios online à
-   interface de leitura em lotes de cinco. Referências existentes são preservadas;
-   anúncios sem referência recebem `iw-ID`. Nenhum anúncio é publicado/editado ou
-   removido. Um job a cada 15 minutos prepara anúncios novos, independentemente
-   dos filtros de envio do catálogo. Falhas aparecem no estado de recebimento.
-5. Verificar conexão reinicia a janela; erros mantêm o vínculo pendente, com retry
-   limitado. A tela recebe atualização por Turbo Streams. Conexões já autorizadas
-   permanecem válidas e não são reautorizadas ou reprocessadas na implantação.
-6. Conferir um contato real em Ver contatos; configuração ativa não comprova
-   entrega. Dedupe e ingresso sem imóvel identificado usam o intake existente.
+Preparação de anúncios segue em lotes de cinco, com reconciliação a cada quinze
+minutos. Referências existentes são mantidas; não publica, edita ou remove anúncios.
+Recibos antigos não são reprocessados. Contatos novos passam pelo intake existente,
+inclusive quando o imóvel não é localizado.
 
-O Gateway confirma o vínculo novamente ao cadastrar a rota de autoatendimento,
-impede reutilizar a sucursal em outra rota e preserva rotas legadas numéricas.
-Identidades legadas arbitrárias não autorizadas exigem nova conexão; não podem
-ser ativadas apenas porque um número aparece na lista da integradora.
+Configuração central reutilizada: API URL, client_id/client_secret de produção,
+callback dedicado, Gateway interno, criptografia, worker e envio transacional.
+O parâmetro INTEGRATOR_ID não é utilizado. Cada instalação CRM mantém sua chave
+própria de encaminhamento e endereço APP_HOST HTTPS. Primeiro publicar o Gateway
+com a migration de confirmação, depois os CRMs.
 
-Não altera distribuição, responsáveis, histórico, publicação ou reprocessa recibos.
-Abaixo permanece o registro histórico da preparação e homologação anteriores.
+Rascunhos antigos com código aleatório podem ser normalizados apenas quando não
+há autorização, ativação, recibos ou imóveis associados. Identidades com histórico
+não são trocadas; conexões já funcionando não são recriadas.
+
+A seguir permanece o registro histórico da preparação anterior (inclusive a
+alternativa de Login que foi descartada). Não representa o fluxo atual.
 
 ---
 

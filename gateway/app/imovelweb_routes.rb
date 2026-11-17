@@ -9,27 +9,42 @@ module Gateway
       'token_mismatch' unless Rack::Utils.secure_compare(secret, match[1])
     end
 
-    def self.registered(app)
-      app.post '/internal/imovelweb/authorization' do
-        require_internal_token!
-        data = parse_json(request.body.read)
-        halt 422, json(error: 'invalid_request') unless data.is_a?(Hash) &&
-          %w[sandbox production].include?(data['environment']) && data['client_code'].to_s.match?(/\A[A-Za-z0-9_.@-]{1,255}\z/)
-        client = ImovelwebClient.new(environment: data['environment'])
-        json(script_url: client.authorization_script(client_code: data['client_code']))
-      rescue ImovelwebClient::Error, KeyError
-        halt 503, json(error: 'authorization_unavailable')
+    def self.binding(data)
+      unless data.is_a?(Hash) && %w[sandbox production].include?(data['environment']) &&
+          data['client_key'].to_s.match?(/\A[0-9a-f-]{36}\z/) && data['client_code'].to_s.match?(/\A[A-Za-z0-9_.@-]{1,255}\z/)
+        raise ImovelwebBinding::Error, 'invalid_request'
       end
+      ImovelwebBinding.new(environment: data['environment'], client_code: data['client_code'], client_key: data['client_key'])
+    end
 
+    def self.registered(app)
       app.post '/internal/imovelweb/verification' do
         require_internal_token!
         data = parse_json(request.body.read)
-        halt 422, json(error: 'invalid_request') unless data.is_a?(Hash) &&
-          %w[sandbox production].include?(data['environment']) && data['client_code'].to_s.match?(/\A[A-Za-z0-9_.@-]{1,255}\z/)
-        advertiser = ImovelwebClient.new(environment: data['environment']).authorized_advertiser(client_code: data['client_code'])
-        json(confirmed: advertiser.present?, advertiser_code: advertiser&.fetch(:advertiser_code))
+        binding = ImovelwebRoutes.binding(data)
+        json(binding.verification(proof: data['binding_proof']))
+      rescue ImovelwebBinding::Error => error
+        halt(error.message == 'advertiser_already_linked' ? 409 : 422, json(error: error.message))
       rescue ImovelwebClient::Error, KeyError
         halt 503, json(error: 'verification_unavailable')
+      end
+
+      app.post '/internal/imovelweb/challenge' do
+        require_internal_token!
+        data = parse_json(request.body.read)
+        json(ImovelwebRoutes.binding(data).start)
+      rescue ImovelwebBinding::Error => error
+        halt(error.message == 'rate_limited' ? 429 : 422, json(error: error.message))
+      rescue ImovelwebClient::Error, KeyError
+        halt 503, json(error: 'verification_unavailable')
+      end
+
+      app.post '/internal/imovelweb/confirmation' do
+        require_internal_token!
+        data = parse_json(request.body.read)
+        json(ImovelwebRoutes.binding(data).confirm(token: data['challenge_token'], code: data['code']))
+      rescue ImovelwebBinding::Error => error
+        halt 422, json(error: error.message)
       end
 
       app.post '/internal/imovelweb/listings' do
@@ -64,10 +79,15 @@ module Gateway
         if route.persisted? && [route.imovelweb_client_code, route.imovelweb_environment] != [code, data['environment']]
           halt 409, json(error: 'immutable_route_identity')
         end
+        if data['environment'] == 'production' && (data['active'] || !route.persisted?)
+          binding = ImovelwebRoutes.binding(data)
+          verified = binding.verification(proof: data['binding_proof'])
+          halt 409, json(error: 'ownership_confirmation_required') unless verified[:confirmed]
+        end
         if data['advertiser_code'].present? || (data['active'] && code.match?(/\A(?:um|pending)-/))
           advertiser = ImovelwebClient.new(environment: data['environment']).authorized_advertiser(client_code: code)
           halt 409, json(error: 'authorization_pending') unless advertiser && advertiser[:advertiser_code] == data['advertiser_code']
-          # Older routes used the numeric branch code before self-service Login existed.
+          # Preserve numeric branch routes registered before native self-service.
           others = WebhookRoute.where(provider: 'imovelweb', imovelweb_environment: data['environment']).where.not(client_key: key)
           if others.where(imovelweb_client_code: advertiser[:advertiser_code]).exists? ||
               others.where(imovelweb_advertiser_code: advertiser[:advertiser_code]).exists?
@@ -77,8 +97,13 @@ module Gateway
         end
         route.assign_attributes(imovelweb_client_code: code, imovelweb_environment: data['environment'],
           target_url: target.to_s, forwarding_secret: data['forwarding_secret'], active: data['active'])
-        route.save!
+        WebhookRoute.transaction do
+          route.save!
+          binding&.consume_proof!(data['binding_proof']) if data['binding_proof'].present?
+        end
         json(ok: true)
+      rescue ImovelwebBinding::Error => error
+        halt 409, json(error: error.message)
       rescue ImovelwebClient::Error, KeyError
         halt 503, json(error: 'verification_unavailable')
       rescue JSON::ParserError, URI::InvalidURIError

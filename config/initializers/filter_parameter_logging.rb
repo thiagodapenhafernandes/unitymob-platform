@@ -24,3 +24,5 @@ Rails.application.config.filter_parameters << lambda do |key, value, parameters|
     value.replace("[FILTERED]")
   end
 end
+
+Rails.application.config.filter_parameters += [:binding_code, :binding_challenge_token, :binding_proof, :challenge_token]

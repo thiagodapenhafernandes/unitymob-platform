@@ -12,6 +12,7 @@ module Admin::ImovelwebHelper
   end
 
   def imovelweb_connection_status(connection)
+    return "Confirme o vínculo por e-mail" if connection.authorized_at.blank? && connection.consent_confirmed_at.present?
     return "Preparação dos anúncios pendente" if connection.listing_sync_error.present?
     return "Conexão pendente de atualização" if connection.connection_error.present?
     if connection.authorization_requested_at.present? && connection.enabled? && connection.gateway_synced_at.blank?

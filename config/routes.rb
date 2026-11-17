@@ -526,6 +526,8 @@ Rails.application.routes.draw do
     resources :imovelweb_connections, only: [:create, :update] do
       get :authorization, on: :member
       post :verify, on: :member
+      post :challenge, on: :member
+      post :confirm, on: :member
       resources :lead_receipts, only: [:index, :show], controller: "imovelweb_lead_receipts"
     end
     resources :portal_integrations, only: [:index, :update], param: :portal do

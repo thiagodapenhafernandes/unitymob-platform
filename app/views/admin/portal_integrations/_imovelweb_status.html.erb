@@ -4,14 +4,26 @@
     <p class="ax-field__hint tw-mt-3"><%= connection.listing_sync_error %></p>
   <% elsif connection.connection_error.present? %>
     <p class="ax-field__hint tw-mt-3"><%= connection.connection_error %></p>
-  <% elsif connection.authorized_at.blank? %>
-    <p class="ax-field__hint tw-mt-3">Após autorizar, confirmaremos a conexão automaticamente por até 15 minutos. Você também pode usar “Verificar conexão”.</p>
+  <% elsif connection.authorized_at.blank? && connection.consent_confirmed_at.blank? %>
+    <p class="ax-field__hint tw-mt-3">No Imovelweb, acesse Integração de Leads, selecione sua sucursal e Unitymob e salve. Confirmaremos a conexão automaticamente por até 15 minutos. Você também pode usar “Verificar conexão”.</p>
   <% elsif connection.receiving? %>
     <p class="ax-field__hint tw-mt-3">Autorização confirmada no Imovelweb. Os próximos contatos seguirão as regras de atendimento desta conta.</p>
   <% end %>
+  <% if connection.consent_confirmed_at.present? && connection.authorized_at.blank? %>
+    <%= ax_field_group(title: "Confirmar vínculo desta conta", class_name: "tw-mt-4") do %>
+      <p class="ax-field__hint tw-mb-3">A autorização foi localizada no portal. Confirme pelo e-mail administrativo <%= connection.binding_email_hint.presence || "cadastrado no Imovelweb" %> para vincular os contatos à conta correta da Unitymob.</p>
+      <% if connection.binding_challenge_token.present? %>
+        <%= form_with url: confirm_admin_imovelweb_connection_path(connection), local: true do |f| %>
+          <%= ax_text_field(form: f, method: :binding_code, label: "Código recebido por e-mail", hint: "Código de seis dígitos, válido por 10 minutos.", maxlength: 6, inputmode: "numeric", autocomplete: "one-time-code", required: true) %>
+          <%= f.submit "Confirmar vínculo", class: "ax-btn ax-btn--primary tw-mt-3" %>
+        <% end %>
+      <% end %>
+      <div class="tw-mt-3"><%= button_to(connection.binding_challenge_token.present? ? "Reenviar código" : "Enviar código de confirmação", challenge_admin_imovelweb_connection_path(connection), class: "ax-btn ax-btn--secondary") %></div>
+    <% end %>
+  <% end %>
   <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-4">
-    <% unless connection.authorized_at.present? %>
-      <%= ax_button("Autorizar no Imovelweb", authorization_admin_imovelweb_connection_path(connection), variant: :primary, icon: "box-arrow-up-right", target: "_blank", rel: "noopener") %>
+    <% if connection.authorized_at.blank? && connection.consent_confirmed_at.blank? %>
+      <%= ax_button("Autorizar no Imovelweb", "https://www.imovelweb.com.br/panel/empresa/integraciones-leads", variant: :primary, icon: "box-arrow-up-right", target: "_blank", rel: "noopener") %>
     <% end %>
     <%= button_to "Verificar conexão", verify_admin_imovelweb_connection_path(connection), class: "ax-btn ax-btn--secondary" %>
     <%= ax_button("Ver contatos", admin_imovelweb_connection_lead_receipts_path(connection), variant: :ghost, icon: "people") %>

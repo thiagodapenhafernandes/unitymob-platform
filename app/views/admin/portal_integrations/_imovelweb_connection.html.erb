@@ -16,9 +16,9 @@
     <% end %>
 
     <% if production.empty? || production.any?(&:binding_editable?) %>
-      <%= ax_field_group(title: "Conectar conta anunciante", class_name: "tw-mt-4") do %>
-        <p class="ax-field__hint tw-mb-3">Informe o código da sucursal. Depois, autorize a Unitymob com um usuário administrador ou supervisor do Imovelweb. A confirmação e a ativação acontecem automaticamente.</p>
-        <%= form_with model: @imovelweb_binding, url: (@imovelweb_binding.persisted? ? admin_imovelweb_connection_path(@imovelweb_binding) : admin_imovelweb_connections_path), local: true, html: { aria: { label: "Conectar Imovelweb para receber leads" } } do |f| %>
+      <%= ax_collapsible_card(title: "Conectar conta anunciante", collapse_id: "imovelweb-new-branch", collapsed: production.any?, class_name: "tw-mt-4") do %>
+        <p class="ax-field__hint tw-mb-3">Informe o código da sucursal. No Imovelweb, abra Integração de Leads, selecione a sucursal e Unitymob e salve. Após localizar a autorização, confirme o vínculo pelo e-mail administrativo do portal. A ativação acontece automaticamente.</p>
+        <%= form_with model: @imovelweb_binding, url: admin_imovelweb_connections_path, method: :post, local: true, html: { aria: { label: "Conectar Imovelweb para receber leads" } } do |f| %>
           <%= ax_text_field(form: f, method: :advertiser_code, label: "Código da conta no Imovelweb", placeholder: "Ex.: 47294717", required: true, maxlength: 128, hint: "Use o código da sucursal que você vai autorizar.") %>
           <%= ax_form_actions(sticky: false) do %>
             <%= f.submit "Salvar e iniciar conexão", class: "ax-btn ax-btn--primary" %>
