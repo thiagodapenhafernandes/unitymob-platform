@@ -2,6 +2,17 @@ module Imovelweb
   class ReceiveLead
     FIELDS = %w[event_id event_type client_code environment reference listing_id name email phone message registered_at contact_type message_id lead_origin].freeze
 
+    def self.recovery_fingerprint(connection, entry)
+      phone = Phones::Normalizer.call(entry['phone'])
+      email = entry['email'].to_s.strip.downcase
+      return if entry['listing_id'].blank? || entry['registered_at'].blank? || (phone.blank? && email.blank?)
+
+      Digest::SHA256.hexdigest([connection.route_key, entry['event_type'], entry['listing_id'], entry['contact_type'],
+        Time.iso8601(entry['registered_at']).to_i, phone, email].to_json)
+    rescue ArgumentError
+      nil
+    end
+
     def self.valid_payload?(entry)
       entry.is_a?(Hash) && entry.keys.all? { |key| FIELDS.include?(key) } &&
         entry.values.all? { |value| value.nil? || value.is_a?(String) } &&
@@ -18,6 +29,14 @@ module Imovelweb
       end
       tenant = connection.tenant
       Current.set(tenant: tenant) do
+        # A provider retry of an API-recovered contact must not route or notify again.
+        if (fingerprint = recovery_fingerprint(connection, entry))
+          lead = Leads::Intake.find_received_event(tenant: tenant, reference: "imovelweb:recovery:#{fingerprint}")
+          if lead
+            receipt.update!(lead: lead, status: 'processed', reason: nil, processed_at: Time.current)
+            return
+          end
+        end
         listing = connection.imovelweb_listings.find_by(reference: entry["reference"]) if entry["reference"].present?
         external_listing = connection.imovelweb_listings.find_by(external_id: entry["listing_id"]) if entry["listing_id"].present?
         if listing && external_listing && listing.id != external_listing.id
