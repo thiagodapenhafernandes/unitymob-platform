@@ -11,7 +11,7 @@ RSpec.describe "Respostas das campanhas no lead", type: :request do
   it "exibe perguntas e todas as respostas escapadas no desktop e no mobile" do
     lead = create(:lead, tenant: admin.tenant, admin_user: admin, product: "9846 | Locação", other_information: {
       "meta_leadgen_id" => "meta-view", "field_data" => [
-        { "name" => "você_está_buscando_imóvel_para:", "values" => ["Nos próximos 30 dias"] },
+        { "name" => "você_está_buscando_imóvel_para:", "values" => ["nos_próximos_30_dias"] },
         { "name" => "preferências", "values" => ["Sacada", "Garagem", "<script>alert(1)</script>"] }
       ] })
     get admin_lead_path(lead)

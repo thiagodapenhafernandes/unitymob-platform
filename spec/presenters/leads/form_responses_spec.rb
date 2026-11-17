@@ -7,14 +7,16 @@ RSpec.describe Leads::FormResponses do
     lead = create(:lead, product: "Campanha Locação", other_information: {
       "meta_leadgen_id" => "original", "field_data" => [
         { "name" => "preferências_do_imóvel", "values" => ["Sacada", "Garagem"] },
-        { "name" => "autorizo_contato?", "values" => ["NÃO"] }
+        { "name" => "autorizo_contato?", "values" => ["NÃO"] },
+        { "name" => "prazo", "values" => ["nos_próximos_30_dias"] }
       ] }, custom_answers: [{ "key" => "preferências_do_imóvel", "answer" => "Sacada" }])
     groups = described_class.new(lead).groups
     expect(groups.size).to eq(1)
     expect(groups.first).to include(provider: "Meta", form_name: "Campanha Locação")
     expect(groups.first[:answers]).to include(
       { question: "Preferências do imóvel", answer: "Sacada\nGaragem" },
-      { question: "Autorizo contato?", answer: "NÃO" })
+      { question: "Autorizo contato?", answer: "NÃO" },
+      { question: "prazo", answer: "Nos próximos 30 dias" })
   end
 
   it "separa campanhas agregadas ao mesmo contato sem repetir a primeira consulta" do

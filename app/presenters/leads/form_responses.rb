@@ -24,7 +24,7 @@ module Leads
         fields = info["field_data"].presence || answers
         groups << { provider: "Meta", event_id: info["meta_leadgen_id"],
           form_name: info["meta_form_name"].presence || form_name,
-          received_at: received_at, answers: normalize_answers(fields) }
+          received_at: received_at, answers: normalize_answers(fields, meta: true) }
       end
       { "linkedin" => "LinkedIn", "tiktok" => "TikTok" }.each do |key, provider|
         next unless info["#{key}_answers"].present?
@@ -36,7 +36,7 @@ module Leads
       groups.reject { |group| group[:answers].empty? }
     end
 
-    def normalize_answers(fields)
+    def normalize_answers(fields, meta: false)
       fields = fields.map { |key, answer| { "key" => key, "answer" => answer } } if fields.is_a?(Hash)
       Array(fields).filter_map do |field|
         next unless field.is_a?(Hash)
@@ -46,8 +46,10 @@ module Leads
         next if question.blank?
 
         value = field.key?("values") ? field["values"] : field["answer"]
+        values = Array(value).map(&:to_s)
+        values = values.map { |text| text.match?(/\A[[:lower:]\d]+(?:_[[:lower:]\d]+)+\z/) ? text.humanize : text } if meta
         label = CONTACT_LABELS[question] || (question.include?("_") ? question.humanize : question)
-        { question: label, answer: Array(value).map(&:to_s).join("\n") }
+        { question: label, answer: values.join("\n") }
       end
     end
   end
