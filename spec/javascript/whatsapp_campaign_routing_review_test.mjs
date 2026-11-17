@@ -27,7 +27,7 @@ test('review shows each button, selected queue and C2S destination as text', () 
   builder.hasReviewRoutingTarget = true
   builder.reviewRoutingTarget = {}
   builder.refreshReview()
-  assert.match(builder.reviewRoutingTarget.textContent, /Tenho interesse.*Fila: Fila <C2S>.*envio ao C2S, sem distribuição local/)
+  assert.match(builder.reviewRoutingTarget.textContent, /Tenho interesse.*Fila: Fila <C2S>.*envio ao sistema anterior durante a transição, sem distribuição local/)
   assert.match(builder.reviewRoutingTarget.textContent, /Sair.*Descadastrar contato/)
   assert.equal(builder.reviewRoutingTarget.innerHTML, undefined)
 })

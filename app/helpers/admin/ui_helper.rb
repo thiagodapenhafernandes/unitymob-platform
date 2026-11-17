@@ -485,7 +485,7 @@ module Admin::UiHelper
     )
   end
 
-  def ax_select_field(form:, method:, label:, choices:, select_options: {}, html_options: {}, tooltip: nil, class_name: nil, clearable: false, option_descriptions: {})
+  def ax_select_field(form:, method:, label:, choices:, select_options: {}, html_options: {}, tooltip: nil, class_name: nil, clearable: false, option_descriptions: {}, label_hidden: false)
     render(
       "admin/shared/ui/select_field",
       form:,
@@ -497,7 +497,8 @@ module Admin::UiHelper
       tooltip:,
       class_name:,
       clearable:,
-      option_descriptions:
+      option_descriptions:,
+      label_hidden:
     )
   end
 

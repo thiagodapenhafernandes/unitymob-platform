@@ -193,3 +193,19 @@
   .ax-table--form tbody tr { display: grid; min-width: 0; padding: 12px; border-top: 1px solid var(--ax-border-soft); }
   .ax-table--form tbody :is(th, td) { display: block; min-width: 0; padding: 6px 0; border: 0; white-space: normal; }
 }
+
+/* Grade semanal compartilhada para formulários em painéis estreitos. */
+.ax-table-wrap .ax-table--schedule {
+  width: 100%;
+  min-width: 350px;
+  table-layout: fixed;
+}
+.ax-table--schedule :is(th, td) { padding: 8px 6px; vertical-align: middle; }
+.ax-table--schedule th:first-child { width: 44px; text-align: center; }
+.ax-table--schedule th:nth-child(2) { width: 38%; }
+.ax-table--schedule tbody th { color: var(--admin-ink); font-weight: 600; border-top: 1px solid var(--ax-border-soft); }
+.ax-table--schedule abbr { text-decoration: none; cursor: help; }
+.ax-table--schedule .ax-field { margin: 0; min-width: 0; }
+.ax-table--schedule .ax-control { width: 100%; min-width: 0; max-width: none; min-height: 40px; padding-inline: 8px; }
+.ax-table--schedule select.ax-control { padding-inline-end: 24px; }
+.ax-table--schedule input[type="time"] { font-variant-numeric: tabular-nums; }

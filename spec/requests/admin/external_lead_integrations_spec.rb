@@ -19,7 +19,7 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(response.body).to include("Importar histórico")
     expect(response.body).to include("Etapas de Lead usadas na migração")
     expect(response.body).to include("Regra de apoio")
-    expect(response.body).to include("Corretor informado pelo C2S")
+    expect(response.body).to include("Corretor informado pelo sistema anterior")
     document = Nokogiri::HTML(response.body)
     expect(document.css("button.lead-migration-command").size).to eq(2)
     expect(document.at_css("input#external_lead_integration_webhook_listening_enabled")).to be_present
@@ -135,7 +135,7 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(integration.operational_mappings.dig("stages", "legacy", "stage_id")).to eq(99)
     expect(another.reload).not_to be_mirror_c2s_owners
     get admin_external_lead_integration_path
-    expect(response.body).to include("Espelhamento contínuo do C2S", "Cada ID do C2S")
+    expect(response.body).to include("Espelhamento contínuo do sistema anterior", "Cada ID do sistema anterior")
     patch admin_external_lead_integration_path, params: { external_lead_integration: { enabled: "1", mirror_c2s_owners: "0" } }
     expect(integration.reload).not_to be_mirror_c2s_owners
   end
@@ -278,7 +278,7 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Enviar leads novos à conta externa")
     expect(response.body).to include("Endpoint de envio")
-    expect(response.body).to include("Corretor informado pelo C2S")
+    expect(response.body).to include("Corretor informado pelo sistema anterior")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css("input#external_lead_integration_export_enabled")).to be_present
   end

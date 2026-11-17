@@ -33,7 +33,7 @@
 
   <% if @rule.destination_c2s? %>
     <%= ax_inline_notice(tone: :info, icon: "box-arrow-up-right") do %>
-      Os leads desta regra são enviados ao C2S, sem atribuição a corretores na Unitymob.
+      Os leads desta regra são enviados ao sistema anterior durante a transição, sem atribuição a corretores na Unitymob.
       A equipe, o aceite, o check-in e as notificações locais ficam preservados na configuração, mas não são aplicados neste destino.
       Acompanhe o resultado do envio no histórico de cada lead.
     <% end %>

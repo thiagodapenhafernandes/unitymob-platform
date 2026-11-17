@@ -168,7 +168,7 @@ class DistributionRule < ApplicationRecord
       (min_price.present? && other.max_price.present? && min_price > other.max_price)
   end
 
-  DELIVERY_DESTINATIONS = { "unitymob" => "Corretores na Unitymob", "c2s" => "C2S — sem distribuição local" }.freeze
+  DELIVERY_DESTINATIONS = { "unitymob" => "Corretores na Unitymob", "c2s" => "Sistema anterior — transição" }.freeze
   C2S_DEFAULT_SOURCE = "Disparo de WhatsApp".freeze
   C2S_NEGOTIATION_TYPES = %w[Aluguel Compra Outros].freeze
   before_validation do
@@ -200,7 +200,7 @@ class DistributionRule < ApplicationRecord
 
   def c2s_destination_requires_connection
     return unless destination_c2s? && active?
-    errors.add(:delivery_destination, "exige uma integração C2S conectada em Migração de leads") unless tenant&.external_lead_integration&.connected?
+    errors.add(:delivery_destination, "exige conexão com o sistema anterior em Migração de leads") unless tenant&.external_lead_integration&.connected?
   end
 
   enum :distribution_mode, { rotary: 0, performance: 1, shark_tank: 2, attendance: 3 }

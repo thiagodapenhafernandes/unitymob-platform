@@ -43,6 +43,10 @@
       <% end %>
     </div>
 
+    <% if local_assigns[:units_available] %>
+      <%= render "public_theme/components/development_units_link", variant: variant %>
+    <% end %>
+
     <%# O fancybox_gallery_controller monta o álbum com os `a[data-fancybox]`
         DENTRO do seu elemento. Por isso o controller fica neste container e não
         no botão: botão e demais fotos precisam estar sob a mesma instância. %>

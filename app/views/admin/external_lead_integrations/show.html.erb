@@ -65,7 +65,7 @@
           <div class="lead-migration-settings-form__toggle">
             <%= ax_switch_field(label: "Manter integração de leads ativa", form: f, method: :enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.enabled? }) %>
             <%= ax_switch_field(label: "Escutar novos leads automaticamente", form: f, method: :webhook_listening_enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.webhook_listening_enabled? }) %>
-            <%= ax_switch_field(label: "Espelhamento contínuo do C2S (antes da virada)", form: f, method: :mirror_c2s_owners, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.mirror_c2s_owners? }) %>
+            <%= ax_switch_field(label: "Espelhamento contínuo do sistema anterior (antes da virada)", form: f, method: :mirror_c2s_owners, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.mirror_c2s_owners? }) %>
             <%= ax_switch_field(label: "Aceitar leads sem telefone", form: f, method: :accept_lead_without_phone, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.accept_lead_without_phone? }) %>
             <%= ax_switch_field(label: "Enviar leads novos à conta externa", form: f, method: :export_enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.export_enabled? }) %>
           </div>
@@ -82,12 +82,12 @@
           <% end %>
 
           <%= ax_inline_notice(tone: :info, icon: "diagram-3", compact: true) do %>
-            Escolha quais novos cadastros podem entrar do C2S. Os registros já importados continuam sincronizando, inclusive suas tarefas e históricos, mesmo ao restringir a modalidade. O filtro também vale para novos cadastros na importação histórica; ampliar o filtro não importa retroativamente registros antigos sem uma nova importação.
+            Escolha quais novos cadastros podem entrar do sistema anterior. Os registros já importados continuam sincronizando, inclusive suas tarefas e históricos, mesmo ao restringir a modalidade. O filtro também vale para novos cadastros na importação histórica; ampliar o filtro não importa retroativamente registros antigos sem uma nova importação.
           <% end %>
 
           <%= ax_field_grid do %>
             <div class="ax-span-12">
-              <%= ax_select_field(form: f, method: :incoming_business_type, label: "Receber novos cadastros do C2S", choices: ExternalLeadIntegration::INCOMING_BUSINESS_TYPES.to_a, select_options: { selected: @integration.incoming_business_type.presence || "all" }) %>
+              <%= ax_select_field(form: f, method: :incoming_business_type, label: "Receber novos cadastros do sistema anterior", choices: ExternalLeadIntegration::INCOMING_BUSINESS_TYPES.to_a, select_options: { selected: @integration.incoming_business_type.presence || "all" }) %>
             </div>
             <div class="ax-span-12">
               <%= ax_select_field(form: f, method: :outgoing_business_type, label: "Permitir envio ao sistema anterior", choices: ExternalLeadIntegration::INCOMING_BUSINESS_TYPES.to_a, select_options: { selected: @integration.outgoing_business_type.presence || "all" }, tooltip: "Limita o envio global e por filas, inclusive envios já agendados. Não ativa o envio por conta própria.") %>
@@ -100,20 +100,20 @@
             </div>
           <% end %>
           <%= ax_inline_notice(tone: :info, compact: true) do %>
-            Compra/Venda no C2S corresponde a Venda; Aluguel/Locação corresponde a Locação. Um filtro específico não recebe novos cadastros de modalidade indefinida, mista ou de outra categoria, como Captação e Lançamento. No modo de todas as modalidades, esses cadastros continuam entrando. O filtro do C2S não altera as entradas diretas da Unitymob.
+            Compra/Venda no sistema anterior corresponde a Venda; Aluguel/Locação corresponde a Locação. Um filtro específico não recebe novos cadastros de modalidade indefinida, mista ou de outra categoria, como Captação e Lançamento. No modo de todas as modalidades, esses cadastros continuam entrando. O filtro do sistema anterior não altera as entradas diretas da Unitymob.
           <% end %>
           <%= ax_inline_notice(tone: :warning, compact: true) do %>
-            No espelhamento contínuo, cada lead recebido do C2S mantém o corretor definido lá nas próximas sincronizações, sem girar filas ou notificar corretores, mesmo sem regra de distribuição. As escolhas de atribuição sem espelhamento não se aplicam nesse modo. Cada ID do C2S mantém seu cadastro; sem usuário correspondente, cria-se uma referência inativa, sem login. Entradas diretas da Unitymob seguem as regras locais quando estiverem ativas. Durante a conferência atual, mantenha as regras e os prazos desligados. A alteração não concilia automaticamente a base existente.
+            No espelhamento contínuo, cada lead recebido do sistema anterior mantém o corretor definido lá nas próximas sincronizações, sem girar filas ou notificar corretores, mesmo sem regra de distribuição. As escolhas de atribuição sem espelhamento não se aplicam nesse modo. Cada ID do sistema anterior mantém seu cadastro; sem usuário correspondente, cria-se uma referência inativa, sem login. Entradas diretas da Unitymob seguem as regras locais quando estiverem ativas. Durante a conferência atual, mantenha as regras e os prazos desligados. A alteração não concilia automaticamente a base existente.
           <% end %>
           <% unless @integration.mirror_c2s_owners? %>
             <%= ax_inline_notice(tone: :info, compact: true) do %>
-              Sem espelhamento, as escolhas de Venda e Locação definem a atribuição inicial. Se o corretor do C2S não for elegível, a fila local pode ser usada como contingência; consultas mistas ou sem modalidade também usam a fila quando as escolhas forem diferentes. Sincronizações posteriores preservam o responsável local.
+              Sem espelhamento, as escolhas de Venda e Locação definem a atribuição inicial. Se o corretor do sistema anterior não for elegível, a fila local pode ser usada como contingência; consultas mistas ou sem modalidade também usam a fila quando as escolhas forem diferentes. Sincronizações posteriores preservam o responsável local.
             <% end %>
           <% end %>
 
           <%= ax_field_grid do %>
             <div class="ax-span-8">
-              <%= ax_field_label(f, :export_endpoint, text: "Endpoint de envio", tooltip: "Caminho da API externa usado na exportação. O endpoint padrão documentado pelo C2S é /leads.") %>
+              <%= ax_field_label(f, :export_endpoint, text: "Endpoint de envio", tooltip: "Caminho da API externa usado no envio durante a transição. O padrão é /leads.") %>
               <%= f.text_field :export_endpoint, class: "ax-control", placeholder: "/leads" %>
             </div>
             <div class="ax-span-4">

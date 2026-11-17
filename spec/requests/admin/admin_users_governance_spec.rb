@@ -18,6 +18,39 @@ RSpec.describe "Admin user governance", type: :request do
     )
   end
 
+  it "oferece gestores ao trocar um perfil superior para corretor sem reabrir o formulario" do
+    tenant = Tenant.create!(name: "Troca de perfil", slug: "troca-perfil-#{SecureRandom.hex(3)}")
+    owner = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "tenant_owner"))
+    internal = create_vertical_profile(tenant, "Gestor interno", 200)
+    internal.update!(active: true)
+    manager_profile = create_vertical_profile(tenant, "Gestor comercial", 300)
+    user = create(:admin_user, tenant: tenant, profile: internal, manager: owner)
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner)
+    descendant = create(:admin_user, tenant: tenant, profile: manager_profile, manager: user)
+    outsider = create(:admin_user)
+    sign_in owner
+
+    get edit_admin_admin_user_path(user)
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    %w[manager_id rentals_manager_id].each do |field|
+      options = doc.css("#admin_user_#{field} option")
+      expect(options.map { |option| option["value"] }).to include(manager.id.to_s)
+      expect(options.map { |option| option["value"] }).not_to include(user.id.to_s, descendant.id.to_s, outsider.id.to_s)
+      expect(options.find { |option| option["value"] == manager.id.to_s }["data-position"]).to eq("300")
+    end
+    expect(doc.at_css("#admin_user_access_profile_id option[value='#{internal.id}']")["data-position"]).to eq("200")
+
+    patch admin_admin_user_path(user), params: { admin_user: {
+      access_profile_id: tenant.profiles.find_by!(key: "agent").id,
+      acting_type: "both", manager_id: manager.id, rentals_manager_id: manager.id
+    } }
+    expect(response).to redirect_to(admin_admin_users_path)
+    expect(user.reload.manager_id).to eq(manager.id)
+    expect(user.rentals_manager_id).to eq(manager.id)
+  end
+
   it "mantem a foto apos erros de validacao e conclui o cadastro sem reenviar o arquivo" do
     tenant = Tenant.create!(name: "Cadastro com foto", slug: "cadastro-foto-#{SecureRandom.hex(3)}")
     owner = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "tenant_owner"))

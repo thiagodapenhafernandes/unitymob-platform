@@ -41,3 +41,24 @@
     line-height: 1.7;
   }
 }
+
+// Comum a todos os temas: navegação do banner para as unidades.
+.public-theme-development-units__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: .875rem 1.5rem;
+  margin-block: .5rem;
+  text-decoration: none;
+  font-weight: 700;
+}
+.public-theme-development-units__link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+.public-theme-development-units__link--default {
+  background: var(--color-accent);
+  color: var(--color-primary);
+  border-radius: .5rem;
+}

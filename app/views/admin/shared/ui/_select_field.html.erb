@@ -24,7 +24,11 @@
 %>
 
 <div class="ax-field <%= class_name %>" <% if descriptions.present? %>data-controller="ax-select-description" data-ax-select-description-options-value="<%= descriptions.to_json %>"<% end %>>
-  <%= ax_field_label(form, method, text: label, tooltip:) %>
+  <% if local_assigns.fetch(:label_hidden, false) %>
+    <%= form.label method, label, class: "tw-sr-only" %>
+  <% else %>
+    <%= ax_field_label(form, method, text: label, tooltip:) %>
+  <% end %>
   <% if clearable %>
     <div class="ax-clearable-control ax-clearable-control--select" data-controller="ax-clear-field">
       <%= form.select method, choices, select_options || {}, html_options %>

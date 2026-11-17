@@ -198,6 +198,12 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(html.css("h1").size).to eq(1)
         expect(html.at_css("title").text).to include("Residencial Contrato em Centro, Itajaí", "imóveis à venda")
         expect(html.at_css('link[rel="canonical"]')["href"]).to eq("http://localhost/empreendimento/#{development.slug}")
+        units = html.at_css("#unidades.public-theme-development-units--#{variant}")
+        expect(units).to be_present
+        expect(html.at_css('.public-theme-development-units__link[href="#unidades"]')).to be_present
+        expect(html.css(".public-development-show__contact-card, .public-theme-development-contact")).to be_empty
+        expect(html.css("[data-action*='lead-capture#open'][data-property-id='#{development.id}']")).to be_empty
+        expect(units.css("[data-action*='lead-capture#open']")).not_to be_empty
         faq = html.at_css(".public-theme-development-faq--#{variant}")
         expect(faq).to be_present
         expect(faq.text).to include("1 suíte", "1 vaga")
@@ -205,6 +211,16 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         schema.fetch("mainEntity").each do |item|
           expect(faq.text).to include(item["name"], item.dig("acceptedAnswer", "text"))
         end
+      end
+
+      it "empreendimento sem unidades permanece informativo e sem contato proprio" do
+        development = create(:habitation, tenant: tenant, tipo: "Empreendimento", nome_empreendimento: "Sem unidades", address_attributes: address)
+        get empreendimento_details_path(development)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("#unidades").text).to include("Nenhuma unidade disponível no momento.")
+        expect(html.css(".public-theme-development-units__link, .public-development-show__contact-card, .public-theme-development-contact")).to be_empty
+        expect(html.css("[data-action*='lead-capture#open'][data-property-id='#{development.id}']")).to be_empty
       end
 
       it "página por blocos: vídeo, iframe, imagem e colunas na variante" do
