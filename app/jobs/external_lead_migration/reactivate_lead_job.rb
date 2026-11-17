@@ -113,6 +113,9 @@ module ExternalLeadMigration
           operation.lead.c2s_existing_id_for(integration) == operation.external_lead_id
         raise InvalidContext, "Integração ou vínculo com o lead C2S indisponível"
       end
+      unless integration.exports_lead?(operation.lead)
+        raise InvalidContext, "Modalidade bloqueada para envio ao sistema anterior"
+      end
     end
 
     def remote_attributes(response)

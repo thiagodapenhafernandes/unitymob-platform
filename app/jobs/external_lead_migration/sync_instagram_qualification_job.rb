@@ -13,6 +13,7 @@ module ExternalLeadMigration
         rule = lead.distribution_rule
         return unless remote_id.present? && integration&.connected? &&
           (integration.export_active? || integration.mirror_c2s_owners? || rule&.active? && rule.destination_c2s?)
+        return unless integration.exports_lead?(lead)
         summary = Instagram::Qualification.summary(lead)
         return if summary.blank?
         digest = Digest::SHA256.hexdigest(summary)

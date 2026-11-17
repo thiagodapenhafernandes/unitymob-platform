@@ -58,6 +58,19 @@ RSpec.describe ExternalLeadMigration::ReactivateLeadJob do
     expect(lead.activities.where(kind: "c2s_reactivation_completed")).to exist
   end
 
+  it "bloqueia reativação e redistribuição externas de locação após a virada" do
+    operation
+    integration.update!(outgoing_business_type: "sale")
+    lead.update_columns(other_information: lead.other_information.merge("business_type" => "locacao"))
+    expect(client).not_to receive(:lead)
+    expect(client).not_to receive(:update_lead_routing)
+    expect(client).not_to receive(:reactivate_lead)
+    expect(client).not_to receive(:redistribute_lead)
+    described_class.perform_now(operation.id, tenant_id: tenant.id)
+    expect(operation.reload.status).to eq("failed")
+    expect(operation.error_message).to include("Modalidade bloqueada")
+  end
+
   it "envia a fonte e negociação configuradas na regra antes de redistribuir" do
     rule.update!(c2s_negotiation_type: "Aluguel", c2s_source: "Disparo de WhatsApp")
     described_class.perform_now(operation.id, tenant_id: tenant.id)

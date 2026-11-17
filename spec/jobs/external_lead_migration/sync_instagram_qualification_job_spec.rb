@@ -9,6 +9,14 @@ RSpec.describe ExternalLeadMigration::SyncInstagramQualificationJob do
   let(:api) { instance_double(ExternalLeadMigration::Client) }
   before { allow(ExternalLeadMigration::Client).to receive(:new).and_return(api) }
 
+  it 'não envia qualificação de locação quando somente venda está permitida, inclusive no espelhamento' do
+    integration.update!(outgoing_business_type: 'sale', mirror_c2s_owners: true)
+    lead.update_columns(other_information: lead.other_information.merge('business_type' => 'locacao'))
+    expect(api).not_to receive(:update_lead_routing)
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.other_information['instagram_c2s_qualification']).to be_nil
+  end
+
   it 'não repete append com resultado incerto após timeout' do
     allow(api).to receive(:update_lead_routing).and_raise(Timeout::Error)
     expect { described_class.perform_now(tenant.id, lead.id) }.to raise_error(Timeout::Error)
