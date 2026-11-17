@@ -45,6 +45,7 @@ module Imovelweb
         listing ||= external_listing
         property = tenant.habitations.find_by(id: listing.habitation_id) if listing
         return receipt.quarantine!("conflicting_listing") if listing && !property
+        property ||= tenant.habitations.find_by(codigo: entry["reference"]) if entry["reference"].present?
         phone = Phones::Normalizer.call(entry["phone"])
         email = entry["email"].to_s.strip
         return receipt.quarantine!("missing_contact") if phone.blank? && !email.match?(URI::MailTo::EMAIL_REGEXP)
