@@ -40,16 +40,15 @@ module Leads
       form_type = form_business_type
       return form_type if form_type
 
+      title_type = business_type_from_text(@lead.product) unless @message
+      return title_type if title_type
+
       property = @lead.tenant.habitations.find_by(id: @lead.property_id) if @lead.property_id
       if property
         return :diaria if property.daily_rental?
         return {"sale" => :venda, "rent" => :locacao, "sale_rent" => :ambos}[property.whatsapp_negotiation_type]
       end
-      return :diaria if text.match?(DAILY)
-      sale, rent = text.match?(SALE), text.match?(RENT)
-      return :ambos if sale && rent
-      return :venda if sale
-      return :locacao if rent
+      business_type_from_text(text)
     end
 
     def info
@@ -69,8 +68,13 @@ module Leads
 
         question
       end.join(" ")
-      return :diaria if signals.match?(DAILY)
-      sale, rent = signals.match?(SALE), signals.match?(RENT)
+      business_type_from_text(signals)
+    end
+
+    def business_type_from_text(value)
+      value = normalize(value).tr("_", " ")
+      return :diaria if value.match?(DAILY)
+      sale, rent = value.match?(SALE), value.match?(RENT)
       return :ambos if sale && rent
       return :venda if sale
       :locacao if rent
