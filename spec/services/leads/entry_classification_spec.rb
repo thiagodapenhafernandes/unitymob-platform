@@ -95,4 +95,32 @@ RSpec.describe Leads::EntryClassification do
     expect(described_class.new(lead).business_type).to be_nil
   end
 
+  {
+    "Locação | 9846 | Edifício Ruth de Sá" => :locacao,
+    "9846 | [ALUGUEL] | Edifício Ruth de Sá" => :locacao,
+    "9846 Edifício Ruth de Sá — Alugar" => :locacao,
+    "9846_LOCACAO_Edificio Ruth" => :locacao,
+    "[Venda] 9846 Edifício Ruth" => :venda,
+    "9846 | Compra | Edifício Ruth" => :venda,
+    "9846 Edifício Ruth — Comprar" => :venda,
+    "9846 [Venda / Aluguel]" => :ambos,
+    "9846 Aluguel por temporada" => :diaria,
+    "9846 apartamento em ótima localização" => nil
+  }.each do |title, expected|
+    it "classifica o título #{title.inspect} sem depender da posição" do
+      lead.product = title
+      expect(described_class.new(lead).business_type).to eq(expected)
+    end
+  end
+
+  it "prioriza a modalidade anunciada sobre um imóvel disponível para as duas modalidades" do
+    property = create(:habitation, tenant: tenant, valor_venda_cents: 50000000, valor_locacao_cents: 750000)
+    lead.property_id = property.id
+    lead.product = "9846 | Edifício Ruth de Sá | Locação"
+    expect(described_class.new(lead).business_type).to eq(:locacao)
+    expect(described_class.new(lead, message: double("mensagem atual")).business_type).to eq(:ambos)
+    lead.other_information = {"business_type" => "sale"}
+    expect(described_class.new(lead).business_type).to eq(:venda)
+  end
+
 end
