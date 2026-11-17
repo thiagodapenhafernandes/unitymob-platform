@@ -46,6 +46,11 @@ RSpec.describe 'Imovelweb self-service API boundary' do
     end
   end
 
+  it 'reports a certificate failure without bypassing TLS verification or exposing raw errors' do
+    allow(HTTParty).to receive(:post).and_raise(OpenSSL::SSL::SSLError, 'private TLS detail')
+    expect { Imovelweb::GatewayClient.verify!(connection) }.to raise_error(Imovelweb::GatewayClient::Error, /indisponível/)
+  end
+
   it 'requires explicit confirmation with a valid advertiser identity' do
     allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {confirmed: true, advertiser_code: '47294717'}.to_json))
     expect(Imovelweb::GatewayClient.verify!(connection)).to eq('47294717')
