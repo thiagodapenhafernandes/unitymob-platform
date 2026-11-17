@@ -263,11 +263,13 @@ class Lead < ApplicationRecord
     canonical if canonical.match?(/\A\+[1-9]\d{7,14}\z/) && phone.to_s.delete_prefix("+") == canonical.delete_prefix("+")
   end
 
-  # O DDI validado no formulário público não pode virar DDD em validações posteriores.
+  # O DDI já validado não pode virar DDD em validações posteriores.
   def normalize_configured_phone_fields
     canonical = phone_e164
+    preserve_client_phone = canonical && client_phone.to_s.delete_prefix("+") == canonical.delete_prefix("+")
     super
     self.phone = canonical.delete_prefix("+") if canonical
+    self.client_phone = canonical.delete_prefix("+") if preserve_client_phone
   end
   private :normalize_configured_phone_fields
 

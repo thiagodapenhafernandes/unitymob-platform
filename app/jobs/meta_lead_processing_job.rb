@@ -203,7 +203,7 @@ class MetaLeadProcessingJob < ApplicationJob
             "page_id" => page_id.to_s,
             "form_id" => form_id.to_s,
             "provider" => "facebook_lead_ads"
-          },
+          }.merge(attributes[:phone].to_s.match?(/\A\+[1-9]\d{7,14}\z/) ? { "phone_e164" => attributes[:phone] } : {}),
           product: product_name,
           property_id: property&.id,
           custom_answers: map_to_custom_answers(attributes[:field_data]),

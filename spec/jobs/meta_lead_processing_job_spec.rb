@@ -201,6 +201,20 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(lead.property_interests).to be_empty
   end
 
+  it "preserva o DDI recebido da Meta após novas validações do cadastro" do
+    tenant = Tenant.default
+    page = create_meta_setup(tenant, page_id: "page-international-phone")
+    form = create(:meta_lead_form, meta_facebook_page: page, form_id: "form-international-phone", name: "Locação")
+    process_meta_lead("lead-international-phone", page.page_id, form.form_id, [
+      { "name" => "full_name", "values" => ["Teste Telefone Fictício"] },
+      { "name" => "phone_number", "values" => ["+12025550147"] }
+    ])
+    lead = tenant.leads.find_by!("other_information ->> 'meta_leadgen_id' = ?", "lead-international-phone")
+    2.times { lead.update!(notes: "Validação do DDI") }
+    expect(lead.reload).to have_attributes(phone: "12025550147", client_phone: "12025550147")
+    expect(lead.phone_e164).to eq("+12025550147")
+  end
+
   it "cria o lead mesmo quando a resolucao de imovel falha" do
     tenant = Tenant.create!(name: "Conta Meta Sem Bloqueio #{SecureRandom.hex(3)}", slug: "conta-meta-sem-bloqueio-#{SecureRandom.hex(3)}")
     admin = create(:admin_user, :admin, tenant: tenant)
