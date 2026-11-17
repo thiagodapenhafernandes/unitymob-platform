@@ -10,6 +10,43 @@ module Gateway
     end
 
     def self.registered(app)
+      app.post '/internal/imovelweb/authorization' do
+        require_internal_token!
+        data = parse_json(request.body.read)
+        halt 422, json(error: 'invalid_request') unless data.is_a?(Hash) &&
+          %w[sandbox production].include?(data['environment']) && data['client_code'].to_s.match?(/\A[A-Za-z0-9_.@-]{1,255}\z/)
+        client = ImovelwebClient.new(environment: data['environment'])
+        json(script_url: client.authorization_script(client_code: data['client_code']))
+      rescue ImovelwebClient::Error, KeyError
+        halt 503, json(error: 'authorization_unavailable')
+      end
+
+      app.post '/internal/imovelweb/verification' do
+        require_internal_token!
+        data = parse_json(request.body.read)
+        halt 422, json(error: 'invalid_request') unless data.is_a?(Hash) &&
+          %w[sandbox production].include?(data['environment']) && data['client_code'].to_s.match?(/\A[A-Za-z0-9_.@-]{1,255}\z/)
+        advertiser = ImovelwebClient.new(environment: data['environment']).authorized_advertiser(client_code: data['client_code'])
+        json(confirmed: advertiser.present?, advertiser_code: advertiser&.fetch(:advertiser_code))
+      rescue ImovelwebClient::Error, KeyError
+        halt 503, json(error: 'verification_unavailable')
+      end
+
+      app.post '/internal/imovelweb/listings' do
+        require_internal_token!
+        data = parse_json(request.body.read)
+        halt 422, json(error: 'invalid_request') unless data.is_a?(Hash) && data['page'].is_a?(Integer) && data['page'].between?(0, 999) &&
+          data['client_key'].to_s.match?(/\A[0-9a-f-]{36}\z/) && data['client_code'].to_s.match?(/\A[A-Za-z0-9_.@-]{1,255}\z/) &&
+          %w[sandbox production].include?(data['environment'])
+        route = WebhookRoute.find_by(provider: 'imovelweb', client_key: data['client_key'],
+          imovelweb_client_code: data['client_code'], imovelweb_environment: data['environment'], active: true)
+        halt 404, json(error: 'unknown_client') unless route
+        client = ImovelwebClient.new(environment: route.imovelweb_environment)
+        json(client.associate_online_listings(client_code: route.imovelweb_client_code, page: data['page']))
+      rescue ImovelwebClient::Error, KeyError
+        halt 503, json(error: 'listing_association_unavailable')
+      end
+
       app.post '/internal/imovelweb/routes' do
         require_internal_token!
         data = parse_json(request.body.read)
@@ -27,10 +64,23 @@ module Gateway
         if route.persisted? && [route.imovelweb_client_code, route.imovelweb_environment] != [code, data['environment']]
           halt 409, json(error: 'immutable_route_identity')
         end
+        if data['advertiser_code'].present? || (data['active'] && code.match?(/\A(?:um|pending)-/))
+          advertiser = ImovelwebClient.new(environment: data['environment']).authorized_advertiser(client_code: code)
+          halt 409, json(error: 'authorization_pending') unless advertiser && advertiser[:advertiser_code] == data['advertiser_code']
+          # Older routes used the numeric branch code before self-service Login existed.
+          others = WebhookRoute.where(provider: 'imovelweb', imovelweb_environment: data['environment']).where.not(client_key: key)
+          if others.where(imovelweb_client_code: advertiser[:advertiser_code]).exists? ||
+              others.where(imovelweb_advertiser_code: advertiser[:advertiser_code]).exists?
+            halt 409, json(error: 'advertiser_already_linked')
+          end
+          route.imovelweb_advertiser_code = advertiser[:advertiser_code]
+        end
         route.assign_attributes(imovelweb_client_code: code, imovelweb_environment: data['environment'],
           target_url: target.to_s, forwarding_secret: data['forwarding_secret'], active: data['active'])
         route.save!
         json(ok: true)
+      rescue ImovelwebClient::Error, KeyError
+        halt 503, json(error: 'verification_unavailable')
       rescue JSON::ParserError, URI::InvalidURIError
         halt 422, json(error: 'invalid_route')
       rescue ActiveRecord::RecordNotUnique

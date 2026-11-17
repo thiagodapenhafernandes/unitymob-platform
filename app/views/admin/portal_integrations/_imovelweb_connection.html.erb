@@ -1,52 +1,40 @@
-<section id="portal-imovelweb-leads" aria-label="Integração direta Imovelweb">
-  <%= ax_operational_panel(eyebrow: "Leads · Imovelweb", title: "Vínculo com a Unitymob", class_name: "tw-mt-4") do %>
-    <div class="tw-flex tw-flex-wrap tw-gap-2">
-      <%= imovelweb_production_badge(@imovelweb_production) %>
-      <%= ax_badge("Configuração de recebimento gerenciada pelo suporte", tone: :gray) %>
-    </div>
-    <p class="ax-field__hint tw-mt-3">A Unitymob recebe os callbacks pelo Gateway global e encaminha cada evento à conta vinculada. O estado abaixo reflete as conexões configuradas. Consultar eventos não altera distribuição, vínculos ou o C2S.</p>
-
-    <%= ax_field_group(title: "Dados da conta anunciante", class_name: "tw-mt-4") do %>
-      <%= form_with model: @imovelweb_binding, url: (@imovelweb_binding.persisted? ? admin_imovelweb_connection_path(@imovelweb_binding) : admin_imovelweb_connections_path), local: true, html: { aria: { label: "Dados de vínculo Imovelweb" } } do |f| %>
-        <%= ax_field_grid(columns: 12) do %>
-          <div class="ax-span-6">
-            <%= ax_text_field(form: f, method: :advertiser_code, label: "Código da conta anunciante", placeholder: "Código informado pela Imovelweb", required: true, maxlength: 128, hint: "Informe o código da conta no portal. Ele não substitui o clientCode de roteamento.") %>
-          </div>
-          <div class="ax-span-6">
-            <%= ax_field(label: "Autorização da conta comercial") do %><p class="ax-field__hint">Novos vínculos dependem de confirmação da Imovelweb. As conexões já confirmadas estão listadas abaixo.</p><% end %>
-          </div>
+<section id="portal-imovelweb-leads" aria-label="Recebimento de leads Imovelweb">
+  <%= ax_operational_panel(eyebrow: "Imovelweb → Unitymob", title: "Receber leads", class_name: "tw-mb-4") do %>
+    <p>Receba as consultas com a mensagem e o contexto do anúncio.</p>
+    <% production = @imovelweb_connections.select { |item| item.environment == "production" } %>
+    <% production.each do |connection| %>
+      <%= ax_field_group(title: "Conta #{connection.advertiser_code.presence || 'aguardando autorização'}", class_name: "tw-mt-4") do %>
+        <%= turbo_stream_from connection, :connection_status %>
+        <%= render "imovelweb_status", connection: connection %>
+        <% last_received = @imovelweb_last_received[connection.id] %>
+        <p class="ax-field__hint tw-mt-3">Último contato: <%= last_received ? l(last_received, format: :short) : "nenhum recebido" %> · <%= @imovelweb_receipt_counts.fetch([connection.id, "processed"], 0) %> processados.</p>
+        <% quarantined = @imovelweb_receipt_counts.fetch([connection.id, "quarantined"], 0) %>
+        <% if quarantined.positive? %>
+          <p class="tw-mt-3"><%= link_to "#{quarantined} contatos aguardando revisão", admin_imovelweb_connection_lead_receipts_path(connection, status: "quarantined"), class: "ax-link" %></p>
         <% end %>
-        <%= f.submit "Salvar dados do vínculo", class: "ax-btn ax-btn--primary tw-mt-3" %>
-        <p class="ax-field__hint tw-mt-3">Salvar apenas registra a solicitação nesta conta. Não autoriza o portal, ativa recebimento, sincroniza rotas ou altera a distribuição.</p>
       <% end %>
     <% end %>
 
-    <%= ax_field_group(title: "Credenciais e callbacks", class_name: "tw-mt-4") do %>
-      <p>Client ID, Client secret e a chave do callback são gerenciados pela Unitymob no Gateway, separadamente por ambiente. Nenhuma dessas credenciais é solicitada ou exibida nesta tela.</p>
-      <p class="ax-field__hint tw-mt-3">A senha da imobiliária no portal não deve ser informada aqui. A configuração de leads é independente do envio de imóveis e dos tokens do feed.</p>
+    <% if production.empty? || production.any?(&:binding_editable?) %>
+      <%= ax_field_group(title: "Conectar conta anunciante", class_name: "tw-mt-4") do %>
+        <p class="ax-field__hint tw-mb-3">Informe o código da sucursal. Depois, autorize a Unitymob com um usuário administrador ou supervisor do Imovelweb. A confirmação e a ativação acontecem automaticamente.</p>
+        <%= form_with model: @imovelweb_binding, url: (@imovelweb_binding.persisted? ? admin_imovelweb_connection_path(@imovelweb_binding) : admin_imovelweb_connections_path), local: true, html: { aria: { label: "Conectar Imovelweb para receber leads" } } do |f| %>
+          <%= ax_text_field(form: f, method: :advertiser_code, label: "Código da conta no Imovelweb", placeholder: "Ex.: 47294717", required: true, maxlength: 128, hint: "Use o código da sucursal que você vai autorizar.") %>
+          <%= ax_form_actions(sticky: false) do %>
+            <%= f.submit "Salvar e iniciar conexão", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+        <% end %>
+      <% end %>
     <% end %>
-
-    <%= ax_field_group(title: "Conexões desta conta", class_name: "tw-mt-4") do %>
-      <% if @imovelweb_connections.empty? %>
-        <p class="ax-field__hint">Nenhuma conexão preparada. Salve o código da conta para registrar o pedido de vínculo.</p>
-      <% else %>
-        <div class="ax-table-wrap">
-          <table class="ax-table" aria-label="Conexões Imovelweb desta conta">
-            <thead><tr><th scope="col">Ambiente</th><th scope="col">Conta anunciante</th><th scope="col">clientCode</th><th scope="col">Estado</th><th scope="col">Recibos</th><th scope="col">Último evento recebido</th></tr></thead>
-            <tbody>
-              <% @imovelweb_connections.each do |connection| %>
-                <tr>
-                  <td><%= connection.environment == "sandbox" ? "Sandbox · homologação" : "Produção" %></td>
-                  <td><%= connection.advertiser_code.presence || "Não informado" %></td>
-                  <td><%= connection.authorized_at.present? ? connection.client_code : "A confirmar pelo portal" %></td>
-                  <td><%= imovelweb_connection_status(connection) %></td>
-                  <td><% %w[pending processed quarantined].each do |status| %><span class="tw-block"><%= link_to "#{ { "pending" => "Pendentes", "processed" => "Processados", "quarantined" => "Em quarentena" }.fetch(status) }: #{@imovelweb_receipt_counts.fetch([connection.id, status], 0)}", admin_imovelweb_connection_lead_receipts_path(connection, status: status), class: "ax-link" %></span><% end %></td>
-                  <td><%= @imovelweb_last_received[connection.id].present? ? l(@imovelweb_last_received[connection.id], format: :short) : "Nenhum evento recebido" %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+    <%= ax_inline_notice(tone: :neutral, class_name: "tw-mt-4") do %>
+      O contato é salvo mesmo quando o imóvel não é identificado. Novas consultas preservam o contexto e seguem as regras de atendimento da sua conta.
+    <% end %>
+    <div class="tw-mt-4"><%= ax_button("Regras de atendimento", admin_distribution_rules_path, variant: :ghost, icon: "diagram-3") %></div>
+  <% end %>
+  <% if @imovelweb_connections.any? { |connection| connection.environment == "sandbox" } %>
+    <%= ax_collapsible_card(title: "Histórico de testes", collapse_id: "imovelweb-sandbox", collapsed: true) do %>
+      <% @imovelweb_connections.select { |connection| connection.environment == "sandbox" }.each do |connection| %>
+        <p><%= link_to "Consultar eventos de homologação", admin_imovelweb_connection_lead_receipts_path(connection), class: "ax-link" %></p>
       <% end %>
     <% end %>
   <% end %>

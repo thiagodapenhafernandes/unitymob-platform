@@ -1,0 +1,11 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Autorizar Imovelweb", back_path: admin_portal_integrations_path(portal: "imovelweb"), icon: "building" %>
+<% end %>
+<%= ax_workspace_heading(eyebrow: "Imovelweb · Receber leads", title: "Autorizar a Unitymob", icon: "shield-check", subtitle: "Entre no Imovelweb com um usuário administrador ou supervisor e escolha a sucursal desta conta.") %>
+<%= ax_operational_panel(title: "Autorização no Imovelweb") do %>
+  <p>A senha é informada diretamente ao Imovelweb. Esta autorização não altera o envio de imóveis.</p>
+  <div id="opennavent" class="tw-my-4"></div>
+  <%= javascript_include_tag @script_url, nonce: true, data: { turbo_track: "reload" } %>
+  <p class="ax-field__hint">Concluiu a autorização? Volte à integração para acompanhar a confirmação.</p>
+  <%= ax_button("Voltar à integração", admin_portal_integrations_path(portal: "imovelweb", anchor: "portal-imovelweb-leads"), variant: :primary, class_name: "tw-mt-4") %>
+<% end %>

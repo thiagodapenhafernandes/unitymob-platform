@@ -28,3 +28,44 @@ RSpec.describe Imovelweb::GatewayClient do
     expect(connection.reload.enabled).to eq(false)
   end
 end
+
+RSpec.describe 'Imovelweb self-service API boundary' do
+  let(:connection) { ImovelwebConnection.create!(tenant: create(:admin_user, :admin).tenant, environment: 'production', client_code: "um-#{SecureRandom.uuid}") }
+  before do
+    allow(Meta::WebhookGatewayClient).to receive(:gateway_url).and_return('https://gateway.example.com')
+    allow(Meta::WebhookGatewayClient).to receive(:internal_token).and_return('internal')
+  end
+
+  it 'accepts only official Login script URLs for the current connection' do
+    url = "https://loginbr-open.navent.com/official/#{connection.client_code}.js"
+    allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {script_url: url}.to_json))
+    expect(Imovelweb::GatewayClient.authorization_script(connection)).to eq(url)
+    ['https://evil.example/script.js', "#{url}?redirect=evil", 'https://loginbr-open.navent.com/official/another.js'].each do |bad|
+      allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {script_url: bad}.to_json))
+      expect { Imovelweb::GatewayClient.authorization_script(connection) }.to raise_error(Imovelweb::GatewayClient::Error)
+    end
+  end
+
+  it 'requires explicit confirmation with a valid advertiser identity' do
+    allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {confirmed: true, advertiser_code: '47294717'}.to_json))
+    expect(Imovelweb::GatewayClient.verify!(connection)).to eq('47294717')
+    [nil, {confirmed: 'true'}, {confirmed: true}, {confirmed: true, advertiser_code: 'wrong'}].each do |body|
+      allow(HTTParty).to receive(:post).and_return(double(success?: true, body: body.to_json))
+      expect { Imovelweb::GatewayClient.verify!(connection) }.to raise_error(Imovelweb::GatewayClient::Error)
+    end
+  end
+end
+
+RSpec.describe 'Imovelweb listing batch API boundary' do
+  let(:connection) { ImovelwebConnection.create!(tenant: create(:admin_user, :admin).tenant, environment: 'production', client_code: "um-#{SecureRandom.uuid}") }
+  before do
+    allow(Meta::WebhookGatewayClient).to receive(:gateway_url).and_return('https://gateway.example.com')
+    allow(Meta::WebhookGatewayClient).to receive(:internal_token).and_return('internal')
+  end
+  it 'scopes the batch to the connection identity and checks the returned cursor' do
+    expect(HTTParty).to receive(:post).with('https://gateway.example.com/internal/imovelweb/listings', hash_including(timeout: 60, body: {client_code: connection.client_code, environment: 'production', client_key: connection.route_key, page: 0}.to_json)).and_return(double(success?: true, body: {next_page: 1}.to_json))
+    expect(Imovelweb::GatewayClient.associate_listings!(connection, page: 0)).to eq(1)
+    allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {next_page: -1}.to_json))
+    expect { Imovelweb::GatewayClient.associate_listings!(connection, page: 1) }.to raise_error(Imovelweb::GatewayClient::Error)
+  end
+end

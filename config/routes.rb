@@ -524,6 +524,8 @@ Rails.application.routes.draw do
       post :sync_images_now
     end
     resources :imovelweb_connections, only: [:create, :update] do
+      get :authorization, on: :member
+      post :verify, on: :member
       resources :lead_receipts, only: [:index, :show], controller: "imovelweb_lead_receipts"
     end
     resources :portal_integrations, only: [:index, :update], param: :portal do

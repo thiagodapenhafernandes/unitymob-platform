@@ -1,3 +1,6 @@
+<% if @active_portal.in?(%w[imovelweb imovelweb_2]) %>
+  <%= render "imovelweb_workspace", integration: @integrations.fetch(@active_portal) %>
+<% else %>
 <div class="ax-integration-layout">
 <% current_integration = @integrations[@active_portal] %>
 <% group_olx = current_integration.grupozap_family? %>
@@ -117,103 +120,7 @@
       <% end %>
     <% end %>
     <!-- Configuração -->
-    <%= ax_operational_panel(eyebrow: "Publicação", title: "Enviar imóveis", class_name: "tw-mb-3") do %>
-      <div class="ax-panel-body">
-        <%= form_with model: current_integration,
-                      url: admin_portal_integration_path(@active_portal),
-                      method: :patch,
-                      local: true do |f| %>
-          <div class="tw-mb-4">
-            <%= ax_switch_field(form: f, method: :enabled, label: "Integração ativa") %>
-            <small class="portal-integrations-help">Habilita a integração com este portal. Para receber contatos, ative também o recebimento no bloco de leads.</small>
-          </div>
-
-          <%= ax_field_grid(columns: 12, gap: :compact) do %>
-            <% if current_integration.requires_account_id? %>
-              <div class="ax-span-6">
-                <%= ax_text_field(form: f, method: :account_id, label: "Account ID", required: true, placeholder: "Ex: 12345", hint: "Obrigatório. ID da sua conta no portal; solicite ao gerente comercial.") %>
-              </div>
-              <div class="ax-span-6">
-                <%= ax_text_field(form: f, method: :publisher_id, label: "Publisher ID", required: true, placeholder: "Ex: 67890", hint: "Obrigatório. ID do publicador, geralmente igual ao Account ID.") %>
-              </div>
-            <% elsif current_admin_user.system_admin? %>
-              <div class="ax-span-6">
-                <%= ax_text_field(form: f, method: :account_id, label: "Account ID", hint: "Opcional") %>
-              </div>
-              <div class="ax-span-6">
-                <%= ax_text_field(form: f, method: :publisher_id, label: "Publisher ID", hint: "Opcional") %>
-              </div>
-            <% end %>
-
-            <% if current_admin_user.system_admin? %>
-            <div class="ax-span-6">
-              <%= f.label :webhook_secret, "Webhook Secret", class: "ax-label" %>
-              <small class="portal-integrations-help portal-integrations-help--inline">(opcional)</small>
-              <%= f.password_field :webhook_secret, class: "ax-control",
-                                   autocomplete: "off",
-                                   placeholder: (current_integration.webhook_secret.present? ? "Já configurado. Preencha para substituir." : "Defina se for usar webhook do portal") %>
-              <small class="portal-integrations-help">Usado para validar eventos enviados pelo portal de volta para nós.</small>
-            </div>
-
-            <% end %>
-
-            <div class="ax-span-6">
-              <%= ax_multiselect_field(form: f, method: :allowed_business_types, label: "Tipos de negócio", choices: @business_type_options, selected: current_integration.allowed_business_types, placeholder: "Selecione os tipos enviados") %>
-              <p class="ax-field__hint">Quais tipos de transação serão enviados.</p>
-            </div>
-
-            <div class="ax-span-6">
-              <%= ax_multiselect_field(form: f, method: :allowed_statuses, label: "Status permitidos", choices: @status_options, selected: current_integration.allowed_statuses, placeholder: "Selecione os status enviados") %>
-              <p class="ax-field__hint">Apenas imóveis nestes status entram no feed.</p>
-            </div>
-
-            <div class="ax-span-12">
-              <%= ax_switch_field(form: f, method: :require_exibir_no_site, label: "Enviar apenas imóveis exibidos no site") %>
-              <small class="portal-integrations-help">Recomendado. Evita publicar imóveis ocultos do site público.</small>
-            </div>
-
-          <% end %>
-
-          <%= ax_form_actions(sticky: false) do %>
-            <%= f.submit "Salvar envio de imóveis", class: "ax-btn ax-btn--primary" %>
-          <% end %>
-        <% end %>
-      </div>
-    <% end %>
-
-    <!-- URL do Feed em destaque (ação principal) -->
-    <% feed_url = integrations_portals_feed_token_url(portal: @active_portal, token: current_integration.feed_token, format: current_integration.feed_format) %>
-    <%= ax_operational_panel(eyebrow: "Publicação", title: "URL do Feed para o portal", class_name: "portal-integrations-feed-card tw-mb-3") do %>
-      <div class="ax-panel-body" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
-        <p class="tw-text-sm tw-text-ink-muted tw-mb-3">
-          <strong>Esta é a URL que você deve enviar ao <%= current_integration.title %>.</strong>
-          O portal vai ler seus imóveis automaticamente a partir dela.
-        </p>
-        <%= ax_input_group(action: capture { %>
-          <button type="button" class="ax-btn ax-btn--primary tw-gap-1"
-                  data-action="clipboard#copy"
-                  data-clipboard-target="button">
-            <i class="bi bi-clipboard"></i>
-            <span data-clipboard-target="content">Copiar</span>
-          </button>
-        <% }) do %>
-          <input type="text" class="ax-control font-monospace tw-text-sm" readonly
-                 value="<%= feed_url %>"
-                 data-clipboard-target="source"
-                 data-action="focus->clipboard#select click->clipboard#select">
-        <% end %>
-        <% if current_admin_user.system_admin? %>
-        <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-3">
-          <%= link_to preview_feed_admin_portal_integration_path(@active_portal),
-                      target: "_blank", rel: "noopener",
-                      class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-1" do %>
-            <i class="bi bi-eye"></i> Visualizar amostra (3 imóveis)
-          <% end %>
-
-        </div>
-        <% end %>
-      </div>
-    <% end %>
+    <%= render "publication", integration: current_integration %>
 
     <% if current_admin_user.system_admin? %>
     <!-- Webhook (secundário) -->
@@ -370,3 +277,5 @@
 <% end %>
 
 </div>
+
+<% end %>

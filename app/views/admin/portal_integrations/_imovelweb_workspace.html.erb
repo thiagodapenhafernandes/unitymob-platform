@@ -1,0 +1,32 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Imovelweb", back_path: admin_portal_integrations_path, icon: "building" %>
+<% end %>
+<% preview = @previews.fetch(@active_portal) %>
+<% content_for :admin_contextbar_actions do %>
+  <%= ax_button("Trocar portal", admin_portal_integrations_path, variant: :ghost, icon: "arrow-left-right") %>
+<% end %>
+<%= ax_workspace_heading(eyebrow: "Integrações · Portais", title: integration.title, icon: "building", subtitle: "Envie seus imóveis e receba os contatos do portal. Configure cada conexão separadamente.") %>
+<%= ax_field_grid(columns: 12) do %>
+  <div id="portal-publication" class="ax-span-6">
+    <%= ax_operational_panel(title: "Enviar imóveis", eyebrow: "Unitymob → Imovelweb", class_name: "tw-mb-4") do %>
+      <div class="tw-flex tw-flex-wrap tw-gap-2 tw-items-center">
+        <%= ax_badge(integration.enabled? ? "Envio habilitado" : "Envio desativado", tone: integration.enabled? ? :green : :gray) %>
+        <span><strong><%= preview[:eligible_count] %></strong> imóveis elegíveis</span>
+      </div>
+      <p class="ax-field__hint tw-mt-3">Escolha os imóveis e copie o link do catálogo para a Integração de Anúncios no Imovelweb.</p>
+      <p class="ax-field__hint tw-mt-3">Última leitura do catálogo: <%= integration.last_feed_at ? l(integration.last_feed_at, format: :short) : "ainda não registrada" %>. A leitura não confirma a publicação dos anúncios.</p>
+    <% end %>
+    <%= ax_collapsible_card(title: "Configurar envio e copiar link", collapse_id: "imovelweb-publication", collapsed: true, class_name: "tw-mb-4") do %>
+      <%= render "publication", integration: integration %>
+      <%= ax_button("Abrir integração de anúncios", "https://www.imovelweb.com.br/panel/empresa/integraciones", variant: :ghost, icon: "box-arrow-up-right", target: "_blank", rel: "noopener") %>
+    <% end %>
+    <% if preview[:top_reasons].present? %>
+      <%= ax_collapsible_card(title: "Imóveis fora do catálogo", collapse_id: "imovelweb-rejections", collapsed: true) do %>
+        <ul><% preview[:top_reasons].each do |reason, count| %><li><%= reason.humanize %>: <%= count %></li><% end %></ul>
+      <% end %>
+    <% end %>
+  </div>
+  <div class="ax-span-6">
+    <%= render "imovelweb_connection" %>
+  </div>
+<% end %>
