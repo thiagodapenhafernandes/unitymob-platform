@@ -92,7 +92,7 @@ class MetaLeadProcessingJob < ApplicationJob
     return nil if text.blank? || text.match?(AMBIGUOUS_PROPERTY_CODE_PATTERN)
 
     codes = text.scan(PROPERTY_CODE_PATTERN).flatten
-    prefix = text.match(/\A(?:form(?:ulario)?\s*[-:]\s*)?(?:\[(\d{2,})\]|(\d{2,}))\s+(?=[[:alpha:]])(?!mil(?:hao|hoes)?\b|[mk]\b)/i)
+    prefix = text.match(/\A(?:form(?:ulario)?\s*[-:]\s*)?(?:\[(\d{2,})\]|(\d{2,}))(?:\s*\|\s*|\s+)(?=[[:alpha:]])(?!mil(?:hao|hoes)?\b|[mk]\b)/i)
     codes << (prefix[1] || prefix[2]) if prefix
     codes = codes.uniq
     codes.one? ? codes.first : nil
