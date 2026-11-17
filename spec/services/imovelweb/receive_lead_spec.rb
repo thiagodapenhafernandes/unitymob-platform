@@ -65,6 +65,13 @@ RSpec.describe Imovelweb::ReceiveLead do
     expect(described_class.recovery_fingerprint(connection, payload.merge("registered_at" => "2026-11-17T13:53:45Z"))).not_to eq(fingerprint)
   end
 
+  it "keeps the portal origin metadata without changing the integration identity" do
+    payload['lead_origin'] = 'Wimoveis'
+    described_class.call(receipt)
+    expect(receipt.reload.lead.other_information['lead_origin']).to eq('Wimoveis')
+    expect(receipt.lead.attribution_source).to eq('imovelweb')
+  end
+
   it "uses the existing portal distribution rule" do
     rule = create(:distribution_rule, tenant: tenant, source_site: false, source_portal: true, distribution_mode: :shark_tank)
     payload["reference"] = "SEM-MAPA"

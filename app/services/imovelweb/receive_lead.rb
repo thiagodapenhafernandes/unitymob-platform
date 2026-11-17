@@ -62,7 +62,7 @@ module Imovelweb
               ("ID do anúncio: #{entry['listing_id']}" if entry['listing_id'].present?),
               entry["message"].presence].compact.join("\n"),
             other_information: { "imovelweb_event_id" => "#{connection.route_key}:#{receipt.event_id}",
-              "lead_origin" => "Imovelweb", "origin_listing_id" => entry["listing_id"], "origin_listing_reference" => entry["reference"],
+              "lead_origin" => entry["lead_origin"].presence || "Imovelweb", "origin_listing_id" => entry["listing_id"], "origin_listing_reference" => entry["reference"],
               "portal_message" => entry["message"], "imovelweb_registered_at" => entry["registered_at"], "imovelweb_message_id" => entry["message_id"] })
           lead.property_interests.find_or_create_by!(habitation: property) { |interest| interest.tenant = tenant } if property
           receipt.update!(lead: lead, status: "processed", reason: nil, processed_at: Time.current)

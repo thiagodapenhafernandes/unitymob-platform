@@ -198,3 +198,12 @@ RSpec.describe 'Imovelweb rejection diagnostics' do
     expect(Gateway::ImovelwebPayload.diagnostic([])).to eq({})
   end
 end
+
+RSpec.describe Gateway::ImovelwebPayload do
+  it 'preserves origin metadata without rejecting an authenticated advertiser contact' do
+    payload = { 'eventId' => 'contact', 'clientCode' => 'account', 'eventType' => 'CONTACTO', 'leadOrigin' => 'Wimoveis' }
+    expect(described_class.normalize(payload)).to include('lead_origin' => 'Wimoveis', 'client_code' => 'account')
+    payload.delete('clientCode')
+    expect { described_class.normalize(payload) }.to raise_error(described_class::Invalid, 'client_code:required_or_too_long')
+  end
+end
