@@ -1697,7 +1697,7 @@
     </div>
   </section>
 
-  <%= render "admin/shared/ui/lead_form_responses", lead: @lead %>
+  <%= render "admin/shared/ui/lead_form_responses", groups: @lead_form_response_groups %>
   <%= render "admin/leads/pwa_operational_panel", lead: @lead %>
 
   <section class="lead-pwa-detail__panel">
@@ -1857,7 +1857,7 @@
 
 <div id="lead-attendance" class="lead-desktop-panels">
 <%= render "admin/leads/origin_line", lead: @lead, origin: (@lead_origin_taxonomy ||= lead_origin_for(@lead, tenant: current_tenant)) %>
-<%= render "admin/shared/ui/lead_form_responses", lead: @lead %>
+<%= render "admin/shared/ui/lead_form_responses", groups: @lead_form_response_groups %>
 
 <%# ===== Barra de funil (bate o olho e entende a etapa) ===== %>
 <div class="ax-card tw-mb-3">

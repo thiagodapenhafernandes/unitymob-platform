@@ -211,6 +211,7 @@ class MetaLeadProcessingJob < ApplicationJob
             "meta_leadgen_id" => lead_id.to_s,
             "meta_page_id" => page_id.to_s,
             "meta_form_id" => form_id.to_s,
+            "meta_form_name" => product_name,
             "meta_property_code" => self.class.property_code_from_text(product_name),
             "meta_integration_user_id" => integration&.admin_user_id,
             "processed_at" => Time.current
@@ -403,7 +404,7 @@ class MetaLeadProcessingJob < ApplicationJob
     field_data.map do |f|
       {
         "key" => f["name"],
-        "answer" => field_values(f).first
+        "answer" => field_values(f).join("\n")
       }
     end
   end

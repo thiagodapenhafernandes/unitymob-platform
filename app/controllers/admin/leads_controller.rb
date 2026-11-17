@@ -418,6 +418,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def show
     @page_title = "Lead: #{@lead.name}"
+    @lead_form_response_groups = Leads::FormResponses.new(@lead).groups
     @return_to_path = safe_return_path(params[:return_to])
     params[:return_to] = @return_to_path if @return_to_path.present?
     @property = current_tenant.habitations.find_by(id: @lead.property_id)

@@ -1,12 +1,15 @@
-<% answers = lead.other_information.to_h["linkedin_answers"] || lead.other_information.to_h["tiktok_answers"] %>
-<% if answers.is_a?(Hash) && answers.any? %>
-  <%= ax_operational_panel(eyebrow: "Captação", title: "Respostas do formulário #{lead.other_information.to_h.key?('tiktok_answers') ? 'TikTok' : 'LinkedIn'}") do %>
+<% groups.each do |group| %>
+  <%= ax_operational_panel(eyebrow: "Captação", title: "Respostas do formulário #{group[:provider]}") do %>
     <div class="ax-panel-body">
+      <p class="tw-mb-4 tw-text-sm tw-text-slate-500">
+        <%= group[:form_name] %>
+        <% if group[:received_at] %> · Recebido em <%= l(group[:received_at], format: :short) %><% end %>
+      </p>
       <%= ax_field_grid do %>
-        <% answers.each do |question, answer| %>
+        <% group[:answers].each do |entry| %>
           <div class="ax-span-6 ax-field">
-            <span class="ax-field-label"><%= question %></span>
-            <p><%= answer.presence || "Não informado" %></p>
+            <span class="ax-field-label"><%= entry[:question] %></span>
+            <p class="tw-m-0 tw-whitespace-pre-line tw-break-words"><%= entry[:answer].presence || "Não informado" %></p>
           </div>
         <% end %>
       <% end %>
