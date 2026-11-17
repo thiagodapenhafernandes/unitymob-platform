@@ -185,3 +185,15 @@ RSpec.describe Gateway::ImovelwebPayload do
     expect(result).not_to have_key('idContato')
   end
 end
+
+RSpec.describe 'Imovelweb rejection diagnostics' do
+  it 'reports the rejected field without logging contact values or unknown keys' do
+    payload = { 'eventId' => 'secret-id', 'clientCode' => 'private-account', 'eventType' => 'CONTACTO',
+      'email' => 'private@example.com', 'phone' => { 'secret' => 'private-phone' }, 'private-key' => 'secret' }
+    expect { Gateway::ImovelwebPayload.normalize(payload) }.to raise_error(Gateway::ImovelwebPayload::Invalid, 'phone:scalar_required')
+    diagnostic = Gateway::ImovelwebPayload.diagnostic(payload).to_json
+    expect(diagnostic).to include('Hash', 'email')
+    expect(diagnostic).not_to include('secret-id', 'private-account', 'private@example.com', 'private-phone', 'private-key')
+    expect(Gateway::ImovelwebPayload.diagnostic([])).to eq({})
+  end
+end

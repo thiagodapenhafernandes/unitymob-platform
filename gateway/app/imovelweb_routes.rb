@@ -127,7 +127,8 @@ module Gateway
         halt 413 if request.content_length.to_i > 65_536
         raw = request.body.read(65_537)
         halt 413 if raw.bytesize > 65_536
-        entry = ImovelwebPayload.normalize(JSON.parse(raw)).merge('environment' => environment)
+        payload = JSON.parse(raw)
+        entry = ImovelwebPayload.normalize(payload).merge('environment' => environment)
         route = WebhookRoute.find_by(provider: 'imovelweb', imovelweb_environment: environment,
           imovelweb_client_code: entry.fetch('client_code'), active: true)
         halt 404, json(error: 'unknown_client') unless route
@@ -136,7 +137,10 @@ module Gateway
           event_type: entry.fetch('event_type'), payload: entry, raw_body: JSON.generate(entry), received_at: Time.now, status: 'received')
         status 202
         json(ok: true)
-      rescue JSON::ParserError, ImovelwebPayload::Invalid
+      rescue JSON::ParserError, ImovelwebPayload::Invalid => error
+        reason = error.is_a?(JSON::ParserError) ? 'invalid_json' : error.message
+        warn({ provider: 'imovelweb', event: 'callback_payload_rejected', environment: environment, reason: reason,
+          diagnostic: ImovelwebPayload.diagnostic(payload) }.to_json)
         halt 422, json(error: 'invalid_callback')
       end
     end
