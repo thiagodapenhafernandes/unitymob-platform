@@ -215,6 +215,19 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(lead.phone_e164).to eq("+12025550147")
   end
 
+  it "grava todas as respostas de campos customizados com múltiplos valores" do
+    tenant = Tenant.default
+    page = create_meta_setup(tenant, page_id: "page-multi-answer")
+    form = create(:meta_lead_form, meta_facebook_page: page, form_id: "form-multi-answer", name: "Preferências de locação")
+    fields = [{ "name" => "phone_number", "values" => ["5511990001711"] },
+      { "name" => "preferências", "values" => ["Sacada", "Garagem"] },
+      { "name" => "autorizo_contato", "values" => ["NÃO"] }]
+    process_meta_lead("lead-multi-answer", page.page_id, form.form_id, fields)
+    lead = tenant.leads.find_by!("other_information ->> 'meta_leadgen_id' = ?", "lead-multi-answer")
+    expect(lead.custom_answers).to include({ "key" => "preferências", "answer" => "Sacada\nGaragem" })
+    expect(lead.other_information).to include("meta_form_name" => form.name, "field_data" => fields)
+  end
+
   it "cria o lead mesmo quando a resolucao de imovel falha" do
     tenant = Tenant.create!(name: "Conta Meta Sem Bloqueio #{SecureRandom.hex(3)}", slug: "conta-meta-sem-bloqueio-#{SecureRandom.hex(3)}")
     admin = create(:admin_user, :admin, tenant: tenant)
