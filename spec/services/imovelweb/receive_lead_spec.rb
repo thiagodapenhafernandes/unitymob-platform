@@ -81,6 +81,15 @@ RSpec.describe Imovelweb::ReceiveLead do
     expect(receipt.lead.notes).to include('Referência do imóvel: IW-1', 'Referência da integração no portal: iw-123')
   end
 
+  it "links an original code from this tenant when there is no listing mapping" do
+    connection.imovelweb_listings.destroy_all
+    payload.merge!('listing_id' => '123', 'portal_reference' => 'iw-123')
+    described_class.call(receipt)
+    expect(receipt.reload.status).to eq('processed')
+    expect(receipt.lead.property_id).to eq(property.id)
+    expect(receipt.lead.property_interests.where(habitation: property)).to exist
+  end
+
   it "uses the existing portal distribution rule" do
     rule = create(:distribution_rule, tenant: tenant, source_site: false, source_portal: true, distribution_mode: :shark_tank)
     payload["reference"] = "SEM-MAPA"
