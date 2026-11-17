@@ -34,6 +34,10 @@ module ExternalLeadMigration
       return if scoped && !rule.active?
       return unless scoped || integration&.export_active?
       raise Client::Error, "Integração C2S indisponível" unless integration&.connected?
+      unless integration.exports_lead?(lead)
+        LeadActivity.log!(lead: lead, kind: "external_lead_export_skipped", metadata: { reason: "business_type_filtered" })
+        return
+      end
 
       payload = LeadExportMapper.call(lead: lead)
       # shortcut: external_id correlaciona, mas não garante deduplicação remota após timeout; homologar idempotência com o C2S antes de automatizar replay desses casos.

@@ -131,6 +131,7 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       :accept_lead_without_phone,
       :mirror_c2s_owners,
       :incoming_business_type,
+      :outgoing_business_type,
       :sale_assignment_mode,
       :rental_assignment_mode,
       :export_enabled,

@@ -340,7 +340,7 @@ class Lead < ApplicationRecord
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta),
   # Direct do Instagram, migração habilitada ou Lead Sync LinkedIn com e-mail válido.
   has_many :instagram_messages, dependent: :destroy
-  validates :phone, presence: true, unless: -> { linkedin_contact_without_phone? || tiktok_contact_without_phone? || imovelweb_contact_without_phone? || business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) || external_lead_integration&.accept_lead_without_phone? }
+  validates :phone, presence: true, unless: -> { meta_contact_without_phone? || linkedin_contact_without_phone? || tiktok_contact_without_phone? || imovelweb_contact_without_phone? || business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) || external_lead_integration&.accept_lead_without_phone? }
   validate :associated_records_must_belong_to_tenant
   validate :in_service_requires_owner
   validate :assigned_admin_user_must_be_active
@@ -519,6 +519,11 @@ class Lead < ApplicationRecord
   def imovelweb_contact_without_phone?
     attribution_source == "imovelweb" && attribution_data&.dig("provider") == "imovelweb_direct" &&
       other_information&.dig("imovelweb_event_id").present? && email.to_s.match?(URI::MailTo::EMAIL_REGEXP)
+  end
+
+  def meta_contact_without_phone?
+    attribution_source == "meta" && attribution_data&.dig("provider") == "facebook_lead_ads" &&
+      other_information&.dig("meta_leadgen_id").present? && email.to_s.match?(URI::MailTo::EMAIL_REGEXP)
   end
 
   def tiktok_contact_without_phone?
@@ -853,6 +858,7 @@ class Lead < ApplicationRecord
   def enqueue_c2s_export
     return if destroyed? || tenant.blank? || whatsapp_service_contact? || instagram_automation_holding?
     return unless tenant.external_lead_integration&.export_active?
+    return unless tenant.external_lead_integration.exports_lead?(self)
     return if imported_from_c2s? || distribution_rule&.destination_c2s?
 
     ExternalLeadMigration::ExportLeadJob.perform_later(id, tenant_id: tenant_id)

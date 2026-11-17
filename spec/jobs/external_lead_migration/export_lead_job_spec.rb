@@ -43,6 +43,31 @@ RSpec.describe ExternalLeadMigration::ExportLeadJob do
     expect(client).not_to have_received(:create_lead)
   end
 
+  it "bloqueia locação, modalidade mista e indefinida mesmo em regra externa, preservando venda" do
+    integration.update!(export_enabled: false, outgoing_business_type: "sale")
+    rule = create(:distribution_rule, tenant: tenant, delivery_destination: "c2s")
+    allow(client).to receive(:create_lead).and_return("id" => "sale-only")
+    ["Locação", "Venda e Aluguel", "Campanha sem modalidade"].each do |title|
+      lead = create(:lead, tenant: tenant, product: title, distribution_rule: rule, skip_automatic_routing: true)
+      described_class.perform_now(lead.id, tenant_id: tenant.id)
+      expect(lead.reload.c2s_exported_at).to be_nil
+      expect(lead.activities.where(kind: "external_lead_export_skipped").last.metadata["reason"]).to eq("business_type_filtered")
+    end
+    expect(client).not_to have_received(:create_lead)
+
+    sale = create(:lead, tenant: tenant, product: "Compra de apartamento", distribution_rule: rule, skip_automatic_routing: true)
+    described_class.perform_now(sale.id, tenant_id: tenant.id)
+    expect(client).to have_received(:create_lead).once
+    expect(sale.reload.c2s_export_external_id).to eq("sale-only")
+  end
+
+  it "não agenda exportação global de locação quando somente venda está permitida" do
+    integration.update!(outgoing_business_type: "sale")
+    expect {
+      create(:lead, tenant: tenant, product: "Locação", skip_automatic_routing: true)
+    }.not_to have_enqueued_job(described_class)
+  end
+
   it "registra a indisponibilidade e tenta novamente sem atribuir corretor local" do
     integration.update!(export_enabled: false)
     rule = create(:distribution_rule, tenant: tenant, delivery_destination: "c2s")
