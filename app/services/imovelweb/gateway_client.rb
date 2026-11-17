@@ -43,7 +43,7 @@ module Imovelweb
       data = JSON.parse(response.body)
       raise Error, "Resposta inválida do Imovelweb." unless data.is_a?(Hash)
       data
-    rescue JSON::ParserError, Net::OpenTimeout, Net::ReadTimeout, SocketError, Errno::ECONNREFUSED
+    rescue JSON::ParserError, Net::OpenTimeout, Net::ReadTimeout, SocketError, Errno::ECONNREFUSED, OpenSSL::SSL::SSLError
       raise Error, "Conexão com o Imovelweb indisponível. Tente novamente em instantes."
     end
     private_class_method :request!
@@ -59,7 +59,7 @@ module Imovelweb
           active: connection.receiving?, advertiser_code: (connection.advertiser_code if connection.authorized_at.present?) }.compact.to_json)
       raise Error, "Não foi possível sincronizar a rota Imovelweb (HTTP #{response.code})." unless response.success?
       true
-    rescue Net::OpenTimeout, Net::ReadTimeout, SocketError, Errno::ECONNREFUSED
+    rescue Net::OpenTimeout, Net::ReadTimeout, SocketError, Errno::ECONNREFUSED, OpenSSL::SSL::SSLError
       raise Error, "Não foi possível atualizar a conexão. Tentaremos novamente."
     end
   end
