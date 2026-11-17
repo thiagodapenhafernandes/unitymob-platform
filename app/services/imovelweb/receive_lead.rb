@@ -1,6 +1,6 @@
 module Imovelweb
   class ReceiveLead
-    FIELDS = %w[event_id event_type client_code environment reference listing_id name email phone message registered_at contact_type message_id lead_origin].freeze
+    FIELDS = %w[event_id event_type client_code environment reference portal_reference listing_id name email phone message registered_at contact_type message_id lead_origin].freeze
 
     def self.recovery_fingerprint(connection, entry)
       phone = Phones::Normalizer.call(entry['phone'])
@@ -55,14 +55,16 @@ module Imovelweb
             phone: phone, client_phone: phone, email: email, client_email: email,
             origin: "Imovelweb", attribution_channel: "portal", attribution_source: "imovelweb",
             attribution_data: { "provider" => "imovelweb_direct", "event_type" => entry["event_type"],
-              "client_code" => connection.client_code, "reference" => entry["reference"], "listing_id" => entry["listing_id"], "contact_type" => entry["contact_type"] },
+              "client_code" => connection.client_code, "reference" => entry["reference"], "portal_reference" => entry["portal_reference"], "listing_id" => entry["listing_id"], "contact_type" => entry["contact_type"] },
             product: property&.display_title, property_id: property&.id,
             notes: ["Contato recebido pelo Imovelweb",
               ("Referência do imóvel: #{entry['reference']}" if entry['reference'].present?),
+              ("Referência da integração no portal: #{entry['portal_reference']}" if entry['portal_reference'].present?),
               ("ID do anúncio: #{entry['listing_id']}" if entry['listing_id'].present?),
               entry["message"].presence].compact.join("\n"),
             other_information: { "imovelweb_event_id" => "#{connection.route_key}:#{receipt.event_id}",
               "lead_origin" => entry["lead_origin"].presence || "Imovelweb", "origin_listing_id" => entry["listing_id"], "origin_listing_reference" => entry["reference"],
+              "portal_listing_reference" => entry["portal_reference"],
               "portal_message" => entry["message"], "imovelweb_registered_at" => entry["registered_at"], "imovelweb_message_id" => entry["message_id"] })
           lead.property_interests.find_or_create_by!(habitation: property) { |interest| interest.tenant = tenant } if property
           receipt.update!(lead: lead, status: "processed", reason: nil, processed_at: Time.current)

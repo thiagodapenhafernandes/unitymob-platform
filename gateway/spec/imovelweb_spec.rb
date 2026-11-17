@@ -75,10 +75,12 @@ RSpec.describe 'Imovelweb Gateway' do
     receive
     expect(last_response.status).to eq(202)
     expect(WebhookEvent.last.payload['reference']).to eq('AP-1')
-    payload[:reference] = 'conflicting'
+    payload[:reference] = 'iw-123'
+    payload[:eventId] = 'event-2'
     receive
-    expect(last_response.status).to eq(422)
-    expect(WebhookEvent.where.not(event_type: 'rejected_callback').count).to eq(1)
+    expect(last_response.status).to eq(202)
+    expect(WebhookEvent.last.payload).to include('reference' => 'AP-1', 'portal_reference' => 'iw-123')
+    expect(WebhookEvent.where.not(event_type: 'rejected_callback').count).to eq(2)
   end
 
   it 'keeps first event body even if a redelivery changes its fields' do

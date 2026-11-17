@@ -5,6 +5,7 @@ module Gateway
       'event_id' => %w[eventId idEvento], 'event_type' => %w[eventType tipoEvento],
       'client_code' => %w[clientCode codigoImobiliaria codigoInmobiliaria codigoCliente],
       'reference' => %w[reference internalReference referencia clientListingId], 'listing_id' => %w[idNavplat idnavplat originListingId],
+      'portal_reference' => %w[reference],
       'name' => %w[name nome nombre], 'email' => %w[email], 'phone' => %w[phoneNumber phone telefone telefono],
       'message' => %w[message mensagem mensaje], 'registered_at' => %w[registerDate dataRegistro fechaRegistro timestamp],
       'contact_type' => %w[contactTypeId idTipoContacto], 'message_id' => %w[messageId idMensagem idMensaje],
@@ -21,6 +22,8 @@ module Gateway
     def self.normalize(payload)
       raise Invalid, 'object_required' unless payload.is_a?(Hash)
       result = FIELDS.to_h do |field, aliases|
+        # Navent sends the integrator reference and the original listing code together.
+        aliases = aliases - ['reference'] if field == 'reference' && payload['internalReference'].present?
         values = aliases.filter_map do |key|
           value = payload[key]
           raise Invalid, "#{field}:scalar_required" unless value.nil? || value.is_a?(String) || value.is_a?(Integer)
@@ -31,6 +34,7 @@ module Gateway
         raise Invalid, "#{field}:conflicting_aliases" if values.length > 1
         [field, values.first]
       end.compact
+      result.delete('portal_reference') if result['portal_reference'] == result['reference']
       %w[event_id client_code].each do |key|
         raise Invalid, "#{key}:required_or_too_long" unless result[key].present? && result[key].bytesize <= 255
       end

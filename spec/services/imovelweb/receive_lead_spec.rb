@@ -72,6 +72,15 @@ RSpec.describe Imovelweb::ReceiveLead do
     expect(receipt.lead.attribution_source).to eq('imovelweb')
   end
 
+  it "keeps both Navent references and links the property by its original code" do
+    payload['portal_reference'] = 'iw-123'
+    described_class.call(receipt)
+    expect(receipt.reload.status).to eq('processed')
+    expect(receipt.lead.property_id).to eq(property.id)
+    expect(receipt.lead.other_information).to include('origin_listing_reference' => 'IW-1', 'portal_listing_reference' => 'iw-123')
+    expect(receipt.lead.notes).to include('Referência do imóvel: IW-1', 'Referência da integração no portal: iw-123')
+  end
+
   it "uses the existing portal distribution rule" do
     rule = create(:distribution_rule, tenant: tenant, source_site: false, source_portal: true, distribution_mode: :shark_tank)
     payload["reference"] = "SEM-MAPA"
