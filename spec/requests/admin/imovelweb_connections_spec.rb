@@ -14,7 +14,7 @@ RSpec.describe 'Imovelweb binding workspace', type: :request do
       expect { get admin_portal_integrations_path(portal: portal) }.not_to change(ImovelwebConnection, :count)
       expect(response).to have_http_status(:ok)
       block = Nokogiri::HTML(response.body).at_css('#portal-imovelweb-leads')
-      expect(block.text).to include('Conectar conta anunciante', 'confirmação e a ativação acontecem automaticamente')
+      expect(block.text).to include('Conectar conta anunciante', 'ativação acontece automaticamente')
       expect(block.css('input[name="imovelweb_connection[advertiser_code]"]').size).to eq(1)
       expect(block.css('input[type=password], input[name*=enabled], input[name*=authorized], input[name*=client_secret]')).to be_empty
     end
@@ -27,14 +27,14 @@ RSpec.describe 'Imovelweb binding workspace', type: :request do
     expect(response).to redirect_to(admin_portal_integrations_path(portal: 'imovelweb', anchor: 'portal-imovelweb-leads'))
     c = ImovelwebConnection.last
     expect(c).to have_attributes(tenant_id: admin.tenant_id, advertiser_code: '47294717', environment: 'production', enabled: false, authorized_at: nil)
-    expect(c.client_code).to start_with('um-')
+    expect(c.client_code).to eq('47294717')
     expect { post admin_imovelweb_connections_path, params: { imovelweb_connection: attrs } }.not_to change(ImovelwebConnection, :count)
-    patch admin_imovelweb_connection_path(c), params: { imovelweb_connection: { advertiser_code: 'updated', enabled: true } }
-    expect(c.reload).to have_attributes(advertiser_code: 'updated', enabled: false, authorized_at: nil)
+    patch admin_imovelweb_connection_path(c), params: { imovelweb_connection: { advertiser_code: '12345678', enabled: true } }
+    expect(c.reload).to have_attributes(advertiser_code: '47294717', enabled: false, authorized_at: nil)
   end
 
   it 'rejects blank, oversized or malformed codes without leaving drafts' do
-    ['', 'x' * 129, '<script>'].each do |code|
+    ['', 'x' * 129, '<script>', 'not-a-branch'].each do |code|
       expect { post admin_imovelweb_connections_path, params: { imovelweb_connection: { advertiser_code: code } } }.not_to change(ImovelwebConnection, :count)
       expect(flash[:alert]).to be_present
     end
@@ -71,11 +71,8 @@ RSpec.describe 'Imovelweb binding workspace', type: :request do
   end
   it 'loads the official authorization for an owned connection only, without activating on GET' do
     own = connection(client_code: "um-#{SecureRandom.uuid}")
-    url = "https://loginbr-open.navent.com/official-integrator/#{own.client_code}.js"
-    allow(Imovelweb::GatewayClient).to receive(:authorization_script).with(own).and_return(url)
     get authorization_admin_imovelweb_connection_path(own)
-    expect(response).to have_http_status(:ok)
-    expect(response.body).to include('id="opennavent"', url)
+    expect(response).to redirect_to('https://www.imovelweb.com.br/panel/empresa/integraciones-leads')
     expect(own.reload.authorized_at).to be_nil
     foreign = connection(tenant: Tenant.create!(name: 'Outra conta', slug: SecureRandom.hex(8)))
     get authorization_admin_imovelweb_connection_path(foreign)
@@ -102,6 +99,38 @@ RSpec.describe 'Imovelweb binding workspace', type: :request do
     expect(doc.css('#portal-imovelweb-leads input[name*=enabled]')).to be_empty
     expect(doc.css('input[type=password]')).to be_empty
     expect(doc.css('.ax-mobile-detail-header')).to be_present
+  end
+
+  it 'sends a confirmation only through the server and never accepts a custom recipient' do
+    own = connection(client_code: '47294717', advertiser_code: '47294717')
+    token = 't' * 43
+    expect(Imovelweb::GatewayClient).to receive(:start_confirmation!).with(own).and_return('challenge_token' => token, 'email_hint' => 'o***@example.com')
+    post challenge_admin_imovelweb_connection_path(own), params: { email: 'attacker@example.com' }
+    expect(own.reload.binding_challenge_token).to eq(token)
+    expect(own.binding_challenge_token_before_type_cast).not_to eq(token)
+    expect(own.enabled).to be(false)
+    expect(flash[:notice]).to include('e-mail administrativo')
+  end
+
+  it 'confirms a valid code and activates only with server proof' do
+    own = connection(client_code: '47294717', advertiser_code: '47294717', binding_challenge_token: 't' * 43)
+    proof = 'a' * 64
+    expect(Imovelweb::GatewayClient).to receive(:confirm!).with(own, code: '123456').and_return(proof)
+    expect(Imovelweb::ActivateConnection).to receive(:call).with(own) { |record| expect(record.binding_proof).to eq(proof); true }
+    expect { post confirm_admin_imovelweb_connection_path(own), params: { binding_code: '123456', binding_proof: 'forged' } }.to have_enqueued_job(ImovelwebListingSyncJob).with(own.id)
+    expect(own.reload.binding_proof_before_type_cast).not_to eq(proof)
+  end
+
+  it 'rejects malformed codes and cross-tenant confirmation without external calls' do
+    own = connection(client_code: '47294717', advertiser_code: '47294717')
+    expect(Imovelweb::GatewayClient).not_to receive(:confirm!)
+    post confirm_admin_imovelweb_connection_path(own), params: { binding_code: '<script>' }
+    expect(flash[:alert]).to include('seis dígitos')
+    foreign = connection(tenant: Tenant.create!(name: 'Outra conta', slug: SecureRandom.hex(8)))
+    post challenge_admin_imovelweb_connection_path(foreign)
+    expect(response).to have_http_status(:not_found)
+    post confirm_admin_imovelweb_connection_path(foreign), params: { binding_code: '123456' }
+    expect(response).to have_http_status(:not_found)
   end
 
 end

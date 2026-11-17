@@ -16,14 +16,7 @@ module Gateway
       end
     end
 
-    def authorization_script(client_code:)
-      integrator = ENV["#{@prefix}_INTEGRATOR_ID"].to_s
-      raise Error, 'Integrator login is not configured' unless integrator.match?(/\A[A-Za-z0-9_-]+\z/)
-      "https://loginbr-open.navent.com/#{segment(integrator)}/#{segment(client_code)}.js"
-    end
-
-    def authorized_advertiser(client_code:)
-      # Only an exact server-generated code proves which customer completed Login.
+    def authorized_advertiser(client_code:, administrator: false)
       seen = 0
       100.times do |page|
         data = request(:get, "/v1/imobiliarias?pageable.page=#{page}&pageable.size=100")
@@ -35,7 +28,13 @@ module Gateway
           raise Error, 'Advertiser is blocked' if advertiser['bloqueada'] == true
           id = advertiser['idNavplat'].to_s
           raise Error, 'Invalid advertiser identity' unless id.match?(/\A[0-9]+\z/)
-          return { client_code: client_code, advertiser_code: id }
+          result = { client_code: client_code, advertiser_code: id }
+          if administrator
+            roles = advertiser['emailsPorRol'].is_a?(Hash) ? advertiser['emailsPorRol'] : {}
+            emails = Array(roles['Administrador'])
+            result[:administrator_email] = emails.find { |email| email.is_a?(String) && email.length <= 254 && email.match?(URI::MailTo::EMAIL_REGEXP) && !email.match?(/[\r\n]/) }&.strip&.downcase
+          end
+          return result
         end
         seen += data['content'].size
         return nil if data['content'].empty? || (data['total'].is_a?(Numeric) && seen >= data['total'])

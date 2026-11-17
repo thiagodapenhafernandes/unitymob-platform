@@ -11,6 +11,7 @@ require_relative "../config/environment"
 
 connection = ActiveRecord::Base.connection
 raise "Use an isolated *_test database" unless connection.select_value("SELECT current_database()").end_with?("_test")
+connection.drop_table(:imovelweb_binding_challenges, if_exists: true)
 connection.drop_table(:tiktok_oauth_states, if_exists: true)
 connection.drop_table(:meta_oauth_attempts, if_exists: true)
 connection.drop_table(:webhook_events, if_exists: true)
@@ -106,10 +107,14 @@ ActiveRecord::Migration.suppress_messages { AddImovelwebRoutes.new.migrate(:up) 
 require_relative "../db/migrate/20261116151000_add_imovelweb_advertiser_to_routes"
 ActiveRecord::Migration.suppress_messages { AddImovelwebAdvertiserToRoutes.new.migrate(:up) }
 
+require_relative "../db/migrate/20261117110000_create_imovelweb_binding_challenges"
+ActiveRecord::Migration.suppress_messages { CreateImovelwebBindingChallenges.new.migrate(:up) }
+
 RSpec.configure do |config|
   config.include Rack::Test::Methods
 
   config.before do
+    ImovelwebBindingChallenge.delete_all
     TiktokOauthState.delete_all
     MetaOauthAttempt.delete_all
     WebhookEvent.delete_all

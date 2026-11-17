@@ -63,12 +63,6 @@ RSpec.describe 'Imovelweb advertiser consent' do
   end
   after { @keys.each { |key| @previous.key?(key) ? ENV[key] = @previous[key] : ENV.delete(key) } }
 
-  it 'builds Login with the unique customer code and configured integrator identifier' do
-    expect(client.authorization_script(client_code: 'um-uuid')).to eq('https://loginbr-open.navent.com/official-id/um-uuid.js')
-    ENV.delete('IMOVELWEB_PRODUCTION_INTEGRATOR_ID')
-    expect { client.authorization_script(client_code: 'um-uuid') }.to raise_error(Gateway::ImovelwebClient::Error)
-  end
-
   it 'finds the exact code across pages, returning only its advertiser identity' do
     stub_request(:get, "#{base}/v1/imobiliarias?pageable.page=0&pageable.size=100").to_return(body: {content: [{codigoInmobiliaria: 'another', idNavplat: 111}], total: 101}.to_json)
     stub_request(:get, "#{base}/v1/imobiliarias?pageable.page=1&pageable.size=100").to_return(body: {content: [{codigoInmobiliaria: 'um-uuid', idNavplat: 47294717, nombre: 'private'}], total: 101}.to_json)

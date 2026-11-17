@@ -1,0 +1,2 @@
+class ImovelwebBindingChallenge < ApplicationRecord
+end

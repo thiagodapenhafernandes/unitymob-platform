@@ -3985,6 +3985,10 @@ CREATE TABLE public.imovelweb_connections (
     connection_error character varying,
     listings_synced_at timestamp(6) without time zone,
     listing_sync_error character varying,
+    consent_confirmed_at timestamp(6) without time zone,
+    binding_email_hint character varying,
+    binding_challenge_token text,
+    binding_proof text,
     CONSTRAINT imovelweb_environment CHECK (((environment)::text = ANY (ARRAY[('sandbox'::character varying)::text, ('production'::character varying)::text])))
 );
 
@@ -22092,6 +22096,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261117111000'),
 ('20261116152000'),
 ('20261116150000'),
 ('20261114140000'),

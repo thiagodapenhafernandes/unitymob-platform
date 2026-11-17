@@ -32,7 +32,7 @@ module Gateway
       normalized
     end
 
-    def send_code(address, code)
+    def send_code(address, code, purpose: :discovery)
       from = email(ENV.fetch('DISCOVERY_MAIL_FROM'))
       key = ENV.fetch('RESEND_API_KEY')
       raise KeyError, 'Missing Resend configuration' if key.strip.empty?
@@ -40,9 +40,14 @@ module Gateway
       request = Net::HTTP::Post.new(uri)
       request['Authorization'] = "Bearer #{key}"
       request['Content-Type'] = 'application/json'
+      text = if purpose == :imovelweb_binding
+        "Seu código: #{code}\nConfirme o vínculo da sua conta Imovelweb com a Unitymob. Válido por 10 minutos.\nSe não solicitou esta conexão, ignore a mensagem."
+      else
+        "Seu código: #{code}\nVálido por 10 minutos para localizar suas contas. Este código não substitui o login no CRM.\nSe não solicitou, ignore esta mensagem."
+      end
       request.body = {
         from: "Unitymob <#{from}>", to: [email(address)], subject: 'Código de conexão Unitymob',
-        text: "Seu código: #{code}\nVálido por 10 minutos para localizar suas contas. Este código não substitui o login no CRM.\nSe não solicitou, ignore esta mensagem."
+        text: text
       }.to_json
       response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 5, write_timeout: 5) do |http|
         http.request(request)

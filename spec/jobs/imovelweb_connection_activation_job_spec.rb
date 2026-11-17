@@ -11,6 +11,14 @@ RSpec.describe ImovelwebConnectionActivationJob, type: :job do
     expect(connection.reload.enabled).to be(false)
   end
 
+  it "stops polling once native consent is found and ownership confirmation is needed" do
+    allow(Imovelweb::ActivateConnection).to receive(:call).with(connection) do |record|
+      record.update!(consent_confirmed_at: Time.current)
+      false
+    end
+    expect { described_class.perform_now(connection.id) }.not_to have_enqueued_job(described_class)
+  end
+
   it "stops when confirmed or the authorization window expires" do
     allow(Imovelweb::ActivateConnection).to receive(:call).and_return(true)
     expect { described_class.perform_now(connection.id) }.not_to have_enqueued_job(described_class)

@@ -11,7 +11,7 @@ class ImovelwebConnectionActivationJob < ApplicationJob
     publish_status(connection)
     if connected
       ImovelwebListingSyncJob.perform_later(connection.id)
-    else
+    elsif connection.consent_confirmed_at.blank?
       self.class.set(wait: 30.seconds).perform_later(connection.id)
     end
   rescue StandardError

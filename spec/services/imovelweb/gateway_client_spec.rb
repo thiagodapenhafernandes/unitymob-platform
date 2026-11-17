@@ -36,14 +36,9 @@ RSpec.describe 'Imovelweb self-service API boundary' do
     allow(Meta::WebhookGatewayClient).to receive(:internal_token).and_return('internal')
   end
 
-  it 'accepts only official Login script URLs for the current connection' do
-    url = "https://loginbr-open.navent.com/official/#{connection.client_code}.js"
-    allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {script_url: url}.to_json))
-    expect(Imovelweb::GatewayClient.authorization_script(connection)).to eq(url)
-    ['https://evil.example/script.js', "#{url}?redirect=evil", 'https://loginbr-open.navent.com/official/another.js'].each do |bad|
-      allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {script_url: bad}.to_json))
-      expect { Imovelweb::GatewayClient.authorization_script(connection) }.to raise_error(Imovelweb::GatewayClient::Error)
-    end
+  it 'preserves native consent and the ownership challenge without accepting credentials from the form' do
+    allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {confirmed: false, ownership_required: true, advertiser_code: '47294717', email_hint: 'o***@example.com'}.to_json))
+    expect(Imovelweb::GatewayClient.verify!(connection)).to include('ownership_required' => true, 'confirmed' => false)
   end
 
   it 'reports a certificate failure without bypassing TLS verification or exposing raw errors' do
@@ -53,7 +48,7 @@ RSpec.describe 'Imovelweb self-service API boundary' do
 
   it 'requires explicit confirmation with a valid advertiser identity' do
     allow(HTTParty).to receive(:post).and_return(double(success?: true, body: {confirmed: true, advertiser_code: '47294717'}.to_json))
-    expect(Imovelweb::GatewayClient.verify!(connection)).to eq('47294717')
+    expect(Imovelweb::GatewayClient.verify!(connection)).to include('confirmed' => true, 'advertiser_code' => '47294717')
     [nil, {confirmed: 'true'}, {confirmed: true}, {confirmed: true, advertiser_code: 'wrong'}].each do |body|
       allow(HTTParty).to receive(:post).and_return(double(success?: true, body: body.to_json))
       expect { Imovelweb::GatewayClient.verify!(connection) }.to raise_error(Imovelweb::GatewayClient::Error)
