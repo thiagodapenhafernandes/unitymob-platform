@@ -35,7 +35,7 @@ module Gateway
         raise Invalid, "#{key}:required_or_too_long" unless result[key].present? && result[key].bytesize <= 255
       end
       raise Invalid, 'event_type:unsupported' unless %w[CONTACTO CONTACTO_MENSAJE].include?(result['event_type'])
-      raise Invalid, 'lead_origin:unsupported' if result['lead_origin'].present? && result['lead_origin'].downcase != 'imovelweb'
+      # Origin is attribution metadata; authentication and client identity own the route.
       result
     end
   end
