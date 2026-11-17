@@ -1,3 +1,53 @@
+## Recebimento com autorização pelo cliente (implementação de 16/11/2026)
+
+A tela Imovelweb possui dois fluxos independentes: **Enviar imóveis** mantém o
+formulário e o XML existentes; **Receber leads** prepara uma conexão com código
+aleatório exclusivo, abre o Login oficial e confirma a autorização na API antes
+de habilitar a conexão e sincronizar sua rota no Gateway. Salvar código anunciante,
+visitar uma URL ou retornar do Login não constituem confirmação de autorização.
+
+### Pré-requisitos centrais, configurados uma vez por ambiente
+
+- Gateway: `IMOVELWEB_PRODUCTION_API_URL`, `IMOVELWEB_PRODUCTION_CLIENT_ID`,
+  `IMOVELWEB_PRODUCTION_CLIENT_SECRET`, `IMOVELWEB_PRODUCTION_INTEGRATOR_ID`
+  (identificador do botão Login fornecido pelo portal; não inferir do nome ou client_id).
+- Permanecem obrigatórios callback global, token dedicado, worker de entrega e
+  `IMOVELWEB_RECEIVING_ENABLED=true` do Gateway.
+- Cada instalação CRM: configuração do Gateway interno, `APP_HOST` HTTPS,
+  `IMOVELWEB_GATEWAY_FORWARDING_SECRET`, criptografia e
+  `IMOVELWEB_RECEIVING_ENABLED=true`. O cliente não vê nem informa credenciais.
+- Publicar primeiro Gateway + sua migration, depois CRM + sua migration. `mina all`
+  não publica Gateway. Não habilitar gates globais como efeito de salvar um formulário.
+
+### Fluxo do cliente
+
+1. Informar o código numérico da sucursal em Receber leads e salvar.
+2. Abrir Autorizar no Imovelweb; entrar com administrador/supervisor e selecionar
+   a sucursal. O Login associa o código aleatório desta conexão à conta autorizada.
+3. A confirmação em segundo plano consulta `/v1/imobiliarias` por até 15 minutos,
+   localiza **exatamente** o código exclusivo e confere `idNavplat` com a sucursal
+   informada. Ao confirmar, ativa e sincroniza a rota automaticamente.
+4. Após a ativação, a Unitymob associa automaticamente os anúncios online à
+   interface de leitura em lotes de cinco. Referências existentes são preservadas;
+   anúncios sem referência recebem `iw-ID`. Nenhum anúncio é publicado/editado ou
+   removido. Um job a cada 15 minutos prepara anúncios novos, independentemente
+   dos filtros de envio do catálogo. Falhas aparecem no estado de recebimento.
+5. Verificar conexão reinicia a janela; erros mantêm o vínculo pendente, com retry
+   limitado. A tela recebe atualização por Turbo Streams. Conexões já autorizadas
+   permanecem válidas e não são reautorizadas ou reprocessadas na implantação.
+6. Conferir um contato real em Ver contatos; configuração ativa não comprova
+   entrega. Dedupe e ingresso sem imóvel identificado usam o intake existente.
+
+O Gateway confirma o vínculo novamente ao cadastrar a rota de autoatendimento,
+impede reutilizar a sucursal em outra rota e preserva rotas legadas numéricas.
+Identidades legadas arbitrárias não autorizadas exigem nova conexão; não podem
+ser ativadas apenas porque um número aparece na lista da integradora.
+
+Não altera distribuição, responsáveis, histórico, publicação ou reprocessa recibos.
+Abaixo permanece o registro histórico da preparação e homologação anteriores.
+
+---
+
 # Conector direto Imovelweb — Unitymob
 
 Implementação inicial de 03/11/2026. **O recebimento é habilitado por conta e ambiente.**

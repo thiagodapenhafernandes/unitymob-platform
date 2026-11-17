@@ -1,0 +1,19 @@
+<div id="imovelweb_connection_status_<%= connection.id %>" role="status" aria-live="polite">
+  <%= ax_badge(imovelweb_connection_status(connection), tone: imovelweb_connection_tone(connection)) %>
+  <% if connection.listing_sync_error.present? %>
+    <p class="ax-field__hint tw-mt-3"><%= connection.listing_sync_error %></p>
+  <% elsif connection.connection_error.present? %>
+    <p class="ax-field__hint tw-mt-3"><%= connection.connection_error %></p>
+  <% elsif connection.authorized_at.blank? %>
+    <p class="ax-field__hint tw-mt-3">Após autorizar, confirmaremos a conexão automaticamente por até 15 minutos. Você também pode usar “Verificar conexão”.</p>
+  <% elsif connection.receiving? %>
+    <p class="ax-field__hint tw-mt-3">Autorização confirmada no Imovelweb. Os próximos contatos seguirão as regras de atendimento desta conta.</p>
+  <% end %>
+  <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-4">
+    <% unless connection.authorized_at.present? %>
+      <%= ax_button("Autorizar no Imovelweb", authorization_admin_imovelweb_connection_path(connection), variant: :primary, icon: "box-arrow-up-right", target: "_blank", rel: "noopener") %>
+    <% end %>
+    <%= button_to "Verificar conexão", verify_admin_imovelweb_connection_path(connection), class: "ax-btn ax-btn--secondary" %>
+    <%= ax_button("Ver contatos", admin_imovelweb_connection_lead_receipts_path(connection), variant: :ghost, icon: "people") %>
+  </div>
+</div>

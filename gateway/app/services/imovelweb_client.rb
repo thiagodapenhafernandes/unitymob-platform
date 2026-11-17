@@ -11,9 +11,53 @@ module Gateway
       @prefix = "IMOVELWEB_#{environment.upcase}"
       @base = ENV.fetch("#{@prefix}_API_URL").delete_suffix('/')
       uri = URI(@base)
-      unless uri.scheme == 'https' && uri.host&.end_with?('.open.navent.com') && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil? && uri.path.in?(['', '/'])
+      unless uri.scheme == 'https' && (uri.host == 'api-br-open.navent.com' || uri.host&.end_with?('.open.navent.com')) && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil? && uri.path.in?(['', '/'])
         raise Error, 'Use the official HTTPS API origin supplied by support'
       end
+    end
+
+    def authorization_script(client_code:)
+      integrator = ENV["#{@prefix}_INTEGRATOR_ID"].to_s
+      raise Error, 'Integrator login is not configured' unless integrator.match?(/\A[A-Za-z0-9_-]+\z/)
+      "https://loginbr-open.navent.com/#{segment(integrator)}/#{segment(client_code)}.js"
+    end
+
+    def authorized_advertiser(client_code:)
+      # Only an exact server-generated code proves which customer completed Login.
+      seen = 0
+      100.times do |page|
+        data = request(:get, "/v1/imobiliarias?pageable.page=#{page}&pageable.size=100")
+        return nil if data.nil?
+        raise Error, 'Invalid advertiser response' unless data.is_a?(Hash) && data['content'].is_a?(Array)
+        matches = data['content'].select { |item| item.is_a?(Hash) && item['codigoInmobiliaria'] == client_code }
+        raise Error, 'Ambiguous advertiser response' if matches.size > 1
+        if (advertiser = matches.first)
+          raise Error, 'Advertiser is blocked' if advertiser['bloqueada'] == true
+          id = advertiser['idNavplat'].to_s
+          raise Error, 'Invalid advertiser identity' unless id.match?(/\A[0-9]+\z/)
+          return { client_code: client_code, advertiser_code: id }
+        end
+        seen += data['content'].size
+        return nil if data['content'].empty? || (data['total'].is_a?(Numeric) && seen >= data['total'])
+      end
+      raise Error, 'Advertiser pagination limit reached'
+    end
+
+    def associate_online_listings(client_code:, page:)
+      data = request(:get, "/v1/imobiliarias/#{segment(client_code)}/anuncios/online/resumo?pageable.page=#{page}&pageable.size=5")
+      return { associated: 0, next_page: nil } if data.nil?
+      raise Error, 'Invalid listing response' unless data.is_a?(Hash) && data['content'].is_a?(Array) && data['number'] == page && data['total'].is_a?(Numeric)
+      raise Error, 'Invalid listing page size' if data['content'].size > 5
+      associated = 0
+      data['content'].each do |listing|
+        raise Error, 'Invalid listing identity' unless listing.is_a?(Hash) && listing['idAvisoNavplat'].to_s.match?(/\A[0-9]+\z/)
+        next if listing['codigoAviso'].present?
+        id = listing['idAvisoNavplat'].to_s
+        associate_listing(client_code: client_code, reference: "iw-#{id}", external_id: id)
+        associated += 1
+      end
+      next_page = page + 1 if data['content'].any? && (page * 5 + data['content'].size) < data['total']
+      { associated: associated, next_page: next_page }
     end
 
     def associate_listing(client_code:, reference:, external_id:)

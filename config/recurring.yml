@@ -22,6 +22,10 @@ development:
     class: TiktokReconcileJob
     queue: sync
     schedule: every 15 minutes
+  imovelweb_listing_reconcile:
+    class: ImovelwebListingReconcileJob
+    queue: sync
+    schedule: every 15 minutes
   portal_lead_gateway_reconcile:
     class: PortalLeadGatewayReconcileJob
     queue: sync
@@ -72,6 +76,10 @@ production:
     schedule: every 5 minutes
   tiktok_reconcile:
     class: TiktokReconcileJob
+    queue: sync
+    schedule: every 15 minutes
+  imovelweb_listing_reconcile:
+    class: ImovelwebListingReconcileJob
     queue: sync
     schedule: every 15 minutes
   portal_lead_gateway_reconcile:
