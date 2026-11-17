@@ -21,17 +21,25 @@ class ExternalLeadIntegration < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :sync_status, inclusion: { in: SYNC_STATUSES }
   validates :sale_assignment_mode, :rental_assignment_mode, inclusion: { in: ASSIGNMENT_MODES.values }
-  validates :incoming_business_type, inclusion: { in: INCOMING_BUSINESS_TYPES.values }, allow_nil: true
+  validates :incoming_business_type, :outgoing_business_type, inclusion: { in: INCOMING_BUSINESS_TYPES.values }, allow_nil: true
   validates :tenant_id, uniqueness: true
   validates :webhook_token, presence: true, uniqueness: true
   validates :export_endpoint, format: { with: %r{\A/}, message: "deve começar com /" }, allow_blank: true
 
   scope :enabled, -> { where(enabled: true, status: "connected") }
 
-  store_accessor :operational_mappings, :mirror_c2s_owners, :incoming_business_type, :filtered_count
+  store_accessor :operational_mappings, :mirror_c2s_owners, :incoming_business_type, :outgoing_business_type, :filtered_count
 
   def receives_new_business_type?(business_type)
     incoming_business_type.blank? || incoming_business_type == "all" || incoming_business_type == business_type
+  end
+
+  def exports_lead?(lead)
+    return false if lead.tenant_id != tenant_id
+    return true if outgoing_business_type.blank? || outgoing_business_type == "all"
+
+    type = Leads::EntryClassification.new(lead).business_type
+    { "sale" => :venda, "rental" => :locacao }[outgoing_business_type] == type
   end
 
   def mirror_c2s_owners?

@@ -136,6 +136,44 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(Leads::EntryClassification.new(lead).business_type).to eq(:locacao)
   end
 
+  it "recebe locação sem telefone e não duplica o evento em reentregas nem cruza contas" do
+    tenant = Tenant.default
+    page = create_meta_setup(tenant, page_id: "page-no-phone")
+    form = create(:meta_lead_form, meta_facebook_page: page, form_id: "form-no-phone",
+      name: "9846 | Locação | Edifício Ruth de Sá R$ 7.500")
+    other = Tenant.create!(name: "Outra conta Meta", slug: "other-meta-no-phone")
+    create(:lead, tenant: other, email: "meta-no-phone@example.com",
+      other_information: { "meta_leadgen_id" => "lead-no-phone" })
+    fields = [{ "name" => "full_name", "values" => ["Cliente Meta"] },
+      { "name" => "email", "values" => ["meta-no-phone@example.com"] }]
+
+    expect {
+      2.times { process_meta_lead("lead-no-phone", page.page_id, form.form_id, fields) }
+    }.to change { tenant.leads.count }.by(1)
+
+    lead = tenant.leads.find_by!("other_information ->> 'meta_leadgen_id' = ?", "lead-no-phone")
+    expect(lead.phone).to be_blank
+    expect(lead.email).to eq("meta-no-phone@example.com")
+    expect(Leads::EntryClassification.new(lead).business_type).to eq(:locacao)
+
+    Current.set(tenant: tenant) do
+      page.user_meta_integration.update!(selected_page_ids: [page.page_id])
+      rule = create(:distribution_rule, tenant: tenant, name: "Locação | Meta | DDS",
+        source_site: false, source_meta: true, business_type: :locacao,
+        meta_page_ids: [page.page_id], meta_forms: [form.form_id])
+      broker = create(:admin_user, tenant: tenant)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: broker)
+      allow(Leads::NotificationDispatcher).to receive(:deliver)
+      Leads::RoutingService.route!(lead)
+      expect(lead.reload).to have_attributes(distribution_rule_id: rule.id, admin_user_id: broker.id)
+
+      LeadSetting.instance(tenant: tenant).update!(stickiness_match: "phone_or_email")
+      expect {
+        process_meta_lead("lead-no-phone-another-event", page.page_id, form.form_id, fields)
+      }.not_to change { tenant.leads.count }
+    end
+  end
+
   it "nao vincula imovel quando o nome do formulario Meta tem mais de um codigo" do
     tenant = Tenant.create!(name: "Conta Meta Ambigua #{SecureRandom.hex(3)}", slug: "conta-meta-ambigua-#{SecureRandom.hex(3)}")
     create(:habitation, tenant: tenant, codigo: "2788", status: "Venda", exibir_no_site_flag: true)
@@ -443,7 +481,7 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
         "id" => "lead-meta-sem-phone",
         "field_data" => [
           { "name" => "full_name", "values" => ["Cliente Sem Telefone"] },
-          { "name" => "email", "values" => ["cliente@example.com"] }
+          { "name" => "email", "values" => ["email-inválido"] }
         ]
       }
     )

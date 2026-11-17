@@ -350,4 +350,26 @@ RSpec.describe Lead, type: :model do
       expect(lead.errors[:phone]).to be_present
     end
   end
+
+  describe "contato direto da Meta sem telefone" do
+    let(:lead) do
+      build(:lead, phone: nil, email: "cliente@example.com", attribution_source: "meta",
+        attribution_data: { "provider" => "facebook_lead_ads" },
+        other_information: { "meta_leadgen_id" => "meta-sem-telefone" })
+    end
+
+    it "aceita e-mail válido e identidade do evento Meta" do
+      expect(lead).to be_valid
+    end
+
+    it "mantém telefone obrigatório sem e-mail válido, evento ou procedência Meta" do
+      [{ email: nil }, { email: "inválido" }, { other_information: {} },
+        { attribution_source: "site" }, { attribution_data: {} }].each do |attributes|
+        contact = lead.dup
+        contact.assign_attributes(attributes)
+        expect(contact).not_to be_valid
+        expect(contact.errors[:phone]).to be_present
+      end
+    end
+  end
 end
