@@ -139,6 +139,7 @@ module Gateway
         json(ok: true)
       rescue JSON::ParserError, ImovelwebPayload::Invalid => error
         reason = error.is_a?(JSON::ParserError) ? 'invalid_json' : error.message
+        ImovelwebRejectedCallback.record(environment: environment, raw: raw, reason: reason)
         warn({ provider: 'imovelweb', event: 'callback_payload_rejected', environment: environment, reason: reason,
           diagnostic: ImovelwebPayload.diagnostic(payload) }.to_json)
         halt 422, json(error: 'invalid_callback')

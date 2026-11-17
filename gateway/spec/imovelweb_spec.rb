@@ -78,7 +78,7 @@ RSpec.describe 'Imovelweb Gateway' do
     payload[:reference] = 'conflicting'
     receive
     expect(last_response.status).to eq(422)
-    expect(WebhookEvent.count).to eq(1)
+    expect(WebhookEvent.where.not(event_type: 'rejected_callback').count).to eq(1)
   end
 
   it 'keeps first event body even if a redelivery changes its fields' do
@@ -122,7 +122,8 @@ RSpec.describe 'Imovelweb Gateway' do
     payload.delete(:clientCode)
     receive
     expect(last_response.status).to eq(422)
-    expect(WebhookEvent.count).to eq(0)
+    expect(WebhookEvent.where.not(event_type: 'rejected_callback').count).to eq(0)
+    expect(WebhookEvent.where(event_type: 'rejected_callback').count).to eq(3)
   end
 
   it 'retries a failed delivery asynchronously without changing OLX delivery' do
