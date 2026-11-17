@@ -48,6 +48,23 @@ RSpec.describe Imovelweb::ReceiveLead do
     expect(activities.count).to eq(count)
   end
 
+  it "attaches a provider retry of an API-recovered query without routing or notifying again" do
+    payload.merge!("listing_id" => "123", "registered_at" => "2026-11-17T13:52:45Z", "contact_type" => "10")
+    original = create(:lead, tenant: tenant, email: payload["email"], status: "Desqualificado | Arquivar")
+    fingerprint = described_class.recovery_fingerprint(connection, payload)
+    original.activities.create!(tenant: tenant, kind: "inquiry_complemented", metadata: { "ingress_reference" => "imovelweb:recovery:#{fingerprint}" })
+    previous = original.attributes
+    expect(Leads::Intake).not_to receive(:create!)
+    expect(Leads::NotificationDispatcher).not_to receive(:notify_complement)
+    expect { described_class.call(receipt) }.not_to change(Lead, :count)
+    expect(receipt.reload.lead_id).to eq(original.id)
+    expect(original.reload.attributes).to eq(previous)
+    equivalent = payload.merge("registered_at" => "2026-11-17T08:52:45-0500")
+    expect(described_class.recovery_fingerprint(connection, equivalent)).to eq(fingerprint)
+    expect(described_class.recovery_fingerprint(connection, payload.merge("registered_at" => "invalid"))).to be_nil
+    expect(described_class.recovery_fingerprint(connection, payload.merge("registered_at" => "2026-11-17T13:53:45Z"))).not_to eq(fingerprint)
+  end
+
   it "uses the existing portal distribution rule" do
     rule = create(:distribution_rule, tenant: tenant, source_site: false, source_portal: true, distribution_mode: :shark_tank)
     payload["reference"] = "SEM-MAPA"
