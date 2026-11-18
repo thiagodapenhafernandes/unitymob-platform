@@ -11,10 +11,15 @@ class ChavesNaMaoConnection < ApplicationRecord
   validates :account_code, presence: true, format: { with: /\A[0-9]{1,32}\z/ }
   validates :integration_token, presence: true, length: { minimum: 32, maximum: 1024 }, if: :enabled?
   validate do
-    if persisted? && %w[tenant_id route_key account_code].any? { |field| will_save_change_to_attribute?(field) }
+    if persisted? && (%w[tenant_id route_key].any? { |field| will_save_change_to_attribute?(field) } ||
+        (will_save_change_to_account_code? && !account_code_editable?))
       errors.add(:base, "A identidade da conexão não pode ser alterada.")
     end
     errors.add(:base, "A criptografia precisa estar disponível para receber eventos.") if enabled? && !encryption_ready?
+  end
+
+  def account_code_editable?
+    !enabled_in_database && !chaves_na_mao_lead_receipts.exists?
   end
 
   def receiving?
