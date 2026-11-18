@@ -16,7 +16,8 @@ module Instagram
       plain_name = @text.sub(/[\s,;:]+\(?\+?\d[\d() .-]{8,}\d\)?\z/, '')
       value = (explicit ? explicit[1] : plain_name).split(/\s+e\s+(?:meu|minha|o|a)\s+(?:telefone|whats)/i).first.to_s.strip
       return unless value.match?(/\A[\p{L}\p{M}][\p{L}\p{M} ’'-]{1,59}\z/) && value.split.size <= 5
-      return if value.match?(/\b(?:oi|ol[áa]|bom dia|boa tarde|boa noite|obrigad[oa]|sim|n[aã]o|sobre|quero|gostaria|preciso|tenho|pode|qual|como|onde|quanto|apto|apartamento|im[oó]vel|casa|an[uú]ncio|pagamento|financia\w*|valor|pre[cç]o|shopping|telefone|whatsapp|interesse|busco|procuro|centro|bairro|c[oó]digo|refer[eê]ncia|atendente|corretor|humano|pular|manda|mande|envie|envia|mostra|mostre|saber|me|fotos|informa[cç][oõ]es|condi[cç][oõ]es|aceita|entrada|estou|gostei|vamos|achei|entendi)\b/i)
+      return if !explicit && value.match?(/\A[A-Z]{2,3}\z/)
+      return if value.match?(/\b(?:mais|esse|essa|este|esta|aquele|aquela|isso|isto|desculpa|anual|temporada|taxas|mensal|certo|ok|oi|ol[áa]|bom dia|boa tarde|boa noite|obrigad[oa]|sim|n[aã]o|sobre|quero|gostaria|preciso|tenho|pode|qual|como|onde|quanto|apto|apartamento|im[oó]vel|casa|an[uú]ncio|pagamento|financia\w*|valor|pre[cç]o|shopping|telefone|whatsapp|interesse|busco|procuro|centro|bairro|c[oó]digo|refer[eê]ncia|atendente|corretor|humano|pular|manda|mande|envie|envia|mostra|mostre|saber|me|fotos|informa[cç][oõ]es|condi[cç][oõ]es|aceita|entrada|estou|gostei|vamos|achei|entendi)\b/i)
 
       value
     end
@@ -36,6 +37,7 @@ module Instagram
     def business_type
       text = I18n.transliterate(@text).downcase
       return if text.match?(/\?|\b(?:nao|talvez|caso)\b/)
+      return "locacao" if text.match?(/\A(?:seria |aluguel |locacao )?anual[.!]*\z/)
       return unless text.match?(/\A(?:comprar|compra|venda|alugar|aluguel|locacao|diaria|temporada|venda e locacao)[.!]*\z/) ||
         text.match?(/\b(?:quero|gostaria de|procuro|busco|pretendo|tenho interesse em)\b/)
 

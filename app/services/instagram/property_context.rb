@@ -9,7 +9,7 @@ module Instagram
     def resolve(messages)
       scope = @tenant.habitations.public_property_listable
       latest = messages.reverse.find { |message| message[:role] == "cliente" }&.fetch(:text, "").to_s
-      messages.reverse_each do |message|
+      messages.each_with_index.to_a.reverse_each do |message, index|
         text = message[:text].to_s
         linked = PropertyJourney.properties_in(@tenant, text)
         if linked.any?
@@ -19,7 +19,8 @@ module Instagram
           return linked.one? ? linked.first : nil
         end
         next unless message[:role] == "cliente"
-        codes = InstagramMessage.property_codes_in(text)
+        previous = messages.take(index).reverse.find { |item| item[:role] == "assistente" }
+        codes = InstagramMessage.property_codes_in(text, allow_short_number: previous&.fetch(:text, "").to_s.match?(/c[oó]digo|refer[eê]ncia/i))
         return codes.one? ? find_reference(scope, codes.first) : nil if codes.any?
         # Uma nova busca encerra a referência antiga, inclusive nas respostas seguintes.
         return nil if text.match?(CatalogReply::NEW_SEARCH) && !text.match?(/\b(?:esse|essa|este|esta)\b/i)

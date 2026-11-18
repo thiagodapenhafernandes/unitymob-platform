@@ -26,12 +26,13 @@ module Ai
         tenant && PropertySetting.find_by(tenant_id: tenant.id)
       end
 
-      def initialize(tenant:, text: nil, audio: nil, audio_duration: nil, default_transaction: nil)
+      def initialize(tenant:, text: nil, audio: nil, audio_duration: nil, default_transaction: nil, current_filters: {})
         @tenant = tenant
         @text = text.to_s.squish.first(MAX_TEXT)
         @audio = audio
         @audio_duration = Float(audio_duration, exception: false)
         @default_transaction = default_transaction
+        @current_filters = current_filters.to_h
       end
 
       def call
@@ -41,8 +42,10 @@ module Ai
         text = @audio.present? ? transcribe(setting) : @text
         raise ArgumentError, "Descreva o imóvel que você procura." if text.blank?
 
-        interpretation = Interpreter.new(setting: setting, text: text, voice: @audio.present?).call
-        filters = LocationResolver.new(tenant: @tenant, setting: setting, filters: interpretation.filters).call.filters
+        context = @current_filters.present? ? {current_filters: @current_filters} : {}
+        interpretation = Interpreter.new(setting: setting, text: text, voice: @audio.present?, **context).call
+        normalized = FilterContract.new(setting).normalize(@current_filters.merge(interpretation.filters))
+        filters = LocationResolver.new(tenant: @tenant, setting: setting, filters: normalized).call.filters
         params = PublicParams.new(filters, default_transaction: @default_transaction).call
         raise ArgumentError, "Não consegui entender o que você procura. Tente citar o tipo, a região ou o valor." if params.except("transaction_type").empty?
 

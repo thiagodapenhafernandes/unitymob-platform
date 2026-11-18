@@ -49,9 +49,7 @@ module Instagram
 
         state = lead.other_information.fetch("instagram_capture")
         state = state.merge("step" => lead.client_name.present? ? "phone" : "name") if state["step"] == "email" && !CaptureAnswer.complete?(lead)
-        if lead.client_name.present? && lead.client_name.match?(/\A(?:sobre|como|qual|quero|quanto)\b/i) && CaptureAnswer.new(lead.client_name).name.nil?
-          lead.client_name = nil
-        end
+        discard_invalid_name(lead)
         if state["step"] == "start"
           return unless MetaFacebookPage.available_for_distribution(tenant_id).exists?(id: page.id, instagram_enabled: true)
 
@@ -115,7 +113,8 @@ module Instagram
       cursor = initial_messages.last&.id
       initial_messages.each do |message|
         initial = CaptureAnswer.new(message.body)
-        lead.client_name = initial.name if lead.client_name.blank? && initial.name
+        name = initial.name(explicit_only: rule["sdr_enabled"] && initial.phone.blank?)
+        lead.client_name = name if lead.client_name.blank? && name
         lead.phone = initial.phone if initial.phone && !capture_phone(lead.display_phone.to_s)
       end
       step = lead.client_name.present? ? "phone" : "name"
@@ -146,9 +145,11 @@ module Instagram
         lead.other_information = lead.other_information.deep_merge("instagram_capture" => state)
         return finish_capture(lead, through: message.id)
       else
+        replies = lead.instagram_messages.outbound.order(occurred_at: :desc, id: :desc).limit(40).to_a
         messages.each do |entry|
           data = CaptureAnswer.new(entry.body)
-          lead.client_name = data.name if lead.client_name.blank? && data.name
+          name = capture_name(entry, state, replies)
+          lead.client_name = name if lead.client_name.blank? && name
           lead.phone = data.phone if data.phone && !capture_phone(lead.display_phone.to_s)
           if data.request?
             state = state.merge("pending_question_id" => entry.id)
@@ -207,7 +208,7 @@ module Instagram
       rules = page ? CaptureSettings.new(page, tenant: lead.tenant).rules : {}
       rule = rules.fetch(state["rule_key"], rules.fetch("default", {}))
       condition = ConversationCondition.match(lead, rule, conversation_history(lead, cursor))
-      if rule["sdr_enabled"] && condition&.fetch('action', nil) == 'ai' && condition['ai_enabled'] && Qualification.capture!(lead, rule: rule)['ready']
+      if rule["sdr_enabled"] && condition&.fetch('action', nil) == 'ai' && condition['ai_enabled'] && Qualification.capture!(lead, rule: rule, through: cursor)['ready']
         answer_qualified_request(lead, rule, conversation_history(lead, cursor), cursor, condition)
         send_catalog_reply(lead, CatalogReply::HANDOFF, handoff_cursor: cursor)
         return
@@ -257,6 +258,7 @@ module Instagram
         newest = messages.first
         return if newest&.body.blank?
 
+        discard_invalid_name(lead)
         unless CaptureAnswer.complete?(lead)
           state = state.merge("step" => lead.client_name.present? ? "phone" : "name", "cursor" => newest.id - 1)
           return advance_capture(lead, state, page)
@@ -273,7 +275,7 @@ module Instagram
         history = conversation_history(lead, newest.id)
         first_turn = state["sdr_cursor"] == state["sdr_started_after"]
         condition = ConversationCondition.match(lead, rule, history)
-        if condition&.fetch('action', nil) == 'ai' && condition['ai_enabled'] && Qualification.capture!(lead, rule: rule)['ready']
+        if condition&.fetch('action', nil) == 'ai' && condition['ai_enabled'] && Qualification.capture!(lead, rule: rule, through: newest.id)['ready']
           answer_qualified_request(lead, rule, history, newest.id, condition)
           send_catalog_reply(lead, CatalogReply::HANDOFF, handoff_cursor: newest.id)
           return
@@ -333,7 +335,7 @@ module Instagram
           text = body.to_s.squish.first(direction == "inbound" ? 300 : Reply::MAX_CHARS)
             .gsub(/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/, "[e-mail]")
             .gsub(/\+?\d[\d ().-]{8,}\d/, "[telefone]")
-          { role: direction == "inbound" ? "cliente" : "assistente", text: text }
+          { role: direction == "inbound" ? "cliente" : "assistente", text: text, message_id: message.id }
         end
     end
 
@@ -344,7 +346,7 @@ module Instagram
       condition = ConversationCondition.match(lead, rule, history)
       public_answer = rule['sdr_enabled'] && condition&.fetch('action', nil) == 'ai' && condition['ai_enabled'] == true
       return false unless condition && (public_answer || condition['require_contact'] == false) && condition['action'] != 'handoff'
-      if public_answer && Qualification.capture!(lead, rule: rule)['ready']
+      if public_answer && Qualification.capture!(lead, rule: rule, through: cursor)['ready']
         answer_qualified_request(lead, rule, history, cursor, condition)
         return qualification_contact(lead, state, cursor, rule)
       end
@@ -363,7 +365,7 @@ module Instagram
     def answer_qualified_request(lead, rule, history, cursor, condition)
       return if lead.other_information.dig('instagram_capture', 'answered_question_id') == cursor
       latest = lead.instagram_messages.inbound.find_by(id: cursor)&.body.to_s
-      return unless latest.match?(/\?|financia|pagamento|pre[cç]o|valor|onde|qual/i) || latest.match?(Qualification::CRITERIA)
+      return unless latest.match?(/\?|financia|pagamento|pre[cç]o|valor|onde|qual/i) || latest.match?(Qualification::CRITERIA) || lead.other_information.dig(SearchContext::KEY, "criteria_message_id") == cursor
 
       response = contextual_response(lead, rule, history, first_turn: false, condition: condition)
       send_catalog_reply(lead, response) if response.present? && response != CatalogReply::HANDOFF
@@ -416,12 +418,29 @@ module Instagram
       return if handoff && lead.other_information.dig("instagram_capture", "step") == "handoff_pending"
       answer = CaptureSettings.message(current_rule(lead), "handoff", lead) if handoff
       if answer.is_a?(CatalogReply::Recommendation)
-        Reply.call(lead: lead, body: answer.body, admin_user: nil, typing: false, cards: answer.cards)
+        sent = Reply.call(lead: lead, body: answer.body, admin_user: nil, typing: false, cards: answer.cards)
       else
-        Reply.call(lead: lead, body: answer.first(Reply::MAX_CHARS), admin_user: nil, typing: false)
+        sent = Reply.call(lead: lead, body: answer.first(Reply::MAX_CHARS), admin_user: nil, typing: false)
       end
+      DecisionAudit.record(lead, message_id: handoff_cursor || lead.other_information.dig(SearchContext::KEY, "through"),
+        outcome: "sent", outbound_message_id: sent.id) if sent.respond_to?(:id) && sent.id
     ensure
       handoff_to_team(lead, handoff_cursor) if handoff && handoff_cursor
+    end
+
+    def discard_invalid_name(lead)
+      lead.client_name = nil if lead.client_name.present? && CaptureAnswer.new(lead.client_name).name.nil?
+    end
+
+    def capture_name(message, state, replies)
+      parsed = CaptureAnswer.new(message.body)
+      explicit = parsed.name(explicit_only: true)
+      return explicit if explicit
+      return parsed.name if parsed.phone.present?
+      previous = replies.find { |reply| reply.occurred_at <= message.occurred_at }
+      asked = previous && (previous.body == state["name_prompt"] || previous.body.to_s.match?(/como (?:posso|prefere) (?:te |lhe )?chamar|seu nome|nome completo/i))
+      asked ||= previous.nil? && (state["prompted_at"].present? || parsed.name.to_s.split.size >= 2)
+      parsed.name if state["step"] == "name" && asked
     end
 
     def capture_phone(answer)

@@ -1,6 +1,16 @@
 require "rails_helper"
 
 RSpec.describe Instagram::CatalogReply do
+  it 'preserva filtros públicos da interpretação que não pertencem à memória da conversa' do
+    lead = create(:lead, skip_automatic_routing: true)
+    query = instance_double(Ai::PropertySearch::PublicQuery,
+      call: Ai::PropertySearch::PublicQuery::Result.new({'search' => 'AP123', 'characteristics' => ['lancamento_flag']}, nil, nil))
+    allow(Ai::PropertySearch::PublicQuery).to receive(:new).and_return(query)
+    expect(lead.tenant.habitations).to receive(:public_property_search)
+      .with(hash_including('search' => 'AP123', 'characteristics' => ['lancamento_flag'])).and_return(lead.tenant.habitations.none)
+    described_class.new(lead, {}).call([{role: 'cliente', text: 'Procuro apartamento novo'}], first_turn: false)
+  end
+
   it "limita as recomendações a imóveis publicados pela conta do lead" do
     lead = create(:lead)
     tenant = lead.tenant
@@ -188,7 +198,7 @@ RSpec.describe Instagram::CatalogReply do
     51.times { |n| lead.instagram_messages.create!(message_id: "later-#{n}", occurred_at: Time.current, body: 'Ok') }
     expect(described_class.new(lead, {}).call(history, first_turn: false)).to include('Presidente Kennedy')
     property.update!(exibir_no_site_flag: false)
-    expect(described_class.new(lead, {}).call(history, first_turn: false)).to include('catálogo disponível')
+    expect(described_class.new(lead, {}).call(history, first_turn: false)).to include('não aparece como disponível')
   end
 
   it "não resolve o código da legenda em outro tenant" do
@@ -198,7 +208,7 @@ RSpec.describe Instagram::CatalogReply do
       context: {'attachments' => [{'type' => 'ig_reel', 'title' => "Cód. #{other.codigo}"}]})
     expect(Instagram::PropertyAnswer).not_to receive(:new)
     result = described_class.new(lead, {}).call([{role: 'cliente', text: 'Qual nome desse edifício?'}], first_turn: false)
-    expect(result).to include('catálogo disponível')
+    expect(result).to include('não aparece como disponível')
   end
 
   it "consulta o catálogo mesmo sem domínio público configurado, sem fabricar links" do
