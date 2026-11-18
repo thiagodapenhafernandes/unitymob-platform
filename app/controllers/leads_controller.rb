@@ -108,6 +108,8 @@ class LeadsController < ApplicationController
         property_code: habitation&.codigo.to_s,
         form_id: "whatsapp_modal"
       }
+      Tracking::Correlation.record(Tracking::Correlation.lead_created(@lead), transport: "site",
+        event_id: response[:analytics_event][:event_id], destination: "data_layer", status: "browser_offered")
     end
     if created && TrackingIntegrationSetting.current(tenant: public_tenant).structured_events_enabled?
       context = Tracking::EventContext.property(habitation, business_type: Leads::Attribution.business_type(business_type))

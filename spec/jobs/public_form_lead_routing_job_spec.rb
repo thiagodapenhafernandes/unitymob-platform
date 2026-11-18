@@ -71,6 +71,83 @@ RSpec.describe PublicFormLeadRoutingJob do
     expect(submission.reload.lead_id).to eq(lead.id)
   end
 
+  it "transporta o snapshot da captura sem recalcular consentimento ou origem no job" do
+    tenant = Tenant.default
+    rule = create(:distribution_rule, tenant: tenant, active: false)
+    form = build_form(tenant, distribution_rule: rule)
+    submission = build_submission(form)
+    data = { "channel" => "google_ads", "source" => "google", "gclid" => "click-original",
+      "analytics_consent" => "granted", "analytics_consent_captured_at" => 1.day.ago.iso8601,
+      "client_id" => "123.456", "first_touch" => { "ttclid" => "first-click" },
+      "conversion_touch" => { "gclid" => "click-original" }, "tracking_uid" => "Form_UID" }
+    submission.update!(source: submission.source.merge("attribution_data" => data,
+      "attribution_channel" => "google_ads", "attribution_source" => "google"))
+    session = PublicNavigationSession.create!(tenant: tenant, token: SecureRandom.uuid)
+    navigation = session.events.create!(tenant: tenant, name: "page_view")
+    submission.update!(source: submission.source.merge("navigation_token" => session.token))
+    delivery = Tracking::Correlation.record(Tracking::Correlation.submission(submission),
+      transport: "webhook", event_id: "submission-webhook", destination: "https://hooks.example.test/form")
+
+    described_class.perform_now(submission.id)
+    lead = submission.reload.lead
+    expect(lead).to have_attributes(tenant_id: tenant.id, origin: form.webhook_origin,
+      source_url: submission.source["page_url"], attribution_channel: "google_ads", attribution_source: "google")
+    expect(lead.attribution_data).to include(data)
+    expect(session.reload.lead_id).to eq(lead.id)
+    expect(navigation.reload.lead_id).to eq(lead.id)
+    expect(delivery.reload.lead_id).to eq(lead.id)
+    expect(delivery.occurrence_key).to eq("public_form_submission:#{submission.id}")
+    expect { described_class.perform_now(submission.id) }.not_to change(Lead, :count)
+    expect(lead.reload.attribution_data).to include(data)
+  end
+
+  it "não vincula navegação de outra conta ao lead do formulário" do
+    tenant = Tenant.default
+    other = Tenant.create!(name: "Navegação externa", slug: "other-navigation-#{SecureRandom.hex(4)}")
+    session = PublicNavigationSession.create!(tenant: other, token: SecureRandom.uuid)
+    rule = create(:distribution_rule, tenant: tenant, active: false)
+    submission = build_submission(build_form(tenant, distribution_rule: rule))
+    submission.update!(source: submission.source.merge("navigation_token" => session.token))
+
+    described_class.perform_now(submission.id)
+    expect(submission.reload.lead.tenant_id).to eq(tenant.id)
+    expect(session.reload.lead_id).to be_nil
+    expect(session.tenant_id).to eq(other.id)
+  end
+
+  it "não leva URL inválida nem parâmetros privados da página para o link de origem do lead" do
+    tenant = Tenant.default
+    rule = create(:distribution_rule, tenant: tenant, active: false)
+    form = build_form(tenant, distribution_rule: rule)
+    submission = build_submission(form)
+    submission.update!(source: { "page_url" => "https://site.example/formulario?email=private@example.test#fragment" })
+    described_class.perform_now(submission.id)
+    expect(submission.reload.lead.source_url).to eq("https://site.example/formulario")
+
+    invalid = build_submission(form, { "name" => "Outro contato", "phone" => "5547999990001" })
+    invalid.update!(source: { "page_url" => "javascript:alert(1)" })
+    described_class.perform_now(invalid.id)
+    expect(invalid.reload.lead.source_url).to be_nil
+  end
+
+  it "preserva a aquisição original ao agregar uma nova consulta atribuída" do
+    tenant = Tenant.default
+    original = create(:lead, tenant: tenant, phone: "5547999990000", origin: "Meta Ads",
+      attribution_channel: "meta_ads", attribution_source: "meta", attribution_data: { "campaign_id" => "original" },
+      skip_automatic_routing: true)
+    rule = create(:distribution_rule, tenant: tenant, active: false)
+    submission = build_submission(build_form(tenant, distribution_rule: rule))
+    submission.update!(source: submission.source.merge("attribution_channel" => "google_ads", "attribution_source" => "google",
+      "attribution_data" => { "gclid" => "new-click", "channel" => "google_ads" }))
+
+    expect { described_class.perform_now(submission.id) }.not_to change(Lead, :count)
+    expect(submission.reload.lead_id).to eq(original.id)
+    expect(original.reload).to have_attributes(origin: "Meta Ads", attribution_channel: "meta_ads")
+    expect(original.attribution_data["campaign_id"]).to eq("original")
+    inquiry = original.activities.where(kind: "inquiry_complemented").last
+    expect(inquiry.metadata.dig("inquiry_attribution", "gclid")).to eq("new-click")
+  end
+
   it "reutiliza o cadastro e aplica a regra específica do formulário na nova consulta" do
     tenant = Tenant.default
     LeadSetting.instance(tenant: tenant).update!(stickiness_enabled: false)

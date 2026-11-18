@@ -16,7 +16,7 @@ RSpec.describe Meta::ConversionDispatcher do
     end.to have_enqueued_job(MetaConversionJob).with(
       tenant.id, lead.id, "QualifiedLead",
       described_class.event_id(tenant.id, lead.id, "QualifiedLead"),
-      kind_of(String), nil
+      kind_of(String), nil, hash_including(tenant_id: tenant.id, lead_id: lead.id)
     )
   end
 
@@ -26,7 +26,7 @@ RSpec.describe Meta::ConversionDispatcher do
 
     expect do
       described_class.call(lead: lead, event_name: "Schedule")
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, "Schedule", kind_of(String), kind_of(String), nil)
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, "Schedule", kind_of(String), kind_of(String), nil, kind_of(Hash))
 
     expect do
       described_class.call(lead: lead, event_name: "EventoInventado")
@@ -47,7 +47,7 @@ RSpec.describe Meta::ConversionDispatcher do
        AddPaymentInfo Donate PageView QualifiedLead].each do |event_name|
       expect do
         described_class.call(lead: lead, event_name: event_name)
-      end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, event_name, kind_of(String), kind_of(String), nil)
+      end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, event_name, kind_of(String), kind_of(String), nil, kind_of(Hash))
     end
   end
 

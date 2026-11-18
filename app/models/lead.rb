@@ -240,6 +240,7 @@ class Lead < ApplicationRecord
   before_validation :preserve_tracking_uid
   before_create :snapshot_google_business_type
   has_many :google_stage_conversion_events, dependent: :destroy
+  has_many :tracking_event_links, dependent: :nullify
   after_destroy :record_audit_destroy
   after_create_commit :enqueue_meta_enrichment
   after_create_commit :enqueue_c2s_export

@@ -1,0 +1,44 @@
+<section id="portal-direct-leads" aria-label="Validação do recebimento direto do Chaves na Mão">
+  <%= ax_operational_panel(eyebrow: "Leads", title: "Recebimento direto · Chaves na Mão", class_name: "tw-mt-4") do %>
+    <%= ax_badge(@chaves_na_mao_connection.receiving? ? "Em validação" : "Desativado", tone: :amber) %>
+    <%= ax_inline_notice(tone: :info, icon: "info-circle", class_name: "tw-mt-3") do %>
+      Durante a validação, os eventos ficam registrados para conferência e não criam leads nem acionam corretores.
+      Mantenha o recebimento pelo sistema anterior. A ativação operacional depende da confirmação do formato e da autenticação pelo portal.
+    <% end %>
+
+    <%= form_with(model: @chaves_na_mao_connection, url: admin_chaves_na_mao_connection_path, method: :patch, class: "tw-mt-4") do |f| %>
+      <%= ax_field_group(title: "Configuração desta conta") do %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :account_code, label: "ID da conta no Chaves na Mão", readonly: @chaves_na_mao_connection.persisted?, inputmode: "numeric") %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :integration_token, label: "Token de integração de leads", type: :password, value: "", autocomplete: "new-password", hint: @chaves_na_mao_connection.integration_token.present? ? "Token configurado. Deixe em branco para manter." : "Disponível em Meus Dados no Chaves na Mão. A compatibilidade precisa ser confirmada com o portal.") %>
+          </div>
+        <% end %>
+        <%= ax_switch_field(form: f, method: :enabled, label: "Receber eventos para validação") %>
+      <% end %>
+      <%= ax_form_actions do %>
+        <%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %>
+      <% end %>
+    <% end %>
+
+    <% if @chaves_na_mao_connection.persisted? %>
+      <%= ax_field_group(title: "Endereço para homologação", class_name: "tw-mt-4") do %>
+        <%= ax_standalone_field(name: :chaves_endpoint, id: :chaves_endpoint, label: "URL de recebimento", value: "#{request.base_url}/webhooks/chaves_na_mao/#{@chaves_na_mao_connection.route_key}", readonly: true) %>
+        <p class="ax-field__hint">Combine o envio de um teste com o portal. Solicite que o fluxo pelo sistema anterior seja preservado durante a conferência.</p>
+      <% end %>
+    <% end %>
+    <% if @chaves_na_mao_receipts.present? %>
+      <%= ax_field_group(title: "Últimos eventos de validação", class_name: "tw-mt-4") do %>
+        <ul>
+          <% @chaves_na_mao_receipts.each do |receipt| %>
+            <li>Evento #<%= receipt.id %> · <%= l(receipt.received_at, format: :short) %> · Somente conferência</li>
+          <% end %>
+        </ul>
+      <% end %>
+    <% end %>
+  <% end %>
+</section>
+<%= render "admin/portal_integrations/direct_lead_setup", integration: integration,
+      setup: portal_direct_lead_setup(integration), section_id: "portal-chaves-support" %>

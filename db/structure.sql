@@ -1830,6 +1830,75 @@ ALTER SEQUENCE public.captacoes_id_seq OWNED BY public.captacoes.id;
 
 
 --
+-- Name: chaves_na_mao_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chaves_na_mao_connections (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    route_key character varying NOT NULL,
+    account_code character varying NOT NULL,
+    integration_token text,
+    enabled boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: chaves_na_mao_connections_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.chaves_na_mao_connections_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: chaves_na_mao_connections_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.chaves_na_mao_connections_id_seq OWNED BY public.chaves_na_mao_connections.id;
+
+
+--
+-- Name: chaves_na_mao_lead_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chaves_na_mao_lead_receipts (
+    id bigint NOT NULL,
+    chaves_na_mao_connection_id bigint CONSTRAINT chaves_na_mao_lead_receipts_chaves_na_mao_connection_i_not_null NOT NULL,
+    payload_digest character varying NOT NULL,
+    payload text NOT NULL,
+    received_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: chaves_na_mao_lead_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.chaves_na_mao_lead_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: chaves_na_mao_lead_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.chaves_na_mao_lead_receipts_id_seq OWNED BY public.chaves_na_mao_lead_receipts.id;
+
+
+--
 -- Name: check_ins; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7981,6 +8050,50 @@ ALTER SEQUENCE public.tiktok_lead_receipts_id_seq OWNED BY public.tiktok_lead_re
 
 
 --
+-- Name: tracking_event_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tracking_event_links (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint,
+    public_form_submission_id bigint,
+    google_stage_conversion_event_id bigint,
+    ga4_conversion_event_id bigint,
+    occurrence_key character varying NOT NULL,
+    occurrence_name character varying NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    transport character varying NOT NULL,
+    external_event_id character varying NOT NULL,
+    destination_key character varying NOT NULL,
+    destination_label character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    attempt_log jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: tracking_event_links_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tracking_event_links_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tracking_event_links_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tracking_event_links_id_seq OWNED BY public.tracking_event_links.id;
+
+
+--
 -- Name: trusted_devices; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -9086,6 +9199,20 @@ ALTER TABLE ONLY public.captacoes ALTER COLUMN id SET DEFAULT nextval('public.ca
 
 
 --
+-- Name: chaves_na_mao_connections id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chaves_na_mao_connections ALTER COLUMN id SET DEFAULT nextval('public.chaves_na_mao_connections_id_seq'::regclass);
+
+
+--
+-- Name: chaves_na_mao_lead_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chaves_na_mao_lead_receipts ALTER COLUMN id SET DEFAULT nextval('public.chaves_na_mao_lead_receipts_id_seq'::regclass);
+
+
+--
 -- Name: check_ins id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10059,6 +10186,13 @@ ALTER TABLE ONLY public.tiktok_lead_receipts ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: tracking_event_links id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tracking_event_links ALTER COLUMN id SET DEFAULT nextval('public.tracking_event_links_id_seq'::regclass);
+
+
+--
 -- Name: trusted_devices id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10470,6 +10604,22 @@ ALTER TABLE ONLY public.captacao_goals
 
 ALTER TABLE ONLY public.captacoes
     ADD CONSTRAINT captacoes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chaves_na_mao_connections chaves_na_mao_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chaves_na_mao_connections
+    ADD CONSTRAINT chaves_na_mao_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chaves_na_mao_lead_receipts chaves_na_mao_lead_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chaves_na_mao_lead_receipts
+    ADD CONSTRAINT chaves_na_mao_lead_receipts_pkey PRIMARY KEY (id);
 
 
 --
@@ -11633,6 +11783,14 @@ ALTER TABLE ONLY public.tiktok_lead_receipts
 
 
 --
+-- Name: tracking_event_links tracking_event_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tracking_event_links
+    ADD CONSTRAINT tracking_event_links_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: trusted_devices trusted_devices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11893,6 +12051,13 @@ CREATE INDEX idx_automation_workflow_versions_on_workflow_status ON public.autom
 --
 
 CREATE UNIQUE INDEX idx_automation_workflow_versions_unique_number ON public.automation_workflow_versions USING btree (automation_workflow_id, version_number);
+
+
+--
+-- Name: idx_chaves_receipts_connection_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_chaves_receipts_connection_digest ON public.chaves_na_mao_lead_receipts USING btree (chaves_na_mao_connection_id, payload_digest);
 
 
 --
@@ -12684,6 +12849,34 @@ CREATE INDEX idx_suggestion_feedbacks_on_tenant_and_decision ON public.lead_prop
 --
 
 CREATE INDEX idx_tasks_on_tenant_source_status_due_at ON public.tasks USING btree (tenant_id, source, status, due_at);
+
+
+--
+-- Name: idx_tracking_links_delivery; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_tracking_links_delivery ON public.tracking_event_links USING btree (tenant_id, transport, external_event_id, destination_key);
+
+
+--
+-- Name: idx_tracking_links_google_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tracking_links_google_event ON public.tracking_event_links USING btree (google_stage_conversion_event_id);
+
+
+--
+-- Name: idx_tracking_links_lead_journey; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tracking_links_lead_journey ON public.tracking_event_links USING btree (tenant_id, lead_id, occurred_at);
+
+
+--
+-- Name: idx_tracking_links_occurrence; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tracking_links_occurrence ON public.tracking_event_links USING btree (tenant_id, occurrence_key);
 
 
 --
@@ -13965,6 +14158,20 @@ CREATE INDEX index_captacoes_on_published_on_site ON public.captacoes USING btre
 --
 
 CREATE INDEX index_captacoes_on_submitted_at ON public.captacoes USING btree (submitted_at);
+
+
+--
+-- Name: index_chaves_na_mao_connections_on_route_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chaves_na_mao_connections_on_route_key ON public.chaves_na_mao_connections USING btree (route_key);
+
+
+--
+-- Name: index_chaves_na_mao_connections_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chaves_na_mao_connections_on_tenant_id ON public.chaves_na_mao_connections USING btree (tenant_id);
 
 
 --
@@ -17979,6 +18186,34 @@ CREATE UNIQUE INDEX index_tiktok_receipt_identity ON public.tiktok_lead_receipts
 
 
 --
+-- Name: index_tracking_event_links_on_ga4_conversion_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tracking_event_links_on_ga4_conversion_event_id ON public.tracking_event_links USING btree (ga4_conversion_event_id);
+
+
+--
+-- Name: index_tracking_event_links_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tracking_event_links_on_lead_id ON public.tracking_event_links USING btree (lead_id);
+
+
+--
+-- Name: index_tracking_event_links_on_public_form_submission_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tracking_event_links_on_public_form_submission_id ON public.tracking_event_links USING btree (public_form_submission_id);
+
+
+--
+-- Name: index_tracking_event_links_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tracking_event_links_on_tenant_id ON public.tracking_event_links USING btree (tenant_id);
+
+
+--
 -- Name: index_trusted_devices_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -19016,6 +19251,14 @@ ALTER TABLE ONLY public.footer_links
 
 
 --
+-- Name: tracking_event_links fk_rails_1630c8733d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tracking_event_links
+    ADD CONSTRAINT fk_rails_1630c8733d FOREIGN KEY (public_form_submission_id) REFERENCES public.public_form_submissions(id) ON DELETE SET NULL;
+
+
+--
 -- Name: public_navigation_events fk_rails_1681cf0713; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19840,6 +20083,14 @@ ALTER TABLE ONLY public.whatsapp_campaigns
 
 
 --
+-- Name: tracking_event_links fk_rails_5724a7d3a4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tracking_event_links
+    ADD CONSTRAINT fk_rails_5724a7d3a4 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: linkedin_lead_receipts fk_rails_5879a9d970; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20565,6 +20816,14 @@ ALTER TABLE ONLY public.portal_listing_states
 
 ALTER TABLE ONLY public.manual_checkin_requests
     ADD CONSTRAINT fk_rails_90325dd80b FOREIGN KEY (reviewed_by_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: tracking_event_links fk_rails_9073a6bd05; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tracking_event_links
+    ADD CONSTRAINT fk_rails_9073a6bd05 FOREIGN KEY (google_stage_conversion_event_id) REFERENCES public.google_stage_conversion_events(id) ON DELETE SET NULL;
 
 
 --
@@ -21808,6 +22067,14 @@ ALTER TABLE ONLY public.habitation_interactions
 
 
 --
+-- Name: chaves_na_mao_connections fk_rails_e9dd8862ca; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chaves_na_mao_connections
+    ADD CONSTRAINT fk_rails_e9dd8862ca FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_campaign_unsubscribes fk_rails_ea5bfea8f5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -21984,6 +22251,14 @@ ALTER TABLE ONLY public.public_form_fields
 
 
 --
+-- Name: tracking_event_links fk_rails_f7515ab074; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tracking_event_links
+    ADD CONSTRAINT fk_rails_f7515ab074 FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE SET NULL;
+
+
+--
 -- Name: leads fk_rails_f797884c7c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -22072,11 +22347,27 @@ ALTER TABLE ONLY public.habitation_availability_blocks
 
 
 --
+-- Name: tracking_event_links fk_rails_ff34c877a6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tracking_event_links
+    ADD CONSTRAINT fk_rails_ff34c877a6 FOREIGN KEY (ga4_conversion_event_id) REFERENCES public.ga4_conversion_events(id) ON DELETE SET NULL;
+
+
+--
 -- Name: imovelweb_listings fk_rails_ffa64443be; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.imovelweb_listings
     ADD CONSTRAINT fk_rails_ffa64443be FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
+-- Name: chaves_na_mao_lead_receipts fk_rails_ffac234812; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chaves_na_mao_lead_receipts
+    ADD CONSTRAINT fk_rails_ffac234812 FOREIGN KEY (chaves_na_mao_connection_id) REFERENCES public.chaves_na_mao_connections(id);
 
 
 --
@@ -22096,6 +22387,8 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261117233000'),
+('20261117220000'),
 ('20261117111000'),
 ('20261116152000'),
 ('20261116150000'),

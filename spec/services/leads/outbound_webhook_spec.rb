@@ -15,7 +15,7 @@ RSpec.describe Leads::OutboundWebhook do
     expect(WebhookDeliveryJob).to have_received(:perform_later).with(own.webhook_url, hash_including(
       event_name: "qualified_lead", action_source: "system_generated", lead_id: lead.id.to_s,
       data: hash_including("changes" => { "broker_qualification_status" => { from: nil, to: "qualified" } })
-    )).once
+    ), hash_including(tenant_id: lead.tenant_id, id: kind_of(Integer))).once
   end
 
   it "does not emit qualification again for unrelated changes or default subscriptions" do

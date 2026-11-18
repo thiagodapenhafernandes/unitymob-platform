@@ -4,6 +4,10 @@ class Admin::PortalIntegrationsController < Admin::BaseController
 
   def index
     @active_portal = normalize_portal(params[:portal])
+    @chaves_na_mao_connection = ChavesNaMaoConnection.find_or_initialize_by(tenant: current_tenant)
+    if @active_portal == "chavesnamao" && @chaves_na_mao_connection.persisted?
+      @chaves_na_mao_receipts = @chaves_na_mao_connection.chaves_na_mao_lead_receipts.order(received_at: :desc).limit(10)
+    end
     @integrations = PortalIntegration::PORTALS.index_with { |portal| find_integration!(portal) }
     @imovelweb_connections = ImovelwebConnection.where(tenant: current_tenant).includes(:tenant).order(:id).to_a
     receipts = ImovelwebLeadReceipt.where(imovelweb_connection_id: @imovelweb_connections.map(&:id))

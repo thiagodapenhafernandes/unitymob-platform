@@ -1,4 +1,4 @@
-<section id="portal-direct-leads" aria-label="Preparação do recebimento direto de leads">
+<section id="<%= local_assigns.fetch(:section_id, 'portal-direct-leads') %>" aria-label="Preparação do recebimento direto de leads">
 <%= ax_operational_panel(eyebrow: "Leads", title: "Recebimento direto", class_name: "tw-mt-4") do %>
   <%= ax_badge("Aguardando habilitação do portal", tone: :amber) %>
   <p class="ax-field__hint tw-mt-3">A publicação de imóveis continua independente. Este canal ainda não tem recebimento direto confirmado. O suporte precisa fornecer o contrato técnico antes da ativação.</p>

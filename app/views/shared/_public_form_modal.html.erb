@@ -57,7 +57,8 @@
                       html: {
                         class: "public-form-modal__form",
                         data: {
-                          action: "submit->public-form-modal#submit",
+                          controller: ("form-attribution" unless preview),
+                          action: "submit->public-form-modal#submit formdata->form-attribution#append",
                           public_form_modal_target: "form",
                           public_interest_form: "public_form",
                           public_form_slug: form.slug,

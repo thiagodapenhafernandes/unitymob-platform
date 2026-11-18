@@ -62,6 +62,20 @@ module Leads
     Result = Data.define(:channel, :source, :label, :data)
 
     def self.apply!(lead, raw:, request: nil)
+      result = capture(raw: raw, request: request)
+      return lead if result.data.empty?
+
+      original = lead.attribution_data.to_h
+      data = original.merge(result.data.except("tracking_uid", "tracking_uids"))
+      data["first_touch"] = original["first_touch"] if original["first_touch"]
+      lead.attribution_channel = result.channel
+      lead.attribution_source = result.source
+      lead.attribution_data = TrackingUid.merge(data, result.data)
+      lead.origin = result.label if lead.origin.blank?
+      lead
+    end
+
+    def self.capture(raw:, request: nil)
       raw = raw.respond_to?(:to_h) ? raw.to_h.with_indifferent_access : {}
       uid = TrackingUid.capture(raw: raw, request: request)
       current = raw[:conversion_touch].is_a?(Hash) ? raw[:conversion_touch] : raw
@@ -72,18 +86,15 @@ module Leads
         context["analytics_consent_captured_at"] = Time.current.iso8601
         context.merge!("client_ip_address" => request.remote_ip, "client_user_agent" => request.user_agent.to_s.first(1024))
       end
-      return lead if result.data.empty? && context.empty? && uid.blank?
+      return result if result.data.empty? && context.empty? && uid.blank?
 
       first = new(raw: raw[:first_touch], request: request).result if raw[:first_touch].is_a?(Hash)
-      lead.attribution_channel = result.channel
-      lead.attribution_source = result.source
-      lead.attribution_data = lead.attribution_data.to_h.merge(result.data).merge(context).merge(
+      data = result.data.merge(context).merge(
         "version" => 2, "model" => "conversion_session", "conversion_touch" => result.data
       )
-      lead.attribution_data["first_touch"] ||= first.data if first && first.data.present?
-      lead.attribution_data = TrackingUid.merge(lead.attribution_data, { "tracking_uid" => uid })
-      lead.origin = result.label if lead.origin.blank?
-      lead
+      data["first_touch"] = first.data if first && first.data.present?
+      Result.new(channel: result.channel, source: result.source, label: result.label,
+        data: TrackingUid.merge(data, { "tracking_uid" => uid }))
     end
 
     def initialize(raw:, request: nil)

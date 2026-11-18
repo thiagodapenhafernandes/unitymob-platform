@@ -100,7 +100,7 @@ RSpec.describe "Admin::MetaConversions", type: :request do
 
     expect do
       patch admin_lead_path(meta_lead), params: { lead: { lead_pipeline_stage_id: visit_stage.id } }
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Schedule", kind_of(String), kind_of(String), nil)
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Schedule", kind_of(String), kind_of(String), nil, kind_of(Hash))
   end
 
   it "não enfileira ao mover para etapa sem mapeamento" do
@@ -122,7 +122,7 @@ RSpec.describe "Admin::MetaConversions", type: :request do
 
     expect do
       patch admin_lead_path(meta_lead), params: { lead: { lead_pipeline_stage_id: stage.id } }
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil)
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil, kind_of(Hash))
     expect(enqueued_jobs.select { |job| job[:job] == MetaConversionJob }.map { |job| job[:args][2] }).to eq(["Contact"])
   end
 
@@ -136,7 +136,7 @@ RSpec.describe "Admin::MetaConversions", type: :request do
 
     expect do
       patch admin_lead_path(meta_lead), params: { lead: { lead_pipeline_stage_id: stage.id, manager_qualification_status: "qualified" } }
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil)
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil, kind_of(Hash))
     expect(meta_lead.reload.manager_qualification_status).to eq("qualified")
     expect(enqueued_jobs.select { |job| job[:job] == MetaConversionJob }.map { |job| job[:args][2] }).to eq(["Contact"])
   end
@@ -171,7 +171,7 @@ RSpec.describe "Admin::MetaConversions", type: :request do
 
       expect do
         patch admin_lead_path(lead), params: { lead: { lead_pipeline_stage_id: stage.id } }
-      end.to have_enqueued_job(MetaConversionJob).with(lead.tenant_id, lead.id, event, kind_of(String), kind_of(String), nil)
+      end.to have_enqueued_job(MetaConversionJob).with(lead.tenant_id, lead.id, event, kind_of(String), kind_of(String), nil, kind_of(Hash))
       expect(lead.reload.lead_pipeline_stage_id).to eq(stage.id)
     end
   end
@@ -181,7 +181,7 @@ RSpec.describe "Admin::MetaConversions", type: :request do
     appointment = create(:appointment, tenant: tenant, lead: meta_lead, admin_user: admin, kind: "visita", status: "agendado")
     expect do
       patch admin_appointment_path(appointment), params: { appointment: { status: "realizado" } }
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil)
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, meta_lead.id, "Contact", kind_of(String), kind_of(String), nil, kind_of(Hash))
   end
 
   it "conclui visita e preserva auditoria sem evento fixo nem reenvio da etapa atual" do
@@ -219,7 +219,7 @@ RSpec.describe "Admin::MetaConversions", type: :request do
     expect do
       patch admin_lead_path(lead), params: { lead: { lead_pipeline_stage_id: won_stage.id, status: won_stage.name } },
         headers: { "ACCEPT" => "application/json" }
-    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, "Purchase", kind_of(String), kind_of(String), nil)
+    end.to have_enqueued_job(MetaConversionJob).with(tenant.id, lead.id, "Purchase", kind_of(String), kind_of(String), nil, kind_of(Hash))
     expect(response).to have_http_status(:ok)
     expect(lead.reload.lead_pipeline_stage_id).to eq(won_stage.id)
   end

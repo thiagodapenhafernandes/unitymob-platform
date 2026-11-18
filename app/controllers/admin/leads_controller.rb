@@ -128,8 +128,8 @@ class Admin::LeadsController < Admin::BaseController
   requires_permission :edit, :leads, only: [:update, :reply_instagram, :take_over_instagram_capture, :share_properties, :suggest_properties, :reconcile_inquiry]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :take_over_instagram_capture, :instagram_thread]
-  before_action :authorize_lead_access!, only: [:show, :journey, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :take_over_instagram_capture, :instagram_thread]
+  before_action :set_lead, only: [:show, :journey, :tracking_audit, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :take_over_instagram_capture, :instagram_thread]
+  before_action :authorize_lead_access!, only: [:show, :journey, :tracking_audit, :update, :destroy, :toggle_favorite, :vcard, :preview, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram, :take_over_instagram_capture, :instagram_thread]
   before_action :load_lead_pipeline_context, only: [:index, :tab_counts, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :tab_counts, :kanban_column, :list_page, :pwa_leads_page, :pwa_section, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -445,6 +445,14 @@ class Admin::LeadsController < Admin::BaseController
     @interest_settings = InterestIntelligence::Settings.current
     load_lead_favorite_context
     @lead_vcard_enabled = LeadSetting.instance(tenant: current_tenant).vcard_enabled?
+  end
+
+  def tracking_audit
+    @tracking_transport = params[:transport].to_s.presence_in(TrackingEventLink::TRANSPORTS)
+    links = @lead.tracking_event_links.where(tenant_id: current_tenant.id)
+    links = links.where(transport: @tracking_transport) if @tracking_transport
+    @tracking_links = links.includes(:google_stage_conversion_event, :ga4_conversion_event)
+      .order(occurred_at: :desc, id: :desc).paginate(page: params[:page], per_page: 25)
   end
 
   def journey
@@ -3415,6 +3423,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def load_show_context
+    @lead_form_response_groups = Leads::FormResponses.new(@lead).groups
     @page_title = "Lead: #{@lead.name}"
     @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)

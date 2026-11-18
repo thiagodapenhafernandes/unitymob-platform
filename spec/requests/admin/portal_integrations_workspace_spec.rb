@@ -81,7 +81,7 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
       get admin_portal_integrations_path(portal: portal)
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      setup = document.at_css("#portal-direct-leads")
+      setup = document.at_css(portal == "chavesnamao" ? "#portal-chaves-support" : "#portal-direct-leads")
       expect(setup.text).to include("Aguardando habilitação do portal", "Copiar solicitação")
       request = setup.at_css("textarea").text
       expect(request).to include(admin.tenant.name, integration.title, "123456", "sem passar pelo Gestor de Leads da OLX")

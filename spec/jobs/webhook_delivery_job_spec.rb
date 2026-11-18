@@ -24,4 +24,19 @@ RSpec.describe WebhookDeliveryJob do
       expect(line).not_to include("private-token", "private@example.test")
     end
   end
+
+  it "associa tentativas ao mesmo ID sem alterar a entrega nem o payload" do
+    lead = create(:lead, tenant: Tenant.default, skip_automatic_routing: true)
+    link = Tracking::Correlation.record(Tracking::Correlation.lead_created(lead), transport: "webhook",
+      event_id: payload["event_id"], destination: url)
+    reference = { tenant_id: lead.tenant_id, id: link.id }
+    allow(WebhookService).to receive(:deliver).with(url, payload)
+      .and_return({ success: false, status: 503 }, { success: true, status: 200 })
+    expect { described_class.new.perform(url, payload, reference) }.to raise_error(WebhookDeliveryJob::DeliveryError)
+    described_class.execute(described_class.new(url, payload, reference).serialize)
+    expect(link.reload.delivery_status).to eq("http_accepted")
+    expect(link.delivery_attempts.map { |attempt| attempt["http_status"] }).to eq([503, 200])
+    expect(link.attributes.to_json).not_to include("private-token", "private@example.test")
+    expect(WebhookService).to have_received(:deliver).with(url, payload).twice
+  end
 end

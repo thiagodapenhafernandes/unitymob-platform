@@ -1,0 +1,37 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Auditoria de envios", subtitle: @lead.display_name,
+    back_path: admin_lead_path(@lead), status: "Consulta" %>
+<% end %>
+<div class="ax-integration-layout">
+  <%= ax_page_header(title: "Jornada e envios", subtitle: "#{@lead.display_name} · Lead ##{@lead.id}", icon: "broadcast",
+    actions: ax_button("Voltar ao lead", admin_lead_path(@lead), variant: :ghost, icon: "arrow-left")) %>
+  <%= ax_operational_panel(title: "Origem e campanha registradas") do %>
+    <%= render "admin/shared/ui/lead_origin", origin: lead_origin_for(@lead, tenant: current_tenant) %>
+  <% end %>
+  <%= ax_collapsible_card(title: "Jornada do atendimento", collapse_id: "tracking_lead_journey", icon: "signpost-2", collapsed: true) do %>
+    <%= turbo_frame_tag dom_id(@lead, :journey), src: journey_admin_lead_path(@lead), loading: :lazy do %>
+      <p class="ax-field__hint">Carregando jornada…</p>
+    <% end %>
+  <% end %>
+  <%= ax_operational_panel(title: "Eventos e envios", eyebrow: "Auditoria por destino") do %>
+    <%= ax_inline_notice(announce: false) do %>
+      HTTP aceito confirma apenas a resposta do receptor. Recebimento pela plataforma não comprova atribuição ao anúncio.
+      No site, “oferecido ao navegador” não confirma a execução da tag.
+    <% end %>
+    <%= ax_filter_form(url: tracking_audit_admin_lead_path(@lead), reset_path: tracking_audit_admin_lead_path(@lead), filter_label: "Filtrar eventos e envios") do %>
+      <%= ax_standalone_select_field(name: :transport, id: "tracking_transport", label: "Transporte",
+        choices: Admin::TrackingAuditHelper::TRANSPORT_LABELS.map { |key, label| [label, key] },
+        selected: @tracking_transport, include_blank: "Todos os transportes") %>
+    <% end %>
+    <p class="ax-field__hint">Mais recentes primeiro. IDs reutilizados mantêm a ocorrência original; reenvios Meta indicam também a ocorrência de cada tentativa. O histórico inclui descartes antes do envio.</p>
+    <div class="ax-tracking-deliveries">
+    <% @tracking_links.each do |link| %>
+      <%= ax_tracking_delivery(link: link) %>
+    <% end %>
+    </div>
+    <% if @tracking_links.empty? %>
+      <%= ax_empty_state(title: "Nenhum evento correlacionado neste filtro", description: "A ausência de registro não comprova ausência de atendimento ou envio. Eventos anteriores à captura da correlação não foram reconstruídos.", compact: true) %>
+    <% end %>
+    <%= ax_pagination(@tracking_links) %>
+  <% end %>
+</div>

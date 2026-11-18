@@ -85,6 +85,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "switch" => "ax-check",
     "system_workspace" => "ax-system",
     "table" => "ax-table-wrap",
+    "tracking_delivery" => "ax-tracking-delivery",
     "task_form_modal" => "task-form-modal",
     "team_toggle" => "ax-team-toggle",
     "toggle_chip" => "ax-toggle-group",
@@ -103,7 +104,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "workspace_shell" => "ax-workspace-shell"
   }.freeze
 
-  THEME_NEUTRAL_COMPONENTS = %w[code_snippet field_grid stack].freeze
+  THEME_NEUTRAL_COMPONENTS = %w[code_snippet field_grid stack tracking_delivery].freeze
 
   subject(:stylesheet) do
     File.read(File.expand_path("../../../app/assets/stylesheets/admin_tailwind.css", __dir__))
@@ -1309,7 +1310,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     end
 
     it "exige tratamento dark explicito ou neutralidade de tema documentada em cada componente" do
-      expect(THEME_NEUTRAL_COMPONENTS).to match_array(%w[code_snippet field_grid stack])
+      expect(THEME_NEUTRAL_COMPONENTS).to match_array(%w[code_snippet field_grid stack tracking_delivery])
 
       component_names.each do |component_name|
         component_source = File.read(
@@ -1330,7 +1331,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       expect(File.read(File.expand_path("../../../app/assets/stylesheets/admin/components/code_snippet.css", __dir__)))
         .to include("Code surface intentionally stays dark in both platform themes")
 
-      %w[field_grid stack].each do |component_name|
+      %w[field_grid stack tracking_delivery].each do |component_name|
         component_source = File.read(
           File.expand_path("../../../app/assets/stylesheets/admin/components/#{component_name}.css", __dir__)
         )
