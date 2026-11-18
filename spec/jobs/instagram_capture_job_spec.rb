@@ -165,7 +165,7 @@ RSpec.describe Instagram::CaptureJob do
 
     catalog = instance_double(Instagram::CatalogReply)
     allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
-    expect(catalog).to receive(:call).with(array_including({ role: "cliente", text: "Quero um apartamento" }), first_turn: true).once.and_return("Em qual bairro?")
+    expect(catalog).to receive(:call).with(array_including(hash_including(role: "cliente", text: "Quero um apartamento")), first_turn: true).once.and_return("Em qual bairro?")
     inbound("interest", "Quero um apartamento")
     2.times { described_class.perform_now(tenant.id, lead.id) }
     expect(Instagram::Reply).to have_received(:call).with(lead: lead, body: "Em qual bairro?", admin_user: nil, typing: false).once
@@ -184,9 +184,9 @@ RSpec.describe Instagram::CaptureJob do
     catalog = instance_double(Instagram::CatalogReply)
     allow(Instagram::CatalogReply).to receive(:new).and_return(catalog)
     expect(catalog).to receive(:call).with([
-      { role: "cliente", text: "Busco uma casa em Itajaí" },
-      { role: "assistente", text: "Qual bairro?" },
-      { role: "cliente", text: "Centro" }
+      hash_including(role: "cliente", text: "Busco uma casa em Itajaí"),
+      hash_including(role: "assistente", text: "Qual bairro?"),
+      hash_including(role: "cliente", text: "Centro")
     ], first_turn: true).and_return("Qual é sua faixa de preço?")
     expect(inbound("return", "Centro").id).to eq(lead.id)
 
@@ -439,7 +439,7 @@ RSpec.describe Instagram::CaptureJob do
     lead = inbound("mention", "")
     lead.instagram_messages.inbound.sole.update!(context: {"attachments" => [{"type" => "ig_post", "title" => "Casa compartilhada"}]})
     history = described_class.new.send(:conversation_history, lead, lead.instagram_messages.maximum(:id))
-    expect(history).to eq([{role: "cliente", text: "Compartilhou uma publicação: Casa compartilhada"}])
+    expect(history).to contain_exactly(hash_including(role: "cliente", text: "Compartilhou uma publicação: Casa compartilhada", message_id: lead.instagram_messages.inbound.sole.id))
   end
 
   it "encaminha uma única vez mesmo sem telefone, sem reiniciar o SDR na próxima mensagem" do

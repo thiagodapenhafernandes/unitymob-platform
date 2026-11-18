@@ -36,9 +36,33 @@ RSpec.describe 'Qualificação e encaminhamento do Instagram' do
       delivery_destination: destination, **attributes)
   end
 
+  it 'encaminha locação fragmentada para a fila interna somente após contato completo, uma vez' do
+    queue = rule(business_type: :locacao, custom_filters: [
+      {'key' => 'origin', 'value' => 'Instagram Direct'}, {'key' => 'instagram_qualified', 'value' => 'true'}])
+    create(:distribution_rule_agent, distribution_rule: queue, admin_user: agent)
+    lead = receive_message('rent', 'Aluguel?')
+    Instagram::SearchContext.new(lead).remember!('city' => ['Barra Sul - Balneário Camboriú'])
+    receive_message('type', 'Apartamento')
+    receive_message('budget', 'Até uns 12')
+    receive_message('fees', 'C taxas')
+    lead.instagram_messages.create!(direction: 'outbound', message_id: 'question', body: 'Quantos quartos?', occurred_at: Time.current)
+    receive_message('rooms', '3')
+    lead = receive_message('annual', 'Anual')
+    expect(lead.client_name).to be_blank
+    expect(lead.other_information.dig('instagram_qualification', 'ready')).to be(true)
+    expect(lead.admin_user_id).to be_nil
+    receive_message('name', 'Me chamo Maria')
+    lead = receive_message('phone', 'Meu WhatsApp é (47) 99888-7777')
+    expect(lead).to have_attributes(admin_user_id: agent.id, distribution_rule_id: queue.id)
+    expect(lead.business_label).to eq('Locação')
+    expect(Leads::NotificationDispatcher).to have_received(:deliver).once
+    Instagram::CaptureJob.perform_now(tenant.id, lead.id)
+    expect(Leads::NotificationDispatcher).to have_received(:deliver).once
+  end
+
   it 'Conexão: responde antes do contato, qualifica e distribui uma vez na fila configurada' do
     queue = rule(business_type: :venda, pocket_active: true, pocket_time: 5)
-    property = create(:habitation, tenant: tenant, titulo_anuncio: 'Opção ativa Centro', status: 'Venda', dormitorios_qtd: 2)
+    property = create(:habitation, tenant: tenant, titulo_anuncio: 'Opção ativa Centro', categoria: 'Apartamento', status: 'Venda', dormitorios_qtd: 2, valor_venda_cents: 85_000_000)
     allow(Instagram::CatalogReply).to receive(:new).and_call_original
     query = instance_double(Ai::PropertySearch::PublicQuery, call: Ai::PropertySearch::PublicQuery::Result.new({}, nil, nil))
     allow(Ai::PropertySearch::PublicQuery).to receive(:new).and_return(query)

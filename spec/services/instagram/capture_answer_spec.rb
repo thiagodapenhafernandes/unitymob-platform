@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Instagram::CaptureAnswer do
   it 'não transforma perguntas, imóveis, bairros ou saudações em nome' do
     ['Sobre esse apto do anúncio em cima do shopping.', 'Como é a forma de pagamento?', 'Quero uma casa',
-     'Bom dia', 'Centro', 'Manda fotos', 'Não quero informar', 'Pular'].each do |text|
+     'Esse', 'C taxas', 'Desculpa', 'Anual', 'BC', 'Balneário mais Barra Sul', 'Bom dia', 'Centro', 'Manda fotos', 'Não quero informar', 'Pular'].each do |text|
       expect(described_class.new(text).name).to be_nil, text
     end
   end

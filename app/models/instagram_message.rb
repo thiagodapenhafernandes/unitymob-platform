@@ -43,9 +43,9 @@ class InstagramMessage < ApplicationRecord
     nil
   end
 
-  def self.property_codes_in(text)
+  def self.property_codes_in(text, allow_short_number: false)
     codes = text.to_s.scan(/\b(?:c[oó]d(?:igo)?|ref(?:er[eê]ncia)?)\s*[.:#-]?\s*([\p{L}\d-]+)/i).flatten
-    codes << text.to_s.strip if text.to_s.strip.match?(/\A[\p{L}\d-]{1,40}\z/) && !Instagram::CaptureAnswer.new(text).phone
+    codes << text.to_s.strip if (allow_short_number || !text.to_s.strip.match?(/\A\d{1,2}\z/)) && text.to_s.strip.match?(/\A[\p{L}\d-]{1,40}\z/) && !Instagram::CaptureAnswer.new(text).phone
     codes.select { |code| code.match?(/\d/) }.uniq
   end
 

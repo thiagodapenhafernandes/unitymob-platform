@@ -7,8 +7,11 @@ module Instagram
     NEGATIVE = /\b(?:n[aã]o (?:quero|tenho interesse|pretendo)|sem interesse|s[oó] (?:olhando|curiosidade)|talvez)\b/i
     OWNER = /\b(?:quero|preciso|pretendo|gostaria de)\s+(?:vender|anunciar|colocar.{0,20}(?:venda|aluguel))\b/i
 
-    def self.capture!(lead, rule: CaptureSettings.defaults)
-      messages = lead.instagram_messages.inbound.order(id: :desc).limit(30).to_a.reverse
+    def self.capture!(lead, rule: CaptureSettings.defaults, through: nil)
+      search = SearchContext.new(lead).capture!(through: through)
+      scope = lead.instagram_messages
+      scope = scope.where("id <= ?", through) if through
+      messages = scope.inbound.order(id: :desc).limit(30).to_a.reverse
       texts = messages.filter_map { |m| m.body.presence }
       latest = texts.last.to_s
       previous = lead.other_information.to_h[KEY].to_h
@@ -16,25 +19,26 @@ module Instagram
       actionable = messages.select { |m| m.body.present? && !m.body.match?(NEGATIVE) && !m.body.match?(OWNER) }
       mode_message = actionable.reverse.find { |m| CaptureAnswer.new(m.body).business_type.present? }
       mode = mode_message && CaptureAnswer.new(mode_message.body).business_type
-      history = lead.instagram_messages.order(id: :desc).limit(30).to_a.reverse.map do |message|
+      history = scope.order(id: :desc).limit(30).to_a.reverse.map do |message|
         {role: message.inbound? ? 'cliente' : 'assistente', text: message.conversation_text}
       end
       property = PropertyContext.new(lead, rule).resolve(history)
       step_message = actionable.reverse.find { |m| m.body.match?(NEXT_STEP) }
       criteria_message = actionable.reverse.find { |m| m.body.match?(CRITERIA) && !m.body.include?('?') }
       step_message = nil if criteria_message && step_message && step_message.id < criteria_message.id
+      mode ||= search.business_type
       property = nil if mode == 'venda' && property&.status == 'Aluguel' || mode == 'locacao' && property&.status == 'Venda'
       request = criteria_message || step_message || mode_message
       mode ||= {'Venda' => 'venda', 'Aluguel' => 'locacao'}[property&.status] if step_message
-      ready = %w[venda locacao].include?(mode) && (property && step_message || criteria_message)
+      ready = %w[venda locacao].include?(mode) && (property && step_message || criteria_message || search.sufficient?)
       last_owner = messages.reverse.find { |message| message.body.to_s.match?(OWNER) }
       owner_request = last_owner && (!mode_message || last_owner.id >= mode_message.id)
       last_negative = messages.reverse.find { |message| message.body.to_s.match?(NEGATIVE) }
-      evidence_id = [mode_message, criteria_message, step_message].compact.map(&:id).max.to_i
+      evidence_id = ([mode_message, criteria_message, step_message].compact.map(&:id) + [search.state["criteria_message_id"].to_i]).max.to_i
       ready = false if owner_request || last_negative && last_negative.id >= evidence_id
       data = {
         'ready' => !!ready, 'business_type' => mode, 'property_id' => property&.id,
-        'property_code' => property&.codigo, 'request' => clean(request&.body),
+        'property_code' => property&.codigo, 'request' => (search.sufficient? ? search.summary.first(400) : clean(request&.body)),
         'next_step' => step_message ? clean(step_message.body) : (ready ? 'Receber opções compatíveis com a busca' : nil),
         'message_id' => messages.last&.id
       }.compact
