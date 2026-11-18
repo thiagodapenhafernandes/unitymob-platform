@@ -1,16 +1,18 @@
 <section id="portal-direct-leads" aria-label="Validação do recebimento direto do Chaves na Mão">
   <%= ax_operational_panel(eyebrow: "Leads", title: "Recebimento direto · Chaves na Mão", class_name: "tw-mt-4") do %>
     <%= ax_badge(@chaves_na_mao_connection.receiving? ? "Em validação" : "Desativado", tone: :amber) %>
+    <p class="ax-field__hint tw-mt-3">Aguardando validação de um lead de teste. Configurar esta tela não confirma o recebimento direto.</p>
     <%= ax_inline_notice(tone: :info, icon: "info-circle", class_name: "tw-mt-3") do %>
       Durante a validação, os eventos ficam registrados para conferência e não criam leads nem acionam corretores.
-      Mantenha o recebimento pelo sistema anterior. A ativação operacional depende da confirmação do formato e da autenticação pelo portal.
+      O recebimento pelo C2S mantém a configuração atual desta conta, até validarmos um lead de teste.
+      Salvar aqui não altera o C2S nem o envio de imóveis. A ativação operacional depende da confirmação do formato e da autenticação pelo portal.
     <% end %>
 
     <%= form_with(model: @chaves_na_mao_connection, url: admin_chaves_na_mao_connection_path, method: :patch, class: "tw-mt-4") do |f| %>
       <%= ax_field_group(title: "Configuração desta conta") do %>
         <%= ax_field_grid do %>
           <div class="ax-span-6">
-            <%= ax_text_field(form: f, method: :account_code, label: "ID da conta no Chaves na Mão", readonly: @chaves_na_mao_connection.persisted?, inputmode: "numeric") %>
+            <%= ax_text_field(form: f, method: :account_code, label: "ID da conta no Chaves na Mão", readonly: !@chaves_na_mao_connection.account_code_editable?, inputmode: "numeric") %>
           </div>
           <div class="ax-span-6">
             <%= ax_text_field(form: f, method: :integration_token, label: "Token de integração de leads", type: :password, value: "", autocomplete: "new-password", hint: @chaves_na_mao_connection.integration_token.present? ? "Token configurado. Deixe em branco para manter." : "Disponível em Meus Dados no Chaves na Mão. A compatibilidade precisa ser confirmada com o portal.") %>
@@ -18,15 +20,18 @@
         <% end %>
         <%= ax_switch_field(form: f, method: :enabled, label: "Receber eventos para validação") %>
       <% end %>
-      <%= ax_form_actions do %>
+      <%= ax_form_actions(sticky: false) do %>
         <%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %>
       <% end %>
     <% end %>
 
     <% if @chaves_na_mao_connection.persisted? %>
       <%= ax_field_group(title: "Endereço para homologação", class_name: "tw-mt-4") do %>
-        <%= ax_standalone_field(name: :chaves_endpoint, id: :chaves_endpoint, label: "URL de recebimento", value: "#{request.base_url}/webhooks/chaves_na_mao/#{@chaves_na_mao_connection.route_key}", readonly: true) %>
-        <p class="ax-field__hint">Combine o envio de um teste com o portal. Solicite que o fluxo pelo sistema anterior seja preservado durante a conferência.</p>
+        <div data-controller="clipboard" data-clipboard-success-content-value="URL copiada!">
+          <%= ax_standalone_field(name: :chaves_endpoint, id: :chaves_endpoint, label: "URL de recebimento desta conta", value: "#{request.base_url}/webhooks/chaves_na_mao/#{@chaves_na_mao_connection.route_key}", readonly: true,
+                data: { clipboard_target: "source" }, action: ax_button("Copiar URL", variant: :secondary, icon: "clipboard", data: { action: "clipboard#copy" })) %>
+        </div>
+        <p class="ax-field__hint tw-mt-3">Combine o envio de um teste com o portal. Solicite que o fluxo pelo C2S seja preservado durante a conferência.</p>
       <% end %>
     <% end %>
     <% if @chaves_na_mao_receipts.present? %>

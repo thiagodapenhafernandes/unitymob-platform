@@ -8,7 +8,7 @@ class Admin::ChavesNaMaoConnectionsController < Admin::BaseController
     connection.assign_attributes(attrs)
     if connection.save
       redirect_to admin_portal_integrations_path(portal: "chavesnamao", anchor: "portal-direct-leads"),
-        notice: "Validação do Chaves na Mão configurada. O fluxo pelo sistema anterior permanece ativo."
+        notice: "Configuração de validação salva. O C2S e o envio de imóveis não foram alterados."
     else
       redirect_to admin_portal_integrations_path(portal: "chavesnamao", anchor: "portal-direct-leads"),
         alert: connection.errors.full_messages.to_sentence
