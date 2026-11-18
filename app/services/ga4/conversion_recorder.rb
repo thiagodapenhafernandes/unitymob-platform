@@ -11,10 +11,10 @@ module Ga4
         (lead.saved_change_to_attribute?(field) ? lead.saved_change_to_attribute(field).first : lead.public_send(field)) == "qualified"
       end
       if qualified && !previously_qualified
-        record(lead: lead, event_name: "qualify_lead", key: "lead:#{lead.id}:qualified")
+        record(lead: lead, event_name: "qualify_lead", key: "lead:#{lead.id}:qualified", correlation: Tracking::Correlation.change(lead))
       end
       if (lead.saved_change_to_status? || lead.saved_change_to_lead_pipeline_stage_id?) && lead.lead_pipeline_stage&.stage_type == "won"
-        record(lead: lead, event_name: "close_convert_lead", key: "lead:#{lead.id}:won")
+        record(lead: lead, event_name: "close_convert_lead", key: "lead:#{lead.id}:won", correlation: Tracking::Correlation.change(lead))
       end
     end
 
@@ -22,16 +22,18 @@ module Ga4
       return unless appointment.saved_change_to_status? && appointment.realizado? && appointment.kind == "visita"
       return unless appointment.lead && appointment.tenant_id == appointment.lead.tenant_id
 
-      record(lead: appointment.lead, event_name: "visit_completed", key: "appointment:#{appointment.id}:completed", property: appointment.habitation)
+      record(lead: appointment.lead, event_name: "visit_completed", key: "appointment:#{appointment.id}:completed", property: appointment.habitation,
+        correlation: Tracking::Correlation.change(appointment))
     end
 
     def self.proposal_updated(proposal)
       return unless proposal.saved_change_to_status? && proposal.status == "enviada"
 
-      record(lead: proposal.lead, event_name: "proposal_sent", key: "proposal:#{proposal.id}:sent", property: proposal.habitation)
+      record(lead: proposal.lead, event_name: "proposal_sent", key: "proposal:#{proposal.id}:sent", property: proposal.habitation,
+        correlation: Tracking::Correlation.change(proposal))
     end
 
-    def self.record(lead:, event_name:, key:, property: nil)
+    def self.record(lead:, event_name:, key:, property: nil, correlation: nil)
       attribution = lead.attribution_data.to_h
       return unless attribution["analytics_consent"] == "granted" && attribution["client_id"].to_s.match?(/\A\d{1,20}\.\d{1,20}\z/)
 
@@ -44,7 +46,7 @@ module Ga4
 
         business_type = Leads::Attribution.business_type(attribution["business_type"])
         business_type = "geral" unless Leads::Attribution::BUSINESS_TYPE_VALUES.values.include?(business_type)
-        Ga4ConversionEvent.create_or_find_by!(tenant_id: lead.tenant_id, deduplication_key: key) do |event|
+        event = Ga4ConversionEvent.create_or_find_by!(tenant_id: lead.tenant_id, deduplication_key: key) do |event|
           event.lead = lead
           event.event_name = event_name
           event.event_id = SecureRandom.uuid
@@ -56,6 +58,11 @@ module Ga4
             "event_id" => event.event_id, "lead_source" => "crm"
           }
         end
+        if event.previously_new_record?
+          Tracking::Correlation.record(correlation || Tracking::Correlation.change(lead), transport: "ga4",
+            event_id: event.event_id, destination: event.measurement_id, native_event: event)
+        end
+        event
       end
     rescue ActiveRecord::ActiveRecordError => error
       Rails.logger.warn("[GA4_CRM] capture_failed tenant_id=#{lead.tenant_id} event=#{event_name} error_class=#{error.class.name}")

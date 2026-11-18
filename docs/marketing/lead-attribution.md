@@ -34,6 +34,31 @@ O job confere a conta retornada pela Meta, salva nomes de campanha/conjunto/anú
 
 Não há backfill automático. Os leads antigos sem identificadores oficiais continuam exibindo somente os dados disponíveis. A migração `20260909160000` deve preceder a ativação em produção. O worker existente deve consumir a fila `sync`.
 
+## Captura compartilhada dos formulários — implementação local de 17/11/2026
+
+O modal de lead, os formulários públicos (inline ou modal, incluindo landing pages)
+e `/contato` usam `Leads::Attribution.capture` para classificar a aquisição com o
+mesmo contrato. O controller compartilhado `form-attribution` acrescenta primeira
+chegada e sessão de conversão ao `FormData`, em um namespace separado dos campos
+personalizados e anexos. Consentimento e cookies de analytics são conferidos pelo
+servidor; o formulário não pode declarar identidade, consentimento ou tenant.
+Envios sem JavaScript continuam aceitos com o contexto disponível na URL e no
+request, sem reconstruir uma primeira chegada que não foi capturada.
+
+Formulários públicos guardam o snapshot no `source.attribution_data` da submissão
+e o acrescentam ao webhook existente. Quando o formulário já está configurado
+para gerar lead, o job transporta esse snapshot sem recalcular consentimento,
+preserva a origem funcional e vincula a sessão de navegação existente. Uma nova
+consulta de um contato existente conserva a aquisição original e guarda a nova
+atribuição no histórico. Submissões antigas continuam processáveis pelos campos
+legados. Não há backfill nem nova conversão de aquisição no retorno da submissão.
+
+`/contato` continua exclusivo do atendimento administrativo pelo fluxo de webhook
+existente: recebe atribuição adicional, mas não cria lead comercial nem entra na
+distribuição de corretores. Não há alteração de destinos, assinaturas, regras de
+distribuição ou ativação de tracking das contas. A camada é compartilhada por todos
+os temas atuais e futuros. Esta implementação ainda não foi publicada.
+
 ## CAPI — disparos configurados por conta (ajuste local de 25/10/2026)
 
 Na atualização administrativa do lead, o envio ocorre somente quando ele entra em outra etapa com `Evento Meta` preenchido. Usa o valor salvo pela própria conta; nomes de etapas e tipos ganha/perdida não determinam um evento. Em branco, não envia. Alterar somente a qualificação, concluir um compromisso ou salvar novamente a mesma etapa não dispara eventos fixos de CAPI. Qualificação, agenda, auditoria e as demais integrações mantêm seus fluxos próprios.

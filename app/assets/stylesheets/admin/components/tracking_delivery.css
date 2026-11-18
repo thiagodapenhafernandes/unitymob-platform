@@ -1,0 +1,12 @@
+/* Theme-neutral geometry; colors and states come from shared card, badge and table contracts. */
+.ax-tracking-deliveries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-block: 12px; }
+.ax-tracking-delivery, .ax-tracking-delivery > .ax-card__body { min-width: 0; }
+.ax-tracking-delivery > .ax-card__header { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.ax-tracking-delivery .ax-collapse-card__trigger { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
+.ax-tracking-delivery .ax-card__title { grid-column: 1; grid-row: 1; overflow-wrap: anywhere; }
+.ax-tracking-delivery .ax-collapse-card__trigger > .ax-badge { grid-column: 1; grid-row: 2; justify-self: start; text-align: left; white-space: normal; }
+.ax-tracking-delivery .ax-collapse-card__chevron { grid-column: 2; grid-row: 1 / 3; }
+@media (max-width: 639px) {
+  .ax-tracking-delivery > .ax-card__header { grid-template-columns: minmax(0, 1fr); }
+  .ax-tracking-delivery .ax-collapse-card__actions { justify-content: flex-start; }
+}

@@ -1,11 +1,17 @@
 module Meta
   # Envia o evento configurado na etapa para leads Meta Ads da conta com CAPI ativa.
   class ConversionDispatcher
-    def self.call(lead:, event_name:, value: nil, occurred_at: Time.current)
+    def self.call(lead:, event_name:, value: nil, occurred_at: Time.current, correlation: nil)
       return unless LeadPipelineStage::META_CONVERSION_EVENTS.key?(event_name) && lead&.tenant_id && lead.meta_ads_origin?
 
       config = MetaConversionConfig.for_tenant(lead.tenant).first
       return unless config&.active?
+
+      correlation ||= Tracking::Correlation.change(lead)
+      config.dataset_list.each do |dataset|
+        Tracking::Correlation.record(correlation, transport: "meta",
+          event_id: event_id(lead.tenant_id, lead.id, event_name), destination: dataset.fetch("id"))
+      end
 
       MetaConversionJob.perform_later(
         lead.tenant_id,
@@ -13,7 +19,8 @@ module Meta
         event_name,
         event_id(lead.tenant_id, lead.id, event_name),
         occurred_at.iso8601,
-        value&.to_f
+        value&.to_f,
+        correlation
       )
     end
 

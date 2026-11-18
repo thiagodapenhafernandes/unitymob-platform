@@ -88,6 +88,7 @@ class Tenant < ApplicationRecord
   has_one :storage_integration_setting, dependent: :destroy
   has_many :account_memberships, dependent: :destroy
   has_many :leads, dependent: :restrict_with_error
+  has_many :tracking_event_links, dependent: :restrict_with_error
   has_many :habitations, dependent: :restrict_with_error
   has_many :property_review_policies, dependent: :restrict_with_error
   has_many :ai_property_share_collections, dependent: :restrict_with_error

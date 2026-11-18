@@ -285,6 +285,7 @@ Rails.application.routes.draw do
       patch :toggle_favorite, on: :member
       post :log_contact, on: :member
       get :journey, on: :member
+      get :tracking_audit, on: :member
       get :interest_intelligence, on: :member
       post :open_whatsapp_conversation, on: :member
       post :activate_whatsapp_template, on: :member
@@ -523,6 +524,7 @@ Rails.application.routes.draw do
       post :sync_batch
       post :sync_images_now
     end
+    resource :chaves_na_mao_connection, only: :update
     resources :imovelweb_connections, only: [:create, :update] do
       get :authorization, on: :member
       post :verify, on: :member
@@ -825,6 +827,7 @@ Rails.application.routes.draw do
     get "whatsapp", to: "whatsapp#verify"
     post "whatsapp", to: "whatsapp#receive"
     post "portals/:portal/events", to: "portals#events", as: :portal_events
+    post "chaves_na_mao/:route_key", to: "chaves_na_mao#create"
     post "imovelweb/:route_key", to: "imovelweb#create"
     post "portal_leads/grupozap", to: "portal_leads#grupozap", as: :portal_leads_grupozap
     post "portal_leads/grupozap/:route_key", to: "portal_leads#grupozap"

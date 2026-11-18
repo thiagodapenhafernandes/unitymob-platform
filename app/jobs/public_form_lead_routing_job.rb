@@ -29,7 +29,14 @@ class PublicFormLeadRoutingJob < ApplicationJob
           phone: submission.normalized_phone,
           origin: form.webhook_origin
         )
-        lead.attribution_data = Leads::TrackingUid.merge({}, submission.source.slice("tracking_uid"))
+        source = submission.source
+        lead.source_url = Tracking::EventContext.page_url(source["page_url"])
+        if source["attribution_data"].is_a?(Hash)
+          lead.assign_attributes(source.slice("attribution_channel", "attribution_source", "attribution_data"))
+        else
+          Leads::Attribution.apply!(lead, raw: source["utm"].to_h.merge("landing_url" => source["page_url"], "referrer_url" => source["referrer_url"]))
+        end
+        lead.attribution_data = Leads::TrackingUid.merge(lead.attribution_data, source.slice("tracking_uid"))
         lead.skip_automatic_routing = true
         if instagram_target
           page_url = submission.source["page_url"]
@@ -38,8 +45,10 @@ class PublicFormLeadRoutingJob < ApplicationJob
         else
           lead = Leads::Intake.receive!(lead, distribution_rule: rule)
         end
+        InterestIntelligence::SessionLinker.call(lead: lead, token: source["navigation_token"])
         if lead.intake_reused
           submission.update!(lead_id: lead.id)
+          Tracking::Correlation.link_submission(submission)
           return
         end
         lead.activities.create!(kind: "received", metadata: { origin: lead.origin })
@@ -48,6 +57,7 @@ class PublicFormLeadRoutingJob < ApplicationJob
           :lead_created, lead, source: "lead", idempotency_key: "lead_created:#{lead.id}"
         )
         submission.update!(lead_id: lead.id)
+        Tracking::Correlation.link_submission(submission)
       end
     end
   end

@@ -1,0 +1,45 @@
+<% attempts = link.delivery_attempts %>
+<%= ax_collapsible_card(title: "#{tracking_transport_label(link.transport)} · #{tracking_occurrence_label(link.occurrence_name)}",
+  collapse_id: dom_id(link, :delivery), collapsed: true, actions: tracking_status_badge(link.delivery_status),
+  badge: "#{tracking_audit_time(link.occurred_at)} · #{attempts.size} resultado(s)", class_name: "ax-tracking-delivery") do %>
+  <%= ax_status_list(rows: [
+    { label: "Ocorrência em", value: tracking_audit_time(link.occurred_at) },
+    { label: "ID externo original", value: tag.code(link.external_event_id, class: "tw-break-all") },
+    { label: "Ocorrência interna", value: tag.code(link.occurrence_key, class: "tw-break-all") },
+    { label: "Destino", value: link.destination_label },
+    { label: "Referência do destino", value: tag.code(link.destination_key, class: "tw-break-all") }
+  ]) %>
+  <% if link.delivery_skip_reason.present? %>
+    <p class="ax-field__hint"><%= tracking_reason_label(link.delivery_skip_reason) %></p>
+  <% end %>
+  <% if link.google_stage_conversion_event&.next_attempt_at && link.delivery_status == "pending" %>
+    <p class="ax-field__hint">Próxima tentativa prevista: <%= tracking_audit_time(link.google_stage_conversion_event.next_attempt_at) %></p>
+  <% end %>
+  <% if attempts.empty? %>
+    <p class="ax-field__hint"><%= link.transport == "site" ? "Não há confirmação de execução da tag nesta auditoria." : "Nenhuma tentativa de envio registrada." %></p>
+  <% else %>
+    <div class="ax-table-wrap" role="region" aria-label="Tentativas de <%= tracking_transport_label(link.transport) %>" tabindex="0">
+      <table class="ax-table">
+        <caption class="ax-table__caption--sr-only">Tentativas do evento <%= link.external_event_id %></caption>
+        <thead><tr><% ["Registro", "Data e hora", "Resultado", "HTTP", "Evidência"].each do |label| %><th scope="col"><%= label %></th><% end %></tr></thead>
+        <tbody>
+          <% attempts.each_with_index do |attempt, index| %>
+            <tr>
+              <th scope="row"><%= index + 1 %></th>
+              <td><%= tracking_audit_time(attempt["at"]) %></td>
+              <td><%= tracking_attempt_badge(link, attempt) %></td>
+              <td><%= attempt["http_status"].presence || "Sem resposta registrada" %></td>
+              <td>
+                <% if attempt["error_class"].present? %><span class="tw-block"><%= attempt["error_class"] %></span><% end %>
+                <% if attempt["reason"].present? %><span class="tw-block"><%= tracking_reason_label(attempt["reason"]) %></span><% end %>
+                <% if attempt["trace_id"].present? %><span class="tw-block">Trace: <%= attempt["trace_id"] %></span><% end %>
+                <% if attempt["occurrence_key"].present? %><code class="tw-break-all"><%= attempt["occurrence_key"] %></code><% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <% if link.transport == "ga4" %><p class="ax-field__hint">GA4: a integração conserva apenas o último resultado registrado, incluindo descartes antes do envio.</p><% end %>
+  <% end %>
+<% end %>

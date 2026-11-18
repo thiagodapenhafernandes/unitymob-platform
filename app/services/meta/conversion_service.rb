@@ -13,9 +13,16 @@ module Meta
     # Envia para todos os datasets configurados (mesmo event_id: a Meta
     # dedupa por dataset). Falha em qualquer um aborta com retry; o event_id
     # estável evita duplicar nos que já receberam.
-    def send_event(lead:, event_name:, event_id:, occurred_at:, value: nil)
+    def send_event(lead:, event_name:, event_id:, occurred_at:, value: nil, correlation: nil)
+      correlation = nil if correlation && (correlation.with_indifferent_access[:tenant_id].to_i != lead.tenant_id ||
+        correlation.with_indifferent_access[:lead_id].to_i != lead.id)
+      occurrence_key = correlation&.with_indifferent_access&.[](:occurrence_key)
       user_data = build_user_data(lead)
       if user_data.values_at("em", "ph", "lead_id").all?(&:blank?)
+        @config.dataset_list.each do |dataset|
+          link = Tracking::Correlation.record(correlation, transport: "meta", event_id: event_id, destination: dataset.fetch("id"))
+          Tracking::Correlation.attempt(link, status: "skipped", reason: "identity_missing", occurrence_key: occurrence_key)
+        end
         Rails.logger.info("[Meta::ConversionService] lead_id=#{lead.id} event=#{event_name} skipped_sem_match")
         return :skipped
       end
@@ -33,17 +40,25 @@ module Meta
       payload["test_event_code"] = @config.test_event_code if @config.test_event_code.present?
 
       @config.dataset_list.each do |dataset|
-
+        link = Tracking::Correlation.record(correlation, transport: "meta", event_id: event_id, destination: dataset.fetch("id"))
         begin
           response = graph.graph_call("#{dataset["id"]}/events", payload, "post")
           unless response.is_a?(Hash) && response["events_received"] == 1
+            Tracking::Correlation.attempt(link, status: "uncertain", reason: "receipt_unconfirmed", occurrence_key: occurrence_key)
             raise ConversionError, "CAPI #{event_name} lead_id=#{lead.id} dataset=#{dataset['id']}: recebimento não confirmado"
           end
+          Tracking::Correlation.attempt(link, status: "received", trace_id: response["fbtrace_id"], occurrence_key: occurrence_key)
           Rails.logger.info("[Meta::ConversionService] lead_id=#{lead.id} event=#{event_name} " \
                             "dataset=#{dataset["id"]} received=#{response&.dig("events_received")} " \
                             "trace=#{response&.dig("fbtrace_id")}")
         rescue Koala::Facebook::APIError => e
+          Tracking::Correlation.attempt(link, status: "failed", error_class: e.class.name, occurrence_key: occurrence_key)
           raise ConversionError, "CAPI #{event_name} lead_id=#{lead.id} dataset=#{dataset["id"]}: #{e.fb_error_code} #{e.fb_error_type}"
+        rescue ConversionError
+          raise
+        rescue StandardError => error
+          Tracking::Correlation.attempt(link, status: "uncertain", error_class: error.class.name, occurrence_key: occurrence_key)
+          raise
         end
       end
 

@@ -21,7 +21,9 @@ class WebhookService
         # tela; os demais destinos vão para a fila.
         return deliver(options[:url], payload)[:success] if origin_form.to_s == "test_webhook"
 
-        WebhookDeliveryJob.perform_later(options[:url].to_s, payload)
+        correlation = options[:correlation] || Tracking::Correlation.webhook(tenant: options[:tenant] || Current.tenant,
+          event_name: payload[:event_name], data: data)
+        enqueue_delivery(options[:url].to_s, payload, correlation)
         return true
       end
 
@@ -37,6 +39,7 @@ class WebhookService
       return false if active_settings.empty?
 
       payload = build_payload(origin_form, data, options)
+      correlation = options[:correlation] || Tracking::Correlation.webhook(tenant: tenant, event_name: payload[:event_name], data: data)
       results = active_settings.map do |setting|
         # Prioritize WhatsApp URL if present (legacy behavior preservation)
         # or maybe we should send to both if both exist?
@@ -46,7 +49,7 @@ class WebhookService
         target_url = setting.whatsapp_webhook_url.presence || setting.webhook_url
         next false if target_url.blank?
 
-        WebhookDeliveryJob.perform_later(target_url, payload)
+        enqueue_delivery(target_url, payload, correlation)
         true
       end
 
@@ -82,6 +85,13 @@ class WebhookService
     end
 
     private
+
+    def enqueue_delivery(url, payload, correlation)
+      link = Tracking::Correlation.record(correlation, transport: "webhook", event_id: payload[:event_id], destination: url)
+      args = [url, payload]
+      args << { tenant_id: link.tenant_id, id: link.id } if link
+      WebhookDeliveryJob.perform_later(*args)
+    end
     
     def build_payload(origin_form, data, options = {})
       values = data.to_h.with_indifferent_access

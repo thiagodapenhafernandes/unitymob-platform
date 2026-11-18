@@ -15,7 +15,7 @@ module GoogleConversions
       Leads::StageConversionEvents.dispatch(lead, Leads::StageConversionEvents.lead_actions(lead), provider: :google, occurred_at: lead.updated_at)
     end
 
-    def self.record(lead, setting, event, occurred_at: lead.updated_at)
+    def self.record(lead, setting, event, occurred_at: lead.updated_at, correlation: nil)
       GoogleStageConversionEvent.transaction(requires_new: true) do
         type = lead.google_business_type.presence || business_type(lead.attribution_data.to_h["business_type"]) || business_type(lead.lead_pipeline&.kind)
         original = lead.lead_audit_logs.where(tenant_id: lead.tenant_id, action: "created").order(:id).first&.changeset.to_h
@@ -56,7 +56,7 @@ module GoogleConversions
           payload[:value] = BigDecimal(lead.closing_commission_cents.to_s) / 100
           payload[:currency] = "BRL"
         end
-        GoogleStageConversionEvent.where(tenant_id: lead.tenant_id).create_or_find_by!(lead_id: lead.id, conversion_type: suffix) do |record|
+        record = GoogleStageConversionEvent.where(tenant_id: lead.tenant_id).create_or_find_by!(lead_id: lead.id, conversion_type: suffix) do |record|
           record.webhook_setting = setting
           record.occurred_at = occurred_at
           record.destination_url = setting.google_destination_url
@@ -64,6 +64,11 @@ module GoogleConversions
           record.status = reason ? "skipped" : "pending"
           record.skip_reason = reason
         end
+        if record.previously_new_record?
+          Tracking::Correlation.record(correlation || Tracking::Correlation.change(lead), transport: "google_webhook",
+            event_id: record.payload_data.fetch("event_id"), destination: record.destination_url, native_event: record)
+        end
+        record
       end
     end
   end

@@ -26,6 +26,18 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
     context "tema #{theme_key} (variante #{variant})" do
       before { tenant.update_columns(public_site_theme: theme_key) }
 
+      it "usa a captura compartilhada no contato administrativo e nos formulários publicados" do
+        form = PublicForm.ensure_default_announce_property!(tenant: tenant)
+        get "/contato"
+        expect(response).to have_http_status(:ok)
+        contact = html.at_css("form[action='#{contacts_path}']")
+        expect(contact["data-controller"]).to include("form-attribution")
+        expect(contact["data-action"]).to include("formdata->form-attribution#append")
+        public_form = html.at_css("form[action='#{public_form_submissions_path(form.slug)}']")
+        expect(public_form["data-controller"]).to include("form-attribution")
+        expect(public_form["data-action"]).to include("formdata->form-attribution#append", "submit->public-form-modal#submit")
+      end
+
       it "compartilha o contexto estruturado de rastreamento sem depender do tema" do
         Setting.set('tracking.structured_events_enabled','true',tenant:tenant)
         TrackingIntegrationSetting.clear_cache(tenant:tenant)

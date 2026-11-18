@@ -9,6 +9,11 @@ homologada: ver `docs/imovelweb-direct-leads.md`. Isso não representa recebimen
 ativo em produção. Casa Mineira e Chaves na Mão continuam sem conector dedicado.
 O recebimento Grupo OLX existente deve ser preservado.
 
+Atualização local em 17/11/2026: Chaves na Mão tem preparação de captura para
+homologação por conta, ainda sem criação de leads ou contrato técnico confirmado.
+Ver `docs/chaves-na-mao-direct-leads.md`. Isso não representa conexão operacional
+nem altera o recebimento atual pelo C2S.
+
 O admin oferece uma solicitação por conta em **Portais → canal → Recebimento direto**.
 O código da conta é preenchido quando cadastrado; a ausência deve ser resolvida
 com o suporte. Nenhuma chave do feed ou credencial acompanha a solicitação.

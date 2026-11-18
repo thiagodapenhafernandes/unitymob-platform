@@ -39,8 +39,8 @@ Arquivos de controllers, models, serviços, banco e views públicas presentes no
 
 - camada semântica de tokens para preservar light e aplicar dark;
 - bundle próprio de componentes compartilhados carregado depois do legado;
-- 98 folhas de componente extraídas ou consolidadas;
-- contrato automatizado no conjunto atual, incluindo varredura das folhas próprias do admin para impedir tokens `--ax-dark-*` fora de seletores `data-admin-theme`, manifesto de adoção estática mínima dos 98 componentes, preferência individual no admin, comportamento acessível de modais, command menus, disclosures, tooltips, drawer, aside contextual e confirmação destrutiva e completude das matrizes deste relatório;
+- 99 folhas de componente extraídas ou consolidadas;
+- contrato automatizado no conjunto atual, incluindo varredura das folhas próprias do admin para impedir tokens `--ax-dark-*` fora de seletores `data-admin-theme`, manifesto de adoção estática mínima dos 99 componentes, preferência individual no admin, comportamento acessível de modais, command menus, disclosures, tooltips, drawer, aside contextual e confirmação destrutiva e completude das matrizes deste relatório;
 - redução de 3.246 linhas e adição de 1.051 linhas no `admin_tailwind.css`/catálogo no diff rastreado atual, resultado principalmente da retirada de regras duplicadas para componentes;
 - correção recente do botão acoplado de multiselect promovida do editor de imóvel para o componente compartilhado.
 
@@ -173,6 +173,7 @@ Legenda:
 | Workspace do sistema | `system_workspace.css` | Sim | Sim | Contrato automatizado para superfícies da fila/falhas, tabelas semânticas e compacto; sem homologação visual após a promoção | Dark/light + métricas/fila/falhas/tabelas + hover/foco + compacto |
 | Workflow operacional | `workflow.css` | Sim | Sim | Etapas, clarificador, main/inspector, stepper e estados promovidos do Fluxo de revisão; dark e compacto protegidos, sem homologação visual após a promoção | Dark/light + etapas/inspector/estados + hover/foco + compacto |
 | Tabela | `table.css` | Sim | Sim | Contrato automatizado para rolagem, hover/foco e densidade compacta; sem homologação após o refinamento | Dark/light + hover/foco + rolagem horizontal + compacto |
+| Auditoria de envios | `tracking_delivery.css` | Sim | Neutro | Geometria responsiva; cores e estados herdados dos contratos de card, badge e tabela; estrutura desktop/mobile verificada localmente | Dark/light + expandido/recolhido + foco + tentativas + compacto |
 | Modal de tarefa | `task_form_modal.css` | Sim | Sim | Modal de tarefa administrativa tokenizado; sem homologação visual completa | Dark/light + campos + recorrência + compacto |
 | Recorte por equipe | `team_toggle.css` | Sim | Sim | Link-switch composto sobre `toggle_chip`; ícone antes oculto, foco, estado marcado, dark e filtros preservados protegidos, sem homologação após a promoção | Dark/light + ligado/desligado + com/sem equipe + foco + filtros + compacto |
 | Chip selecionável | `toggle_chip.css` | Sim | Sim | Evidência automatizada transversal; sem nova homologação visual | Light/dark + hover/focus/checked/disabled + compacto |
@@ -189,7 +190,7 @@ Legenda:
 | Cabeçalho do workspace | `workspace_heading.css` | Sim | Sim | Evidência em várias áreas | Light + compacto |
 | Shell de workspace | `workspace_shell.css` | Sim | Sim | Contrato estrutural extraído do monólito; main/aside, contexto, estado recolhido, nomes acessíveis, dark e movimento reduzido protegidos; geometria inline de `aside_first` removida, sem homologação após a promoção | Dark/light + main/aside + expandido/recolhido + contextbar + movimento reduzido + compacto |
 
-Leitura objetiva da matriz: **98/98 componentes têm folha compartilhada carregada, seletor-raiz referenciado no admin e entram na proteção automatizada; 77/98 possuem escopo dark explícito, 18/98 consomem tokens compartilhados sem escopo dark próprio e 3/98 são neutros por contrato; 0/98 estão homologados em toda a matriz dark/light + desktop/compacto + estados interativos**. A matriz não afirma que todas as telas já adotaram cada contrato: adoção e resíduos legados são auditados por área. Evidência por screenshot ou inspeção parcial é registrada separadamente para não inflar o avanço.
+Leitura objetiva da matriz: **99/99 componentes têm folha compartilhada carregada, seletor-raiz referenciado no admin e entram na proteção automatizada; 77/99 possuem escopo dark explícito, 18/99 consomem tokens compartilhados sem escopo dark próprio e 4/99 são neutros por contrato; 0/99 estão homologados em toda a matriz dark/light + desktop/compacto + estados interativos**. A matriz não afirma que todas as telas já adotaram cada contrato: adoção e resíduos legados são auditados por área. Evidência por screenshot ou inspeção parcial é registrada separadamente para não inflar o avanço.
 
 ## Avanço comprovado
 
@@ -202,7 +203,7 @@ Os contratos automatizados cobrem atualmente **210 comportamentos** de dark them
 - cards, tabelas, estados vazios, skeletons e tooltips;
 - componentes do dashboard, catálogo de imóveis, leads e editor de imóveis;
 - componentes específicos de captações, automações, distribuição, SEO e marketing.
-- correspondência integral entre as 98 folhas carregadas, seus seletores-raiz catalogados e ao menos uma referência estática no admin.
+- correspondência integral entre as 99 folhas carregadas, seus seletores-raiz catalogados e ao menos uma referência estática no admin.
 
 Nesta rodada foram consolidados os seguintes comportamentos compartilhados:
 

@@ -45,4 +45,31 @@ RSpec.describe "Respostas das campanhas no lead", type: :request do
     expect(response).to redirect_to(admin_leads_path)
     expect(response.body).not_to include("Resposta restrita")
   end
+
+  ["text/html", Mime[:turbo_stream].to_s].each do |accept|
+    it "preserva as respostas escapadas ao renderizar uma atualização inválida em #{accept}" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Triagem")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: stage,
+        qualification_enabled: true, qualification_options: %w[qualified])
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, lead_pipeline: pipeline,
+        lead_pipeline_stage: stage, status: stage.name, other_information: {
+          "meta_leadgen_id" => "invalid-update-form", "field_data" => [
+            { "name" => "Preferências", "values" => ["Sacada", "<script>alert(1)</script>"] }
+          ] })
+
+      patch admin_lead_path(lead), params: { lead: { manager_qualification_status: "disqualified" } },
+        headers: { "ACCEPT" => accept }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      document = Nokogiri::HTML(response.body)
+      [".lead-pwa-detail", "#lead-attendance"].each do |selector|
+        expect(document.at_css(selector).text).to include("Respostas do formulário Meta", "Preferências", "Sacada")
+      end
+      expect(response.body).to include("&lt;script&gt;")
+      expect(response.body).not_to include("<script>alert(1)</script>")
+      expect(lead.reload.manager_qualification_status).to be_nil
+    end
+  end
+
 end

@@ -34,6 +34,9 @@
             <% elsif imovelweb_direct_leads?(integration) %>
               <td><%= imovelweb_production_badge(@imovelweb_production) %><small class="tw-block"><%= link_to "Configurar vínculo Imovelweb", admin_portal_integrations_path(portal: portal, anchor: "portal-imovelweb-leads"), class: "ax-link" %></small></td>
               <td><%= @imovelweb_production.filter_map { |connection| @imovelweb_last_received[connection.id] }.max.then { |time| time ? l(time, format: :short) : "Nenhum evento recebido" } %></td>
+            <% elsif portal == "chavesnamao" %>
+              <td><%= ax_badge(@chaves_na_mao_connection.receiving? ? "Em validação" : "Desativado", tone: :amber) %><small class="tw-block"><%= link_to "Configurar recebimento direto", admin_portal_integrations_path(portal: portal, anchor: "portal-direct-leads"), class: "ax-link" %></small></td>
+              <td>Nenhum confirmado</td>
             <% else %>
               <td>Sem integração de leads neste canal<% if portal_direct_lead_setup(integration) %><small class="tw-block"><%= link_to "Preparar recebimento direto", admin_portal_integrations_path(portal: portal, anchor: "portal-direct-leads"), class: "ax-link" %></small><% end %></td>
               <td>Não confirmado</td>
@@ -183,6 +186,8 @@
 
     <% if imovelweb_direct_leads?(current_integration) %>
       <%= render "admin/portal_integrations/imovelweb_connection" %>
+    <% elsif current_integration.portal == "chavesnamao" %>
+      <%= render "admin/portal_integrations/chaves_na_mao_connection", integration: current_integration %>
     <% elsif (direct_setup = portal_direct_lead_setup(current_integration)) %>
       <%= render "admin/portal_integrations/direct_lead_setup", integration: current_integration, setup: direct_setup %>
     <% end %>

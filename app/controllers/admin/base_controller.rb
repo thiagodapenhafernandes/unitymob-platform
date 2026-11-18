@@ -45,6 +45,7 @@ class Admin::BaseController < ApplicationController
     "app/controllers/admin/impersonations_controller.rb" => "encerra sessão de impersonação já iniciada por Admin do Sistema",
     "app/controllers/admin/manifests_controller.rb" => "manifesto PWA público/dinâmico sem operação de conta",
     "app/controllers/admin/my_profiles_controller.rb" => "perfil pessoal do usuário autenticado",
+    "app/controllers/admin/passwords_controller.rb" => "recuperação de senha pública do Devise, protegida por token de reset e fluxo de 2FA",
     "app/controllers/admin/sessions_controller.rb" => "login/logout/2FA do Devise",
     "app/controllers/admin/tenant_direct_uploads_controller.rb" => "infra de upload direto com tenant metadata",
     "app/controllers/admin/theme_preferences_controller.rb" => "preferência visual pessoal"

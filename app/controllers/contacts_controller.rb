@@ -1,4 +1,5 @@
 class ContactsController < ApplicationController
+  include PublicAttributionCapture
   skip_before_action :verify_authenticity_token, only: [:create]
   
   def new
@@ -15,6 +16,8 @@ class ContactsController < ApplicationController
 
     payload = contact_params.to_h
     payload["phone"] = Phones::Normalizer.call(payload["phone"]).to_s if payload["phone"].present?
+    attribution = capture_public_attribution(fields: params[:contact], page_url: request.referer)
+    payload["attribution_data"] = attribution.data
 
     # Enviar webhook
     WebhookService.send_form_data("contact_form", payload.merge(

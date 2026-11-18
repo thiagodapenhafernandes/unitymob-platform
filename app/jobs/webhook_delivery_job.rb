@@ -10,11 +10,13 @@ class WebhookDeliveryJob < ApplicationJob
 
   retry_on DeliveryError, wait: :polynomially_longer, attempts: 5
 
-  def perform(url, payload)
+  def perform(url, payload, tracking_reference = nil)
     return if url.blank?
 
     result = WebhookService.deliver(url, payload)
     fields = payload.to_h.with_indifferent_access
+    Tracking::Correlation.webhook_attempt(tracking_reference, url: url, event_id: fields[:event_id],
+      status: result[:success] ? "http_accepted" : result[:status] ? "failed" : "uncertain", http_status: result[:status])
     destination_host = URI.parse(url).host rescue nil
     delivery = {
       status: result[:success] ? "delivered" : "failed",

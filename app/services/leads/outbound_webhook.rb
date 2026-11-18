@@ -25,7 +25,7 @@ module Leads
         WebhookService.send_form_data(event, lead.attributes.merge(
           "property_code" => property&.codigo,
           "changes" => changes.transform_values { |from, to| { from: from, to: to } }
-        ), tenant: lead.tenant)
+        ), tenant: lead.tenant, correlation: Tracking::Correlation.change(lead))
       end
     end
   end

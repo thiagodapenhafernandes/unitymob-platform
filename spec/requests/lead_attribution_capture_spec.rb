@@ -70,6 +70,26 @@ RSpec.describe "Lead attribution capture", type: :request do
     expect(payload.dig(:source, :utm, "utm_content")).to eq("UID_Ab%2F+")
   end
 
+  it "correlaciona o UUID oferecido ao navegador e o UUID do webhook sem substituí-los" do
+    allow(WebhookService).to receive(:send_form_data).and_call_original
+    allow(WebhookDeliveryJob).to receive(:perform_later)
+    WebhookSetting.create!(tenant: Tenant.default, enabled: true, webhook_url: "https://hooks.example.test/token")
+    post leads_path, params: { lead: { name: "Cliente correlacionado", phone: "47999997775" } }, as: :json
+    expect(response).to have_http_status(:ok)
+    browser_id = response.parsed_body.fetch("analytics_event").fetch("event_id")
+    site = TrackingEventLink.find_by!(transport: "site", external_event_id: browser_id)
+    webhook = site.lead.tracking_event_links.find_by!(transport: "webhook")
+    expect(site.occurrence_key).to eq(webhook.occurrence_key)
+    expect(site.delivery_status).to eq("browser_offered")
+    expect(webhook.external_event_id).not_to eq(browser_id)
+    expect(WebhookDeliveryJob).to have_received(:perform_later) do |url, payload, reference|
+      expect(payload).to include(event_id: webhook.external_event_id, transaction_id: webhook.external_event_id)
+      expect(payload).not_to have_key(:correlation_id)
+      expect(reference).to eq(tenant_id: Tenant.default.id, id: webhook.id)
+      expect(url).to eq("https://hooks.example.test/token")
+    end
+  end
+
   it "não anuncia conversão para contato interno ignorado" do
     allow(Leads::InternalContactMatcher).to receive(:call).and_return(double(id: 123))
     expect {

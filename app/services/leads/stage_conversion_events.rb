@@ -18,7 +18,7 @@ module Leads
       lead.tenant.lead_pipeline_stages.active.find_by(id: lead.lead_pipeline_stage_id, lead_pipeline_id: lead.lead_pipeline_id)
     end
 
-    def self.dispatch(lead, actions, provider:, occurred_at: Time.current)
+    def self.dispatch(lead, actions, provider:, occurred_at: Time.current, correlation: nil)
       return if lead.skip_automatic_routing? || actions.empty?
 
       stage = stage_for(lead)
@@ -32,10 +32,10 @@ module Leads
         events << stage.google_event if actions.include?(stage.google_event_trigger)
         events << "qualify_lead" if stage.google_qualification_enabled? && actions.include?("qualified")
         events.uniq.each do |event|
-          GoogleConversions::Recorder.record(lead, setting, event, occurred_at: occurred_at) if GoogleConversions::Recorder::EVENTS.key?(event)
+          GoogleConversions::Recorder.record(lead, setting, event, occurred_at: occurred_at, correlation: correlation) if GoogleConversions::Recorder::EVENTS.key?(event)
         end
       elsif provider == :meta && stage.meta_conversion_event.present? && actions.include?(stage.meta_event_trigger)
-        Meta::ConversionDispatcher.call(lead: lead, event_name: stage.meta_conversion_event, occurred_at: occurred_at)
+        Meta::ConversionDispatcher.call(lead: lead, event_name: stage.meta_conversion_event, occurred_at: occurred_at, correlation: correlation)
       end
     rescue StandardError => error
       Rails.logger.warn("[STAGE_CONVERSION] tenant_id=#{lead.tenant_id} provider=#{provider} error_class=#{error.class.name}")
@@ -45,13 +45,15 @@ module Leads
       return unless appointment.saved_change_to_status? && appointment.realizado? && appointment.kind == "visita"
       return unless appointment.lead && appointment.tenant_id == appointment.lead.tenant_id
 
-      dispatch(appointment.lead, ["visit_completed"], provider: provider, occurred_at: appointment.updated_at)
+      dispatch(appointment.lead, ["visit_completed"], provider: provider, occurred_at: appointment.updated_at,
+        correlation: Tracking::Correlation.change(appointment))
     end
 
     def self.proposal_updated(proposal, provider:)
       return unless proposal.saved_change_to_status? && proposal.status == "enviada"
 
-      dispatch(proposal.lead, ["proposal_sent"], provider: provider, occurred_at: proposal.updated_at)
+      dispatch(proposal.lead, ["proposal_sent"], provider: provider, occurred_at: proposal.updated_at,
+        correlation: Tracking::Correlation.change(proposal))
     end
   end
 end

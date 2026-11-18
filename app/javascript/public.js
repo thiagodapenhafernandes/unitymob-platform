@@ -14,6 +14,7 @@ import CodeSearchController from "controllers/code_search_controller"
 import ComboboxController from "controllers/combobox_controller"
 import FiltersController from "controllers/filters_controller"
 import FilterDrawerController from "controllers/filter_drawer_controller"
+import FormAttributionController from "controllers/form_attribution_controller"
 import HeroSearchController from "controllers/hero_search_controller"
 import HeroSliderController from "controllers/hero_slider_controller"
 import InputMaskController from "controllers/input_mask_controller"
@@ -40,6 +41,7 @@ application.register("code-search", CodeSearchController)
 application.register("combobox", ComboboxController)
 application.register("filters", FiltersController)
 application.register("filter-drawer", FilterDrawerController)
+application.register("form-attribution", FormAttributionController)
 application.register("hero-search", HeroSearchController)
 application.register("hero-slider", HeroSliderController)
 application.register("input-mask", InputMaskController)

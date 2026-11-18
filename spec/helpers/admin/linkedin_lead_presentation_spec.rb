@@ -24,7 +24,7 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
   end
 
   it "mostra as respostas escapadas no painel compartilhado de desktop e mobile" do
-    html = helper.render("admin/shared/ui/lead_form_responses", lead: lead)
+    html = helper.render("admin/shared/ui/lead_form_responses", groups: Leads::FormResponses.new(lead).groups)
     expect(html).to include("Respostas do formulário LinkedIn", "Interesse", "&lt;script&gt;")
     expect(html).not_to include("<script>alert")
   end

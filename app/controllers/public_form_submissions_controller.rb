@@ -1,4 +1,5 @@
 class PublicFormSubmissionsController < ApplicationController
+  include PublicAttributionCapture
   def create
     @public_form = public_tenant.public_forms.active.find_by!(slug: params[:slug])
     uploads = file_uploads
@@ -8,7 +9,8 @@ class PublicFormSubmissionsController < ApplicationController
     )
 
     if @file_errors.empty? && valid_required_fields?(submission.payload) && store_files(submission, uploads) && submission.save
-      webhook_options = { request: request, tenant: public_tenant, public_form: @public_form }
+      webhook_options = { request: request, tenant: public_tenant, public_form: @public_form,
+        correlation: Tracking::Correlation.submission(submission) }
       webhook_options[:url] = @public_form.webhook_url if @public_form.webhook_url.present?
       WebhookService.send_form_data(
         @public_form.webhook_origin,
@@ -18,6 +20,7 @@ class PublicFormSubmissionsController < ApplicationController
           public_form_name: @public_form.name,
           public_form_category: @public_form.category,
           page_url: source_payload[:page_url],
+          attribution_data: source_payload[:attribution_data],
           tracking_uid: submission.source["tracking_uid"]
         ),
         webhook_options
@@ -116,22 +119,26 @@ class PublicFormSubmissionsController < ApplicationController
   end
 
   def source_payload
-    {
-      page_url: params[:page_url].presence || request.referer,
-      request_url: request.original_url,
-      instagram_reference: instagram_reference_token(params[:page_url]),
-      referrer_url: request.referer,
-      user_agent: request.user_agent,
-      remote_ip: request.remote_ip,
-      tracking_uid: Leads::TrackingUid.capture(
-        raw: params.fetch(:public_form_submission, params.fetch(:submission, ActionController::Parameters.new)).to_unsafe_h.merge("page_url" => params[:page_url]),
-        request: request
-      ),
-      utm: request.query_parameters.slice(
-        "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-        "gclid", "fbclid", "msclkid"
-      ).compact_blank
-    }.compact_blank
+    @source_payload ||= begin
+      attribution = capture_public_attribution(
+        fields: params[:public_form_submission] || params[:submission],
+        page_url: params[:page_url]
+      )
+      {
+        page_url: params[:page_url].presence || request.referer,
+        request_url: request.original_url,
+        instagram_reference: instagram_reference_token(params[:page_url]),
+        navigation_token: cookies.signed[PublicNavigationSession::COOKIE_KEY].presence,
+        referrer_url: request.referer,
+        user_agent: request.user_agent,
+        remote_ip: request.remote_ip,
+        tracking_uid: attribution.data["tracking_uid"],
+        attribution_channel: attribution.channel,
+        attribution_source: attribution.source,
+        attribution_data: attribution.data,
+        utm: attribution.data.slice(*(Leads::Attribution::TRACKING_KEYS - %w[landing_url referrer_url]))
+      }.compact_blank
+    end
   end
 
   def respond_to_success(submission)
