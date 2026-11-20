@@ -5,17 +5,14 @@
     <% end %>
 
     <%= form_tag("", method: :patch, data: { admin_user_inactivation_target: "form" }, class: "reassign-delete__form") do %>
-      <p class="reassign-delete__hint">Escolha o que fazer com os leads, imóveis do captador principal e vínculos de corretor deste usuário.</p>
+      <p class="reassign-delete__hint">Escolha o que fazer com os leads, imóveis do captador principal e vínculos de corretor deste usuário. Ao manter a carteira, os vínculos permanecem com o usuário inativo.</p>
 
       <div class="ax-chip-grid" role="radiogroup" aria-label="Carteira do usuário">
-        <label class="ax-chip">
-          <%= radio_button_tag :portfolio_action, "reassign", true, data: { action: "change->admin-user-inactivation#modeChanged" } %>
-          <span>Transferir carteira</span>
-        </label>
-        <label class="ax-chip">
-          <%= radio_button_tag :portfolio_action, "detach", false, data: { action: "change->admin-user-inactivation#modeChanged" } %>
-          <span>Desvincular carteira</span>
-        </label>
+        <% [["keep", "Manter carteira"], ["reassign", "Transferir carteira"], ["detach", "Desvincular carteira"]].each do |value, label| %>
+          <%= ax_check_field(label: label, type: :radio, name: :portfolio_action, value: value,
+                             checked: value == "reassign", id: "portfolio_action_#{value}", class_name: "ax-chip",
+                             input_html: { data: { action: "change->admin-user-inactivation#modeChanged" } }) %>
+        <% end %>
       </div>
 
       <div data-admin-user-inactivation-target="reassignFields">

@@ -297,7 +297,7 @@ module Admin
 
       reassign_scope = current_tenant.admin_users.account_members.active.where.not(id: @admin_user.id)
       reassign_scope = reassign_scope.where(id: [current_admin_user.id] + current_admin_user.descendant_ids) unless tenant_owner?
-      target = reassign_scope.find_by(id: params[:reassign_to_id]) if params[:portfolio_action].to_s != "detach"
+      target = reassign_scope.find_by(id: params[:reassign_to_id]) unless %w[detach keep].include?(params[:portfolio_action].to_s)
 
       result = AdminUsers::InactivationTransfer.call(
         user: @admin_user,
@@ -306,7 +306,9 @@ module Admin
       )
 
       notice = +"Acesso removido. Usuário inativado."
-      if params[:portfolio_action].to_s == "detach"
+      if params[:portfolio_action].to_s == "keep"
+        notice << " Carteira mantida com o usuário."
+      elsif params[:portfolio_action].to_s == "detach"
         notice << " Carteira desvinculada: #{result.leads_count} leads, #{result.habitations_count} imóveis e #{result.broker_assignments_count} vínculos."
       else
         notice << " Carteira transferida para #{target.name}: #{result.leads_count} leads, #{result.habitations_count} imóveis e #{result.broker_assignments_count} vínculos."

@@ -3,7 +3,7 @@ module AdminUsers
     Error = Class.new(StandardError)
     Result = Struct.new(:leads_count, :habitations_count, :broker_assignments_count, keyword_init: true)
 
-    MODES = %w[reassign detach].freeze
+    MODES = %w[reassign detach keep].freeze
 
     def self.call(user:, target: nil, mode: "reassign")
       new(user:, target:, mode:).call
@@ -22,19 +22,21 @@ module AdminUsers
       now = Time.current
 
       ActiveRecord::Base.transaction do
-        target_id = reassign? ? @target.id : nil
+        unless @mode == "keep"
+          target_id = reassign? ? @target.id : nil
 
-        @user.tenant.leads.where(admin_user_id: @user.id).lock.find_each do |lead|
-          lead.update_columns(admin_user_id: target_id, updated_at: now)
-          lead.sync_open_activity_owners!
-          result.leads_count += 1
+          @user.tenant.leads.where(admin_user_id: @user.id).lock.find_each do |lead|
+            lead.update_columns(admin_user_id: target_id, updated_at: now)
+            lead.sync_open_activity_owners!
+            result.leads_count += 1
+          end
+
+          result.habitations_count = @user.tenant.habitations
+            .where(admin_user_id: @user.id)
+            .update_all(admin_user_id: target_id, updated_at: now)
+
+          result.broker_assignments_count = transfer_broker_assignments!(target_id:, now:)
         end
-
-        result.habitations_count = @user.tenant.habitations
-          .where(admin_user_id: @user.id)
-          .update_all(admin_user_id: target_id, updated_at: now)
-
-        result.broker_assignments_count = transfer_broker_assignments!(target_id:, now:)
 
         @user.update!(active: false, display_on_site: false)
       end

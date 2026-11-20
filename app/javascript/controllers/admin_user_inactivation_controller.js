@@ -31,7 +31,7 @@ export default class extends Controller {
 
   modeChanged() {
     const mode = this.selectedMode
-    const reassign = mode !== "detach"
+    const reassign = mode === "reassign"
 
     if (this.reassignFieldsElement) this.reassignFieldsElement.hidden = !reassign
     if (this.selectElement) this.selectElement.required = reassign

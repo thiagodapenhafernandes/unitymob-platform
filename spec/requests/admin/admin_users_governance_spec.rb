@@ -150,6 +150,7 @@ RSpec.describe "Admin user governance", type: :request do
     expect(doc.at_css('select#reassign_to_id[name="reassign_to_id"][data-reassign-delete-target="select"]')).to be_present
     expect(doc.at_css("#reassignDeleteModal .ax-form-actions--static")).to be_present
     expect(doc.at_css("#inactivateUserModal")).to be_present
+    expect(doc.at_css('input[name="portfolio_action"][value="keep"]')).to be_present
     expect(doc.at_css('select#inactivate_reassign_to_id[name="reassign_to_id"][data-admin-user-inactivation-target="select"]')).to be_present
 
     get admin_admin_user_path(subordinate)
@@ -244,6 +245,32 @@ RSpec.describe "Admin user governance", type: :request do
     expect(assignment.reload.admin_user_id).to eq(target.id)
     follow_redirect!
     expect(response.body).to include("Carteira transferida para Corretor Destino")
+  end
+
+  it "inativa usuario mantendo a carteira sem exigir destino" do
+    tenant = Tenant.create!(name: "Tenant inativacao #{SecureRandom.hex(3)}", slug: "tenant-inativacao-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner")
+    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor Saindo")
+    lead = create(:lead, tenant: tenant, admin_user: broker)
+    habitation = create(:habitation, tenant: tenant, admin_user: broker)
+    assignment = HabitationBrokerAssignment.create!(habitation: habitation, admin_user: broker, role: "captador")
+
+    sign_in owner
+
+    patch inactivate_admin_admin_user_path(broker), params: {
+      portfolio_action: "keep"
+    }
+
+    expect(response).to redirect_to(admin_admin_users_path(status: "inactive"))
+    expect(broker.reload).not_to be_active
+    expect(broker.display_on_site).to eq(false)
+    expect(lead.reload.admin_user_id).to eq(broker.id)
+    expect(habitation.reload.admin_user_id).to eq(broker.id)
+    expect(assignment.reload.admin_user_id).to eq(broker.id)
+    follow_redirect!
+    expect(response.body).to include("Carteira mantida com o usuário.")
   end
 
   it "inativa usuario desvinculando carteira quando escolhido no modal" do
