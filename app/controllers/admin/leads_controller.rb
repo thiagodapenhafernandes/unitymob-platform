@@ -1223,7 +1223,7 @@ class Admin::LeadsController < Admin::BaseController
   def apply_broker_filter(scope)
     return scope if @broker_id.blank?
     return scope.where(leads: { admin_user_id: nil }) if @broker_id == "unassigned"
-    return scope.none unless permitted_admin_user_ids_for_leads.include?(@broker_id.to_i)
+    return scope.none unless permitted_admin_users_for_leads(include_inactive: true).exists?(id: @broker_id.to_i)
 
     scope.where(leads: { admin_user_id: @broker_id })
   end
@@ -2810,6 +2810,7 @@ class Admin::LeadsController < Admin::BaseController
     @status_options = lead_status_options_for_selected_context
     @lead_stage_color_by_status = lead_stage_color_map
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
+    @filter_broker_options = permitted_admin_users_for_leads(include_inactive: true).order(:name).pluck(:name, :id)
     @lead_pipeline_stage_options = lead_pipeline_stage_options_for_filter
     @lead_archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered.pluck(:name, :id)
   end
@@ -3395,12 +3396,14 @@ class Admin::LeadsController < Admin::BaseController
     end
   end
 
-  def permitted_admin_users_for_leads
+  def permitted_admin_users_for_leads(include_inactive: false)
     return AdminUser.none unless current_admin_user
-    return current_tenant.admin_users.active if owns_all_resource?(:leads)
+    users = current_tenant.admin_users.account_members
+    users = users.active unless include_inactive
+    return users if owns_all_resource?(:leads)
 
     if current_admin_user.can_view_team?(:leads)
-      scope = current_tenant.admin_users.active.where(id: current_admin_user.team_scope_ids)
+      scope = users.where(id: current_admin_user.team_scope_ids)
       return filter_users_by_acting_type(scope)
     end
 

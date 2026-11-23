@@ -2082,7 +2082,7 @@
           <%= ax_field_grid do %>
             <div class="ax-span-3">
               <%= ax_autocomplete_select_field(form: f, method: :broker_id, label: "Usuário",
-                                  choices: [["Sem corretor", "unassigned"]] + @broker_options,
+                                  choices: [["Sem corretor", "unassigned"]] + @filter_broker_options,
                                   select_options: { include_blank: "Todos os usuários", selected: @broker_id }) %>
             </div>
             <div class="ax-span-3">
@@ -2256,7 +2256,7 @@
         <%= f.hidden_field :q, value: @q if @q.present? %>
         <%= f.hidden_field :lead_pipeline_id, value: @selected_pipeline&.id if @selected_pipeline.present? %>
 
-        <% if @broker_options.size > 1 || @broker_id.present? %>
+        <% if @filter_broker_options.size > 1 || @broker_id.present? %>
           <%= ax_filter_section(title: "Meus leads", open: true) do %>
             <div class="lead-pwa-filter-box__row">
               <span>
@@ -2319,7 +2319,7 @@
 
         <%= ax_filter_section(title: "Equipes", count: (@broker_id.present? ? 1 : 0), open: true) do %>
           <%= ax_autocomplete_select_field(form: f, method: :broker_id, label: "Corretor ou responsável",
-                              choices: [["Sem corretor", "unassigned"]] + @broker_options,
+                              choices: [["Sem corretor", "unassigned"]] + @filter_broker_options,
                               select_options: { include_blank: "Todos permitidos", selected: @broker_id }) %>
         <% end %>
 

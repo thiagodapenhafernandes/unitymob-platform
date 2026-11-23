@@ -1175,6 +1175,45 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(table.text).not_to include("Lead Visita Real", "Lead Sem Agenda")
     end
 
+    it "filtra leads de usuário inativo sem habilitá-lo para atribuição ou transferência" do
+      broker = create(:admin_user, tenant: admin.tenant, name: "Corretora Inativa Consulta")
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, name: "Carteira histórica da corretora")
+      broker.update!(active: false)
+      other = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Carteira atual do administrador")
+
+      get admin_leads_path(view: "list", broker_id: broker.id)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".ax-record-list").text).to include(lead.name)
+      expect(document.at_css(".ax-record-list").text).not_to include(other.name)
+      expect(document.css("option[value='#{broker.id}']").map(&:text)).to include(broker.name)
+      expect(controller.send(:permitted_admin_user_ids_for_leads)).not_to include(broker.id)
+      expect(controller.send(:valid_transfer_target?, broker.id)).to be(false)
+      expect(controller.instance_variable_get(:@broker_options).map(&:last)).not_to include(broker.id)
+    end
+
+    it "permite ao gerente consultar inativos da equipe preservando atuação e hierarquia" do
+      profile = Profile.create!(tenant: admin.tenant, name: "Gerente consulta", axis: "vertical", position: 200,
+        permissions: { "leads" => { "view" => true, "manage" => true, "scope" => "team" } })
+      manager = create(:admin_user, tenant: admin.tenant, profile: profile, acting_type: :sales)
+      broker = create(:admin_user, tenant: admin.tenant, manager: manager, acting_type: :sales)
+      rental = create(:admin_user, tenant: admin.tenant, manager: manager, acting_type: :rentals, active: false)
+      outside = create(:admin_user, tenant: admin.tenant, active: false)
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, name: "Histórico da equipe inativa")
+      broker.update!(active: false)
+      sign_in manager
+
+      get admin_leads_path(view: "list", team: "1", broker_id: broker.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).at_css(".ax-record-list").text).to include(lead.name)
+      permitted = controller.send(:permitted_admin_users_for_leads, include_inactive: true)
+      expect(permitted).to include(broker)
+      expect(permitted).not_to include(rental, outside)
+      expect(controller.send(:permitted_admin_user_ids_for_leads)).not_to include(broker.id)
+    end
+
     it "nao filtra por corretor de outro tenant mesmo se houver lead legado inconsistente" do
       other_tenant = Tenant.create!(name: "Outro leads filter #{SecureRandom.hex(3)}", slug: "outro-leads-filter-#{SecureRandom.hex(3)}")
       other_profile = other_tenant.profiles.find_by!(key: "agent")

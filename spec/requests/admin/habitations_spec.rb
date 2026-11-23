@@ -2339,6 +2339,41 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(property.address).to be_nil
   end
 
+  it "permite ao admin consultar imóveis de inativos sem oferecê-los para atribuição" do
+    broker = create(:admin_user, tenant: admin.tenant, active: false, name: "Corretora Inativa Catálogo")
+    property = create(:habitation, tenant: admin.tenant, admin_user: broker, titulo_anuncio: "Carteira histórica de imóveis")
+
+    get filter_inspector_admin_habitations_path(ownership: "all"), headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(broker.name)
+    expect(controller.send(:habitation_visible_admin_users)).not_to include(broker)
+
+    get admin_habitations_path(ownership: "all", corretor_id: broker.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(property.titulo_anuncio)
+
+    manager_profile = admin.tenant.profiles.find_by!(key: "gerente")
+    manager_profile.update!(permissions: Profile.default_permissions_for("Gerente"))
+    sign_in create(:admin_user, tenant: admin.tenant, profile: manager_profile)
+    get filter_inspector_admin_habitations_path(ownership: "all"), headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(broker.name)
+
+    get admin_habitations_path(ownership: "all", corretor_id: broker.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(property.titulo_anuncio)
+
+    sign_in create(:admin_user, tenant: admin.tenant, profile: default_agent_profile)
+    get filter_inspector_admin_habitations_path(ownership: "all"), headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include(broker.name)
+  end
+
   it "permite que corretor filtre imóveis por colegas da mesma conta no catálogo" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Filtro")
