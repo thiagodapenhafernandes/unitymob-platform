@@ -2097,9 +2097,12 @@ class Admin::HabitationsController < Admin::BaseController
     filters = params[:filters]
     return unless filters.respond_to?(:each)
     filters.each do |key, value|
+      next unless habitations_filter_session_keys.include?(key.to_s)
       next if params.key?(key)  # não sobrescreve params já setados
       params[key] = value
     end
+    # A seleção em lote envia os filtros no corpo do POST, não na query string.
+    @effective_habitations_filter_params = params.to_unsafe_h.slice(*habitations_filter_session_keys)
   end
 
   def sanitized_export_fields

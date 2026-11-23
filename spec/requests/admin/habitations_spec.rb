@@ -1181,6 +1181,43 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(pending.publicar_chaves_na_mao).to be(false)
   end
 
+  it "despublica somente as diárias ao selecionar todos os imóveis filtrados" do
+    daily = create(:habitation, tenant: admin.tenant, status: "Diária", publicar_imovelweb_2: true, tipo_publicacao_imovelweb_2: "destaque")
+    monthly = create(:habitation, tenant: admin.tenant, status: "Aluguel", publicar_imovelweb_2: true, tipo_publicacao_imovelweb_2: "super_destaque")
+    sale = create(:habitation, tenant: admin.tenant, status: "Venda", publicar_imovelweb_2: true)
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Outra conta bulk", slug: "other-bulk-daily"), status: "Diária", publicar_imovelweb_2: true)
+    selection = { select_all_filtered: true, filters: { status: ["Diária"] }, action_type: "despublicar" }
+
+    post bulk_publish_eligibility_admin_habitations_path, params: selection.merge(channel: "imovelweb_2")
+    expect(response.parsed_body).to include("total" => 1, "eligible" => 1)
+
+    post bulk_publish_admin_habitations_path, params: selection.merge(channels: ["imovelweb_2"])
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body["updated"]).to eq(1)
+    expect(daily.reload.publicar_imovelweb_2).to be(false)
+    expect(daily.tipo_publicacao_imovelweb_2).to eq("destaque")
+    expect(monthly.reload.publicar_imovelweb_2).to be(true)
+    expect(monthly.tipo_publicacao_imovelweb_2).to eq("super_destaque")
+    expect(sale.reload.publicar_imovelweb_2).to be(true)
+    expect(foreign.reload.publicar_imovelweb_2).to be(true)
+  end
+
+  it "mantém a seleção explícita restrita aos IDs e à conta" do
+    selected = create(:habitation, tenant: admin.tenant, status: "Diária", publicar_imovelweb_2: true)
+    other = create(:habitation, tenant: admin.tenant, status: "Diária", publicar_imovelweb_2: true)
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Outra seleção", slug: "other-selection"), publicar_imovelweb_2: true)
+
+    post bulk_publish_admin_habitations_path, params: {
+      selected_ids: [selected.id, foreign.id], channels: ["imovelweb_2"], action_type: "despublicar"
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body["updated"]).to eq(1)
+    expect(selected.reload.publicar_imovelweb_2).to be(false)
+    expect(other.reload.publicar_imovelweb_2).to be(true)
+    expect(foreign.reload.publicar_imovelweb_2).to be(true)
+  end
+
   it "invalida o cache HTML público ao despublicar imóveis em massa do site" do
     store = ActiveSupport::Cache::MemoryStore.new
     allow(Rails).to receive(:cache).and_return(store)
