@@ -3302,7 +3302,8 @@ class Admin::HabitationsController < Admin::BaseController
   def catalog_filter_admin_users
     # O catálogo operacional pode ser filtrado por colegas da mesma conta.
     # Edição/atribuição de responsáveis continua usando habitation_visible_admin_users.
-    users = current_tenant.admin_users.active
+    users = current_tenant.admin_users.account_members
+    users = users.active unless can_view_habitation_administrative_filters?
     captured_ids = current_tenant.habitations.where.not(admin_user_id: nil).select(:admin_user_id)
     assignment_ids = HabitationBrokerAssignment.where(habitation_id: current_tenant.habitations.select(:id), role: "captador").select(:admin_user_id)
     agent_profiles = current_tenant.profiles.where(key: "agent").select(:id)
