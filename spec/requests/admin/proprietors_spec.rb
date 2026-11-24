@@ -333,6 +333,26 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(existing.reload).to have_attributes(name: "Titular Antigo", city: "Itajaí")
   end
 
+  it "aceita fixo e celular na criação e atualização rápida sem alterar o fixo" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    post quick_create_admin_proprietors_path,
+         params: { proprietor: { name: "Poti S/A Empreendimentos", phone_primary: "+55 (47) 3368-1559", mobile_phone: "(47) 98851-6745", city: "Itapema" } },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:created)
+    proprietor = admin.tenant.proprietors.find(JSON.parse(response.body).fetch("id"))
+    expect(proprietor).to have_attributes(phone_primary: "554733681559", mobile_phone: "5547988516745")
+
+    patch quick_update_admin_proprietor_path(proprietor),
+          params: { proprietor: { phone_primary: "(47) 3368-1560", mobile_phone: "+55 (47) 3368-1561" } },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(proprietor.reload).to have_attributes(phone_primary: "554733681560", mobile_phone: "554733681561")
+  end
+
   it "valida quantidade de dígitos no telefone da criação rápida" do
     admin = create(:admin_user, :admin)
     sign_in admin
@@ -343,8 +363,8 @@ RSpec.describe "Admin::Proprietors", type: :request do
 
     expect(response).to have_http_status(:unprocessable_entity)
     expect(JSON.parse(response.body).fetch("errors").join).to include(
-      "Telefone inválido para WhatsApp no Brasil",
-      "DDD + número com 9 dígitos",
+      "Telefone inválido",
+      "telefone fixo com 8 dígitos ou celular com 9 dígitos",
       "(47) 98851-6745"
     )
 

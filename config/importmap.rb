@@ -34,3 +34,5 @@ pin "lib/phone_input_styles", to: "lib/phone_input_styles.js", preload: false
 
 pin "libphonenumber-max", to: "libphonenumber-max.js", preload: false
 pin "lib/public_whatsapp", to: "lib/public_whatsapp.js", preload: false
+
+pin "lib/clipboard", to: "lib/clipboard.js", preload: false

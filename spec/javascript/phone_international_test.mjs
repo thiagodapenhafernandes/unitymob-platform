@@ -214,3 +214,15 @@ test('seletor de proprietário monta o E.164 do widget visível sem utils.js', (
 
   assert.equal(subject.normalizedPhoneValue(field), '+59163595977');
 });
+
+
+test('seletor aceita fixo e celular brasileiros com e sem DDI e rejeita incompletos', () => {
+  const subject = controller('habitation_owner_selector');
+  subject.phoneMetadata = field => ({ rawValue: field.value, countryIso2: 'br' });
+  for (const value of ['(47) 3368-1559', '+55 (47) 3368-1559', '(47) 98851-6745', '+55 (47) 98851-6745']) {
+    assert.equal(subject.phoneValidationError({ value }), null, value);
+  }
+  for (const value of ['(47) 8851-6745', '(47) 3368-155', '(47) 1336-8155']) {
+    assert.match(subject.phoneValidationError({ value }), /telefone fixo com 8 dígitos ou celular com 9 dígitos/, value);
+  }
+});
