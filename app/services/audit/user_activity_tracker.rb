@@ -39,31 +39,51 @@ module Audit
       return unless @tenant && @admin_user && @request
       return unless OperationalUserEvent::EVENT_NAMES.include?(@event_name)
 
-      occurred_at = Time.current
-      activity_session = current_or_new_session(occurred_at)
-      event = activity_session.events.create!(
-        tenant: @tenant,
-        admin_user: @admin_user,
-        habitation: @habitation,
-        name: @event_name,
-        path: @request.fullpath.to_s.first(MAX_PATH_LENGTH),
-        request_method: @request.request_method,
-        occurred_at:,
-        duration_seconds: normalized_duration,
-        query_text: normalized_query_text,
-        result_count: normalized_result_count,
-        filter_params: sanitized_hash(@filter_params),
-        visible_habitation_ids: normalized_visible_habitation_ids,
-        metadata: sanitized_hash(@metadata)
-      )
-      activity_session.record_event!(occurred_at:)
+      previous_session_id = @request.session[:operational_user_session_id]
+      event = with_tracking_timeouts do
+        occurred_at = Time.current
+        activity_session = current_or_new_session(occurred_at)
+        event = activity_session.events.create!(
+          tenant: @tenant,
+          admin_user: @admin_user,
+          habitation: @habitation,
+          name: @event_name,
+          path: @request.fullpath.to_s.first(MAX_PATH_LENGTH),
+          request_method: @request.request_method,
+          occurred_at:,
+          duration_seconds: normalized_duration,
+          query_text: normalized_query_text,
+          result_count: normalized_result_count,
+          filter_params: sanitized_hash(@filter_params),
+          visible_habitation_ids: normalized_visible_habitation_ids,
+          metadata: sanitized_hash(@metadata)
+        )
+        activity_session.record_event!(occurred_at:)
+        event
+      end
+      @request.session[:operational_user_session_id] = event.operational_user_session_id
       event
     rescue => e
-      Rails.logger.warn("[UserActivityTracker] #{e.class}: #{e.message}")
+      @request.session[:operational_user_session_id] = previous_session_id if defined?(previous_session_id)
+      Rails.logger.warn("[UserActivityTracker] #{e.class}")
       nil
     end
 
     private
+
+    # Telemetria não deve aguardar os 30s de timeout das operações de negócio.
+    def with_tracking_timeouts
+      OperationalUserSession.transaction(requires_new: true) do
+        connection = OperationalUserSession.connection
+        previous = connection.select_one("SELECT current_setting('statement_timeout') AS statement_timeout, current_setting('lock_timeout') AS lock_timeout")
+        connection.execute("SET LOCAL statement_timeout = '500ms'")
+        connection.execute("SET LOCAL lock_timeout = '100ms'")
+        result = yield
+        connection.execute("SET LOCAL statement_timeout = #{connection.quote(previous.fetch('statement_timeout'))}")
+        connection.execute("SET LOCAL lock_timeout = #{connection.quote(previous.fetch('lock_timeout'))}")
+        result
+      end
+    end
 
     def current_or_new_session(now)
       existing = OperationalUserSession
@@ -88,9 +108,7 @@ module Audit
         ip_digest: digest(@request.remote_ip.to_s).first(32),
         user_agent_digest: digest(@request.user_agent.to_s).first(64),
         entry_path: @request.fullpath.to_s.first(MAX_PATH_LENGTH)
-      ).tap do |activity_session|
-        @request.session[:operational_user_session_id] = activity_session.id
-      end
+      )
     end
 
     def normalized_query_text

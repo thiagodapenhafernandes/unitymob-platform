@@ -8,11 +8,16 @@ module Storage
       services = registry.instance_variable_get(:@services)
 
       configurations = configurations.deep_dup
-      add_static_compatibility_aliases!(configurations, setting)
+      dynamic_configurations = setting.active_storage_configurations
+      add_static_compatibility_aliases!(configurations, setting, dynamic_configurations:)
 
-      setting.active_storage_configurations.each do |name, config|
+      dynamic_configurations.each do |name, config|
         key = name.to_sym
-        configurations[key] = config.deep_symbolize_keys
+        normalized = config.deep_symbolize_keys
+        normalized[:service] = "DevelopmentReadOnlyS3" if Rails.env.development? && %w[S3 DigitalOceanSpaces].include?(normalized[:service])
+        next if configurations[key] == normalized
+
+        configurations[key] = normalized
         services.delete(key)
       end
 
@@ -33,14 +38,14 @@ module Storage
       true
     end
 
-    def add_static_compatibility_aliases!(configurations, setting)
+    def add_static_compatibility_aliases!(configurations, setting, dynamic_configurations: setting.active_storage_configurations)
       aliases = {
         StorageIntegrationSetting::DO_SERVICE_NAME => StorageIntegrationSetting::LEGACY_DO_SERVICE_NAMES,
         StorageIntegrationSetting::S3_SERVICE_NAME => StorageIntegrationSetting::LEGACY_S3_SERVICE_NAMES
       }
 
       aliases.each do |target, legacy_names|
-        next if setting.active_storage_configurations.key?(target)
+        next if dynamic_configurations.key?(target)
 
         source = legacy_names.find { |name| configurations.key?(name) }
         configurations[target] = configurations.fetch(source).deep_dup if source

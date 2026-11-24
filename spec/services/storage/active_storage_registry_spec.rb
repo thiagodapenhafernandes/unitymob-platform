@@ -20,6 +20,35 @@ RSpec.describe Storage::ActiveStorageRegistry do
     end
   end
 
+  it "preserves an instantiated service until its configuration changes" do
+    registry = ActiveStorage::Blob.services
+    original_configurations = registry.instance_variable_get(:@configurations)
+    original_services = registry.instance_variable_get(:@services)
+    registry.instance_variable_set(:@configurations, {})
+    registry.instance_variable_set(:@services, {})
+    name = :do_spaces_db_tenant_42
+    config = { service: "Disk", root: Rails.root.join("tmp/storage") }
+    setting = instance_double(StorageIntegrationSetting, active_storage_configurations: { name => config })
+
+    described_class.register!(setting)
+    first_service = registry.fetch(name)
+    other_name = :do_spaces_db_tenant_43
+    other_setting = instance_double(StorageIntegrationSetting, active_storage_configurations: { other_name => config })
+    described_class.register!(other_setting)
+    other_service = registry.fetch(other_name)
+    described_class.register!(setting)
+    expect(registry.fetch(name)).to equal(first_service)
+
+    allow(setting).to receive(:active_storage_configurations).and_return({ name => config.merge(root: Rails.root.join("tmp/changed-storage")) })
+    described_class.register!(setting)
+    expect(registry.fetch(name)).not_to equal(first_service)
+    expect(registry.fetch(other_name)).to equal(other_service)
+  ensure
+    registry.instance_variable_set(:@configurations, original_configurations)
+    registry.instance_variable_set(:@services, original_services)
+    registry.instance_variable_set(:@configurator, ActiveStorage::Service::Configurator.new(original_configurations))
+  end
+
   describe "Active Storage job hooks" do
     it "registra serviços dinâmicos antes do purge job nativo" do
       blob = instance_double(ActiveStorage::Blob)

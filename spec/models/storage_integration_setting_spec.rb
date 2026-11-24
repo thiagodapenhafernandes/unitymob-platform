@@ -33,4 +33,17 @@ RSpec.describe StorageIntegrationSetting, type: :model do
       response_checksum_validation: "when_required"
     )
   end
+  it "reuses the encryption key and still decrypts secrets written with the original derivation" do
+    key = ActiveSupport::KeyGenerator.new(Rails.application.secret_key_base).generate_key(
+      "storage-integration-setting", ActiveSupport::MessageEncryptor.key_len
+    )
+    legacy = ActiveSupport::MessageEncryptor.new(key).encrypt_and_sign("legacy-secret")
+    setting = described_class.new(do_spaces_secret_access_key_ciphertext: legacy)
+
+    expect(described_class.encryptor).to equal(described_class.encryptor)
+    expect(setting.do_spaces_secret_access_key).to eq("legacy-secret")
+    setting.do_spaces_secret_access_key = "updated-secret"
+    expect(setting.do_spaces_secret_access_key).to eq("updated-secret")
+  end
+
 end

@@ -327,10 +327,13 @@ class StorageIntegrationSetting < ApplicationRecord
   end
 
   def self.encryptor
-    key = ActiveSupport::KeyGenerator.new(Rails.application.secret_key_base).generate_key(
-      "storage-integration-setting",
-      ActiveSupport::MessageEncryptor.key_len
-    )
-    ActiveSupport::MessageEncryptor.new(key)
+    # A derivação da chave é cara e a chave da aplicação é estável no processo.
+    @encryptor ||= begin
+      key = ActiveSupport::KeyGenerator.new(Rails.application.secret_key_base).generate_key(
+        "storage-integration-setting",
+        ActiveSupport::MessageEncryptor.key_len
+      )
+      ActiveSupport::MessageEncryptor.new(key)
+    end
   end
 end
