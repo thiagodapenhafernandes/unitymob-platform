@@ -4888,7 +4888,8 @@ CREATE TABLE public.lead_pipelines (
     default_general boolean DEFAULT false NOT NULL,
     "position" integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    default_for_daily boolean DEFAULT false NOT NULL
 );
 
 
@@ -16037,6 +16038,13 @@ CREATE INDEX index_lead_pipeline_stages_on_tenant_id_and_stage_type ON public.le
 
 
 --
+-- Name: index_lead_pipelines_daily_default_per_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_lead_pipelines_daily_default_per_tenant ON public.lead_pipelines USING btree (tenant_id) WHERE (default_for_daily = true);
+
+
+--
 -- Name: index_lead_pipelines_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -22387,6 +22395,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261124120000'),
 ('20261117233000'),
 ('20261117220000'),
 ('20261117111000'),

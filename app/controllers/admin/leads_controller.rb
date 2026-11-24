@@ -437,7 +437,7 @@ class Admin::LeadsController < Admin::BaseController
     @proposals = @lead.proposals.ordered.limit(20)
     load_proposal_modal_context
     @archive_reason_options = archive_reason_options_for(@lead)
-    @funnel_statuses = Lead.status_options
+    @funnel_statuses = Lead.status_options(pipeline: @lead.lead_pipeline || @selected_pipeline, tenant: current_tenant)
     load_lead_whatsapp_context
     @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
     @shared_interest_property_ids = @lead.shared_property_ids
@@ -2589,7 +2589,7 @@ class Admin::LeadsController < Admin::BaseController
   def new_lead_params
     attributes = params.require(:lead).permit(
       :name, :email, :phone, :data_processing_legal_basis,
-      :status, :origin, :product, :lead_type, :lead_pipeline_id, :lead_pipeline_stage_id,
+      :status, :origin, :product, :lead_type, :business_type, :lead_pipeline_id, :lead_pipeline_stage_id,
       :notes, :tags
     )
 
@@ -2689,7 +2689,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def lead_params
-    permitted = [:status, :notes, :lead_pipeline_id, :lead_pipeline_stage_id]
+    permitted = [:status, :notes, :business_type, :lead_pipeline_id, :lead_pipeline_stage_id]
     # Transferir: dono do lead sempre pode passar pra frente; reatribuir o
     # lead de outra pessoa exige escopo além de "own" (ou ser tenant_owner).
     permitted << :admin_user_id if can_transfer_lead?(@lead)
@@ -2776,9 +2776,22 @@ class Admin::LeadsController < Admin::BaseController
     pipeline_change_requested = action_name.in?(%w[new create]) ||
                                 attributes[:lead_pipeline_id].present? ||
                                 attributes[:lead_pipeline_stage_id].present? ||
+                                attributes.key?(:business_type) ||
                                 attributes[:status].present?
     return unless pipeline_change_requested
 
+    if attributes.key?(:business_type)
+      pipeline = LeadPipeline.for_business_type(tenant: current_tenant, business_type: attributes[:business_type])
+      if pipeline
+        attributes[:lead_pipeline_id] = pipeline.id
+        stage = pipeline.stages.active.find_by(id: attributes[:lead_pipeline_stage_id].presence)
+        stage ||= LeadPipelineStage.matching_name(tenant: current_tenant, pipeline: pipeline, name: attributes[:status].presence || @lead&.status)
+        stage ||= pipeline.default_stage if action_name == "create"
+        attributes[:lead_pipeline_stage_id] = stage&.id
+        attributes[:status] = stage.name if stage
+        return
+      end
+    end
     pipeline = current_tenant.lead_pipelines.find_by(id: attributes[:lead_pipeline_id].presence) || @selected_pipeline
     stage = pipeline&.stages&.find_by(id: attributes[:lead_pipeline_stage_id].presence)
     stage ||= LeadPipelineStage.matching_name(tenant: current_tenant, pipeline: pipeline, name: attributes[:status]) if attributes[:status].present?
@@ -2796,6 +2809,11 @@ class Admin::LeadsController < Admin::BaseController
 
     next_stage = current_tenant.lead_pipeline_stages.find_by(id: next_stage_id)
     return false if next_stage.present? && !next_stage.visible_to_admin_user?(current_admin_user)
+
+    if attributes[:business_type].present?
+      pipeline = LeadPipeline.for_business_type(tenant: current_tenant, business_type: attributes[:business_type])
+      return true if next_stage.present? && next_stage.lead_pipeline_id == pipeline&.id && pipeline.id != @lead.lead_pipeline_id
+    end
 
     transitions = current_stage.transitions
     return true unless transitions.exists?

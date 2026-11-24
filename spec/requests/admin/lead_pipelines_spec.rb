@@ -39,6 +39,18 @@ RSpec.describe "Admin::LeadPipelines", type: :request do
     expect(response).to redirect_to(admin_lead_pipeline_leads_path(pipeline, view: "kanban"))
   end
 
+  it "cria o funil de Diária sem alterar o padrão de locação" do
+    admin.tenant.lead_pipelines.update_all(default_for_rental: false)
+    rental = create(:lead_pipeline, tenant: admin.tenant, kind: "rental", default_for_rental: true)
+    previous_daily = create(:lead_pipeline, tenant: admin.tenant, kind: "daily", default_for_daily: true)
+    post admin_lead_pipelines_path, params: { lead_pipeline: { name: "Diária", kind: "daily" } }
+    daily = admin.tenant.lead_pipelines.find_by!(name: "Diária")
+    expect(daily).to be_default_for_daily
+    expect(previous_daily.reload).not_to be_default_for_daily
+    expect(rental.reload).to be_default_for_rental
+    expect(LeadPipeline.default_for(tenant: admin.tenant, business_type: "diaria")).to eq(daily)
+  end
+
   it "mantem etapa inicial padrao quando nenhuma etapa e informada" do
     post admin_lead_pipelines_path,
          params: {

@@ -79,7 +79,8 @@ module Admin
       {
         default_general: pipeline.default_general?,
         default_for_sale: pipeline.default_for_sale?,
-        default_for_rental: pipeline.default_for_rental?
+        default_for_rental: pipeline.default_for_rental?,
+        default_for_daily: pipeline.default_for_daily?
       }.each do |attribute, enabled|
         next unless enabled
 
@@ -91,12 +92,15 @@ module Admin
       pipeline.default_general = false
       pipeline.default_for_sale = false
       pipeline.default_for_rental = false
+      pipeline.default_for_daily = false
 
       case pipeline.kind.to_s
       when "sale"
         pipeline.default_for_sale = true
       when "rental"
         pipeline.default_for_rental = true
+      when "daily"
+        pipeline.default_for_daily = true
       when "mixed"
         pipeline.default_general = true
         pipeline.default_for_sale = true

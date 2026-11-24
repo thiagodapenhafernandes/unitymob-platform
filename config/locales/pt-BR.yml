@@ -99,6 +99,9 @@ pt-BR:
         cidade: "Cidade"
         uf: "UF"
       lead:
+        business_type: "Tipo de negócio"
+        lead_pipeline: "Funil"
+        lead_pipeline_stage: "Etapa"
         statuses:
           novo: "Novo"
           em_atendimento: "Em Atendimento"

@@ -253,6 +253,8 @@ class Lead < ApplicationRecord
 
   before_validation :normalize_status
   before_validation :normalize_held_status_with_owner
+  validate :validate_business_type_selection
+  before_validation :sync_business_pipeline
   before_validation :sync_pipeline_stage
   before_validation :normalize_tags
   before_validation :record_data_processing_policy, on: :create
@@ -487,7 +489,7 @@ class Lead < ApplicationRecord
     ].compact.join(" ").parameterize(separator: "_")
 
     return "Captação" if text.match?(/captacao|captar|proprietario|proprietaria/)
-    explicit = {"venda" => "Venda", "locacao" => "Locação", "ambos" => "Venda / Locação"}[info["business_type"]]
+    explicit = {"venda" => "Venda", "locacao" => "Locação", "diaria" => "Diária", "ambos" => "Venda / Locação"}[info["business_type"]]
     return explicit if explicit
     return "Locação" if text.match?(/locacao|aluguel|alugar|rental|locar/)
     return "Venda" if text.match?(/venda|comprar|compra|sale|vend/)
@@ -706,6 +708,18 @@ class Lead < ApplicationRecord
     end
   end
 
+  BUSINESS_TYPES = { "venda" => "Venda", "locacao" => "Locação", "diaria" => "Diária", "ambos" => "Venda e locação" }.freeze
+  BUSINESS_TYPE_FIELDS = %w[other_information attribution_data product source_url property_id custom_answers external_lead_integration_id].freeze
+
+  def business_type
+    Leads::EntryClassification.new(self).business_type&.to_s
+  end
+
+  def business_type=(value)
+    @assigned_business_type = value.to_s
+    self.other_information = other_information.to_h.merge("business_type" => value.to_s)
+  end
+
   private
 
   def record_data_processing_policy
@@ -747,6 +761,49 @@ class Lead < ApplicationRecord
     return unless self.class.status_value(status, tenant: tenant || Current.tenant) == self.class.status_value(:represado, tenant: tenant || Current.tenant)
 
     self.status = self.class.status_value(:em_atendimento, tenant: tenant || Current.tenant)
+  end
+
+  def validate_business_type_selection
+    return if tenant.blank? || !defined?(@assigned_business_type) || @assigned_business_type.blank?
+    return unless will_save_change_to_other_information?
+
+    if !BUSINESS_TYPES.key?(@assigned_business_type)
+      errors.add(:business_type, "é inválido")
+    elsif !LeadPipeline.for_business_type(tenant: tenant, business_type: @assigned_business_type)
+      errors.add(:business_type, "não tem um funil ativo configurado nesta conta")
+    end
+  end
+
+  def sync_business_pipeline
+    return if tenant.blank?
+    return unless new_record? || BUSINESS_TYPE_FIELDS.any? { |field| will_save_change_to_attribute?(field) } ||
+      (defined?(@assigned_business_type) && will_save_change_to_lead_pipeline_id?)
+    type = business_type
+    return if type.blank?
+    unless new_record?
+      previous = self.class.instantiate(attributes.merge(attributes_in_database))
+      return if previous.business_type == type && !will_save_change_to_lead_pipeline_id?
+    end
+    pipeline = LeadPipeline.for_business_type(tenant: tenant, business_type: type)
+    return if pipeline.blank?
+    if new_record? && lead_pipeline&.active? && lead_pipeline.tenant_id == tenant_id
+      return if external_lead_integration_id.present? && lead_pipeline_stage&.active? && lead_pipeline_stage.lead_pipeline_id == lead_pipeline.id
+      kind = { "venda" => "sale", "locacao" => "rental", "diaria" => "daily", "ambos" => "mixed" }[type]
+      return if pipeline == lead_pipeline || lead_pipeline.kind == kind
+    end
+    return if persisted? && pipeline.id == lead_pipeline_id_in_database
+
+    stage = lead_pipeline_stage if lead_pipeline_stage&.lead_pipeline_id == pipeline.id && lead_pipeline_stage.active?
+    stage ||= LeadPipelineStage.matching_name(tenant: tenant, pipeline: pipeline, name: status)
+    stage = nil unless stage&.active?
+    stage ||= pipeline.default_stage if new_record?
+    self.lead_pipeline = pipeline
+    self.lead_pipeline_stage = stage
+    if stage
+      self.status = stage.name
+    else
+      errors.add(:lead_pipeline_stage, "deve ser escolhida no funil #{pipeline.name}; não existe etapa equivalente a #{status}")
+    end
   end
 
   def sync_pipeline_stage
