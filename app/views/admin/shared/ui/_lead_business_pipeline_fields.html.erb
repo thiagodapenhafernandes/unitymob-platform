@@ -1,0 +1,22 @@
+<% pipeline = lead.lead_pipeline %>
+<% stage_options = pipeline ? visible_stages_for(pipeline.stages.active.ordered).map { |stage| [stage.name, stage.name, { data: { stage_id: stage.id } }] } : [] %>
+<%= form.hidden_field :lead_pipeline_stage_id, data: { lead_pipeline_stage_select_target: "stageId" } %>
+<div class="ax-span-4">
+  <%= ax_select_field(form: form, method: :business_type, label: "Tipo de negócio",
+        choices: Lead::BUSINESS_TYPES.map { |value, label| [label, value] },
+        select_options: { include_blank: "Identificar automaticamente", selected: lead.business_type },
+        tooltip: "Define o funil de atendimento conforme a configuração da conta.",
+        html_options: { data: { lead_pipeline_stage_select_target: "businessType", action: "change->lead-pipeline-stage-select#changeBusinessType" } }) %>
+</div>
+<div class="ax-span-4">
+  <%= ax_select_field(form: form, method: :lead_pipeline_id, label: "Funil",
+        choices: current_tenant.lead_pipelines.active.ordered.pluck(:name, :id),
+        select_options: { selected: pipeline&.id },
+        html_options: { data: { lead_pipeline_stage_select_target: "pipeline", action: "change->lead-pipeline-stage-select#changePipeline" } }) %>
+</div>
+<div class="ax-span-4">
+  <%= ax_select_field(form: form, method: :status, label: "Etapa",
+        choices: stage_options, select_options: { include_blank: "Escolha uma etapa", selected: lead.status },
+        tooltip: "Ao trocar de funil, a etapa equivalente é mantida. Se não existir, escolha outra.",
+        html_options: { data: { lead_pipeline_stage_select_target: "stage", action: "change->lead-pipeline-stage-select#changeStage" } }) %>
+</div>

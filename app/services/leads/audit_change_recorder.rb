@@ -2,7 +2,7 @@ module Leads
   class AuditChangeRecorder
     AUDITED_FIELDS = %w[
       closing_commission_cents name email phone client_name client_email client_phone status notes origin lead_type
-      property_id admin_user_id distribution_rule_id source_url product custom_answers other_information
+      lead_pipeline_id lead_pipeline_stage_id property_id admin_user_id distribution_rule_id source_url product custom_answers other_information
       broker_qualification_status manager_qualification_status
     ].freeze
 

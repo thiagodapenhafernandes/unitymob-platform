@@ -1859,6 +1859,15 @@
       actions: @lead_heading_actions
     ) %>
 
+<%= ax_form_section(title: "Tipo de negócio e funil", icon: "diagram-3") do %>
+  <%= form_with model: [:admin, @lead], local: true, data: lead_business_pipeline_data(@lead), aria: { label: "Tipo de negócio e funil" } do |form| %>
+    <%= ax_field_grid do %>
+      <%= render "admin/shared/ui/lead_business_pipeline_fields", form: form, lead: @lead %>
+    <% end %>
+    <%= ax_form_actions(form: form, submit_label: "Salvar tipo de negócio e etapa", sticky: false) %>
+  <% end %>
+<% end %>
+
 <div id="lead-attendance" class="lead-desktop-panels">
 <%= render "admin/leads/origin_line", lead: @lead, origin: (@lead_origin_taxonomy ||= lead_origin_for(@lead, tenant: current_tenant)) %>
 <%= render "admin/shared/ui/lead_form_responses", groups: @lead_form_response_groups %>

@@ -4,16 +4,36 @@ import { Controller } from "@hotwired/stimulus"
 // O formulário continua enviando `status`; o id da etapa é um vínculo mais
 // preciso para o controller Rails reconciliar funil/etapa sem depender do nome.
 export default class extends Controller {
-  static targets = ["pipeline", "stage", "stageId"]
-  static values = { url: String }
+  static targets = ["pipeline", "stage", "stageId", "businessType"]
+  static values = { url: String, stages: Object, businessPipelines: Object, requireChoice: Boolean }
 
   connect() {
     this.syncStageId()
+    this.lockBusinessPipeline()
+  }
+
+  lockBusinessPipeline() {
+    if (!this.hasBusinessTypeTarget) return
+    this.pipelineTarget.disabled = Boolean(this.businessPipelinesValue[this.businessTypeTarget.value])
+  }
+
+  changeBusinessType() {
+    const pipelineId = this.businessPipelinesValue[this.businessTypeTarget.value]
+    if (pipelineId) {
+      this.pipelineTarget.value = String(pipelineId)
+      this.changePipeline()
+    }
+    this.lockBusinessPipeline()
   }
 
   changePipeline() {
     const pipelineId = this.pipelineTarget.value
-    if (!pipelineId || !this.hasUrlValue) return
+    if (!pipelineId) return
+    if (this.hasStagesValue) {
+      this.replaceStageOptions(this.stagesValue[pipelineId], this.stageTarget.value)
+      return
+    }
+    if (!this.hasUrlValue) return
 
     const previousValue = this.stageTarget.value
     this.setLoading(true)
@@ -57,8 +77,16 @@ export default class extends Controller {
       this.stageTarget.add(option)
     })
 
-    const matched = Array.from(this.stageTarget.options).find((option) => option.value === previousValue)
-    this.stageTarget.value = matched?.value || this.stageTarget.options[0]?.value || ""
+    const normalize = (value) => value.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "")
+    const matched = Array.from(this.stageTarget.options).find((option) => normalize(option.value) === normalize(previousValue))
+    if (!matched && this.requireChoiceValue) {
+      this.stageTarget.add(new Option("Escolha uma etapa", ""), 0)
+    }
+    this.stageTarget.value = matched?.value || (this.requireChoiceValue ? "" : this.stageTarget.options[0]?.value) || ""
     this.syncStageId()
   }
 

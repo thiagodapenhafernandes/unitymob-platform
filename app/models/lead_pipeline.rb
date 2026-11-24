@@ -4,6 +4,7 @@ class LeadPipeline < ApplicationRecord
   KINDS = {
     "sale" => "Venda",
     "rental" => "Locação",
+    "daily" => "Diária",
     "mixed" => "Venda e locação",
     "custom" => "Sem tipo específico"
   }.freeze
@@ -33,14 +34,18 @@ class LeadPipeline < ApplicationRecord
 
   def self.default_for(tenant:, business_type: nil)
     scope = tenant.lead_pipelines.active.ordered
-    case business_type.to_s
-    when "sale", "venda", "sales"
-      scope.find_by(default_for_sale: true) || scope.find_by(default_general: true) || scope.first
-    when "rental", "locacao", "locação", "rentals"
-      scope.find_by(default_for_rental: true) || scope.find_by(default_general: true) || scope.first
-    else
-      scope.find_by(default_general: true) || scope.first
-    end
+    for_business_type(tenant: tenant, business_type: business_type) || scope.find_by(default_general: true) || scope.first
+  end
+
+  def self.for_business_type(tenant:, business_type:)
+    attribute = case business_type.to_s
+                when "sale", "venda", "sales" then :default_for_sale
+                when "rental", "locacao", "locação", "rentals" then :default_for_rental
+                when "daily", "diaria", "diária", "temporada" then :default_for_daily
+                end
+    scope = tenant.lead_pipelines.active.ordered
+    return scope.find_by(attribute => true) if attribute
+    scope.find_by(kind: "mixed") if %w[ambos mixed sale_rent].include?(business_type.to_s)
   end
 
   def self.ensure_default!(tenant:)
@@ -78,7 +83,8 @@ class LeadPipeline < ApplicationRecord
     {
       default_general: default_general?,
       default_for_sale: default_for_sale?,
-      default_for_rental: default_for_rental?
+      default_for_rental: default_for_rental?,
+      default_for_daily: default_for_daily?
     }.each do |attribute, enabled|
       next unless enabled
 
