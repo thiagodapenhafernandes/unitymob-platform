@@ -27,6 +27,26 @@ RSpec.describe "Admin sessions", type: :request do
     expect(admin.reload.remember_created_at).to be_present
   end
 
+  ["Mozilla/5.0 (iPhone) UnitymobFieldApp", "Mozilla/5.0 (Linux; Android 14) UnitymobFieldApp"].each do |user_agent|
+    it "restores the native session after losing the session cookie (#{user_agent})" do
+      host! "localhost"
+      admin = create(:admin_user, :admin)
+      headers = { "HTTP_USER_AGENT" => user_agent }
+      post "/mobile/sign_in", params: { admin_user: { email: admin.email, password: "password123" } }, headers: headers
+      expect(response).to redirect_to(field_root_path)
+      expect(cookies["remember_admin_user_token"]).to be_present
+
+      cookies.delete("_unitymob_crm_session")
+      get field_root_path, headers: headers
+      expect(response).to have_http_status(:ok)
+
+      delete destroy_admin_user_session_path, headers: headers
+      cookies.delete("_unitymob_crm_session")
+      get field_root_path, headers: headers
+      expect(response).to redirect_to(new_admin_user_session_path)
+    end
+  end
+
   it "redirects a normal browser logout to the web sign-in page" do
     host! "localhost"
     admin = create(:admin_user, :admin)

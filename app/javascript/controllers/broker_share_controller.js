@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { copyText } from "lib/clipboard"
 
 export default class extends Controller {
   static targets = ["menu", "status"]
@@ -66,9 +67,7 @@ export default class extends Controller {
   async copy(event) {
     event.preventDefault()
     event.stopPropagation()
-    const url = await this.ensureSharedUrl()
-    if (!url) return
-    await this.copyFromUrl(url)
+    await this.copyFromUrl(this.sharedUrl || this.ensureSharedUrl())
   }
 
   async whatsapp(event) {
@@ -147,46 +146,7 @@ export default class extends Controller {
   }
 
   async copyFromUrl(url) {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(url)
-        this.flashStatus("Link copiado")
-        return
-      } catch (_error) {
-        // Alguns navegadores desktop bloqueiam Clipboard API mesmo em clique do usuário.
-      }
-    }
-
-    if (this.copyWithFallback(url)) {
-      this.flashStatus("Link copiado")
-    } else {
-      this.flashStatus("Copie manualmente")
-    }
-  }
-
-  copyWithFallback(url) {
-    const input = document.createElement("textarea")
-    input.value = url
-    input.setAttribute("readonly", "")
-    input.style.position = "fixed"
-    input.style.top = "0"
-    input.style.left = "0"
-    input.style.width = "1px"
-    input.style.height = "1px"
-    input.style.opacity = "0"
-    document.body.appendChild(input)
-
-    input.focus()
-    input.select()
-    input.setSelectionRange(0, input.value.length)
-
-    try {
-      return document.execCommand("copy")
-    } catch (_error) {
-      return false
-    } finally {
-      input.remove()
-    }
+    if (await copyText(url)) this.flashStatus("Link copiado")
   }
 
   flashStatus(message) {

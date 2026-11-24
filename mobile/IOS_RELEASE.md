@@ -1,4 +1,51 @@
-# Atualização iOS — Unitymob
+# Atualização iOS — Unitymob 1.0.2 (7)
+
+Pacote: **1.0.2 (7)**, bundle `br.com.unitymob.field`, equipe `J9956N9B6A`.
+
+## Conteúdo
+
+- Recuperação dos cookies persistentes no Keychain, antes de abrir o WebView,
+  para reduzir pedidos repetidos de login depois de encerrar/reabrir o app.
+- Preservação do domínio, caminho, validade, Secure, HttpOnly e SameSite dos
+  cookies; nenhum armazenamento de senha ou prolongamento da validade no servidor.
+- Logout, revogação e limites configurados por conta continuam sendo validados
+  pelo Rails. A regra é compartilhada por todas as contas, sem exceções por cliente.
+- Correções de cópia de links e telefone de proprietário são entregues pelo
+  servidor Rails; precisam do deploy na Salute e Conexão, além do build iOS.
+
+## Pacote de distribuição
+
+Archive previsto no Organizer:
+`~/Library/Developer/Xcode/Archives/2026-11-24/Unitymob 1.0.2 (7).xcarchive`.
+
+```sh
+xcodebuild -project mobile/ios/App/App.xcodeproj -scheme App -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -archivePath "$HOME/Library/Developer/Xcode/Archives/2026-11-24/Unitymob 1.0.2 (7).xcarchive" archive
+```
+
+O build deve usar os recursos existentes (`www`, Firebase, ícone e quatro sons)
+sem atualizar dependências. Antes do envio, verificar assinatura, bundle,
+versão/build e recursos do Archive. Assinatura de desenvolvimento do Archive
+não substitui a assinatura App Store na exportação/distribuição.
+
+O preparo local não faz upload nem submete revisão. No Organizer, selecionar
+**Distribute App → App Store Connect**, conferir assinatura de distribuição e
+então enviar quando autorizado. Se o build 7 já tiver sido enviado por outro
+operador, incrementar antes de gerar outro Archive.
+
+## Homologação antes de liberar
+
+Validar no iPhone: login; minimizar, encerrar e reabrir; sair explicitamente;
+revogação no servidor; prazo de lembrar dispositivo da conta; navegação e
+compartilhamento; push e abertura pela notificação. Não há confirmação no
+aparelho afetado apenas por compilar o aplicativo.
+
+Novidades sugeridas: **Melhorias na permanência do login e no compartilhamento
+de imóveis pelo aplicativo.**
+
+## Histórico da preparação anterior
+
 
 Pacote preparado: **1.0.1 (6)**, bundle `br.com.unitymob.field`, equipe `J9956N9B6A`.
 A versão 1.0 já está publicada. Este pacote inclui os quatro sons de notificação.

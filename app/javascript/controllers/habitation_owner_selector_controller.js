@@ -638,8 +638,9 @@ export default class extends Controller {
 
     const nationalDigits = this.brazilianNationalDigits(rawDigits)
     if (nationalDigits.length === 11 && nationalDigits[2] === "9") return null
+    if (nationalDigits.length === 10 && /^[2-5]$/.test(nationalDigits[2])) return null
 
-    return "Telefone inválido para WhatsApp no Brasil. Informe DDD + número com 9 dígitos, exemplo: (47) 98851-6745."
+    return "Telefone inválido. Informe DDD + telefone fixo com 8 dígitos ou celular com 9 dígitos. Exemplos: (47) 3368-1559 ou (47) 98851-6745."
   }
 
   normalizedPhoneValue(field) {

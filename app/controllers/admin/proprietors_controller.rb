@@ -481,8 +481,9 @@ module Admin
 
       national_digits = quick_brazilian_national_digits(digits)
       return if national_digits.length == 11 && national_digits[2] == "9"
+      return if national_digits.length == 10 && national_digits[2].in?(%w[2 3 4 5])
 
-      "Telefone inválido para WhatsApp no Brasil. Informe DDD + número com 9 dígitos, exemplo: (47) 98851-6745."
+      "Telefone inválido. Informe DDD + telefone fixo com 8 dígitos ou celular com 9 dígitos. Exemplos: (47) 3368-1559 ou (47) 98851-6745."
     end
 
     def quick_brazilian_national_digits(digits)

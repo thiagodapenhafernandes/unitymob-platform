@@ -10,6 +10,7 @@ function setup({ native = false, blocked = false, url = 'https://example.test/i/
   const calls = [];
   const popup = { opener: {}, close: () => calls.push('close'), location: { replace: value => calls.push(value) } };
   const context = vm.createContext({ Controller: class {}, encodeURIComponent,
+    copyText: value => { calls.push("copy"); return Promise.resolve(value).then(Boolean); },
     window: { Capacitor: { isNativePlatform: () => native },
       open: () => { calls.push('open'); return blocked ? null : popup; },
       location: { assign: value => calls.push(value) } } });
@@ -41,4 +42,14 @@ test('failed generation closes the reserved tab', async () => {
   const { controller, calls } = setup({ url: null });
   await controller.whatsapp({ preventDefault() {}, stopPropagation() {} });
   assert.deepEqual(calls, ['open', 'generate', 'close']);
+});
+
+
+test('copy reserves clipboard before waiting for the tracked URL', async () => {
+  const { controller, calls } = setup();
+  controller.flashStatus = message => calls.push(message);
+  const result = controller.copy({ preventDefault() {}, stopPropagation() {} });
+  assert.deepEqual(calls, ['generate', 'copy']);
+  await result;
+  assert.equal(calls.at(-1), 'Link copiado');
 });

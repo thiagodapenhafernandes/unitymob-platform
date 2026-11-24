@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { copyText } from "lib/clipboard"
 
 // Conecta com data-controller="clipboard"
 // Targets: source (input com texto), button (botão de copiar), content (span com label do botão)
@@ -10,7 +11,7 @@ export default class extends Controller {
     successDuration: { type: Number, default: 2000 }
   }
 
-  copy(event) {
+  async copy(event) {
     event.preventDefault()
     if (!this.hasSourceTarget) return
 
@@ -39,11 +40,8 @@ export default class extends Controller {
       this.toast(this.successContentValue, "success")
     }
 
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(finish).catch(() => this.fallback(text, finish))
-    } else {
-      this.fallback(text, finish)
-    }
+    if (await copyText(text)) finish()
+    else this.toast("Cópia automática indisponível", "danger")
   }
 
   select(event) {
@@ -53,34 +51,6 @@ export default class extends Controller {
     input.select()
     if (typeof input.setSelectionRange === "function") {
       input.setSelectionRange(0, input.value?.length || 0)
-    }
-  }
-
-  fallback(text, onSuccess) {
-    const inputLike = typeof this.sourceTarget.select === "function"
-    let temporary = null
-
-    if (inputLike) {
-      this.sourceTarget.select()
-      this.sourceTarget.setSelectionRange?.(0, 99999)
-    } else {
-      temporary = document.createElement("textarea")
-      temporary.value = text
-      temporary.setAttribute("readonly", "")
-      temporary.style.position = "fixed"
-      temporary.style.opacity = "0"
-      document.body.appendChild(temporary)
-      temporary.select()
-    }
-
-    try {
-      document.execCommand("copy")
-      onSuccess()
-    } catch (err) {
-      console.error("Falha ao copiar para o clipboard:", err)
-      this.toast("Não foi possível copiar", "danger")
-    } finally {
-      temporary?.remove()
     }
   }
 

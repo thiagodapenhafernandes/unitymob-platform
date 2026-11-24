@@ -25,6 +25,39 @@ login por cookie normal — exatamente como abrir o site num navegador mobile.
    volta pra essa tela local (ver `Admin::SessionsController#after_sign_out_path_for`,
    que detecta o app nativo pelo User-Agent `UnitymobFieldApp`).
 
+## Persistência da sessão no iOS
+
+O `SceneDelegate` restaura os cookies persistentes **antes** de criar o WebView.
+`PersistentSessionCookies` acompanha o `WKHTTPCookieStore` e mantém no Keychain,
+com `AfterFirstUnlockThisDeviceOnly`, somente os cookies Secure + HttpOnly
+`remember_admin_user_token` e `unitymob_admin_device_id` ainda válidos. Não guarda
+senha nem transforma o cookie transitório de sessão em credencial permanente.
+
+O arquivo preserva domínio, caminho, validade e atributos do cookie, sem misturar
+contas. Cookies já presentes no WebKit têm prioridade sobre o backup. Alterações
+(inclusive exclusões após sair) substituem o arquivo, e há uma captura adicional
+com tempo de background ao minimizar. O servidor mantém a decisão final: logout,
+revogação, inatividade e limites definidos pela conta continuam valendo mesmo se
+um backup antigo for restaurado.
+
+O bootstrap é programático: não reintroduzir `UIMainStoryboardFile` ou
+`UISceneStoryboardFile` no `Info.plist`, pois carregariam outro WebView antes da
+restauração. `UILaunchStoryboardName` permanece para a tela de lançamento.
+
+Validação da política/serialização, em macOS com Xcode:
+
+```sh
+swiftc mobile/ios/App/App/PersistentSessionCookies.swift mobile/tests/SessionCookiesTests.swift -o /tmp/unitymob-session-cookies-test
+/tmp/unitymob-session-cookies-test
+rvm 3.2.3 do bundle exec rspec spec/requests/admin/persistent_session_recovery_spec.rb spec/requests/admin/sessions_spec.rb spec/models/admin_user_session_expiration_spec.rb
+```
+
+Publicar essa correção exige **novo build iOS**; deploy Rails não atualiza o app
+instalado. O código não altera Android/PWA. Homologar no iPhone: autenticar,
+minimizar, encerrar o processo e reabrir; abrir outra conta; sair explicitamente;
+revogar acesso no servidor e testar limite de validade da conta. Atualização ou
+build local, sozinhos, não comprovam o comportamento do aparelho afetado.
+
 ## Rodando localmente (spike/dev)
 
 ```bash
