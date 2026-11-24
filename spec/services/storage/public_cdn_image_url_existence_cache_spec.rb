@@ -5,6 +5,7 @@ RSpec.describe Storage::PublicCdnImageUrl, "cache de existência de variante" do
     previous = Rails.cache
     Rails.cache = ActiveSupport::Cache::MemoryStore.new
     example.run
+  ensure
     Rails.cache = previous
   end
 
@@ -31,7 +32,7 @@ RSpec.describe Storage::PublicCdnImageUrl, "cache de existência de variante" do
     record
   end
 
-  it "consulta o serviço uma vez e serve do cache em seguida" do
+  it "verifica fora da renderização e serve a variante do cache em seguida" do
     property = create(:habitation)
     attachment = attach_photo(property)
     process_variant(attachment)
@@ -39,10 +40,15 @@ RSpec.describe Storage::PublicCdnImageUrl, "cache de existência de variante" do
     service_spy = attachment.blob.service
     allow(service_spy).to receive(:exist?).and_call_original
 
+    expect(described_class.resolve(attachment, **transformations)).to be_present
+    expect(service_spy).not_to have_received(:exist?)
+
+    variant = attachment.blob.variant(**transformations)
+    expect(described_class.new(attachment).verify_variant(variant)).to be(true)
     first = described_class.resolve(attachment, **transformations)
     second = described_class.resolve(attachment, **transformations)
 
-    expect(first).to be_present
+    expect(first).to start_with("/rails/active_storage/representations/")
     expect(second).to eq(first)
     expect(service_spy).to have_received(:exist?).once
   end

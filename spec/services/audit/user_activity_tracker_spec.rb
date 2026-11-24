@@ -61,4 +61,57 @@ RSpec.describe Audit::UserActivityTracker do
       described_class.call(tenant:, admin_user:, request:, event_name: "unknown")
     }.not_to change(OperationalUserEvent, :count)
   end
+
+  it "restores database timeouts after recording an event" do
+    connection = ActiveRecord::Base.connection
+    before_timeouts = connection.select_one("SELECT current_setting('statement_timeout'), current_setting('lock_timeout')")
+    event = described_class.call(tenant:, admin_user:, request:, event_name: "property_opened")
+
+    expect(event).to be_persisted
+    expect(connection.select_one("SELECT current_setting('statement_timeout'), current_setting('lock_timeout')")).to eq(before_timeouts)
+  end
+
+  it "rolls back the tracking operation on a real database timeout and keeps the connection usable" do
+    admin_user
+    tracker = described_class.new(tenant:, admin_user:, request:, event_name: "property_opened")
+    connection = ActiveRecord::Base.connection
+    before_timeouts = connection.select_one("SELECT current_setting('statement_timeout'), current_setting('lock_timeout')")
+    allow(tracker).to receive(:current_or_new_session).and_wrap_original do |original, now|
+      activity_session = original.call(now)
+      connection.execute("SELECT pg_sleep(0.7)")
+      activity_session
+    end
+
+    expect { expect(tracker.call).to be_nil }.not_to change(OperationalUserSession, :count)
+    expect(OperationalUserEvent.count).to eq(0)
+    expect(request_session[:operational_user_session_id]).to be_nil
+    expect(connection.select_one("SELECT current_setting('statement_timeout'), current_setting('lock_timeout')")).to eq(before_timeouts)
+    expect(connection.select_value("SELECT 1")).to eq(1)
+  end
+
+  it "does not reuse another tenant's operational session" do
+    foreign_tenant = Tenant.create!(name: "Other activity tenant", slug: "other-activity-#{SecureRandom.hex(4)}")
+    foreign_admin = create(:admin_user, :admin, tenant: foreign_tenant)
+    foreign_session = OperationalUserSession.create!(tenant: foreign_tenant, admin_user: foreign_admin)
+    request_session[:operational_user_session_id] = foreign_session.id
+
+    event = described_class.call(tenant:, admin_user:, request:, event_name: "property_opened")
+
+    expect(event.tenant_id).to eq(tenant.id)
+    expect(event.operational_user_session_id).not_to eq(foreign_session.id)
+    expect(foreign_session.reload.events_count).to eq(0)
+  end
+
+  it "rolls back an inserted event when updating its existing session fails" do
+    previous_event = described_class.call(tenant:, admin_user:, request:, event_name: "property_list_viewed")
+    activity_session = previous_event.operational_user_session
+    previous_session_id = request_session[:operational_user_session_id]
+    tracker = described_class.new(tenant:, admin_user:, request:, event_name: "property_opened")
+    allow(tracker).to receive(:current_or_new_session).and_return(activity_session)
+    allow(activity_session).to receive(:record_event!).and_raise(ActiveRecord::LockWaitTimeout)
+
+    expect { expect(tracker.call).to be_nil }.not_to change(OperationalUserEvent, :count)
+    expect(request_session[:operational_user_session_id]).to eq(previous_session_id)
+    expect(activity_session.reload.events_count).to eq(1)
+  end
 end
