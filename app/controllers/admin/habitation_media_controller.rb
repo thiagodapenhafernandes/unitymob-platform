@@ -26,6 +26,10 @@ class Admin::HabitationMediaController < Admin::BaseController
     respond_with_media_error("Não foi possível concluir o envio. Confira as fotos pendentes antes de enviar novamente.")
   end
 
+  rescue_from Habitations::MediaUpdater::InvalidPhotoError do |error|
+    respond_with_media_error(error.message)
+  end
+
   def watermark_preview
     photo = @habitation.watermark_photos.attachments.find(params[:photo_id])
     return head :unsupported_media_type unless %w[image/jpeg image/png image/gif image/webp image/avif].include?(photo.content_type)

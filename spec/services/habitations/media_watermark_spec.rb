@@ -6,6 +6,16 @@ RSpec.describe Habitations::MediaUpdater do
   let(:actor) { create(:admin_user, :admin, tenant: habitation.tenant) }
   let(:updater) { described_class.new(habitation: habitation, params: { habitation: { apply_photo_watermark: "1" } }, actor: actor, request: nil, property_setting: setting) }
 
+  [true, false].each do |watermark|
+    it "rejeita vídeo antes de anexar o lote (marca: #{watermark})" do
+      photo = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("foto"), filename: "foto.png", content_type: "image/png", metadata: { tenant_id: habitation.tenant_id })
+      video = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("video"), filename: "video.mp4", content_type: "video/mp4", metadata: { tenant_id: habitation.tenant_id })
+      expect { updater.attach_new_photos([photo.signed_id, video.signed_id], apply_watermark: watermark) }.to raise_error(described_class::InvalidPhotoError, /apenas imagens/)
+      expect(habitation.reload.photos).not_to be_attached
+      expect(habitation.watermark_photos).not_to be_attached
+    end
+  end
+
   it "respeita o bloqueio de campo ao ler o parâmetro do formulário principal" do
     allow(Habitations::FieldLockPolicy).to receive(:for).with(actor).and_return(double(field_locked?: true))
     expect(updater.apply_photo_watermark_requested?).to be(false)

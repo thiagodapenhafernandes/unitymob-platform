@@ -1,6 +1,28 @@
 require "rails_helper"
 
 RSpec.describe Storage::ActiveStorageRegistry do
+  it "registra aliases por conta para armazenamento legado sem sobrescrever credenciais próprias" do
+    registry = ActiveStorage::Blob.services
+    original_configurations = registry.instance_variable_get(:@configurations)
+    original_services = registry.instance_variable_get(:@services)
+    base = { service: "Disk", root: Rails.root.join("tmp/legacy-storage") }
+    own = { service: "Disk", root: Rails.root.join("tmp/own-storage") }
+    registry.instance_variable_set(:@configurations, { do_spaces: base })
+    registry.instance_variable_set(:@services, {})
+    legacy_setting = double(tenant_id: 41, active_storage_configurations: {})
+    own_setting = double(tenant_id: 42, active_storage_configurations: { do_spaces_db_tenant_42: own })
+    allow(StorageIntegrationSetting).to receive(:find_each).and_yield(legacy_setting).and_yield(own_setting)
+
+    described_class.register_if_available!
+
+    expect(registry.fetch(:do_spaces_db_tenant_41)).to be_a(ActiveStorage::Service::DiskService)
+    expect(registry.instance_variable_get(:@configurations)[:do_spaces_db_tenant_42]).to eq(own)
+  ensure
+    registry.instance_variable_set(:@configurations, original_configurations)
+    registry.instance_variable_set(:@services, original_services)
+    registry.instance_variable_set(:@configurator, ActiveStorage::Service::Configurator.new(original_configurations))
+  end
+
   describe ".register!" do
     it "persiste o alias no registry usado pelo Active Storage" do
       registry = ActiveStorage::Blob.services

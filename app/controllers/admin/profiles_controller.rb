@@ -152,6 +152,14 @@ module Admin
         # campos marcados (= travados) validados contra o registry. O hidden do
         # modal garante que a chave sempre chega (mesmo com nada marcado).
         if key == "imoveis"
+          internal_scope_key = Profile::HABITATION_INTERNAL_DATA_SCOPE_KEY
+          internal_scope = if entry.key?(internal_scope_key)
+            value = entry[internal_scope_key].to_s
+            value.present? ? (value.presence_in(Profile::SCOPE_RANKS.keys) || "own") : nil
+          else
+            @profile&.habitation_internal_data_scope
+          end
+          res_perms[internal_scope_key] = internal_scope if internal_scope
           submitted = Array(entry[:locked_fields]).map(&:to_s).reject(&:blank?)
           res_perms["locked_fields"] = submitted & Habitations::CadastroFieldRegistry.all_keys
           res_perms["category_fields_version"] = 1

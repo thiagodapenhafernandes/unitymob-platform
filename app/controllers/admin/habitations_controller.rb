@@ -103,7 +103,7 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_release_intake_to_broker?, :can_manage_intake_status?, :can_complete_admin_intake_review?
   helper_method :can_filter_by_broker?, :can_filter_by_proprietor?, :can_export_proprietor_data?
   helper_method :can_view_habitation_administrative_filters?
-  helper_method :can_view_habitation_owner_contact_data?
+  helper_method :can_view_habitation_show_internal_documents?, :can_view_habitation_owner_contact_data?
   helper_method :can_create_internal_intake?
   helper_method :can_destroy_habitation?
   helper_method :can_duplicate_habitation?
@@ -2208,7 +2208,12 @@ class Admin::HabitationsController < Admin::BaseController
     scope.count
   end
 
+  def internal_data_access
+    @internal_data_access ||= Habitations::InternalDataAccess.new(current_admin_user)
+  end
+
   def can_view_proprietor_data?(habitation)
+    return internal_data_access.allowed?(habitation) if internal_data_access.configured?
     return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 
@@ -2216,10 +2221,17 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def can_view_internal_documents?(habitation)
+    return internal_data_access.allowed?(habitation) if internal_data_access.configured?
     return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 
     property_belongs_to_current_user?(habitation)
+  end
+
+  def can_view_habitation_show_internal_documents?(habitation)
+    return internal_data_access.allowed?(habitation) if internal_data_access.configured?
+
+    can_view_habitation_show_sensitive_data?(habitation)
   end
 
   def can_view_habitation_show_sensitive_data?(habitation)
@@ -2230,6 +2242,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def can_view_habitation_owner_contact_data?(habitation)
+    return internal_data_access.allowed?(habitation) if internal_data_access.configured?
     return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 

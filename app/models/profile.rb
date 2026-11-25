@@ -689,6 +689,16 @@ class Profile < ApplicationRecord
     configured
   end
 
+  HABITATION_INTERNAL_DATA_SCOPE_KEY = "internal_data_scope".freeze
+  HABITATION_INTERNAL_DATA_SCOPE_OPTIONS = [
+    ["Manter regra atual", ""], ["Apenas os próprios", "own"],
+    ["Equipe (subárvore)", "team"], ["Todos os imóveis da conta", "all"]
+  ].freeze
+
+  def habitation_internal_data_scope
+    permissions_hash.dig("imoveis", HABITATION_INTERNAL_DATA_SCOPE_KEY).presence_in(SCOPE_RANKS.keys)
+  end
+
   def habitation_search_statuses_configured?
     permissions_hash.dig("imoveis", HABITATION_SEARCH_STATUSES_PERMISSION_KEY).is_a?(Array)
   end

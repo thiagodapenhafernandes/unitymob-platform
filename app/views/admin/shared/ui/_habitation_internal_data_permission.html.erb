@@ -1,0 +1,18 @@
+<%= ax_field_group(title: "Contatos e documentos internos", class_name: "tw-mt-3 tw-mb-3") do %>
+  <%= fields_for "profile[permissions][imoveis]" do |permission_fields| %>
+    <%= ax_select_field(
+          form: permission_fields,
+          method: :internal_data_scope,
+          label: "Quem pode consultar",
+          choices: Profile::HABITATION_INTERNAL_DATA_SCOPE_OPTIONS,
+          select_options: { selected: profile.habitation_internal_data_scope.to_s },
+          html_options: { aria: { describedby: "habitation-internal-data-help" } }
+        ) %>
+  <% end %>
+  <p id="habitation-internal-data-help" class="ax-text-muted tw-mt-2">
+    Controla contatos do proprietário, fichas, autorizações e documentos dos imóveis acessíveis, em vendas e locação.
+    Não libera edição, exclusão ou comissões. Equipe inclui o usuário e seus subordinados.
+    Quando os dois perfis configuram este acesso, vale o escopo mais restrito.
+    Manter regra atual preserva o acesso existente.
+  </p>
+<% end %>

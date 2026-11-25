@@ -5,6 +5,8 @@
   <% can_remove_fichas = can_manage_internal_documents && habitation_field_editable?("acao:remover_fichas_cadastro") %>
   <% can_remove_autorizacoes = can_manage_internal_documents && habitation_field_editable?("acao:remover_autorizacoes_venda") %>
   <% can_remove_documentos = can_manage_internal_documents && habitation_field_editable?("acao:remover_documentos") %>
+  <% access = Habitations::InternalDataAccess.new(current_admin_user) %>
+  <% if !access.configured? || access.allowed?(habitation) %>
   <div class="ax-form-workspace">
     <%= ax_form_section(
           title: "Documentos internos",
@@ -220,4 +222,9 @@
       <% end %>
     <% end %>
   </div>
+  <% else %>
+    <%= ax_operational_panel(title: "Documentos internos") do %>
+      <p class="ax-text-muted">Seu perfil não permite consultar os documentos internos deste imóvel.</p>
+    <% end %>
+  <% end %>
 </div>
