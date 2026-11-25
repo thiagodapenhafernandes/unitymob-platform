@@ -56,7 +56,13 @@ module Storage
       return false unless ActiveRecord::Base.connection.data_source_exists?("storage_integration_settings")
       return false unless StorageIntegrationSetting.column_names.include?("tenant_id")
 
-      StorageIntegrationSetting.find_each { |setting| register!(setting) }
+      StorageIntegrationSetting.find_each do |setting|
+        register!(setting)
+        # Contas com credenciais legadas também possuem blobs com nomes por tenant.
+        %w[do_spaces_db amazon_s3_db].each do |base|
+          add_dynamic_compatibility_alias!(:"#{base}_tenant_#{setting.tenant_id}")
+        end
+      end
       true
     rescue ActiveRecord::NoDatabaseError,
            ActiveRecord::StatementInvalid,

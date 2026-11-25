@@ -148,6 +148,9 @@ module Admin::HabitationsHelper
   def admin_habitation_catalog_owner_contact_visible?(habitation)
     return false if habitation.blank? || current_admin_user.blank?
 
+    access = Habitations::InternalDataAccess.new(current_admin_user)
+    return access.allowed?(habitation) if access.configured?
+
     primary_assignment = habitation.primary_captador_assignment
     if primary_assignment.present?
       return primary_assignment.admin_user_id == current_admin_user.id

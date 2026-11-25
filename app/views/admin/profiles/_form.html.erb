@@ -129,6 +129,7 @@
                               </div>
 
                               <% if resource[:key] == "imoveis" %>
+                                <%= render "admin/shared/ui/habitation_internal_data_permission", profile: profile %>
                                 <div class="prof-permission__tools">
                                   <button type="button" class="ax-btn ax-btn--sm prof-res__action"
                                           data-ax-modal-open="#imoveisFieldLocksModal"

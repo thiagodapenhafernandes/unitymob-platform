@@ -353,7 +353,7 @@
     [role_label || "Responsável", value] if value.present?
   end
 
-  internal_document_groups = if can_view_habitation_show_sensitive_data?(@habitation)
+  internal_document_groups = if can_view_habitation_show_internal_documents?(@habitation)
     [
       ["Fichas de cadastro", @habitation.fichas_cadastro.attachments],
       ["Autorizações de venda", @habitation.autorizacoes_venda.attachments],

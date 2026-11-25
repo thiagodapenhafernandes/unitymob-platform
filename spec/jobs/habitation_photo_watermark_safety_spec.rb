@@ -32,6 +32,31 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
     expect(Storage::PublicPropertyPhoto).to have_received(:publish_blob!).once
   end
 
+  it "processa blobs com alias por tenant usando armazenamento legado em worker novo" do
+    registry = ActiveStorage::Blob.services
+    original_configurations = registry.instance_variable_get(:@configurations)
+    original_services = registry.instance_variable_get(:@services)
+    base = original_configurations.fetch(:test)
+    registry.instance_variable_set(:@configurations, { test: base, do_spaces: base, do_spaces_db: base })
+    registry.instance_variable_set(:@services, {})
+    storage_setting = StorageIntegrationSetting.current(tenant: habitation.tenant)
+    allow(StorageIntegrationSetting).to receive(:find_each).and_yield(storage_setting)
+    allow(storage_setting).to receive(:active_storage_configurations).and_return({})
+    allow(StorageIntegrationSetting).to receive(:find_by).and_call_original
+    allow(StorageIntegrationSetting).to receive(:find_by).with(tenant_id: habitation.tenant_id).and_return(storage_setting)
+    attachment.blob.update_columns(service_name: "do_spaces_db_tenant_#{habitation.tenant_id}")
+
+    process
+
+    expect(attachment.reload.name).to eq("photos")
+    expect(attachment.blob.metadata["watermarked"]).to eq(true)
+    expect(attachment.blob.service_name).to eq("do_spaces_db_tenant_#{habitation.tenant_id}")
+  ensure
+    registry.instance_variable_set(:@configurations, original_configurations)
+    registry.instance_variable_set(:@services, original_services)
+    registry.instance_variable_set(:@configurator, ActiveStorage::Service::Configurator.new(original_configurations))
+  end
+
   it "mantém privada a foto quando a conta desabilitou fotos públicas" do
     allow(Storage::PublicPropertyPhoto).to receive(:public_photos_enabled?).with(tenant: habitation.tenant).and_return(false)
     process

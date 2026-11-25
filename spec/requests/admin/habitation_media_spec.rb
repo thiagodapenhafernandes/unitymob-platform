@@ -219,6 +219,22 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include('class="ax-menu__item admin-property-menu__item"')
   end
 
+  it "recusa vídeo no campo de fotos com mensagem explícita" do
+    habitation = create_media_habitation
+    video = Tempfile.new(["media-upload", ".mp4"])
+    video.write("video")
+    video.rewind
+    post upload_admin_habitation_media_path(habitation, format: :json), params: {
+      habitation: { photos: [Rack::Test::UploadedFile.new(video.path, "video/mp4")] }
+    }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Envie apenas imagens")
+    expect(habitation.reload.photos).not_to be_attached
+    expect(habitation.watermark_photos).not_to be_attached
+  ensure
+    video&.close!
+  end
+
   it "envia foto por JSON e devolve a galeria renderizada sem depender do submit do cadastro" do
     habitation = create_media_habitation
     uploaded_photo = Tempfile.new(["media-upload", ".jpg"])

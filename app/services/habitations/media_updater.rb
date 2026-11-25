@@ -1,6 +1,7 @@
 module Habitations
   class MediaUpdater
     class PhotoPublicationError < StandardError; end
+    class InvalidPhotoError < PhotoPublicationError; end
 
     def self.strip_blank_photo_uploads!(attributes)
       return attributes unless attributes.key?(:photos)
@@ -54,6 +55,19 @@ module Habitations
 
       if property_setting && property_setting.tenant_id != habitation.tenant_id
         raise ArgumentError, "Configuração de marca não pertence à conta do imóvel"
+      end
+
+      valid_uploads.each do |upload|
+        if upload.is_a?(String)
+          blob = ActiveStorage::Blob.find_signed!(upload)
+          raise ActiveRecord::RecordNotFound unless blob.metadata.to_h["tenant_id"].to_s == habitation.tenant_id.to_s
+          content_type = blob.content_type
+        else
+          content_type = Storage::BlobFactory.upload_content_type(upload)
+        end
+        unless content_type.to_s.start_with?("image/")
+          raise InvalidPhotoError, "Envie apenas imagens no campo de fotos. Envie vídeos no campo de vídeo do imóvel."
+        end
       end
 
       blobs = valid_uploads.map.with_index { |upload, index| blob_for_photo_upload(upload, index) }
