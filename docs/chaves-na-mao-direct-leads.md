@@ -10,7 +10,7 @@ intermediando nem credenciais/conexão C2S necessárias para esta integração.
 
 ## Configuração por conta
 
-Em Portais → Chaves na Mão → Recebimento direto, salvar ID da conta anunciante,
+Em Portais → Chaves na Mão → Recebimento direto, salvar ID opcional da conta anunciante,
 e-mail de acesso e Token Integração de leads da imobiliária. O token fica em
 Meus Dados → Dados Adicionais no dashboard do Chaves na Mão. O token é criptografado
 e não volta no formulário. Não usar a senha de acesso ao portal.
@@ -31,6 +31,10 @@ Conta inativa ou recebimento desligado retorna 409; rota desconhecida, 404;
 credencial inválida, 401; corpo acima de 64 KiB, 413; JSON inválido, 400;
 objeto vazio/não objeto ou ID operacional ausente/inválido, 422.
 O limite existente é 120 pedidos por minuto/IP.
+
+A URL pode ser preparada como rascunho desativado sem ID de anunciante ou
+credenciais. O ID é apenas informativo; o contrato autentica por e-mail e token.
+Essa preparação requer também a migration `20261126170000`.
 
 ## Processamento
 

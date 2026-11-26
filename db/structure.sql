@@ -1837,7 +1837,7 @@ CREATE TABLE public.chaves_na_mao_connections (
     id bigint NOT NULL,
     tenant_id bigint NOT NULL,
     route_key character varying NOT NULL,
-    account_code character varying NOT NULL,
+    account_code character varying,
     integration_token text,
     enabled boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
@@ -22425,6 +22425,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261126170000'),
 ('20261126160000'),
 ('20261124120000'),
 ('20261117233000'),

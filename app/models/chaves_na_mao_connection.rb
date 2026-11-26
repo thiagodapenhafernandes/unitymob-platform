@@ -10,7 +10,7 @@ class ChavesNaMaoConnection < ApplicationRecord
   validates :login_email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }, if: :enabled?
   validates :tenant_id, uniqueness: true
   validates :route_key, presence: true, uniqueness: true
-  validates :account_code, presence: true, format: { with: /\A[0-9]{1,32}\z/ }
+  validates :account_code, format: { with: /\A[0-9]{1,32}\z/ }, allow_blank: true
   validates :integration_token, presence: true, length: { maximum: 1024 }, if: :enabled?
   validate do
     if persisted? && (%w[tenant_id route_key].any? { |field| will_save_change_to_attribute?(field) } ||
