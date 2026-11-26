@@ -109,12 +109,13 @@ RSpec.describe Imovelweb::ReceiveLead do
     previous = original.attributes.slice("admin_user_id", "status", "property_id", "origin", "notes", "external_lead_id")
     payload.merge!("reference" => "SEM-MAPA", "listing_id" => "789")
 
-    expect { ImovelwebLeadProcessingJob.perform_now(receipt.id) }.not_to change { tenant.leads.count }
+    expect {
+      expect { ImovelwebLeadProcessingJob.perform_now(receipt.id) }.not_to change { tenant.leads.count }
+    }.not_to have_enqueued_job(ExternalLeadMigration::ExportLeadJob)
     expect(receipt.reload.lead_id).to eq(original.id)
     expect(original.reload.attributes.slice(*previous.keys)).to eq(previous)
     expect(original.activities.find_by!(kind: "inquiry_complemented").metadata).to include(
       "body" => a_string_including("Referência do imóvel: SEM-MAPA", "ID do anúncio: 789", "Tenho interesse"))
-    expect(ExternalLeadMigration::ExportLeadJob).not_to have_been_enqueued
   end
 
   it "receives an unmapped listing with its context without searching another tenant" do

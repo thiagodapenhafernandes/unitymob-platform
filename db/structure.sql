@@ -1841,7 +1841,10 @@ CREATE TABLE public.chaves_na_mao_connections (
     integration_token text,
     enabled boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    login_email character varying,
+    operational boolean DEFAULT false NOT NULL,
+    last_lead_received_at timestamp(6) without time zone
 );
 
 
@@ -1875,7 +1878,12 @@ CREATE TABLE public.chaves_na_mao_lead_receipts (
     payload text NOT NULL,
     received_at timestamp(6) without time zone NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    event_id character varying,
+    status character varying DEFAULT 'captured'::character varying NOT NULL,
+    reason character varying,
+    processed_at timestamp(6) without time zone,
+    lead_id bigint
 );
 
 
@@ -12062,6 +12070,13 @@ CREATE UNIQUE INDEX idx_chaves_receipts_connection_digest ON public.chaves_na_ma
 
 
 --
+-- Name: idx_chaves_receipts_connection_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_chaves_receipts_connection_event ON public.chaves_na_mao_lead_receipts USING btree (chaves_na_mao_connection_id, event_id);
+
+
+--
 -- Name: idx_checkins_store_turno_status_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14173,6 +14188,13 @@ CREATE UNIQUE INDEX index_chaves_na_mao_connections_on_route_key ON public.chave
 --
 
 CREATE UNIQUE INDEX index_chaves_na_mao_connections_on_tenant_id ON public.chaves_na_mao_connections USING btree (tenant_id);
+
+
+--
+-- Name: index_chaves_na_mao_lead_receipts_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_chaves_na_mao_lead_receipts_on_lead_id ON public.chaves_na_mao_lead_receipts USING btree (lead_id);
 
 
 --
@@ -20835,6 +20857,14 @@ ALTER TABLE ONLY public.tracking_event_links
 
 
 --
+-- Name: chaves_na_mao_lead_receipts fk_rails_90cde143a9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chaves_na_mao_lead_receipts
+    ADD CONSTRAINT fk_rails_90cde143a9 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: habitation_exports fk_rails_9124ea0acc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -22395,6 +22425,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261126160000'),
 ('20261124120000'),
 ('20261117233000'),
 ('20261117220000'),

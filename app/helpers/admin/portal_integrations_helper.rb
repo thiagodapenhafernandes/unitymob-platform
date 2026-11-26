@@ -8,9 +8,25 @@ module Admin::PortalIntegrationsHelper
   def portal_direct_lead_setup(integration)
     return unless DIRECT_LEAD_PORTALS.include?(integration.portal)
 
-    chaves = integration.portal == "chavesnamao"
+    if integration.portal == "chavesnamao"
+      return {
+        contact: "atendimento@chavesnamao.com.br",
+        introduction: "Após configurar esta conta, encaminhe a URL ao portal e combine o envio de um lead de teste antes da ativação definitiva.",
+        next_steps: "Confira o lead recebido, o imóvel, a fila e o destino configurado nesta conta. Combine a virada do fluxo atual para evitar a mesma consulta recebida por dois canais.",
+        request: <<~TEXT.strip
+          Assunto: Homologação de leads — #{current_tenant.name} / Unitymob / Chaves na Mão
+
+          Solicitamos homologar o webhook imobiliário conforme https://chavesnamao.github.io/lead-documentation/.
+          Conta anunciante: #{integration.account_id.presence || "informar o código da conta no portal"}.
+          Encaminharemos a URL de recebimento desta conta, disponível acima, e o XML de imóveis disponível nesta tela.
+          As credenciais são o e-mail de acesso e o Token Integração de leads da própria imobiliária, disponíveis em Meus Dados no portal.
+          Por favor, combinem conosco um teste e a virada do destino atual. Não alterar a integração de anúncios.
+          Também encaminharemos nome, site, logotipo e contatos técnicos da Unitymob, horários de atualização do XML e orientações de acesso às URLs.
+        TEXT
+      }
+    end
     {
-      contact: chaves ? "atendimento@chavesnamao.com.br" : "atendimento@imovelweb.com.br",
+      contact: "atendimento@imovelweb.com.br",
       request: <<~TEXT.strip
         Assunto: Integração direta de leads — #{current_tenant.name} / Unitymob / #{integration.title}
 
@@ -22,6 +38,17 @@ module Admin::PortalIntegrationsHelper
         A URL definitiva e as credenciais serão fornecidas após validarmos o contrato técnico. Não utilizem a URL do feed de imóveis ou o webhook de status de anúncios para enviar leads.
       TEXT
     }
+  end
+
+  def chaves_na_mao_connection_badge(connection)
+    label, tone = if !connection.receiving?
+      ["Desativado", :gray]
+    elsif connection.operational?
+      ["Ativado", :green]
+    else
+      ["Em validação", :amber]
+    end
+    ax_badge(label, tone: tone)
   end
 
   def portal_lead_connection_badge(integration)
