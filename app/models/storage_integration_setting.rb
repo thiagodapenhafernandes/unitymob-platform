@@ -149,7 +149,13 @@ class StorageIntegrationSetting < ApplicationRecord
 
   def service_name_for_provider(provider)
     case provider.to_s
-    when "digital_ocean" then tenant_service_name(DO_SERVICE_NAME)
+    when "digital_ocean"
+      # Nome do serviço deve refletir o destino real quando as credenciais da conta não estão disponíveis.
+      if !digital_ocean_ready? && self.class.environment_defaults_allowed?(tenant) && self.class.digital_ocean_environment_ready?
+        :do_spaces
+      else
+        tenant_service_name(DO_SERVICE_NAME)
+      end
     when "amazon_s3" then tenant_service_name(S3_SERVICE_NAME)
     else :local
     end

@@ -22,9 +22,9 @@ RSpec.describe Storage::PublicPropertyPhoto do
       allow(StorageIntegrationSetting).to receive(:current).with(tenant: tenant).and_return(setting)
     end
 
-    it "usa a origem real quando o alias da conta resolve para outro bucket" do
+    it "preserva o bucket configurado dos anexos antigos mesmo com alias incompleto" do
       expect(described_class.public_url_for_blob(blob, tenant: tenant)).to eq(
-        service.send(:object_for, blob.key).public_url
+        "https://other-bucket.example.com/photos/foto%20com%20espa%C3%A7o.jpg"
       )
     end
 
@@ -37,13 +37,13 @@ RSpec.describe Storage::PublicPropertyPhoto do
       )
     end
 
-    it "também preserva a origem de um alias Amazon S3 com bucket divergente" do
+    it "preserva a base configurada para anexos Amazon S3 antigos" do
       blob.service_name = "amazon_s3_db_tenant_72"
       setting.s3_bucket = "other-s3-bucket"
       setting.s3_public_base_url = "https://other-s3.example.com"
 
       expect(described_class.public_url_for_blob(blob, tenant: tenant)).to eq(
-        service.send(:object_for, blob.key).public_url
+        "https://other-s3.example.com/photos/foto%20com%20espa%C3%A7o.jpg"
       )
     end
 

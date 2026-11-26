@@ -28,10 +28,13 @@ origem; não são baixadas nem republicadas automaticamente.
 
 ## Compatibilidade e qualidade
 
-Links de fotos usam a origem do serviço do arquivo quando o bucket efetivo
-diverge do configurado na conta (incluindo aliases de compatibilidade).
-Quando os buckets correspondem, o CDN personalizado da conta é preservado.
-Essa resolução não move arquivos nem altera permissões de acesso.
+Anexos antigos com serviço por conta preservam a base pública configurada da
+conta. Não use o bucket de um alias de compatibilidade para trocar essa URL:
+o alias pode ter sido criado porque as credenciais da conta não foram decifradas.
+Novos uploads que utilizam credenciais de ambiente da conta padrão recebem o
+nome explícito do serviço legado (`do_spaces`), preservando seu destino real.
+Contas com credenciais próprias mantêm o serviço por tenant e o CDN configurado.
+Não é necessário mover arquivos ou reconstruir chaves para corrigir esse vínculo.
 
 A entrada deve ser decodificável pelo ImageMagick instalado: JPEG, PNG, WebP e
 outros formatos suportados. Não há promessa de converter qualquer arquivo.
