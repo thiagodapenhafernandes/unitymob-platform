@@ -1813,6 +1813,13 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   transform: translateY(-1px);
 }
 
+/* O card só libera o recorte enquanto um menu compartilhado está aberto. */
+.ax-property-card.has-open-dropdown {
+  position: relative;
+  z-index: 30;
+  overflow: visible;
+}
+
 .ax-property-card.property-card--inactive,
 .ax-property-card.is-muted {
   opacity: .78;

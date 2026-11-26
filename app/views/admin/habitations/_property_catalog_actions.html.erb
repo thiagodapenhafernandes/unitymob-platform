@@ -44,13 +44,7 @@
         </button>
       <% end %>
 
-      <%= link_to habitation_path(imovel),
-                  target: "_blank",
-                  rel: "noopener",
-                  class: "ax-menu__item admin-property-menu__item" do %>
-        <i class="bi bi-box-arrow-up-right"></i>
-        <span>Ver no site</span>
-      <% end %>
+      <%= admin_habitation_site_link(imovel, class_name: "ax-menu__item admin-property-menu__item") %>
 
       <% if can_destroy_habitation?(imovel) %>
         <div class="ax-menu__sep admin-property-menu__sep"></div>

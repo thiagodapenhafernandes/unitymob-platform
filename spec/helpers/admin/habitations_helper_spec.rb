@@ -1,6 +1,25 @@
 require "rails_helper"
 
 RSpec.describe Admin::HabitationsHelper, type: :helper do
+  describe "#admin_habitation_site_link" do
+    it "opens the public property in the current window without Turbo or popup support" do
+      habitation = build_stubbed(:habitation, slug: "apartamento-9465")
+      link = Nokogiri::HTML.fragment(helper.admin_habitation_site_link(habitation)).at_css("a")
+
+      expect(link["href"]).to eq(habitation_path(habitation))
+      expect(link["target"]).to eq("_self")
+      expect(link["data-turbo"]).to eq("false")
+      expect(link.text).to eq("Ver no site")
+    end
+
+    it "preserves the visual class of catalog and detail actions" do
+      habitation = build_stubbed(:habitation)
+      link = Nokogiri::HTML.fragment(helper.admin_habitation_site_link(habitation, class_name: "ax-btn ax-btn--sm")).at_css("a")
+
+      expect(link["class"]).to eq("ax-btn ax-btn--sm")
+    end
+  end
+
   def create_helper_habitation(**attrs)
     create(
       :habitation,
