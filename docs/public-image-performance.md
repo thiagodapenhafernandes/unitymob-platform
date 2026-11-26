@@ -28,6 +28,11 @@ origem; não são baixadas nem republicadas automaticamente.
 
 ## Compatibilidade e qualidade
 
+Links de fotos usam a origem do serviço do arquivo quando o bucket efetivo
+diverge do configurado na conta (incluindo aliases de compatibilidade).
+Quando os buckets correspondem, o CDN personalizado da conta é preservado.
+Essa resolução não move arquivos nem altera permissões de acesso.
+
 A entrada deve ser decodificável pelo ImageMagick instalado: JPEG, PNG, WebP e
 outros formatos suportados. Não há promessa de converter qualquer arquivo.
 Slides do hero exigem imagem estática raster compatível. SVG/logos, arquivos
