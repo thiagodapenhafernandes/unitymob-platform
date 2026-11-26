@@ -455,7 +455,7 @@
                      button_class: "ax-btn ax-btn--sm",
                      icon_class: "bi bi-share ax-ico",
                      label: "Compartilhar" %>
-          <%= link_to safe_join([tag.i(class: "bi bi-box-arrow-up-right ax-ico"), tag.span("Ver no site")]), habitation_path(@habitation), target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm" %>
+          <%= admin_habitation_site_link(@habitation, class_name: "ax-btn ax-btn--sm") %>
         </div>
       </div>
     </div>
