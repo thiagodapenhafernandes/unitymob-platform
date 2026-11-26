@@ -32,7 +32,9 @@ Anexos antigos com serviço por conta preservam a base pública configurada da
 conta. Não use o bucket de um alias de compatibilidade para trocar essa URL:
 o alias pode ter sido criado porque as credenciais da conta não foram decifradas.
 Novos uploads que utilizam credenciais de ambiente da conta padrão recebem o
-nome explícito do serviço legado (`do_spaces`), preservando seu destino real.
+nome explícito do serviço legado (`do_spaces`) quando o bucket de ambiente
+difere do configurado. Quando ambos coincidem, o serviço por conta e seu CDN
+são preservados.
 Contas com credenciais próprias mantêm o serviço por tenant e o CDN configurado.
 Não é necessário mover arquivos ou reconstruir chaves para corrigir esse vínculo.
 

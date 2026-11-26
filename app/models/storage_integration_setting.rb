@@ -151,7 +151,10 @@ class StorageIntegrationSetting < ApplicationRecord
     case provider.to_s
     when "digital_ocean"
       # Nome do serviço deve refletir o destino real quando as credenciais da conta não estão disponíveis.
-      if !digital_ocean_ready? && self.class.environment_defaults_allowed?(tenant) && self.class.digital_ocean_environment_ready?
+      if !digital_ocean_ready? &&
+          self.class.environment_defaults_allowed?(tenant) &&
+          self.class.digital_ocean_environment_ready? &&
+          do_spaces_bucket != ENV["DO_SPACES_BUCKET"]
         :do_spaces
       else
         tenant_service_name(DO_SERVICE_NAME)
