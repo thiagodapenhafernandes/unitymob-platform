@@ -2,12 +2,13 @@ require "rails_helper"
 
 RSpec.describe Admin::HabitationsHelper, type: :helper do
   describe "#admin_habitation_site_link" do
-    it "opens the public property in the current window without Turbo or popup support" do
+    it "opens the public property in a new tab without navigating the CRM through Turbo" do
       habitation = build_stubbed(:habitation, slug: "apartamento-9465")
       link = Nokogiri::HTML.fragment(helper.admin_habitation_site_link(habitation)).at_css("a")
 
       expect(link["href"]).to eq(habitation_path(habitation))
-      expect(link["target"]).to eq("_self")
+      expect(link["target"]).to eq("_blank")
+      expect(link["rel"]).to eq("noopener")
       expect(link["data-turbo"]).to eq("false")
       expect(link.text).to eq("Ver no site")
     end

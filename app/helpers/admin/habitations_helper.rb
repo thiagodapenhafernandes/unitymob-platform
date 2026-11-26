@@ -1,7 +1,6 @@
 module Admin::HabitationsHelper
   def admin_habitation_site_link(habitation, class_name: "ax-contextbar__button ax-contextbar__button--primary")
-    # Navegação normal também funciona em WebViews sem suporte a novas janelas.
-    link_to habitation_path(habitation), class: class_name, target: "_self", data: { turbo: false } do
+    link_to habitation_path(habitation), class: class_name, target: "_blank", rel: "noopener", data: { turbo: false } do
       safe_join([tag.i(class: "bi bi-box-arrow-up-right", aria: { hidden: true }), tag.span("Ver no site")])
     end
   end
