@@ -63,16 +63,48 @@ RSpec.describe "Link curto de compartilhamento de imóvel", type: :request do
     expect(response).to redirect_to(habitations_path)
   end
 
-  it "não gera link com foto ausente ou inacessível" do
-    property.update_column(:pictures, [])
-    post share_link_habitation_path(property.id, lookup: "id"), as: :json
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(property.habitation_share_links).to be_empty
+  [[], [{ "url" => "https://cdn.example.com/missing.jpg" }]].each do |pictures|
+    it "gera link com atribuição mesmo com foto #{pictures.empty? ? 'ausente' : 'inacessível'}" do
+      property.update_column(:pictures, pictures)
+      allow_any_instance_of(HabitationsController).to receive(:social_image_url_accessible?).and_return(false)
+      post share_link_habitation_path(property.id, lookup: "id"), as: :json
+      expect(response).to have_http_status(:ok)
+      link = property.habitation_share_links.sole
+      expect(link.admin_user).to eq(admin)
+      url = URI.parse(response.parsed_body.fetch("url"))
+      expect(url.path).to include(link.token)
+      sign_out admin
+      get url.request_uri
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(admin.name)
+      expect(property.reload.exibir_no_site_flag).to be(false)
+    end
+  end
 
-    property.update_column(:pictures, [{ "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/missing.jpg" }])
-    allow_any_instance_of(HabitationsController).to receive(:social_image_url_accessible?).and_return(false)
+  it "gera link quando o armazenamento não encontra o arquivo da foto" do
+    property.update_column(:pictures, [])
+    property.photos.attach(io: StringIO.new("missing image"), filename: "missing.jpg", content_type: "image/jpeg")
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!).and_raise(ActiveStorage::FileNotFoundError)
+
     post share_link_habitation_path(property.id, lookup: "id"), as: :json
-    expect(response).to have_http_status(:unprocessable_entity)
+
+    expect(response).to have_http_status(:ok)
+    expect(property.habitation_share_links.sole.admin_user).to eq(admin)
+  end
+
+  it "não permite gerar link de outra conta mesmo sem foto" do
+    other = Tenant.create!(name: "Outra", slug: "no-photo-other-#{SecureRandom.hex(4)}")
+    foreign = create(:habitation, tenant: other, pictures: [])
+    post share_link_habitation_path(foreign.id, lookup: "id"), as: :json
+    expect(response).to have_http_status(:not_found)
+    expect(foreign.habitation_share_links).to be_empty
+  end
+
+  it "exige autenticação mesmo sem foto" do
+    property.update_column(:pictures, [])
+    sign_out admin
+    post share_link_habitation_path(property.id, lookup: "id"), as: :json
+    expect(response).not_to have_http_status(:ok)
     expect(property.habitation_share_links).to be_empty
   end
 end

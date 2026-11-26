@@ -344,13 +344,8 @@ class HabitationsController < ApplicationController
       }, status: :unprocessable_entity
     end
 
-    social_photo = ensure_social_photo_public!(@habitation)
-    unless social_photo[:ready]
-      return render json: {
-        success: false,
-        error: "A foto do imóvel ainda está sendo preparada. Tente compartilhar novamente em instantes."
-      }, status: :unprocessable_entity
-    end
+    # A prévia é opcional: sua indisponibilidade não pode bloquear o link do corretor.
+    ensure_social_photo_public!(@habitation)
 
     link = HabitationShareLink.create_or_reuse_for(
       habitation: @habitation,
