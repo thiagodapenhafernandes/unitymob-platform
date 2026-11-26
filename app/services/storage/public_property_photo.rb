@@ -30,10 +30,25 @@ module Storage
         return blob.metadata["public_web_cdn"] ? normalize_spaces_cdn_url(url) : url
       end
 
+      # Aliases de compatibilidade podem apontar ao bucket legado da instalação.
+      if configured_bucket_mismatch?(blob, tenant: tenant)
+        return blob.service.send(:object_for, blob.key).public_url
+      end
+
       base_url = public_base_url(blob, tenant: tenant)
       return if base_url.blank?
 
       "#{base_url}/#{escaped_key(blob.key)}"
+    end
+
+    def configured_bucket_mismatch?(blob, tenant:)
+      setting = StorageIntegrationSetting.current(tenant: tenant)
+      configured_bucket = case setting.provider_for_service_name(blob.service_name)
+      when "digital_ocean" then setting.do_spaces_bucket
+      when "amazon_s3" then setting.s3_bucket
+      end
+
+      configured_bucket.present? && configured_bucket != blob.service.bucket.name
     end
 
     def publish_attachment!(attachment)
