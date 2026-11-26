@@ -1,6 +1,35 @@
 require "rails_helper"
 
 RSpec.describe StorageIntegrationSetting, type: :model do
+  it "identifica o armazenamento legado nos novos uploads que usam credenciais de ambiente" do
+    tenant = Tenant.new(name: "Conta padrão", slug: "default")
+    setting = described_class.new(tenant: tenant, photo_provider: "digital_ocean", document_provider: "digital_ocean")
+    allow(described_class).to receive(:environment_defaults_allowed?).with(tenant).and_return(true)
+    allow(described_class).to receive(:digital_ocean_environment_ready?).and_return(true)
+    allow(setting).to receive(:digital_ocean_ready?).and_return(false)
+
+    expect(setting.photo_service_name).to eq(:do_spaces)
+    expect(setting.document_service_name).to eq(:do_spaces)
+  end
+
+  it "preserva o serviço próprio quando as credenciais da conta estão disponíveis" do
+    tenant = Tenant.new(id: 72, name: "Conta", slug: "conta")
+    setting = described_class.new(tenant: tenant, photo_provider: "digital_ocean")
+    allow(setting).to receive(:digital_ocean_ready?).and_return(true)
+
+    expect(setting.photo_service_name).to eq(:do_spaces_db_tenant_72)
+  end
+
+  it "não usa credenciais de ambiente para outra conta" do
+    tenant = Tenant.new(id: 73, name: "Outra conta", slug: "outra")
+    setting = described_class.new(tenant: tenant, photo_provider: "digital_ocean")
+    allow(described_class).to receive(:environment_defaults_allowed?).with(tenant).and_return(false)
+    allow(described_class).to receive(:digital_ocean_environment_ready?).and_return(true)
+    allow(setting).to receive(:digital_ocean_ready?).and_return(false)
+
+    expect(setting.photo_service_name).to eq(:do_spaces_db_tenant_73)
+  end
+
   it "gera nomes de serviço Active Storage distintos por tenant" do
     tenant_a = Tenant.create!(name: "Storage A", slug: "storage-a-#{SecureRandom.hex(3)}")
     tenant_b = Tenant.create!(name: "Storage B", slug: "storage-b-#{SecureRandom.hex(3)}")
