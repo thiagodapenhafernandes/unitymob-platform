@@ -7,9 +7,23 @@ RSpec.describe StorageIntegrationSetting, type: :model do
     allow(described_class).to receive(:environment_defaults_allowed?).with(tenant).and_return(true)
     allow(described_class).to receive(:digital_ocean_environment_ready?).and_return(true)
     allow(setting).to receive(:digital_ocean_ready?).and_return(false)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("DO_SPACES_BUCKET").and_return("legacy-bucket")
 
     expect(setting.photo_service_name).to eq(:do_spaces)
     expect(setting.document_service_name).to eq(:do_spaces)
+  end
+
+  it "preserva o serviço e CDN da conta quando o fallback usa o mesmo bucket configurado" do
+    tenant = Tenant.new(id: 1, name: "Conta padrão", slug: "default")
+    setting = described_class.new(tenant: tenant, photo_provider: "digital_ocean", do_spaces_bucket: "same-bucket")
+    allow(described_class).to receive(:environment_defaults_allowed?).with(tenant).and_return(true)
+    allow(described_class).to receive(:digital_ocean_environment_ready?).and_return(true)
+    allow(setting).to receive(:digital_ocean_ready?).and_return(false)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("DO_SPACES_BUCKET").and_return("same-bucket")
+
+    expect(setting.photo_service_name).to eq(:do_spaces_db_tenant_1)
   end
 
   it "preserva o serviço próprio quando as credenciais da conta estão disponíveis" do
