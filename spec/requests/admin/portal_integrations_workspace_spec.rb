@@ -84,7 +84,8 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
       setup = document.at_css(portal == "chavesnamao" ? "#portal-chaves-support" : "#portal-direct-leads")
       expect(setup.text).to include("Aguardando habilitação do portal", "Copiar solicitação")
       request = setup.at_css("textarea").text
-      expect(request).to include(admin.tenant.name, integration.title, "123456", "sem passar pelo Gestor de Leads da OLX")
+      expect(request).to include(admin.tenant.name, integration.title, "123456")
+      expect(request).to include(portal == "chavesnamao" ? "lead-documentation" : "sem passar pelo Gestor de Leads da OLX")
       expect(setup.text).to include(portal == "chavesnamao" ? "atendimento@chavesnamao.com.br" : "atendimento@imovelweb.com.br")
       expect(request).not_to include("segredo-do-portal", original_token)
       expect(integration.reload.feed_token).to eq(original_token)

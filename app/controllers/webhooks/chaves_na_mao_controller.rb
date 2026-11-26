@@ -11,9 +11,18 @@ class Webhooks::ChavesNaMaoController < ActionController::Base
     entry = JSON.parse(request.raw_post)
     return head :unprocessable_entity unless entry.is_a?(Hash) && entry.present?
 
-    # Captura de homologação: nenhum evento cria lead, distribui ou notifica.
-    connection.chaves_na_mao_lead_receipts.create_or_find_by!(payload_digest: Digest::SHA256.hexdigest(request.raw_post)) do |receipt|
-      receipt.assign_attributes(payload: request.raw_post, received_at: Time.current)
+    digest = Digest::SHA256.hexdigest(request.raw_post)
+    if connection.operational?
+      return head :unprocessable_entity unless entry["id"].is_a?(String) && entry["id"].present? && entry["id"].bytesize <= 255
+
+      receipt = connection.chaves_na_mao_lead_receipts.create_or_find_by!(event_id: entry["id"]) do |record|
+        record.assign_attributes(payload_digest: Digest::SHA256.hexdigest("operational:#{request.raw_post}"), payload: request.raw_post, received_at: Time.current, status: "pending")
+      end
+      ChavesNaMaoLeadProcessingJob.perform_later(receipt.id) if receipt.status == "pending"
+    else
+      connection.chaves_na_mao_lead_receipts.create_or_find_by!(payload_digest: digest) do |record|
+        record.assign_attributes(payload: request.raw_post, received_at: Time.current)
+      end
     end
     head :ok
   rescue JSON::ParserError

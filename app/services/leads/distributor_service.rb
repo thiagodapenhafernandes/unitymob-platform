@@ -562,6 +562,7 @@ module Leads
       return rule.source_whatsapp_campaign? if origin == "whatsapp_campaign"
       return rule.source_rd_station? if routing_lead.lead_type == "rd_station"
 
+      return rule.source_portal? if routing_lead.attribution_source == "chaves_na_mao" && routing_lead.attribution_data.to_h["provider"] == "chaves_na_mao_direct"
       return rule.source_portal? if routing_lead.attribution_source == "imovelweb" && routing_lead.attribution_data.to_h["provider"] == "imovelweb_direct"
       return rule.source_tiktok? if routing_lead.attribution_channel == "tiktok_ads"
       return true if rule.source_linkedin? && routing_lead.attribution_channel == "linkedin_ads" && routing_lead.attribution_source == "linkedin"

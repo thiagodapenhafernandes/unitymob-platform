@@ -1,66 +1,90 @@
-# Chaves na Mão — preparação do recebimento direto
+# Chaves na Mão — recebimento direto de leads
 
-## Estado da implementação
+Implementação local conforme o contrato imobiliário enviado pelo atendimento em
+25/11/2026. Requer a migration `20261126160000`, Rails e worker Solid Queue.
+Não exige mudanças no Gateway. Não houve ativação de contas nem teste real com o
+fornecedor nesta implementação.
 
-Implementação de **captura para homologação**, disponível para todas as
-contas em Portais → Chaves na Mão. Nasce desativada e tem configuração própria
-por tenant. Não é ainda o conector operacional de criação de leads.
+O fluxo é **Chaves na Mão → webhook Unitymob → filas da conta**. Não há C2S
+intermediando nem credenciais/conexão C2S necessárias para esta integração.
 
-O contrato técnico imobiliário do fornecedor (campos, autenticação efetivamente
-enviada, ID de evento, retries e resposta esperada) ainda precisa ser confirmado.
-A página Meus Dados fornece um token de integração de leads, mas isso não prova
-o formato de entrega. Não presumir o contrato da API de veículos.
+## Configuração por conta
 
-## Captura implementada
+Em Portais → Chaves na Mão → Recebimento direto, salvar ID da conta anunciante,
+e-mail de acesso e Token Integração de leads da imobiliária. O token fica em
+Meus Dados → Dados Adicionais no dashboard do Chaves na Mão. O token é criptografado
+e não volta no formulário. Não usar a senha de acesso ao portal.
 
-- Configuração isolada por conta, com ID do anunciante e token criptografado.
-- `POST /webhooks/chaves_na_mao/:route_key`: URL específica da conexão.
-- Autenticação que o receptor suporta para homologação: `Authorization: Basic <token>`
-  ou `Authorization: Bearer <token>`, comparado ao token configurado. Esses formatos
-  **não estão confirmados pelo Chaves na Mão**; precisam ser acordados antes de
-  apontar qualquer tráfego. Não enviar credencial pessoal da Unitymob.
-- Captura exclusivamente objetos JSON não vazios, com até 64 KiB; 120 pedidos
-  por minuto/IP. Identidade da conta é resolvida pela URL autenticada, nunca
-  pelo tenant informado no corpo.
-- Corpo criptografado no banco e removido dos parâmetros de log antes do parser
-  Rails. A interface mostra apenas ID e data dos últimos dez eventos.
-- Retry com os mesmos bytes retorna 200 e reutiliza o recibo. Esse digest serve
-  só à captura; não substitui o ID estável do fornecedor na integração definitiva.
-- Desativada/conta inativa: 409; credencial inválida: 401; rota desconhecida: 404;
-  JSON inválido: 400; objeto vazio/não objeto: 422; corpo excessivo: 413.
-- Não cria leads, não altera atribuição, não agenda jobs nem envia notificações.
-  Recibos de validação não serão reproduzidos automaticamente ao ativar o conector.
+- Habilitar recebimento: permite autenticar e guardar eventos.
+- Criar leads e aplicar as regras desta conta: ativa o processamento operacional.
+  Desmarcado, mantém apenas captura para homologação.
+- As opções são independentes por tenant; a criação operacional começa desligada.
+  Eventos antigos de captura não são reproduzidos automaticamente.
+- Conexões antigas precisam receber o e-mail de acesso para usar a autenticação
+  oficial. Os formatos provisórios `Basic <token>` e `Bearer <token>` foram retirados.
 
-O feed XML e as configurações C2S são independentes e não são alterados.
-Não substituir o e-mail de propostas nem desligar o C2S para testar esta etapa.
-Publicar o Rails requer a migration `20261117220000`; não exige mudanças no Gateway.
+Encaminhar ao portal a URL da própria conexão:
+`POST /webhooks/chaves_na_mao/:route_key`, usando HTTPS em produção.
+O portal envia `Authorization: Basic <base64(email:token)>` e JSON. URL autenticada,
+e-mail e token determinam a conta; campos do corpo nunca selecionam outro tenant.
+Conta inativa ou recebimento desligado retorna 409; rota desconhecida, 404;
+credencial inválida, 401; corpo acima de 64 KiB, 413; JSON inválido, 400;
+objeto vazio/não objeto ou ID operacional ausente/inválido, 422.
+O limite existente é 120 pedidos por minuto/IP.
 
-## O que falta para concluir o conector operacional
+## Processamento
 
-1. Obter documentação ou payload anonimizado e confirmar a autenticação, ID de
-   conta, ID único por contato/evento, referência do imóvel e venda/locação.
-2. Confirmar com o fornecedor se é possível entregar em paralelo ao fluxo atual.
-   A captura não garante que o portal suporte dois destinos.
-3. Implementar o adaptador a partir desse contrato, com quarentena para casos
-   inválidos e resolução do imóvel apenas dentro da conta.
-4. Reutilizar `Leads::Intake`, acrescentando a referência estável do provedor;
-   testar também chegada direta seguida/precedida pelo C2S. Coincidência de
-   telefone não basta para evitar redistribuição de uma mesma consulta.
-5. Validar contato novo, reenvio, e-mail sem telefone, imóvel desconhecido,
-   venda/locação, isolamento e os eventos WhatsApp/telefone/formulário suportados.
-6. Conferir teste real, resultado esperado e habilitação por conta antes da
-   virada. A captura atual não oferece ativação operacional.
+O endpoint persiste o recibo criptografado e enfileira somente seu ID, respondendo
+200 sem esperar distribuição ou notificações. Reentregas operacionais usam o ID
+estável do lead do fornecedor, único por conexão, mesmo que `sendAt` ou a ordem
+dos campos mudem. Jobs concorrentes travam o recibo; processado/quarentenado não
+é executado novamente. Falhas transitórias têm cinco tentativas no ActiveJob;
+pendências esgotadas ficam no monitor de jobs. Reenvio do portal de um recibo ainda
+pendente também permite enfileirar novamente.
 
-## Solicitação ao portal
+`ChavesNaMao::ReceiveLead` aceita `segment=REALTY` e usa `Leads::Intake` para criar
+ou complementar o contato. O ID de ingresso é `chaves_na_mao:<route_key>:<id>`.
+Repetição não cria outra consulta, redistribui ou notifica novamente. Nova consulta
+do mesmo contato segue matching, fidelização e distribuição já definidos na conta.
 
-O bloco de solicitação existente permanece na tela. Enviar a partir de endereço
-cadastrado, somente quando autorizado pelo responsável pela conta:
+- Nome, e-mail, telefone e mensagem vêm da raiz do JSON. Contato sem telefone é
+  aceito somente com e-mail válido; sem contato utilizável fica em quarentena.
+- Imóvel é buscado exclusivamente em `tenant.habitations.codigo` por `ad.reference`,
+  a mesma referência enviada pelo XML. Não usar `ad.id` como ID interno.
+- Referência ausente/desconhecida mantém lead sem vínculo, preservando referência,
+  anúncio e mensagem para conferência. Referência ambígua fica em quarentena.
+- `Venda`, `Locação` e `Venda/Locação` conservam as modalidades venda, locação e ambos.
+  Locação de imóvel da conta configurado como diária usa diária. A finalidade mista
+  não prova uma preferência exclusiva do interessado.
+- A origem direta corresponde a filas com fonte Portais; não cai em Site por falta
+  de reconhecimento da origem. Regras, funis, horários, elegibilidade, represamento,
+  contingência, notificações e destino da fila continuam os configurados na conta.
+- Eventos inválidos ficam `quarantined` com motivo seguro, sem expor payload no log.
+  A tela mostra os dez eventos recentes e seu estado. O timestamp da conexão só é
+  atualizado após processamento bem-sucedido.
 
-> Precisamos homologar o recebimento de leads no CRM Unitymob. Enviem o contrato
-> do webhook imobiliário: headers de autenticação, JSON anonimizado, ID estável
-> do evento, identificação da conta e imóvel, eventos contemplados, retries e
-> resposta esperada. Precisamos manter o fluxo atual pelo C2S enquanto validamos.
-> É possível entregar também no endpoint de homologação, sem substituir o destino
-> atual? Não alterar o XML de anúncios nem o e-mail de propostas nesta etapa.
+## Homologação e virada
 
-Fonte oficial: [procedimento para alterar o integrador](https://help.chavesnamao.com.br/support/solutions/articles/72000640720-quero-alterar-meu-integrador-de-im%C3%B3veis-o-que-fazer-).
+A documentação informa timeout de 30 segundos, recomenda resposta em menos de cinco,
+e anuncia três reenvios em 15s, 5min e 1h. Apenas leads novos após ativação são enviados.
+Combinar teste, reenvio e virada do destino com o atendimento.
+
+Clientes em migração mantêm suas configurações e cadastros existentes. A entrada
+direta pode complementar um contato migrado sem apagar seu histórico. Se a conta
+mantiver temporariamente outro canal entregando os mesmos contatos, o contrato
+não fornece um ID para correlacionar essas duas entregas: combinar a transição
+cadenciada com a conta, sem descartar consultas distintas apenas pelo telefone.
+Nenhuma configuração de migração, XML, e-mail de propostas ou fila é alterada
+automaticamente pelo conector.
+
+Para a parceria, o atendimento solicita nome, site e logo da Unitymob; WhatsApp,
+telefone e e-mail técnico; horários de atualização do XML; instruções para obter
+XML e URL de leads na interface; e as URLs de cada cliente em comum. Também permite
+que a Unitymob centralize o envio das URLs mediante aviso. Nenhum dado foi enviado
+ao atendimento por esta implementação.
+
+Fontes oficiais:
+- https://chavesnamao.github.io/lead-documentation/api/autenticacao.html
+- https://chavesnamao.github.io/lead-documentation/api/imoveis.html
+- https://chavesnamao.github.io/lead-documentation/recursos/faq.html
+- https://chavesnamao.github.io/xml-documentation/

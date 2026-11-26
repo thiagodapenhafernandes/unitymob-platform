@@ -345,7 +345,7 @@ class Lead < ApplicationRecord
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta),
   # Direct do Instagram, migração habilitada ou Lead Sync LinkedIn com e-mail válido.
   has_many :instagram_messages, dependent: :destroy
-  validates :phone, presence: true, unless: -> { meta_contact_without_phone? || linkedin_contact_without_phone? || tiktok_contact_without_phone? || imovelweb_contact_without_phone? || business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) || external_lead_integration&.accept_lead_without_phone? }
+  validates :phone, presence: true, unless: -> { meta_contact_without_phone? || linkedin_contact_without_phone? || tiktok_contact_without_phone? || imovelweb_contact_without_phone? || chaves_na_mao_contact_without_phone? || business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) || external_lead_integration&.accept_lead_without_phone? }
   validate :associated_records_must_belong_to_tenant
   validate :in_service_requires_owner
   validate :assigned_admin_user_must_be_active
@@ -519,6 +519,11 @@ class Lead < ApplicationRecord
     info = other_information.to_h
     facebook = attribution_data.to_h["facebook"]
     attribution_channel == "meta_ads" || info["meta_leadgen_id"].present? || facebook.present?
+  end
+
+  def chaves_na_mao_contact_without_phone?
+    attribution_source == "chaves_na_mao" && attribution_data&.dig("provider") == "chaves_na_mao_direct" &&
+      other_information&.dig("chaves_na_mao_event_id").present? && email.to_s.match?(URI::MailTo::EMAIL_REGEXP)
   end
 
   def imovelweb_contact_without_phone?
