@@ -109,4 +109,12 @@ RSpec.describe "Chaves na Mão account configuration", type: :request do
     expect(response.body).not_to include("O suporte precisa fornecer o contrato técnico")
   end
 
+  it "prepares a disabled URL without inventing an advertiser ID or credentials" do
+    configure(enabled: "0", operational: "0")
+    connection = ChavesNaMaoConnection.find_by!(tenant: admin.tenant)
+    expect(connection.account_code).to be_nil
+    expect(connection).not_to be_receiving
+    expect(connection.route_key).to be_present
+  end
+
 end

@@ -15,7 +15,7 @@
       <%= ax_field_group(title: "Configuração desta conta") do %>
         <%= ax_field_grid do %>
           <div class="ax-span-6">
-            <%= ax_text_field(form: f, method: :account_code, label: "ID da conta no Chaves na Mão", readonly: !@chaves_na_mao_connection.account_code_editable?, inputmode: "numeric") %>
+            <%= ax_text_field(form: f, method: :account_code, label: "ID da conta no Chaves na Mão (opcional)", readonly: !@chaves_na_mao_connection.account_code_editable?, inputmode: "numeric") %>
           </div>
           <div class="ax-span-6">
             <%= ax_text_field(form: f, method: :integration_token, label: "Token de integração de leads", type: :password, value: "", autocomplete: "new-password", hint: @chaves_na_mao_connection.integration_token.present? ? "Token configurado. Deixe em branco para manter." : "Disponível em Meus Dados no Chaves na Mão. Use o token da imobiliária, não a senha de acesso.") %>
