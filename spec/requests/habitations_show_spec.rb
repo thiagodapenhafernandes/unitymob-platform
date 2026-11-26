@@ -444,7 +444,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.parsed_body.fetch("url")).to include("/i/")
     end
 
-    it "does not create a tracked share link while the local property photo is not public yet" do
+    it "creates a tracked share link even while the local property photo is not public yet" do
       admin = create(:admin_user)
       habitation = create(:habitation, tenant: admin.tenant, codigo: "SHARE-PENDING", slug: "share-pending")
       habitation.update_column(:pictures, [])
@@ -462,9 +462,8 @@ RSpec.describe "Habitation details", type: :request do
 
       post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
-      expect(response.parsed_body.fetch("error")).to include("foto do imóvel ainda está sendo preparada")
-      expect(HabitationShareLink.where(habitation: habitation)).not_to exist
+      expect(response).to have_http_status(:ok)
+      expect(HabitationShareLink.find_by!(habitation: habitation).admin_user).to eq(admin)
     end
 
     it "creates a private tracked link for an unavailable property without making its plain URL public" do
